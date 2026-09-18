@@ -1,0 +1,17 @@
+diff --git a/node_modules/@opennextjs/cloudflare/dist/cli/build/bundle-server.js b/node_modules/@opennextjs/cloudflare/dist/cli/build/bundle-server.js
+index 95a1a0a..5be5a92 100644
+--- a/node_modules/@opennextjs/cloudflare/dist/cli/build/bundle-server.js
++++ b/node_modules/@opennextjs/cloudflare/dist/cli/build/bundle-server.js
+@@ -67,6 +67,12 @@ export async function bundleServer(buildOpts, projectOpts) {
+         minifySyntax: projectOpts.minify && !debug,
+         legalComments: "none",
+         metafile: true,
++        // Repo patch (see patches/@opennextjs+cloudflare+1.13.1.patch):
++        // esbuild defaults to logLevel "warning", which prints
++        // `equals-negative-zero` notes for Next's own compiled chunks.
++        // Silence them; real failures still exit non-zero and real build
++        // problems still surface via typecheck/eslint/tests.
++        logLevel: "error",
+         // Next traces files using the default conditions from `nft` (`node`, `require`, `import` and `default`)
+         //
+         // Because we use the `node` platform for this build, the "module" condition is used when no conditions are defined.
