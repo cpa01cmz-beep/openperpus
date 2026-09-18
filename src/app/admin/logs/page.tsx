@@ -1,8 +1,8 @@
-import Link from "next/link";
-import { createClient } from "@/lib/supabase/server";
-import DataTable from "@/components/admin/DataTable";
+import Link from 'next/link';
+import { createClient } from '@/lib/supabase/server';
+import LogsTable from '@/components/admin/LogsTable';
 
-export const dynamic = "force-dynamic";
+export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 const PER_PAGE = 20;
@@ -23,16 +23,20 @@ export default async function LogsPage({ searchParams }: { searchParams?: { page
     data: { user },
   } = await supabase.auth.getUser();
   const { data: profile } = user
-    ? await supabase.from("profiles").select("role").eq("id", user.id).single()
+    ? await supabase.from('profiles').select('role').eq('id', user.id).single()
     : { data: null };
   const role = (profile as { role?: string } | null)?.role;
 
-  if (role !== "admin") {
+  if (role !== 'admin') {
     return (
       <div className="grid gap-4">
         <h1 className="text-2xl font-bold">Log Aktivitas</h1>
-        <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-6 text-center text-sm text-red-700">
-          Akses ditolak — halaman ini khusus <strong>admin</strong>. Peran Anda: {role ?? "tidak diketahui"}.
+        <div
+          role="alert"
+          className="rounded-xl border border-red-200 bg-red-50 px-4 py-6 text-center text-sm text-red-700"
+        >
+          Akses ditolak — halaman ini khusus <strong>admin</strong>. Peran Anda:{' '}
+          {role ?? 'tidak diketahui'}.
           <br />
           <Link href="/admin" className="mt-2 inline-block underline">
             Kembali ke Dashboard
@@ -47,9 +51,9 @@ export default async function LogsPage({ searchParams }: { searchParams?: { page
   const to = from + PER_PAGE - 1;
 
   const { data, count, error } = await supabase
-    .from("activity_logs")
-    .select("id,action,entity_type,entity_id,user_id,metadata,created_at", { count: "exact" })
-    .order("created_at", { ascending: false })
+    .from('activity_logs')
+    .select('id,action,entity_type,entity_id,user_id,metadata,created_at', { count: 'exact' })
+    .order('created_at', { ascending: false })
     .range(from, to);
 
   const rows = (data ?? []) as Log[];
@@ -60,57 +64,27 @@ export default async function LogsPage({ searchParams }: { searchParams?: { page
       <div>
         <h1 className="text-2xl font-bold">Log Aktivitas</h1>
         <p className="text-sm text-slate-500">
-          Jejak audit read-only (tabel <code className="font-mono">activity_logs</code>), khusus admin. Total {count ?? 0}{" "}
-          baris.
+          Jejak audit read-only (tabel <code className="font-mono">activity_logs</code>), khusus
+          admin. Total {count ?? 0} baris.
         </p>
       </div>
 
       {error && (
-        <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div
+          role="alert"
+          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        >
           Gagal memuat log: {error.message}
         </div>
       )}
 
-      <DataTable<Log>
-        columns={[
-          {
-            key: "created_at",
-            header: "Waktu",
-            render: (r) => (
-              <span className="whitespace-nowrap">
-                {new Date(r.created_at).toLocaleDateString("id-ID")}
-                <br />
-                <span className="text-xs text-slate-500">{new Date(r.created_at).toLocaleTimeString("id-ID")}</span>
-              </span>
-            ),
-          },
-          { key: "action", header: "Aksi", render: (r) => <code className="font-mono text-xs">{r.action}</code> },
-          {
-            key: "entitas",
-            header: "Entitas",
-            render: (r) => (
-              <span className="text-xs">
-                {r.entity_type ?? "-"}
-                {r.entity_id ? <span className="text-slate-400"> · {r.entity_id.slice(0, 8)}…</span> : ""}
-              </span>
-            ),
-          },
-          {
-            key: "user_id",
-            header: "Pelaku",
-            render: (r) => <span className="font-mono text-xs">{r.user_id ? `${r.user_id.slice(0, 8)}…` : "-"}</span>,
-          },
-        ]}
-        rows={rows}
-        getRowKey={(r) => r.id}
-        emptyText="Belum ada aktivitas tercatat."
-      />
+      <LogsTable rows={rows} />
 
       <div className="flex items-center gap-2 text-sm">
         <Link
           href={`/admin/logs?page=${page - 1}`}
           aria-disabled={page <= 1}
-          className={`rounded border px-3 py-1 ${page <= 1 ? "pointer-events-none opacity-50" : ""}`}
+          className={`rounded border px-3 py-1 ${page <= 1 ? 'pointer-events-none opacity-50' : ''}`}
         >
           ‹ Prev
         </Link>
@@ -120,7 +94,7 @@ export default async function LogsPage({ searchParams }: { searchParams?: { page
         <Link
           href={`/admin/logs?page=${page + 1}`}
           aria-disabled={page >= totalPages}
-          className={`rounded border px-3 py-1 ${page >= totalPages ? "pointer-events-none opacity-50" : ""}`}
+          className={`rounded border px-3 py-1 ${page >= totalPages ? 'pointer-events-none opacity-50' : ''}`}
         >
           Next ›
         </Link>
