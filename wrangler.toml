@@ -1,0 +1,20 @@
+# Nama worker — ganti sesuai project di dashboard Cloudflare
+name = "webperpus-oc"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Output dari @opennextjs/cloudflare build
+main = ".open-next/worker.js"
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
+not_found_handling = "none"
+
+# Contoh env non-secret (secret pakai `wrangler secret put`)
+# [vars]
+# NEXT_PUBLIC_SITE_URL = "https://webperpus-oc.workers.dev"
+
+# Contoh observability (opsional, aktifkan bila perlu)
+# [observability.logs]
+# enabled = true

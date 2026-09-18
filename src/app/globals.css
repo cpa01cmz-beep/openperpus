@@ -1,0 +1,144 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Brand tokens — minimal fallback; full values live in [data-theme] blocks
+   + inline style from settings (layout.tsx). Do NOT restate emerald here. */
+:root {
+  --brand: #047857;
+  --surface: #ffffff;
+  --ink: #0f172a;
+  --font-inter: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-playfair: 'Playfair Display', Georgia, serif;
+  --font-cormorant: 'Cormorant Garamond', Georgia, serif;
+  --font-fraunces: 'Fraunces', Georgia, serif;
+  --font-archivo: 'Archivo Black', 'Arial Black', sans-serif;
+  --font-space: 'Space Grotesk', ui-monospace, monospace;
+  --font-source-serif: 'Source Serif 4', Georgia, serif;
+  --font-source-sans: 'Source Sans 3', ui-sans-serif, system-ui, sans-serif;
+}
+
+[data-theme="emerald"] {
+  --brand: #047857;
+  --brand-soft: #ecfdf5;
+  --brand-strong: #065f46;
+  --accent: #f59e0b;
+  --accent-soft: #fffbeb;
+  --surface: #ffffff;
+  --ink: #0f172a;
+  --heading: #065f46;
+  --font-heading: var(--font-playfair), 'Playfair Display', Georgia, serif;
+  --font-body: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 1rem;
+  --shadow-sm: 0 1px 2px 0 rgb(15 23 42 / 0.06);
+  --shadow-md: 0 4px 12px -2px rgb(4 120 87 / 0.14), 0 2px 4px -2px rgb(15 23 42 / 0.08);
+  --shadow-lg: 0 12px 32px -8px rgb(4 120 87 / 0.20), 0 4px 12px -4px rgb(15 23 42 / 0.10);
+  --container: 72rem;
+  --spacing-section: 4rem;
+  --spacing-card: 1.5rem;
+}
+
+[data-theme="midnight"] {
+  --brand: #1E3A5F;
+  --brand-soft: #2A4365;
+  --brand-strong: #060D1A;
+  --accent: #D4AF37;
+  --accent-soft: #2A2415;
+  --surface: #0B1220;
+  --ink: #E9EEF6;
+  --heading: #E9EEF6;
+  --font-heading: var(--font-cormorant), 'Cormorant Garamond', Georgia, serif;
+  --font-body: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.625rem;
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.4);
+  --shadow-md: 0 8px 24px -4px rgb(0 0 0 / 0.55);
+  --shadow-lg: 0 24px 64px -12px rgb(0 0 0 / 0.7);
+  --container: 76rem;
+  --spacing-section: 5.5rem;
+  --spacing-card: 2rem;
+}
+
+[data-theme="paper"] {
+  --brand: #6F7D6C;
+  --brand-soft: #E8ECE5;
+  --brand-strong: #4A5548;
+  --accent: #A98A6B;
+  --accent-soft: #F1E8DC;
+  --surface: #FAF7F2;
+  --ink: #2B2622;
+  --heading: #4A5548;
+  --font-heading: var(--font-source-serif), 'Source Serif 4', Georgia, serif;
+  --font-body: var(--font-source-sans), 'Source Sans 3', ui-sans-serif, system-ui, sans-serif;
+  --radius-sm: 0.125rem;
+  --radius-md: 0.25rem;
+  --radius-lg: 0.375rem;
+  --shadow-sm: 0 1px 1px 0 rgb(43 38 34 / 0.05);
+  --shadow-md: 0 2px 6px -1px rgb(43 38 34 / 0.07);
+  --shadow-lg: 0 6px 16px -4px rgb(43 38 34 / 0.08);
+  --container: 68rem;
+  --spacing-section: 6rem;
+  --spacing-card: 2.25rem;
+}
+
+[data-theme="brutalist"] {
+  --brand: #FF4D00;
+  --brand-soft: #FFD9C2;
+  --brand-strong: #8F2A00;
+  --accent: #FFC400;
+  --accent-soft: #FFF0B3;
+  --surface: #F2EEE3;
+  --ink: #111110;
+  --heading: #111110;
+  --font-heading: var(--font-archivo), 'Archivo Black', 'Arial Black', sans-serif;
+  --font-body: var(--font-space), 'Space Grotesk', ui-monospace, monospace;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --shadow-sm: 2px 2px 0 0 #111110;
+  --shadow-md: 4px 4px 0 0 #111110;
+  --shadow-lg: 8px 8px 0 0 #111110;
+  --container: 80rem;
+  --spacing-section: 2.5rem;
+  --spacing-card: 1rem;
+}
+
+[data-theme="ocean"] {
+  --brand: #0E6E6B;
+  --brand-soft: #D2E9E6;
+  --brand-strong: #084443;
+  --accent: #FF6B4A;
+  --accent-soft: #FFE0D3;
+  --surface: #F4F7F6;
+  --ink: #102E2E;
+  --heading: #084443;
+  --font-heading: var(--font-fraunces), 'Fraunces', Georgia, serif;
+  --font-body: var(--font-inter), 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --radius-sm: 0.75rem;
+  --radius-md: 1.25rem;
+  --radius-lg: 2rem;
+  --shadow-sm: 0 1px 2px 0 rgb(14 110 107 / 0.1);
+  --shadow-md: 0 6px 20px -4px rgb(14 110 107 / 0.22);
+  --shadow-lg: 0 20px 48px -12px rgb(14 110 107 / 0.32);
+  --container: 74rem;
+  --spacing-section: 4.75rem;
+  --spacing-card: 1.75rem;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  text-rendering: optimizeLegibility;
+}
+
+/* Mobile-first: cegah overflow horizontal dari tabel/katalog */
+img,
+video {
+  max-width: 100%;
+  height: auto;
+}
