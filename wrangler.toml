@@ -15,6 +15,10 @@ not_found_handling = "none"
 # [vars]
 # NEXT_PUBLIC_SITE_URL = "https://webperpus-oc.workers.dev"
 
+# Public env (NEXT_PUBLIC_* ikut ke client bundle — aman di-commit, bukan secret)
+[vars]
+NEXT_PUBLIC_SUPABASE_URL = "https://oliwjoxsdtieujioeets.supabase.co"
+
 # Contoh observability (opsional, aktifkan bila perlu)
 # [observability.logs]
 # enabled = true
