@@ -124,11 +124,18 @@ export async function POST(req: Request) {
     rpcCode === 'PGRST202' ||
     /could not find.*checkout_loan|function.*checkout_loan.*does not exist/i.test(rpcMsg);
   if (!rpcMissing) {
-    if (/Stok buku habis/i.test(rpcMsg)) return jsonError('CONFLICT', 'Stok buku habis.', 409);
-    if (/Buku tidak ditemukan/i.test(rpcMsg))
+    // S-REL: exact Postgres/SQLSTATE match (not fragile message contains).
+    // checkout_loan raises: 25000 stok habis, 02000 buku hilang,
+    // 22000 due invalid, 42501 forbidden. Legacy message regex kept
+    // as fallback when code is absent.
+    if (rpcCode === '25000' || /Stok buku habis/i.test(rpcMsg))
+      return jsonError('CONFLICT', 'Stok buku habis.', 409);
+    if (rpcCode === '02000' || /Buku tidak ditemukan/i.test(rpcMsg))
       return jsonError('NOT_FOUND', 'Buku tidak ditemukan.', 404);
-    if (/due_at harus sesudah/i.test(rpcMsg))
+    if (rpcCode === '22000' || /due_at harus sesudah/i.test(rpcMsg))
       return jsonError('VALIDATION', 'due_at harus sesudah borrowed_at.', 422);
+    if (rpcCode === '42501')
+      return jsonError('FORBIDDEN', 'Tidak berhak meminjam untuk anggota ini.', 403);
     return jsonError('SAVE_FAILED', 'Gagal mencatat peminjaman.', 500, rpcMsg);
   }
 
@@ -186,7 +193,10 @@ export async function POST(req: Request) {
 export async function PUT(req: Request) {
   const guard = await requireStaff(['admin', 'librarian']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
-  const { supabase } = guard as { supabase: ReturnType<typeof createClient> };
+  const { supabase, user } = guard as {
+    supabase: ReturnType<typeof createClient>;
+    user: { id: string };
+  };
 
   const id = new URL(req.url).searchParams.get('id');
   if (!id) return jsonError('VALIDATION', 'Parameter ?id= wajib.', 400);
@@ -253,6 +263,26 @@ export async function PUT(req: Request) {
       status: 'unpaid',
       notes: `Denda keterlambatan otomatis Rp1000/hari (due ${l.due_at}).`,
     });
+  }
+
+  const auditPayload = {
+    user_id: user?.id ?? null,
+    action: 'loans.return',
+    entity_type: 'loans',
+    entity_id: id,
+    metadata: { fine },
+  };
+  const firstAudit = await supabase.from('activity_logs').insert(auditPayload);
+  if (firstAudit.error) {
+    console.error('[audit] activity_logs insert failed (retrying once):', firstAudit.error.message);
+    const retryAudit = await supabase.from('activity_logs').insert(auditPayload);
+    if (retryAudit.error) {
+      console.error(
+        '[audit] activity_logs insert failed twice (500 detail):',
+        retryAudit.error.message,
+        auditPayload
+      );
+    }
   }
 
   return NextResponse.json({ data });
