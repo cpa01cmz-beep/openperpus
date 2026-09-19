@@ -7,6 +7,7 @@ import type { Book, Category } from '@/lib/books';
 import BookCard from './BookCard';
 import CategoryChips from './CategoryChips';
 import SearchBar from './SearchBar';
+import Pagination from '@/components/ui/Pagination';
 
 type SortKey = 'terbaru' | 'judul' | 'rating' | 'stok';
 
@@ -106,9 +107,20 @@ export default function CatalogExplorer({
   const totalPages = Math.max(1, Math.ceil(serverTotal / perPage));
   const safePage = Math.min(Math.max(1, page), totalPages);
 
-  const goPage = (p: number) => {
-    pushUrl({ page: Math.min(totalPages, Math.max(1, p)) });
-  };
+  const hrefForPage = useCallback(
+    (p: number) => {
+      const sp = new URLSearchParams();
+      const needle = q.trim();
+      if (needle) sp.set('q', needle);
+      if (catId) sp.set('kategori', catId);
+      if (sort !== 'terbaru') sp.set('sort', sort);
+      if (onlyAvailable) sp.set('tersedia', '1');
+      sp.set('page', String(Math.min(totalPages, Math.max(1, p))));
+      sp.set('per_page', String(perPage));
+      return `${pathname}?${sp.toString()}`;
+    },
+    [q, catId, sort, onlyAvailable, perPage, pathname, totalPages]
+  );
 
   const resetAll = () => {
     setQ('');
@@ -207,32 +219,7 @@ export default function CatalogExplorer({
         </div>
       )}
 
-      {totalPages > 1 && (
-        <nav aria-label="Halaman katalog" className="flex items-center justify-center gap-2 pt-2">
-          <button
-            type="button"
-            disabled={safePage <= 1}
-            onClick={() => goPage(safePage - 1)}
-            className="min-h-[44px] rounded-[var(--radius-md)] border border-[var(--ink)]/10 bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--ink)] shadow-sm transition enabled:hover:border-brand enabled:hover:text-brand disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            Sebelumnya
-          </button>
-          <span
-            aria-current="page"
-            className="rounded-[var(--radius-md)] bg-brand px-4 py-2 text-sm font-bold text-white shadow"
-          >
-            {safePage} / {totalPages}
-          </span>
-          <button
-            type="button"
-            disabled={safePage >= totalPages}
-            onClick={() => goPage(safePage + 1)}
-            className="min-h-[44px] rounded-[var(--radius-md)] border border-[var(--ink)]/10 bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--ink)] shadow-sm transition enabled:hover:border-brand enabled:hover:text-brand disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            Berikutnya
-          </button>
-        </nav>
-      )}
+      <Pagination page={safePage} totalPages={totalPages} hrefForPage={hrefForPage} />
     </div>
   );
 }

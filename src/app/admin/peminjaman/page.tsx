@@ -1,11 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import dynamic from 'next/dynamic';
+import nextDynamic from 'next/dynamic';
 import DataTable from '@/components/admin/DataTable';
 import Modal from '@/components/ui/Modal';
 
-const LoanForm = dynamic(() => import('@/components/admin/LoanForm'), {
+const LoanForm = nextDynamic(() => import('@/components/admin/LoanForm'), {
   ssr: false,
   loading: () => <p className="text-sm text-slate-500">Memuat formulir…</p>,
 });
@@ -184,7 +184,7 @@ export default function PeminjamanPage() {
           type="button"
           aria-pressed={overdueOnly}
           onClick={() => setOverdueOnly((v) => !v)}
-          className={`rounded-lg border px-3 py-1.5 ${overdueOnly ? "border-red-300 bg-red-50 text-red-700" : ""}`}
+          className={`rounded-lg border px-3 py-1.5 ${overdueOnly ? 'border-red-300 bg-red-50 text-red-700' : ''}`}
         >
           Terlambat saja
         </button>

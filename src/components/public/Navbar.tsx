@@ -1,8 +1,6 @@
-"use client";
-
-import { getTheme } from "@/lib/themes";
-import { resolveHeaderVariant } from "@/components/layout/variants/registry";
-import type { LibrarySettings } from "@/lib/types";
+import { getTheme } from '@/lib/themes';
+import { resolveHeaderVariant } from '@/components/layout/variants/registry';
+import type { LibrarySettings } from '@/lib/types';
 
 type Props = {
   siteName: string;
@@ -16,7 +14,7 @@ type Props = {
 
 /** Thin switcher: resolves theme → headerVariant → registry component. No if-hell. */
 export default function Navbar({ siteName, tagline, logoUrl, themeId, settings }: Props) {
-  const theme = getTheme(themeId ?? settings?.active_theme ?? "emerald");
+  const theme = getTheme(themeId ?? settings?.active_theme ?? 'emerald');
   const Header = resolveHeaderVariant(theme.layout.headerVariant);
   return (
     <Header
