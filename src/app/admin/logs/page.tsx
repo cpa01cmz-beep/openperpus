@@ -17,7 +17,11 @@ type Log = {
   created_at: string;
 };
 
-export default async function LogsPage({ searchParams }: { searchParams?: { page?: string } }) {
+export default async function LogsPage({
+  searchParams,
+}: {
+  searchParams?: { page?: string; action?: string; entity?: string };
+}) {
   const supabase = createClient();
   const {
     data: { user },
@@ -49,15 +53,54 @@ export default async function LogsPage({ searchParams }: { searchParams?: { page
   const page = Math.max(1, Number(searchParams?.page ?? 1) || 1);
   const from = (page - 1) * PER_PAGE;
   const to = from + PER_PAGE - 1;
+  const actionFilter = (searchParams?.action ?? '').trim();
+  const entityFilter = (searchParams?.entity ?? '').trim();
 
-  const { data, count, error } = await supabase
+  let query = supabase
     .from('activity_logs')
     .select('id,action,entity_type,entity_id,user_id,metadata,created_at', { count: 'exact' })
-    .order('created_at', { ascending: false })
-    .range(from, to);
+    .order('created_at', { ascending: false });
+  if (actionFilter) query = query.eq('action', actionFilter);
+  if (entityFilter) query = query.eq('entity_type', entityFilter);
+
+  const { data, count, error } = await query.range(from, to);
 
   const rows = (data ?? []) as Log[];
   const totalPages = Math.max(1, Math.ceil((count ?? 0) / PER_PAGE));
+  const qs = (p: number) => {
+    const sp = new URLSearchParams({ page: String(p) });
+    if (actionFilter) sp.set('action', actionFilter);
+    if (entityFilter) sp.set('entity', entityFilter);
+    return `/admin/logs?${sp}`;
+  };
+
+  const ACTIONS = [
+    '',
+    'books.delete',
+    'loans.create',
+    'loans.return',
+    'loans.delete',
+    'fines.pay',
+    'reservations.create',
+    'reservations.delete',
+    'banners.create',
+    'banners.update',
+    'banners.delete',
+    'articles.create',
+    'articles.update',
+    'articles.delete',
+    'settings.update',
+  ];
+  const ENTITIES = [
+    '',
+    'books',
+    'loans',
+    'fines',
+    'reservations',
+    'banners',
+    'articles',
+    'settings',
+  ];
 
   return (
     <div className="grid gap-4">
@@ -78,11 +121,40 @@ export default async function LogsPage({ searchParams }: { searchParams?: { page
         </div>
       )}
 
+      <form method="get" className="flex flex-wrap items-center gap-2 text-sm">
+        <label className="flex items-center gap-1">
+          <span className="text-slate-500">Aksi</span>
+          <select name="action" defaultValue={actionFilter} className="rounded-lg border px-2 py-1">
+            {ACTIONS.map((a) => (
+              <option key={a || 'all-a'} value={a}>
+                {a || 'Semua aksi'}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex items-center gap-1">
+          <span className="text-slate-500">Entitas</span>
+          <select name="entity" defaultValue={entityFilter} className="rounded-lg border px-2 py-1">
+            {ENTITIES.map((e) => (
+              <option key={e || 'all-e'} value={e}>
+                {e || 'Semua entitas'}
+              </option>
+            ))}
+          </select>
+        </label>
+        <button className="rounded-lg bg-slate-900 px-3 py-1 text-white">Filter</button>
+        {(actionFilter || entityFilter) && (
+          <Link href="/admin/logs" className="rounded-lg border px-3 py-1 text-slate-600">
+            Reset
+          </Link>
+        )}
+      </form>
+
       <LogsTable rows={rows} />
 
       <div className="flex items-center gap-2 text-sm">
         <Link
-          href={`/admin/logs?page=${page - 1}`}
+          href={qs(page - 1)}
           aria-disabled={page <= 1}
           className={`rounded border px-3 py-1 ${page <= 1 ? 'pointer-events-none opacity-50' : ''}`}
         >
@@ -92,7 +164,7 @@ export default async function LogsPage({ searchParams }: { searchParams?: { page
           Halaman {page} / {totalPages}
         </span>
         <Link
-          href={`/admin/logs?page=${page + 1}`}
+          href={qs(page + 1)}
           aria-disabled={page >= totalPages}
           className={`rounded border px-3 py-1 ${page >= totalPages ? 'pointer-events-none opacity-50' : ''}`}
         >
