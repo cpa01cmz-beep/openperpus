@@ -1,19 +1,55 @@
-import { NextResponse, type NextRequest } from "next/server";
-import { updateSession } from "@/lib/supabase/middleware";
+import { NextResponse, type NextRequest } from 'next/server';
+import { updateSession } from '@/lib/supabase/middleware';
+import { checkRateLimit, WRITE_API_LIMIT, WRITE_API_WINDOW_MS } from '@/lib/rate-limit';
 
 /**
  * Root middleware (src/middleware.ts).
  * - Me-refresh sesi Supabase via updateSession() dari @/lib/supabase/middleware.
  * - Redirect /admin/* tanpa session -> /login?next=<path>.
- * - Edge-safe: hanya next/server + @supabase/ssr (tanpa API Node-only),
+ * - Rate-limit write API (POST/PUT/PATCH/DELETE /api/*): 429 + Retry-After bila abusif.
+ * - Edge-safe: hanya next/server + @supabase/ssr + Map/Date (tanpa API Node-only),
  *   aman untuk Cloudflare Workers via OpenNext.
  * - Single getUser per hit: user dipakai ulang dari updateSession,
  *   tanpa createServerClient->getUser kedua.
  */
 export async function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
-  const isAdmin = pathname === "/admin" || pathname.startsWith("/admin/");
-  const isLogin = pathname === "/login" || pathname.startsWith("/login");
+  const isAdmin = pathname === '/admin' || pathname.startsWith('/admin/');
+  const isLogin = pathname === '/login' || pathname.startsWith('/login');
+  const isApi = pathname === '/api' || pathname.startsWith('/api/');
+
+  // Rate-limit hanya untuk write API — read (GET/HEAD/OPTIONS) bebas.
+  if (isApi) {
+    const method = request.method.toUpperCase();
+    if (method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE') {
+      const ip =
+        request.headers.get('cf-connecting-ip') ??
+        request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+        'unknown';
+      const result = checkRateLimit(
+        `write:${ip}:${pathname}`,
+        WRITE_API_LIMIT,
+        WRITE_API_WINDOW_MS
+      );
+      if (!result.allowed) {
+        const retryAfter = Math.max(1, Math.ceil(result.resetAfterMs / 1000));
+        return NextResponse.json(
+          {
+            error: { code: 'RATE_LIMITED', message: 'Terlalu banyak permintaan. Coba lagi nanti.' },
+          },
+          {
+            status: 429,
+            headers: {
+              'Retry-After': String(retryAfter),
+              'X-RateLimit-Limit': String(WRITE_API_LIMIT),
+              'X-RateLimit-Remaining': '0',
+            },
+          }
+        );
+      }
+    }
+    return NextResponse.next();
+  }
 
   if (!isAdmin && !isLogin) return NextResponse.next();
 
@@ -31,8 +67,8 @@ export async function middleware(request: NextRequest) {
   //    tanpa client getUser kedua (cookie refresh dipegang sessionResponse).
   if (!user && isAdmin) {
     const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    url.searchParams.set("next", `${pathname}${search}`);
+    url.pathname = '/login';
+    url.searchParams.set('next', `${pathname}${search}`);
     return NextResponse.redirect(url);
   }
 
@@ -40,5 +76,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/admin/:path*", "/login"],
+  matcher: ['/admin/:path*', '/login', '/api/:path*'],
 };

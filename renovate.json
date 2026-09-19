@@ -1,0 +1,30 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "timezone": "Asia/Jakarta",
+  "schedule": ["before 6am on monday"],
+  "lockFileMaintenance": { "enabled": true },
+  "packageRules": [
+    {
+      "description": "Supabase stack (ssr + supabase-js) — group together, minor+patch automerge after CI",
+      "matchPackageNames": ["@supabase/ssr", "@supabase/supabase-js"],
+      "groupName": "supabase",
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true
+    },
+    {
+      "description": "ESLint 8 → 9 major migration (flat config) — manual review, needs eslint-config-next compat check",
+      "matchPackageNames": ["eslint"],
+      "matchUpdateTypes": ["major"],
+      "labels": ["deps-major", "needs-manual-qa"]
+    },
+    {
+      "description": "opennext patch removal — drop patches/@opennextjs+cloudflare+*.patch + postinstall patch-package once upstream ships logLevel fix (checked: still missing in 1.20.6)",
+      "matchPackageNames": ["@opennextjs/cloudflare"],
+      "matchUpdateTypes": ["minor", "patch", "major"],
+      "prBodyNotes": [
+        "After merge, verify whether upstream fixed the esbuild `equals-negative-zero` logLevel noise; if yes, delete `patches/@opennextjs+cloudflare+*.patch` and the `postinstall: patch-package` script."
+      ]
+    }
+  ]
+}

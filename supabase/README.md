@@ -4,13 +4,19 @@
 
 ## Isi folder
 
-| File | Fungsi |
-|---|---|
-| `migrations/0001_core.sql` | Extension + 17 tabel + index + trigger `updated_at` |
-| `migrations/0002_rls.sql` | `is_staff()/is_admin()` + enable RLS + policies |
-| `migrations/0003_storage.sql` | Bucket publik `library-assets` + policies `storage.objects` |
-| `seed.sql` | Data awal (settings#1, 6 kategori, 3 rak, 8 buku, 3 banner, 3 artikel, 4 FAQ, 3 halaman, testimoni, menu) |
-| `config.toml` *(opsional)* | Konfigurasi `supabase` CLI bila di-init |
+| File                                    | Fungsi                                                                                                    |
+| --------------------------------------- | --------------------------------------------------------------------------------------------------------- |
+| `migrations/0001_core.sql`              | Extension + 17 tabel + index + trigger `updated_at`                                                       |
+| `migrations/0002_rls.sql`               | `is_staff()/is_admin()` + enable RLS + policies                                                           |
+| `migrations/0003_hardening.sql`         | Hardening RLS/policies                                                                                    |
+| `migrations/0004_storage.sql`           | Bucket publik `library-assets` + policies `storage.objects`                                               |
+| `migrations/0005_checkout.sql`          | Checkout reservasi → loan                                                                                 |
+| `migrations/0006_content.sql`           | Tabel/polices konten (pages, FAQs, dsb.)                                                                  |
+| `migrations/0007_storage_guard.sql`     | Guard tambahan storage                                                                                    |
+| `migrations/0008_theme.sql`             | Tema/library settings                                                                                     |
+| `migrations/0009_drop_legacy_theme.sql` | Drop kolom/fungsi tema legacy                                                                             |
+| `seed.sql`                              | Data awal (settings#1, 6 kategori, 3 rak, 8 buku, 3 banner, 3 artikel, 4 FAQ, 3 halaman, testimoni, menu) |
+| `config.toml` _(opsional)_              | Konfigurasi `supabase` CLI bila di-init                                                                   |
 
 ## Prasyarat
 
@@ -31,14 +37,14 @@ supabase status
 ```
 
 Alternatif tanpa CLI: buka SQL Editor di dashboard, paste isi migrasi
-berurutan `0001 → 0002 → 0003`, Run.
+berurutan `0001 → 0009`, Run.
 
-## 2. Jalankan migrasi (urutan WAJIB 0001 → 0002 → 0003)
+## 2. Jalankan migrasi (urutan WAJIB 0001 → 0009)
 
 ### Opsi A — Supabase CLI (disarankan, tercatat di `supabase/migrations`)
 
 ```powershell
-# Dari root repo; file 0001..0003 sudah bernama versi + timestamp-friendly.
+# Dari root repo; file 0001..0009 sudah bernama versi + timestamp-friendly.
 # Bila `supabase link` sudah dilakukan:
 supabase db push
 # Cek:
@@ -48,7 +54,9 @@ supabase migration list
 > CLI resmi memakai nama `YYYYMMDDHHMMSS_nama.sql`. File `0001_*` di repo
 > ini tetap valid sebagai SQL biasa; bila `db push` menolak prefix numerik,
 > rename sekali saja, mis.:
-> `0001_core.sql → 20260917000001_core.sql` (dst. `...02_rls`, `...03_storage`)
+> `0001_core.sql → 20260917000001_core.sql` (dst. `...02_rls`, `...03_hardening`,
+> `...04_storage`, `...05_checkout`, `...06_content`, `...07_storage_guard`,
+> `...08_theme`, `...09_drop_legacy_theme`)
 > tanpa mengubah isi.
 
 ### Opsi B — psql langsung (tanpa CLI)
@@ -57,7 +65,13 @@ supabase migration list
 $env:DATABASE_URL = "postgresql://postgres:<PASSWORD>@db.<REF>.supabase.co:5432/postgres"
 psql $env:DATABASE_URL -f supabase/migrations/0001_core.sql
 psql $env:DATABASE_URL -f supabase/migrations/0002_rls.sql
-psql $env:DATABASE_URL -f supabase/migrations/0003_storage.sql
+psql $env:DATABASE_URL -f supabase/migrations/0003_hardening.sql
+psql $env:DATABASE_URL -f supabase/migrations/0004_storage.sql
+psql $env:DATABASE_URL -f supabase/migrations/0005_checkout.sql
+psql $env:DATABASE_URL -f supabase/migrations/0006_content.sql
+psql $env:DATABASE_URL -f supabase/migrations/0007_storage_guard.sql
+psql $env:DATABASE_URL -f supabase/migrations/0008_theme.sql
+psql $env:DATABASE_URL -f supabase/migrations/0009_drop_legacy_theme.sql
 ```
 
 ### Opsi C — SQL Editor dashboard
@@ -119,8 +133,11 @@ order by created_at desc limit 12;
   bawah file (drop tabel urutan terbalik).
 - `0002`: non-destruktif — drop policy + `DISABLE ROW LEVEL SECURITY`
   per tabel (lihat blok ROLLBACK di file).
-- `0003`: hapus policy `storage.objects`, kosongkan objek, lalu hapus bucket
+- `0003`: hardening RLS — drop policy yang ditambah di file (lihat blok ROLLBACK di file).
+- `0004`: hapus policy `storage.objects`, kosongkan objek, lalu hapus bucket
   (lihat blok ROLLBACK di file).
+- `0005`–`0009`: non-destruktif — revert objek yang ditambah tiap file
+  (lihat blok ROLLBACK di masing-masing file).
 - `seed.sql`: data contoh — hapus manual per tabel bila perlu
   (`delete from public.books where slug in (...)`), jangan `truncate`
   di production.
