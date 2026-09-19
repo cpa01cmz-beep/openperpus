@@ -8,6 +8,7 @@ export type LogRow = {
   entity_type: string | null;
   entity_id: string | null;
   user_id: string | null;
+  metadata: Record<string, unknown> | null;
   created_at: string;
 };
 
@@ -57,10 +58,27 @@ export default function LogsTable({ rows }: { rows: LogRow[] }) {
           key: 'user_id',
           header: 'Pelaku',
           render: (r) => (
-            <span className="font-mono text-xs">
+            <span className="font-mono text-xs" title={r.user_id ?? ''}>
               {r.user_id ? `${r.user_id.slice(0, 8)}…` : '-'}
             </span>
           ),
+        },
+        {
+          key: 'metadata',
+          header: 'Detail',
+          render: (r) =>
+            r.metadata ? (
+              <details className="text-xs">
+                <summary className="cursor-pointer text-slate-500 underline">
+                  metadata
+                </summary>
+                <pre className="mt-1 max-w-[280px] overflow-auto rounded bg-slate-50 p-2 font-mono text-[11px] text-slate-700">
+                  {JSON.stringify(r.metadata, null, 2)}
+                </pre>
+              </details>
+            ) : (
+              <span className="text-xs text-slate-400">-</span>
+            ),
         },
       ]}
       rows={rows}
