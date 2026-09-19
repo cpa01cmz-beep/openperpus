@@ -13,6 +13,24 @@ import { sanitizeIlike } from '@/lib/search';
 
 const STATUSES = ['draft', 'published', 'archived'] as const;
 
+async function writeLog(
+  supabase: ReturnType<typeof createClient>,
+  userId: string | undefined,
+  action: string,
+  entityId: string,
+  metadata: Record<string, unknown> = {}
+) {
+  try {
+    await supabase.from('activity_logs').insert({
+      user_id: userId ?? null,
+      action,
+      entity_type: 'articles',
+      entity_id: entityId,
+      metadata,
+    });
+  } catch {}
+}
+
 export async function GET(req: Request) {
   const guard = await requireStaff();
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
@@ -94,13 +112,20 @@ export async function POST(req: Request) {
       return jsonError('CONFLICT', 'Slug sudah dipakai.', 409, error.message);
     return jsonError('SAVE_FAILED', 'Gagal menambah artikel.', 500, error.message);
   }
+  await writeLog(supabase, user?.id, 'articles.create', (data as { id: string }).id, {
+    title,
+    status,
+  });
   return NextResponse.json({ data }, { status: 201 });
 }
 
 export async function PUT(req: Request) {
   const guard = await requireStaff(['admin', 'librarian']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
-  const { supabase } = guard as { supabase: ReturnType<typeof createClient> };
+  const { supabase, user } = guard as {
+    supabase: ReturnType<typeof createClient>;
+    user: { id: string };
+  };
 
   const id = new URL(req.url).searchParams.get('id');
   if (!id) return jsonError('VALIDATION', 'Parameter ?id= wajib.', 400);
@@ -146,18 +171,23 @@ export async function PUT(req: Request) {
     .select()
     .single();
   if (error) return jsonError('SAVE_FAILED', 'Gagal mengupdate artikel.', 500, error.message);
+  await writeLog(supabase, user?.id, 'articles.update', id, payload);
   return NextResponse.json({ data });
 }
 
 export async function DELETE(req: Request) {
   const guard = await requireStaff(['admin']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
-  const { supabase } = guard as { supabase: ReturnType<typeof createClient> };
+  const { supabase, user } = guard as {
+    supabase: ReturnType<typeof createClient>;
+    user: { id: string };
+  };
 
   const id = new URL(req.url).searchParams.get('id');
   if (!id) return jsonError('VALIDATION', 'Parameter ?id= wajib.', 400);
 
   const { error } = await supabase.from('articles').delete().eq('id', id);
   if (error) return jsonError('DELETE_FAILED', 'Gagal menghapus artikel.', 500, error.message);
+  await writeLog(supabase, user?.id, 'articles.delete', id);
   return NextResponse.json({ message: 'Artikel dihapus.' });
 }
