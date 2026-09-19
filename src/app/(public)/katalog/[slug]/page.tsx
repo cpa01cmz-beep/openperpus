@@ -13,7 +13,10 @@ import {
   Star,
 } from 'lucide-react';
 import BookCard from '@/components/public/BookCard';
+import Breadcrumb from '@/components/public/Breadcrumb';
+import ReserveButton from '@/components/public/ReserveButton';
 import { fetchBookBySlug, fetchBooks, fetchSettings, ratingNumber, stockState } from '@/lib/books';
+import { coverSrc } from '@/lib/cover';
 import { getSiteUrl } from '@/lib/site';
 
 export const revalidate = 60;
@@ -32,7 +35,7 @@ export async function generateMetadata({ params }: Props) {
   const title = `${book.title} — ${siteName}`;
   const description = book.description?.slice(0, 160) ?? `Detail buku ${book.title}.`;
   const url = `${getSiteUrl()}/katalog/${params.slug}`;
-  const image = book.cover_url ?? '/og-default.jpg';
+  const ogImage = coverSrc(book.cover_url, 640) ?? '/og-default.jpg';
   return {
     title,
     description,
@@ -44,9 +47,9 @@ export async function generateMetadata({ params }: Props) {
       locale: 'id_ID',
       url,
       siteName,
-      images: [{ url: image, alt: `Sampul ${book.title}` }],
+      images: [{ url: ogImage, alt: `Sampul ${book.title}` }],
     },
-    twitter: { card: 'summary_large_image', title, description, images: [image] },
+    twitter: { card: 'summary_large_image', title, description, images: [ogImage] },
   };
 }
 
@@ -58,6 +61,14 @@ export default async function BookDetailPage({ params }: Props) {
   const stock = stockState(book);
   const rating = ratingNumber(book.rating_avg);
   const available = (Number(book.stock_available) || 0) > 0;
+  const cover = coverSrc(book.cover_url, 560) ?? '/og-default.jpg';
+
+  const settings = await fetchSettings();
+  const rawWa = settings.socials?.whatsapp?.trim() || settings.phone?.trim() || '';
+  const waDigits = rawWa.replace(/\D/g, '');
+  const waHref = waDigits
+    ? `https://wa.me/${waDigits}?text=${encodeURIComponent(`Halo, saya mau reservasi buku "${book.title}"`)}`
+    : null;
 
   const related = book.category_id
     ? (await fetchBooks({ categoryId: book.category_id, limit: 5 }))
@@ -88,13 +99,30 @@ export default async function BookDetailPage({ params }: Props) {
 
   const jsonLd = {
     '@context': 'https://schema.org',
-    '@type': 'Book',
-    name: book.title,
-    author: book.author,
-    isbn: book.isbn,
-    inLanguage: book.language ?? 'id',
-    image: book.cover_url ?? undefined,
-    url: `${getSiteUrl()}/katalog/${params.slug}`,
+    '@graph': [
+      {
+        '@type': 'Book',
+        name: book.title,
+        author: book.author,
+        isbn: book.isbn,
+        inLanguage: book.language ?? 'id',
+        image: cover ?? undefined,
+        url: `${getSiteUrl()}/katalog/${params.slug}`,
+      },
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Beranda', item: getSiteUrl() },
+          { '@type': 'ListItem', position: 2, name: 'Katalog', item: `${getSiteUrl()}/katalog` },
+          {
+            '@type': 'ListItem',
+            position: 3,
+            name: book.title,
+            item: `${getSiteUrl()}/katalog/${params.slug}`,
+          },
+        ],
+      },
+    ],
   };
 
   return (
@@ -102,6 +130,13 @@ export default async function BookDetailPage({ params }: Props) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <Breadcrumb
+        items={[
+          { label: 'Beranda', href: '/' },
+          { label: 'Katalog', href: '/katalog' },
+          { label: book.title },
+        ]}
       />
       <Link
         href="/katalog"
@@ -116,12 +151,11 @@ export default async function BookDetailPage({ params }: Props) {
           <div className="relative aspect-[3/4] w-full bg-brand-soft">
             {book.cover_url ? (
               <Image
-                src={book.cover_url}
+                src={cover}
                 alt={`Sampul ${book.title}`}
                 width={560}
                 height={747}
                 sizes="(max-width: 640px) 100vw, 280px"
-                unoptimized
                 className="h-full w-full object-cover"
               />
             ) : (
@@ -191,7 +225,7 @@ export default async function BookDetailPage({ params }: Props) {
             </div>
           </dl>
 
-          {/* CTA: live journey — kontak with buku slug (petugas sirkulasi), never dead reload */}
+          {/* CTA: 1-klik reservasi anggota (POST /api/reservations) + WA fallback */}
           <div className="mt-5 flex flex-wrap gap-3" aria-live="polite">
             <p className="w-full text-sm font-semibold text-[var(--ink)]" role="status">
               {available ? (
@@ -210,12 +244,12 @@ export default async function BookDetailPage({ params }: Props) {
                 >
                   Pinjam Buku <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </Link>
-                <Link
-                  href={`/kontak?buku=${book.slug}`}
-                  className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--radius-md)] border border-brand-soft bg-[var(--surface)] px-6 py-3 text-sm font-semibold text-brand shadow-sm transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                >
-                  Reservasi
-                </Link>
+                <ReserveButton
+                  bookId={book.id}
+                  slug={book.slug}
+                  title={book.title}
+                  waHref={waHref}
+                />
               </>
             ) : (
               <>
@@ -228,13 +262,24 @@ export default async function BookDetailPage({ params }: Props) {
                 >
                   Stok Habis
                 </button>
-                <Link
-                  href={`/kontak?buku=${book.slug}`}
-                  className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--radius-md)] bg-accent px-6 py-3 text-sm font-bold text-brand-strong shadow transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                >
-                  Masuk Antrean Reservasi
-                </Link>
+                <ReserveButton
+                  bookId={book.id}
+                  slug={book.slug}
+                  title={book.title}
+                  waHref={waHref}
+                  variant="queue"
+                />
               </>
+            )}
+            {waHref && (
+              <a
+                href={waHref}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--radius-md)] border border-[#25D366]/40 bg-[var(--surface)] px-5 py-3 text-sm font-semibold text-[#128C4B] shadow-sm transition hover:bg-[#25D366]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366]"
+              >
+                Tanya via WA
+              </a>
             )}
           </div>
           <p className="mt-3 text-xs text-[var(--ink)]/60">

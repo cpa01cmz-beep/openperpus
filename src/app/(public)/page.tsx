@@ -17,6 +17,7 @@ import {
   fetchStats,
   fetchTestimonials,
 } from '@/lib/books';
+import { coverSrc } from '@/lib/cover';
 
 const HeroSwitch = dynamic(() => import('@/components/hero/HeroSwitch'), {
   ssr: true,
@@ -61,6 +62,7 @@ export default async function PublicHomePage() {
 
   const siteName = settings.name ?? 'Perpustakaan Digital';
   const fallbackFeatured = featured.length > 0 ? featured : await fetchBooks({ limit: 8 });
+  const lcpImage = banners[0]?.image_url ?? null;
 
   const theme = getTheme(settings.active_theme ?? 'emerald');
   const orderedSections =
@@ -188,12 +190,11 @@ export default async function PublicHomePage() {
                 <div className="aspect-[16/9] w-full overflow-hidden bg-brand-soft">
                   {a.cover_url ? (
                     <Image
-                      src={a.cover_url}
+                      src={coverSrc(a.cover_url, 640) ?? a.cover_url}
                       alt={a.title}
                       width={640}
                       height={360}
                       sizes="(max-width:640px) 100vw, 33vw"
-                      unoptimized
                       loading="lazy"
                       className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
                     />
@@ -250,10 +251,7 @@ export default async function PublicHomePage() {
 
   return (
     <div className="space-y-10 sm:space-y-12">
-      <h1 className="sr-only">
-        {siteName}
-        {settings.tagline ? ` — ${settings.tagline}` : ''}
-      </h1>
+      {lcpImage ? <link rel="preload" as="image" href={lcpImage} fetchPriority="high" /> : null}
       {orderedSections
         .filter((s) => s.enabled)
         .map((s) => {
