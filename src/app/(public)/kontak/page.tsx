@@ -11,7 +11,8 @@ import {
   Phone,
   Youtube,
 } from "lucide-react";
-import { fetchPage, fetchSettings } from "@/lib/books";
+import { fetchBookBySlug, fetchPage, fetchSettings } from "@/lib/books";
+import { sanitizeIlike } from "@/lib/search";
 
 export const revalidate = 60;
 
@@ -41,8 +42,20 @@ const SOCIAL_ICON: Record<string, typeof Facebook> = {
 };
 
 /** Kontak: alamat/telepon/jam/sosmed 100% dari library_settings + pages (slug 'kontak'). */
-export default async function KontakPage() {
-  const [settings, page] = await Promise.all([fetchSettings(), fetchPage("kontak")]);
+export default async function KontakPage({
+  searchParams,
+}: {
+  searchParams?: { buku?: string | string[] };
+}) {
+  const rawBuku = Array.isArray(searchParams?.buku)
+    ? searchParams.buku[0]
+    : searchParams?.buku;
+  const buku = rawBuku ? sanitizeIlike(rawBuku) : "";
+  const [settings, page, book] = await Promise.all([
+    fetchSettings(),
+    fetchPage("kontak"),
+    buku ? fetchBookBySlug(buku) : Promise.resolve(null),
+  ]);
   const siteName = settings.name ?? "Perpustakaan Digital";
 
   const hours = Array.isArray(settings.operational_hours)
@@ -67,6 +80,53 @@ export default async function KontakPage() {
             "Alamat, telepon, jam layanan, dan kanal resmi kami — kunjungi atau hubungi langsung."}
         </p>
       </header>
+
+      {buku &&
+        (book ? (
+          <section
+            aria-label="Konteks reservasi"
+            role="status"
+            className="rounded-lg border border-brand/20 bg-brand-soft/40 p-5 shadow-sm sm:p-6"
+          >
+            <h2 className="font-heading text-lg font-bold text-heading">
+              Reservasi: {book.title}
+            </h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Sebutkan judul ini saat menghubungi petugas sirkulasi.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-3">
+              <Link
+                href={`/katalog/${book.slug}`}
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-brand px-5 py-2.5 text-sm font-bold text-white shadow transition hover:bg-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+              >
+                Lihat buku <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            </div>
+          </section>
+        ) : (
+          <section
+            aria-label="Konteks reservasi"
+            role="status"
+            className="rounded-lg border border-amber-200 bg-amber-50 p-5 shadow-sm sm:p-6"
+          >
+            <h2 className="font-heading text-lg font-bold text-heading">
+              Buku tidak ditemukan
+            </h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Judul yang Anda maksud tidak tersedia. Jelajahi katalog untuk
+              memilih buku lain.
+            </p>
+            <div className="mt-3 flex flex-wrap gap-3">
+              <Link
+                href="/katalog"
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-bold text-brand-strong shadow transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+              >
+                Jelajahi katalog{" "}
+                <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </Link>
+            </div>
+          </section>
+        ))}
 
       {page?.content_md && (
         <section
