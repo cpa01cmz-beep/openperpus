@@ -47,7 +47,8 @@ export function LogoMark({
   logoSrc?: string | null;
   size?: 'sm' | 'md';
 }) {
-  const box = size === 'sm' ? 'h-7 w-7 rounded-[var(--radius-sm)]' : 'h-9 w-9 rounded-[var(--radius-md)]';
+  const box =
+    size === 'sm' ? 'h-7 w-7 rounded-[var(--radius-sm)]' : 'h-9 w-9 rounded-[var(--radius-md)]';
   if (logoSrc) {
     return (
       <Image
@@ -56,7 +57,6 @@ export function LogoMark({
         width={64}
         height={64}
         sizes="64px"
-        unoptimized
         className={`${box} object-cover shadow`}
         loading="eager"
       />
