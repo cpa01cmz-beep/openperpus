@@ -13,8 +13,12 @@ const eslintConfig = [
     ignores: ['node_modules/**', '.next/**', '.open-next/**', 'out/**', 'coverage/**'],
   },
   {
+    files: ['src/**/*.{ts,tsx}'],
+    rules: { '@typescript-eslint/no-explicit-any': 'error' },
+  },
+  {
     files: ['tests/**/*.ts', 'tests/**/*.tsx'],
-    rules: { '@typescript-eslint/no-explicit-any': 'off' },
+    rules: { '@typescript-eslint/no-explicit-any': 'warn' },
   },
 ];
 

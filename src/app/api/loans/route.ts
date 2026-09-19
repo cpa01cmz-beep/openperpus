@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireStaff, jsonError, calcFine, addDaysISO, parsePaging } from '@/lib/supabase/auth';
+import { returnLoan } from '@/lib/loans-return';
 import { sanitizeIlike } from '@/lib/search';
 
 /**
@@ -209,83 +210,14 @@ export async function PUT(req: Request) {
   }
   if (body.action !== 'return') return jsonError('VALIDATION', "Kirim { action: 'return' }.", 422);
 
-  const { data: loan } = await supabase.from('loans').select('*').eq('id', id).single();
-  if (!loan) return jsonError('NOT_FOUND', 'Peminjaman tidak ditemukan.', 404);
-  const l = loan as {
-    status: string;
-    due_at: string;
-    book_id: string;
-    member_id: string;
-    returned_at: string | null;
-  };
-  if (l.status === 'returned') return jsonError('CONFLICT', 'Sudah dikembalikan.', 409);
-
-  const returnedAt = body.returned_at ? new Date(body.returned_at as string) : new Date();
-  if (Number.isNaN(returnedAt.getTime()))
-    return jsonError('VALIDATION', 'returned_at tidak valid.', 422);
-  const fine = calcFine(l.due_at, returnedAt); // Rp1000/hari telat
-
-  const { data, error } = await supabase
-    .from('loans')
-    .update({
-      returned_at: returnedAt.toISOString(),
-      status: 'returned',
-      fine_amount: fine,
-      ...(typeof body.notes === 'string' ? { notes: body.notes } : {}),
-    })
-    .eq('id', id)
-    .select()
-    .single();
-  if (error) return jsonError('SAVE_FAILED', 'Gagal memproses pengembalian.', 500, error.message);
-
-  // Kembalikan stok (+1, clamp ke stock_total).
-  // RETURN-CLAMP: Math.min(stock_total, available+1) agar return konkuren
-  // ganda / stok penuh tidak pernah melebihi stock_total.
-  const { data: book } = await supabase
-    .from('books')
-    .select('stock_available,stock_total')
-    .eq('id', l.book_id)
-    .single();
-  if (book) {
-    const b = book as { stock_available: number; stock_total: number };
-    await supabase
-      .from('books')
-      .update({ stock_available: Math.min(b.stock_total, b.stock_available + 1) })
-      .eq('id', l.book_id);
-  }
-
-  // Catat denda ke tabel fines bila >0 (kontrak: return membuat fines)
-  if (fine > 0) {
-    await supabase.from('fines').insert({
-      loan_id: id,
-      member_id: l.member_id,
-      amount: fine,
-      status: 'unpaid',
-      notes: `Denda keterlambatan otomatis Rp1000/hari (due ${l.due_at}).`,
-    });
-  }
-
-  const auditPayload = {
-    user_id: user?.id ?? null,
-    action: 'loans.return',
-    entity_type: 'loans',
-    entity_id: id,
-    metadata: { fine },
-  };
-  const firstAudit = await supabase.from('activity_logs').insert(auditPayload);
-  if (firstAudit.error) {
-    console.error('[audit] activity_logs insert failed (retrying once):', firstAudit.error.message);
-    const retryAudit = await supabase.from('activity_logs').insert(auditPayload);
-    if (retryAudit.error) {
-      console.error(
-        '[audit] activity_logs insert failed twice (500 detail):',
-        retryAudit.error.message,
-        auditPayload
-      );
-    }
-  }
-
-  return NextResponse.json({ data });
+  // S-roi3 single-source: delegasi ke returnLoan (pemilik 409 + calcFine + clamp + fines + audit).
+  return returnLoan({
+    supabase,
+    id,
+    userId: user?.id ?? null,
+    returnedAt: body.returned_at as string | undefined,
+    notes: typeof body.notes === 'string' ? body.notes : undefined,
+  });
 }
 
 export async function DELETE(req: Request) {

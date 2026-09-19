@@ -45,6 +45,7 @@ export default function DendaSayaPage() {
   const [pendingPay, setPendingPay] = useState<Fine | null>(null);
   const [receipt, setReceipt] = useState<(Fine & { methodUsed: string }) | null>(null);
   const [copied, setCopied] = useState(false);
+  const [downloadError, setDownloadError] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -138,6 +139,36 @@ export default function DendaSayaPage() {
     }
   }
 
+  function printReceipt() {
+    window.print();
+  }
+
+  function downloadReceipt() {
+    if (!receipt) return;
+    const text =
+      `Bukti pembayaran denda\n` +
+      `ID: ${receipt.id}\n` +
+      `Nominal: ${fmtRp(receipt.amount)}\n` +
+      `Dibayar: ${fmtRp(receipt.paid_amount)}\n` +
+      `Sisa: ${fmtRp(0)}\n` +
+      `Metode: ${receipt.methodUsed}\n` +
+      `Lunas pada: ${receipt.paid_at}\n` +
+      `paid_at: ${receipt.paid_at}`;
+    try {
+      const blob = new Blob([text], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `bukti-denda-${receipt.id}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      setDownloadError('Gagal mengunduh bukti.');
+    }
+  }
+
   return (
     <div className="grid gap-4">
       <Modal
@@ -167,8 +198,7 @@ export default function DendaSayaPage() {
       >
         {pendingPay && (
           <p>
-            Bayar denda {fmtRp(num(pendingPay.amount) - num(pendingPay.paid_amount))} via{' '}
-            {method}?
+            Bayar denda {fmtRp(num(pendingPay.amount) - num(pendingPay.paid_amount))} via {method}?
           </p>
         )}
       </Modal>
@@ -177,6 +207,7 @@ export default function DendaSayaPage() {
         onClose={() => {
           setReceipt(null);
           setCopied(false);
+          setDownloadError('');
         }}
         title="Bukti pembayaran"
         description="Pembayaran denda berhasil."
@@ -187,15 +218,30 @@ export default function DendaSayaPage() {
               onClick={() => {
                 setReceipt(null);
                 setCopied(false);
+                setDownloadError('');
               }}
-              className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
             >
               Tutup
             </button>
             <button
               type="button"
+              onClick={() => printReceipt()}
+              className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
+            >
+              Cetak
+            </button>
+            <button
+              type="button"
+              onClick={() => downloadReceipt()}
+              className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
+            >
+              Unduh
+            </button>
+            <button
+              type="button"
               onClick={() => void copyReceipt()}
-              className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
             >
               {copied ? 'Tersalin!' : 'Salin bukti'}
             </button>
@@ -203,36 +249,53 @@ export default function DendaSayaPage() {
         }
       >
         {receipt && (
-          <div className="grid gap-1.5">
-            <p>
-              Nominal: <span className="font-semibold">{fmtRp(receipt.amount)}</span>
-            </p>
-            <p>
-              Dibayar: <span className="font-semibold">{fmtRp(receipt.paid_amount)}</span>
-            </p>
-            <p>
-              Sisa: <span className="font-semibold">{fmtRp(0)}</span>
-            </p>
-            <p>
-              Metode: <span className="font-semibold">{receipt.methodUsed}</span>
-            </p>
-            <p>
-              Status: <span className="font-semibold">{receipt.status}</span>
-            </p>
-            {receipt.paid_at && (
+          <>
+            <div className="grid gap-1.5 print:hidden">
               <p>
-                Lunas pada:{' '}
-                <span className="font-semibold">
-                  {new Date(receipt.paid_at).toLocaleDateString('id-ID')}
-                </span>
+                Nominal: <span className="font-semibold">{fmtRp(receipt.amount)}</span>
               </p>
-            )}
-            {copied && (
-              <p role="alert" className="text-sm text-green-700">
-                Bukti berhasil disalin.
+              <p>
+                Dibayar: <span className="font-semibold">{fmtRp(receipt.paid_amount)}</span>
               </p>
-            )}
-          </div>
+              <p>
+                Sisa: <span className="font-semibold">{fmtRp(0)}</span>
+              </p>
+              <p>
+                Metode: <span className="font-semibold">{receipt.methodUsed}</span>
+              </p>
+              <p>
+                Status: <span className="font-semibold">{receipt.status}</span>
+              </p>
+              {receipt.paid_at && (
+                <p>
+                  Lunas pada:{' '}
+                  <span className="font-semibold">
+                    {new Date(receipt.paid_at).toLocaleDateString('id-ID')}
+                  </span>
+                </p>
+              )}
+              {copied && (
+                <p role="alert" className="text-sm text-green-700">
+                  Bukti berhasil disalin.
+                </p>
+              )}
+              {downloadError && (
+                <p role="alert" className="text-sm text-red-700">
+                  Gagal mengunduh bukti.
+                </p>
+              )}
+            </div>
+            <div className="hidden print:block">
+              <p>Bukti pembayaran denda</p>
+              <p>ID: {receipt.id}</p>
+              <p>Nominal: {fmtRp(receipt.amount)}</p>
+              <p>Dibayar: {fmtRp(receipt.paid_amount)}</p>
+              <p>Sisa: {fmtRp(0)}</p>
+              <p>Metode: {receipt.methodUsed}</p>
+              <p>Lunas pada: {receipt.paid_at}</p>
+              <p>paid_at: {receipt.paid_at}</p>
+            </div>
+          </>
         )}
       </Modal>
       <div>
@@ -340,8 +403,7 @@ export default function DendaSayaPage() {
                       {' · '}Terbit: {new Date(r.issued_at).toLocaleDateString('id-ID')}
                       {r.paid_at && (
                         <>
-                          {' · '}Lunas pada:{' '}
-                          {new Date(r.paid_at).toLocaleDateString('id-ID')}
+                          {' · '}Lunas pada: {new Date(r.paid_at).toLocaleDateString('id-ID')}
                         </>
                       )}
                       {' · '}Metode: {methodOf(r.notes)}

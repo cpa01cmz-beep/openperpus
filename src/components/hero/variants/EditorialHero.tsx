@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import Image from "next/image";
-import Link from "next/link";
-import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
-import { useHeroCarousel } from "./useHeroCarousel";
-import { HeroFallback } from "./HeroFallback";
-import type { HeroProps } from "./heroProps";
+import Image from 'next/image';
+import Link from 'next/link';
+import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useHeroCarousel } from './useHeroCarousel';
+import { HeroFallback } from './HeroFallback';
+import type { HeroProps } from './heroProps';
 
 /** EditorialHero: same carousel + fallback, editorial side-caption composition. Uses var tokens. */
 export default function EditorialHero({ banners, siteName, tagline }: HeroProps) {
@@ -31,7 +31,7 @@ export default function EditorialHero({ banners, siteName, tagline }: HeroProps)
             key={b.id}
             aria-hidden={i !== idx}
             className={`absolute inset-0 transition-opacity duration-700 ${
-              i === idx ? "opacity-100" : "pointer-events-none opacity-0"
+              i === idx ? 'opacity-100' : 'pointer-events-none opacity-0'
             }`}
           >
             <Image
@@ -41,15 +41,19 @@ export default function EditorialHero({ banners, siteName, tagline }: HeroProps)
               height={600}
               sizes="100vw"
               unoptimized
-              priority={i === idx}
-              loading={i === idx ? "eager" : "lazy"}
+              priority={i === 0}
+              loading={i === 0 ? 'eager' : 'lazy'}
+              fetchPriority={i === 0 ? 'high' : 'low'}
               className="h-full w-full object-cover"
             />
           </div>
         ))}
       </div>
 
-      <div className="flex flex-col justify-center border-t border-[var(--ink)]/10 p-6 sm:p-8 lg:border-l lg:border-t-0" style={{ padding: 'var(--spacing-card)' }}>
+      <div
+        className="flex flex-col justify-center border-t border-[var(--ink)]/10 p-6 sm:p-8 lg:border-l lg:border-t-0"
+        style={{ padding: 'var(--spacing-card)' }}
+      >
         <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--ink)] opacity-70">
           {siteName} · {idx + 1}/{total}
         </p>
@@ -57,22 +61,35 @@ export default function EditorialHero({ banners, siteName, tagline }: HeroProps)
           {active.title}
         </h1>
         {active.subtitle ? (
-          <p className="mt-2 max-w-prose text-sm leading-relaxed text-[var(--ink)] opacity-80 sm:text-base">{active.subtitle}</p>
+          <p className="mt-2 max-w-prose text-sm leading-relaxed text-[var(--ink)] opacity-80 sm:text-base">
+            {active.subtitle}
+          </p>
         ) : null}
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <Link
-            href={active.link ?? "/katalog"}
+            href={active.link ?? '/katalog'}
             className="inline-flex items-center gap-2 rounded-[var(--radius-md)] bg-[var(--brand-strong)] px-5 py-2.5 text-sm font-bold text-[var(--surface)] transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
-            {active.link ? "Selengkapnya" : "Jelajahi Katalog"} <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            {active.link ? 'Selengkapnya' : 'Jelajahi Katalog'}{' '}
+            <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
         </div>
         {total > 1 && (
           <div className="mt-5 flex items-center gap-2">
-            <button type="button" onClick={() => go(-1)} aria-label="Banner sebelumnya" className="grid h-9 w-9 place-items-center rounded-[var(--radius-md)] border border-[var(--ink)]/15 text-[var(--ink)] transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+            <button
+              type="button"
+              onClick={() => go(-1)}
+              aria-label="Banner sebelumnya"
+              className="grid min-h-[44px] min-w-[44px] place-items-center rounded-[var(--radius-md)] border border-[var(--ink)]/15 text-[var(--ink)] transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            >
               <ChevronLeft className="h-5 w-5" />
             </button>
-            <button type="button" onClick={() => go(1)} aria-label="Banner berikutnya" className="grid h-9 w-9 place-items-center rounded-[var(--radius-md)] border border-[var(--ink)]/15 text-[var(--ink)] transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+            <button
+              type="button"
+              onClick={() => go(1)}
+              aria-label="Banner berikutnya"
+              className="grid min-h-[44px] min-w-[44px] place-items-center rounded-[var(--radius-md)] border border-[var(--ink)]/15 text-[var(--ink)] transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            >
               <ChevronRight className="h-5 w-5" />
             </button>
             <div className="ml-2 flex gap-1.5" role="tablist" aria-label="Pilih banner">
@@ -84,10 +101,15 @@ export default function EditorialHero({ banners, siteName, tagline }: HeroProps)
                   aria-selected={i === idx}
                   aria-label={`Banner ${i + 1}: ${b.title}`}
                   onClick={() => setIdx(i)}
-                  className={`h-1.5 rounded-[var(--radius-sm)] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
-                    i === idx ? "w-8 bg-[var(--brand-strong)]" : "w-3 bg-[var(--ink)]/25 hover:bg-[var(--ink)]/45"
-                  }`}
-                />
+                  className="flex min-h-[44px] min-w-[44px] items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                >
+                  <span
+                    aria-hidden="true"
+                    className={`h-1.5 rounded-[var(--radius-sm)] transition-all ${
+                      i === idx ? 'w-8 bg-[var(--brand-strong)]' : 'w-3 bg-[var(--ink)]/25'
+                    }`}
+                  />
+                </button>
               ))}
             </div>
           </div>

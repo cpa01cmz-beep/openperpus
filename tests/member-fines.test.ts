@@ -280,7 +280,10 @@ describe('US-03 member fines — lihat + bayar sendiri', () => {
         pay.includes(".in('status', ['unpaid', 'partial'])")
     ).toBe(true);
     expect(pay.includes('FINE-PAY-IDEMPOTENT')).toBe(true);
-    const loans = readFileSync(join(process.cwd(), 'src/app/api/loans/route.ts'), 'utf8');
+    const loans =
+      readFileSync(join(process.cwd(), 'src/app/api/loans/route.ts'), 'utf8') +
+      '\n' +
+      readFileSync(join(process.cwd(), 'src/lib/loans-return.ts'), 'utf8');
     expect(loans.includes('Math.min(') && loans.includes('stock_total')).toBe(true);
     expect(loans.includes('RETURN-CLAMP')).toBe(true);
   });

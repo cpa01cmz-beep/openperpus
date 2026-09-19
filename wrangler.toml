@@ -21,9 +21,13 @@ not_found_handling = "none"
 # CATATAN: [vars] di bawah hanya untuk preview lokal (`npm run cf:preview`).
 # Produksi WAJIB override via `wrangler secret put` (lihat README "Secret di Cloudflare").
 # Jangan commit nilai secret nyata ke file ini.
+# Set nilai asli via:
+#   wrangler secret put NEXT_PUBLIC_SUPABASE_URL
+#   wrangler secret put NEXT_PUBLIC_SUPABASE_ANON_KEY
+#   wrangler secret put SUPABASE_SERVICE_ROLE_KEY
 [vars]
-NEXT_PUBLIC_SUPABASE_URL = "https://oliwjoxsdtieujioeets.supabase.co"
-NEXT_PUBLIC_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9saXdqb3hzZHRpZXVqaW9lZXRzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3MDYyNzgsImV4cCI6MjEwNTI4MjI3OH0.Kms_lYWPGruan-88LxJii9ZshGqBOde9XkNOr_HfBNY"
+# NEXT_PUBLIC_SUPABASE_URL = "<isi-via-wrangler-secret-put>"
+# NEXT_PUBLIC_SUPABASE_ANON_KEY = "<isi-via-wrangler-secret-put>"
 
 [observability.logs]
 enabled = true

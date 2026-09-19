@@ -1,7 +1,7 @@
-"use client";
+'use client';
 
-import { useMemo, useState } from "react";
-import { ChevronDown, Search, SearchX, X } from "lucide-react";
+import { useMemo, useState } from 'react';
+import { ChevronDown, Search, SearchX, X } from 'lucide-react';
 
 export type FaqItem = {
   id: string;
@@ -12,7 +12,7 @@ export type FaqItem = {
 
 /** Accordion FAQ: cari + filter kategori + <details> aksesibel + empty state. */
 export default function FaqAccordion({ faqs }: { faqs: FaqItem[] }) {
-  const [q, setQ] = useState("");
+  const [q, setQ] = useState('');
   const [cat, setCat] = useState<string | null>(null);
 
   const categories = useMemo(
@@ -30,7 +30,7 @@ export default function FaqAccordion({ faqs }: { faqs: FaqItem[] }) {
   }, [faqs, q, cat]);
 
   const reset = () => {
-    setQ("");
+    setQ('');
     setCat(null);
   };
 
@@ -57,7 +57,7 @@ export default function FaqAccordion({ faqs }: { faqs: FaqItem[] }) {
         {q && (
           <button
             type="button"
-            onClick={() => setQ("")}
+            onClick={() => setQ('')}
             aria-label="Hapus pencarian"
             className="absolute right-2.5 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full text-[var(--ink)]/40 transition hover:bg-[var(--ink)]/10 hover:text-[var(--ink)]/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
@@ -77,10 +77,10 @@ export default function FaqAccordion({ faqs }: { faqs: FaqItem[] }) {
             type="button"
             onClick={() => setCat(null)}
             aria-pressed={cat === null}
-            className={`shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
+            className={`shrink-0 min-h-[44px] rounded-full border px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
               cat === null
-                ? "border-brand bg-brand text-white shadow"
-                : "border-[var(--ink)]/10 bg-[var(--surface)] text-[var(--ink)]/70 hover:border-brand hover:text-brand"
+                ? 'border-brand bg-brand text-white shadow'
+                : 'border-[var(--ink)]/10 bg-[var(--surface)] text-[var(--ink)]/70 hover:border-brand hover:text-brand'
             }`}
           >
             Semua
@@ -93,10 +93,10 @@ export default function FaqAccordion({ faqs }: { faqs: FaqItem[] }) {
                 type="button"
                 onClick={() => setCat(active ? null : c)}
                 aria-pressed={active}
-                className={`shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
+                className={`shrink-0 min-h-[44px] rounded-full border px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
                   active
-                    ? "border-brand bg-brand text-white shadow"
-                    : "border-[var(--ink)]/10 bg-[var(--surface)] text-[var(--ink)]/70 hover:border-brand hover:text-brand"
+                    ? 'border-brand bg-brand text-white shadow'
+                    : 'border-[var(--ink)]/10 bg-[var(--surface)] text-[var(--ink)]/70 hover:border-brand hover:text-brand'
                 }`}
               >
                 {c}
@@ -110,7 +110,7 @@ export default function FaqAccordion({ faqs }: { faqs: FaqItem[] }) {
         Menampilkan {filtered.length} dari {faqs.length} pertanyaan
         {q.trim() && (
           <>
-            {" "}
+            {' '}
             untuk “<span className="font-semibold text-[var(--ink)]/80">{q.trim()}</span>”
           </>
         )}
@@ -149,12 +149,12 @@ export default function FaqAccordion({ faqs }: { faqs: FaqItem[] }) {
         <div className="grid place-items-center rounded-[var(--radius-lg)] border border-dashed border-[var(--ink)]/10 bg-[var(--surface)] px-6 py-14 text-center">
           <SearchX className="h-10 w-10 text-[var(--ink)]/25" aria-hidden="true" />
           <h2 className="mt-3 font-heading text-lg font-bold text-[var(--ink)]">
-            {faqs.length === 0 ? "Belum ada pertanyaan" : "Tidak ada jawaban yang cocok"}
+            {faqs.length === 0 ? 'Belum ada pertanyaan' : 'Tidak ada jawaban yang cocok'}
           </h2>
           <p className="mt-1 max-w-sm text-sm text-[var(--ink)]/60">
             {faqs.length === 0
-              ? "Daftar pertanyaan akan muncul di sini setelah diisi pustakawan."
-              : "Coba kata kunci lain atau ubah kategori yang dipilih."}
+              ? 'Daftar pertanyaan akan muncul di sini setelah diisi pustakawan.'
+              : 'Coba kata kunci lain atau ubah kategori yang dipilih.'}
           </p>
           {(q || cat) && (
             <button
