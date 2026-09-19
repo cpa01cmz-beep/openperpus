@@ -26,28 +26,29 @@ export default function EditorialHero({ banners, siteName, tagline }: HeroProps)
       onMouseLeave={() => setPaused(false)}
     >
       <div className="relative aspect-[16/10] w-full lg:aspect-auto lg:min-h-[320px]">
-        {banners.map((b, i) => (
-          <div
-            key={b.id}
-            aria-hidden={i !== idx}
-            className={`absolute inset-0 transition-opacity duration-700 ${
-              i === idx ? 'opacity-100' : 'pointer-events-none opacity-0'
-            }`}
-          >
-            <Image
-              src={b.image_url}
-              alt={b.title}
-              width={1280}
-              height={600}
-              sizes="100vw"
-              unoptimized
-              priority={i === 0}
-              loading={i === 0 ? 'eager' : 'lazy'}
-              fetchPriority={i === 0 ? 'high' : 'low'}
-              className="h-full w-full object-cover"
-            />
-          </div>
-        ))}
+        {banners.map((b, i) =>
+          i > 1 && i !== idx ? null : (
+            <div
+              key={b.id}
+              aria-hidden={i !== idx}
+              className={`absolute inset-0 transition-opacity duration-700 ${
+                i === idx ? 'opacity-100' : 'pointer-events-none opacity-0'
+              }`}
+            >
+              <Image
+                src={b.image_url}
+                alt={i === idx ? b.title : ''}
+                width={1280}
+                height={600}
+                sizes="100vw"
+                priority={i === 0}
+                loading={i === 0 ? 'eager' : 'lazy'}
+                fetchPriority={i === 0 ? 'high' : 'low'}
+                className="h-full w-full object-cover"
+              />
+            </div>
+          )
+        )}
       </div>
 
       <div

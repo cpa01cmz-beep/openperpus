@@ -1,5 +1,7 @@
+import type { Metadata } from 'next';
 import dynamic from 'next/dynamic';
 import { fetchBooksPaged, fetchCategories, fetchSettings } from '@/lib/books';
+import { getSiteUrl } from '@/lib/site';
 
 const CatalogExplorer = dynamic(() => import('@/components/public/CatalogExplorer'), {
   ssr: true,
@@ -35,11 +37,38 @@ function CatalogSkeleton() {
 
 export const revalidate = 60;
 
-export async function generateMetadata() {
+export async function generateMetadata({
+  searchParams,
+}: {
+  searchParams?: SearchParams;
+}): Promise<Metadata> {
   const s = await fetchSettings();
+  const siteUrl = getSiteUrl();
+  const title = `Katalog Buku — ${s.name ?? 'Perpustakaan'}`;
+  const description = `Telusuri koleksi ${s.name ?? 'perpustakaan'} berdasarkan judul, penulis, kategori, dan ketersediaan.`;
+  const canonical = `${siteUrl}/katalog`;
+  const hasParams = Boolean(
+    searchParams?.q ||
+    searchParams?.page ||
+    searchParams?.sort ||
+    searchParams?.kategori ||
+    searchParams?.tersedia
+  );
   return {
-    title: `Katalog Buku — ${s.name ?? 'Perpustakaan'}`,
-    description: `Telusuri koleksi ${s.name ?? 'perpustakaan'} berdasarkan judul, penulis, kategori, dan ketersediaan.`,
+    title,
+    description,
+    alternates: { canonical },
+    ...(hasParams ? { robots: { index: false, follow: true } } : {}),
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      locale: 'id_ID',
+      url: canonical,
+      siteName: s.name ?? 'Perpustakaan',
+      images: [{ url: '/og-default.jpg', width: 1200, height: 630, alt: title }],
+    },
+    twitter: { card: 'summary_large_image', title, description, images: ['/og-default.jpg'] },
   };
 }
 
@@ -77,6 +106,24 @@ export default async function KatalogPage({ searchParams }: { searchParams?: Sea
 
   return (
     <div className="space-y-5">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'ItemList',
+            name: 'Katalog Buku',
+            url: `${getSiteUrl()}/katalog`,
+            numberOfItems: total,
+            itemListElement: books.slice(0, 24).map((b, i) => ({
+              '@type': 'ListItem',
+              position: (page - 1) * perPage + i + 1,
+              url: `${getSiteUrl()}/katalog/${b.slug}`,
+              name: b.title,
+            })),
+          }),
+        }}
+      />
       <header>
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-amber-600">OPAC</p>
         <h1 className="mt-1 font-serif text-3xl font-bold text-emerald-950 sm:text-4xl">
