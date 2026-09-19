@@ -1,8 +1,9 @@
-import Image from "next/image";
-import Link from "next/link";
-import { notFound } from "next/navigation";
-import { ArrowLeft, Calendar, Eye } from "lucide-react";
-import { fetchArticleBySlug, fetchArticles, fetchSettings } from "@/lib/books";
+import Image from 'next/image';
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { ArrowLeft, Calendar, Eye } from 'lucide-react';
+import { fetchArticleBySlug, fetchArticles, fetchSettings } from '@/lib/books';
+import { getSiteUrl } from '@/lib/site';
 
 export const revalidate = 60;
 
@@ -10,11 +11,27 @@ type Props = { params: { slug: string } };
 
 export async function generateMetadata({ params }: Props) {
   const a = await fetchArticleBySlug(params.slug);
-  if (!a) return { title: "Berita tidak ditemukan" };
+  if (!a) return { title: 'Berita tidak ditemukan' };
   const s = await fetchSettings();
+  const siteName = s.name ?? 'Perpustakaan';
+  const title = `${a.title} — ${siteName}`;
+  const description = a.excerpt ?? a.title;
+  const url = `${getSiteUrl()}/berita/${params.slug}`;
+  const image = a.cover_url ?? '/og-default.jpg';
   return {
-    title: `${a.title} — ${s.name ?? "Perpustakaan"}`,
-    description: a.excerpt ?? a.title,
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title,
+      description,
+      type: 'article',
+      locale: 'id_ID',
+      url,
+      siteName,
+      images: [{ url: image, alt: a.title }],
+    },
+    twitter: { card: 'summary_large_image', title, description, images: [image] },
   };
 }
 
@@ -25,8 +42,22 @@ export default async function BeritaDetailPage({ params }: Props) {
 
   const latest = (await fetchArticles(4)).filter((a) => a.slug !== article.slug).slice(0, 3);
 
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'Article',
+    headline: article.title,
+    description: article.excerpt ?? undefined,
+    image: article.cover_url ?? undefined,
+    datePublished: article.published_at ?? undefined,
+    url: `${getSiteUrl()}/berita/${params.slug}`,
+  };
+
   return (
     <div className="mx-auto max-w-3xl space-y-6">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Link
         href="/berita"
         className="inline-flex items-center gap-1.5 rounded text-sm font-medium text-slate-500 transition hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
@@ -36,16 +67,28 @@ export default async function BeritaDetailPage({ params }: Props) {
 
       <article className="overflow-hidden rounded-lg border border-slate-100 bg-white shadow-sm">
         {article.cover_url && (
-          <Image src={article.cover_url} alt={article.excerpt ?? article.title} width={960} height={540} sizes="(max-width:768px) 100vw, 768px" unoptimized className="aspect-[16/9] w-full object-cover" />
+          <Image
+            src={article.cover_url}
+            alt={article.excerpt ?? article.title}
+            width={960}
+            height={540}
+            sizes="(max-width:768px) 100vw, 768px"
+            unoptimized
+            className="aspect-[16/9] w-full object-cover"
+          />
         )}
         <div className="p-5 sm:p-8">
           <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold uppercase tracking-wide text-brand">
-            <span>{article.category ?? "Berita"}</span>
+            <span>{article.category ?? 'Berita'}</span>
             {article.published_at && (
               <span className="inline-flex items-center gap-1 font-normal normal-case tracking-normal text-slate-400">
                 <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
                 <time dateTime={article.published_at}>
-                  {new Date(article.published_at).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })}
+                  {new Date(article.published_at).toLocaleDateString('id-ID', {
+                    day: 'numeric',
+                    month: 'long',
+                    year: 'numeric',
+                  })}
                 </time>
               </span>
             )}
@@ -62,13 +105,16 @@ export default async function BeritaDetailPage({ params }: Props) {
             </p>
           )}
           <div className="prose-sm mt-5 max-w-none whitespace-pre-line text-sm leading-relaxed text-slate-700 sm:prose sm:text-base">
-            {article.content_md ?? "Konten menyusul."}
+            {article.content_md ?? 'Konten menyusul.'}
           </div>
         </div>
       </article>
 
       {latest.length > 0 && (
-        <section aria-labelledby="lainnya" className="rounded-lg border border-slate-100 bg-white p-5 shadow-sm sm:p-6">
+        <section
+          aria-labelledby="lainnya"
+          className="rounded-lg border border-slate-100 bg-white p-5 shadow-sm sm:p-6"
+        >
           <h2 id="lainnya" className="font-heading text-lg font-bold text-heading">
             Berita lainnya
           </h2>
@@ -79,10 +125,16 @@ export default async function BeritaDetailPage({ params }: Props) {
                   href={`/berita/${a.slug}`}
                   className="block rounded-xl px-3 py-2.5 transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
-                  <span className="block truncate text-sm font-semibold text-slate-800">{a.title}</span>
+                  <span className="block truncate text-sm font-semibold text-slate-800">
+                    {a.title}
+                  </span>
                   {a.published_at && (
                     <time dateTime={a.published_at} className="text-xs text-slate-400">
-                      {new Date(a.published_at).toLocaleDateString("id-ID", { day: "numeric", month: "short", year: "numeric" })}
+                      {new Date(a.published_at).toLocaleDateString('id-ID', {
+                        day: 'numeric',
+                        month: 'short',
+                        year: 'numeric',
+                      })}
                     </time>
                   )}
                 </Link>
