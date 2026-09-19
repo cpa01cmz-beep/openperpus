@@ -12,13 +12,22 @@ export default async function AdminDashboard() {
   const [
     { count: totalBooks },
     { count: totalMembers },
-    { data: activeLoans },
+    { count: dipinjamCount },
+    { count: terlambatCount },
     { data: recent },
     { data: overdueQueue },
   ] = await Promise.all([
     supabase.from('books').select('id', { count: 'exact', head: true }),
     supabase.from('members').select('id', { count: 'exact', head: true }),
-    supabase.from('loans').select('id,due_at').in('status', ['borrowed', 'overdue']).limit(500),
+    supabase
+      .from('loans')
+      .select('id', { count: 'exact', head: true })
+      .in('status', ['borrowed', 'overdue']),
+    supabase
+      .from('loans')
+      .select('id', { count: 'exact', head: true })
+      .in('status', ['borrowed', 'overdue'])
+      .lt('due_at', new Date().toISOString()),
     supabase
       .from('loans')
       .select('id,borrowed_at,due_at,status,fine_amount,members(id,member_code),books(title)')
@@ -33,35 +42,45 @@ export default async function AdminDashboard() {
       .limit(8),
   ]);
 
-  const dipinjam = activeLoans?.length ?? 0;
+  const dipinjam = dipinjamCount ?? 0;
   const now = new Date();
-  const terlambat = (activeLoans ?? []).filter(
-    (l: { due_at: string }) => new Date(l.due_at) < now
-  ).length;
+  const terlambat = terlambatCount ?? 0;
 
-  // Chart sederhana: 7 hari terakhir jumlah peminjaman (borrowed_at)
-  const days: { label: string; count: number }[] = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    days.push({ label: d.toLocaleDateString('id-ID', { weekday: 'short' }), count: 0 });
-  }
-  const { data: weekLoans } = await supabase
-    .from('loans')
-    .select('borrowed_at')
-    .gte('borrowed_at', new Date(Date.now() - 7 * 86400000).toISOString())
-    .limit(500);
-  (weekLoans ?? []).forEach((l: { borrowed_at: string }) => {
-    const idx = days.findIndex((_, i) => {
-      const dt = new Date();
-      dt.setDate(dt.getDate() - (6 - i));
-      return new Date(l.borrowed_at).toDateString() === dt.toDateString();
-    });
-    if (idx >= 0) {
-      const day = days[idx];
-      if (day) day.count++;
+  let days: { label: string; count: number }[] = [];
+  try {
+    const { data: loansPerDay, error } = await supabase.rpc('get_loans_per_day', { p_days: 7 });
+    if (!error && loansPerDay) {
+      days = (loansPerDay as { day: string; total: number }[]).map((d) => ({
+        label: new Date(d.day).toLocaleDateString('id-ID', { weekday: 'short' }),
+        count: Number(d.total),
+      }));
     }
-  });
+  } catch {
+    days = [];
+  }
+  if (days.length === 0) {
+    const seed: { label: string; count: number }[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      seed.push({ label: d.toLocaleDateString('id-ID', { weekday: 'short' }), count: 0 });
+    }
+    const { data: weekLoans } = await supabase
+      .from('loans')
+      .select('borrowed_at')
+      .gte('borrowed_at', new Date(Date.now() - 7 * 86400000).toISOString())
+      .limit(500);
+    for (const l of (weekLoans ?? []) as { borrowed_at: string }[]) {
+      const key = new Date(l.borrowed_at).toDateString();
+      const slot = seed.find((_, i) => {
+        const dt = new Date();
+        dt.setDate(dt.getDate() - (6 - i));
+        return dt.toDateString() === key;
+      });
+      if (slot) slot.count++;
+    }
+    days = seed;
+  }
   const max = Math.max(1, ...days.map((d) => d.count));
 
   type OverdueRow = {

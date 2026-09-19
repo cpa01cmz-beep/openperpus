@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { HeaderVariantProps } from '../types';
 import { LINKS, LogoMark } from '../shared';
+import NavLink from './NavLink';
 import { resolveLogoSrc } from '../types';
 import MenuButton from './MenuButton';
 
@@ -45,12 +46,12 @@ export default function MinimalHeader({
         <ul className="hidden items-center gap-0.5 md:flex">
           {LINKS.map((l) => (
             <li key={l.href}>
-              <Link
+              <NavLink
                 href={l.href}
+                label={l.label}
                 className="rounded-[var(--radius-md)] px-2.5 py-1.5 text-sm font-medium text-[var(--ink)] transition hover:bg-brand-soft hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-              >
-                {l.label}
-              </Link>
+                activeClassName="bg-brand-soft text-brand"
+              />
             </li>
           ))}
         </ul>
@@ -68,12 +69,12 @@ export default function MinimalHeader({
         <ul className="mx-auto w-full max-w-[var(--container)] space-y-1 px-4 py-3 sm:px-6">
           {LINKS.map((l) => (
             <li key={l.href}>
-              <Link
+              <NavLink
                 href={l.href}
+                label={l.label}
                 className="block rounded-[var(--radius-md)] px-3 py-2.5 text-sm font-medium text-[var(--ink)] transition hover:bg-brand-soft hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-              >
-                {l.label}
-              </Link>
+                activeClassName="bg-brand-soft text-brand"
+              />
             </li>
           ))}
         </ul>

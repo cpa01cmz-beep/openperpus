@@ -34,8 +34,6 @@ yarn-error.log*
 .env*.local
 .env.development
 .env.production
-# Build-time public env untuk CF Workers (hanya NEXT_PUBLIC_*, aman publik)
-!.env.production
 
 # vercel
 .vercel

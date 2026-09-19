@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Navbar from '@/components/public/Navbar';
+import OnboardingBanner from '@/components/public/OnboardingBanner';
 import Footer from '@/components/public/Footer';
 import { fetchSettings } from '@/lib/books';
 import { getSiteUrl } from '@/lib/site';
@@ -34,9 +35,41 @@ export default async function PublicLayout({ children }: { children: React.React
   const settings = await fetchSettings();
   const siteName = settings.name ?? 'Perpustakaan Digital';
   const themeId = settings.active_theme ?? 'emerald';
+  const siteUrl = getSiteUrl();
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'Organization',
+        '@id': `${siteUrl}#organization`,
+        name: siteName,
+        url: siteUrl,
+        ...(settings.logo_url ? { logo: settings.logo_url } : {}),
+      },
+      {
+        '@type': 'Library',
+        '@id': `${siteUrl}#library`,
+        name: siteName,
+        url: siteUrl,
+        ...(settings.tagline ? { description: settings.tagline } : {}),
+        parentOrganization: { '@id': `${siteUrl}#organization` },
+      },
+      {
+        '@type': 'WebSite',
+        '@id': `${siteUrl}#website`,
+        name: siteName,
+        url: siteUrl,
+        publisher: { '@id': `${siteUrl}#organization` },
+      },
+    ],
+  };
 
   return (
     <div className="flex min-h-dvh flex-col">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       <Navbar
         siteName={siteName}
         tagline={settings.tagline}
@@ -44,6 +77,7 @@ export default async function PublicLayout({ children }: { children: React.React
         themeId={themeId}
         settings={settings}
       />
+      <OnboardingBanner />
       <main className="mx-auto w-full max-w-container flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         {children}
       </main>

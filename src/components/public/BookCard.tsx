@@ -2,6 +2,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { BookOpen, Star } from 'lucide-react';
 import { ratingNumber, stockState, type Book } from '@/lib/types';
+import { coverSrc } from '@/lib/cover';
 
 const toneClass: Record<string, string> = {
   emerald: 'bg-brand-soft text-brand border-brand-soft',
@@ -13,6 +14,7 @@ const toneClass: Record<string, string> = {
 export default function BookCard({ book }: { book: Book }) {
   const stock = stockState(book);
   const rating = ratingNumber(book.rating_avg);
+  const cover = coverSrc(book.cover_url, 400) ?? book.cover_url;
 
   return (
     <Link
@@ -21,14 +23,13 @@ export default function BookCard({ book }: { book: Book }) {
       className="group flex flex-col overflow-hidden rounded-[var(--radius-lg)] border border-[var(--ink)]/10 bg-[var(--surface)] shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
     >
       <div className="relative aspect-[3/4] w-full overflow-hidden bg-brand-soft">
-        {book.cover_url ? (
+        {cover ? (
           <Image
-            src={book.cover_url}
+            src={cover}
             alt={`Sampul ${book.title}`}
             width={400}
             height={533}
             sizes="(max-width:640px) 50vw, (max-width:1024px) 33vw, 20vw"
-            unoptimized
             loading="lazy"
             fetchPriority="low"
             decoding="async"

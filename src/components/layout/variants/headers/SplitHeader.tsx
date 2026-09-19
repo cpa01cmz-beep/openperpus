@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import type { HeaderVariantProps } from '../types';
 import { LINKS, LogoMark } from '../shared';
+import NavLink from './NavLink';
 import { resolveLogoSrc } from '../types';
 import MenuButton from './MenuButton';
 
@@ -55,12 +56,12 @@ export default function SplitHeader({
         <ul className="mx-auto flex w-full max-w-[var(--container)] items-center justify-between px-4 sm:px-6 lg:px-8">
           {LINKS.map((l) => (
             <li key={l.href} className="flex-1">
-              <Link
+              <NavLink
                 href={l.href}
+                label={l.label}
                 className="block rounded-[var(--radius-md)] px-3 py-2.5 text-center text-sm font-medium text-[var(--ink)] transition hover:bg-brand-soft hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-              >
-                {l.label}
-              </Link>
+                activeClassName="bg-brand-soft text-brand"
+              />
             </li>
           ))}
         </ul>
@@ -73,12 +74,12 @@ export default function SplitHeader({
         <ul className="mx-auto w-full max-w-[var(--container)] space-y-1 px-4 py-3 sm:px-6">
           {LINKS.map((l) => (
             <li key={l.href}>
-              <Link
+              <NavLink
                 href={l.href}
+                label={l.label}
                 className="block rounded-[var(--radius-md)] px-3 py-2.5 text-sm font-medium text-[var(--ink)] transition hover:bg-brand-soft hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-              >
-                {l.label}
-              </Link>
+                activeClassName="bg-brand-soft text-brand"
+              />
             </li>
           ))}
         </ul>

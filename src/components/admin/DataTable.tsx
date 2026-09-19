@@ -24,7 +24,10 @@ export default function DataTable<T>({
 }: Props<T>) {
   if (!rows.length) {
     return (
-      <div className="rounded-xl border bg-white p-8 text-center text-sm text-slate-500">
+      <div
+        role="status"
+        className="rounded-xl border bg-white p-8 text-center text-sm text-slate-500"
+      >
         {emptyText}
       </div>
     );
@@ -32,11 +35,13 @@ export default function DataTable<T>({
   return (
     <div className="overflow-x-auto rounded-xl border bg-white">
       <table className="w-full min-w-[640px] text-left text-sm">
-        <thead>
+        <caption className="sr-only">Tabel data admin</caption>
+        <thead className="sticky top-0 z-20">
           <tr className="border-b bg-slate-50 text-slate-500">
             {columns.map((c, ci) => (
               <th
                 key={c.key}
+                scope="col"
                 className={`px-4 py-3 font-medium ${ci === 0 ? 'sticky left-0 z-10 bg-slate-50' : ''}`}
               >
                 {c.header}

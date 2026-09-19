@@ -2,9 +2,11 @@
 // Urutan: POST /api/loans dulu, HANYA jika 201 lanjut PUT /api/reservations completed.
 // Jika POST gagal: lempar message server persis + JANGAN ubah reservasi.
 // KOMPENSASI: tidak ada rollback loan jika PUT gagal — loan tetap tercatat,
-// error dilempar + console.error untuk visibilitas, staff menyelesaikan manual.
+// error dilempar + logger.error untuk visibilitas, staff menyelesaikan manual.
 // (Rollback loan via DELETE dilarang: DELETE loans hanya admin + hanya
 // returned/lost, dan menghapus loan valid merusak stok/audit.)
+
+import { logger } from '@/lib/logger';
 
 type FetchLike = (
   url: string,
@@ -75,9 +77,11 @@ export async function checkoutReservation(
     };
     if (!putRes.ok) {
       // Kompensasi: SENGAJA tanpa rollback loan (lihat komentar file atas).
-      console.error(
+      logger.error(
         `[US-02] loan dibuat tetapi reservasi ${key} gagal completed — selesaikan manual.`,
-        serverMessage(putJson)
+        {
+          detail: serverMessage(putJson),
+        }
       );
       throw new Error(serverMessage(putJson));
     }

@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, Calendar, Eye } from 'lucide-react';
 import { fetchArticleBySlug, fetchArticles, fetchSettings } from '@/lib/books';
+import { coverSrc } from '@/lib/cover';
 import { getSiteUrl } from '@/lib/site';
 
 export const revalidate = 60;
@@ -17,7 +18,7 @@ export async function generateMetadata({ params }: Props) {
   const title = `${a.title} — ${siteName}`;
   const description = a.excerpt ?? a.title;
   const url = `${getSiteUrl()}/berita/${params.slug}`;
-  const image = a.cover_url ?? '/og-default.jpg';
+  const image = coverSrc(a.cover_url, 640) ?? a.cover_url ?? '/og-default.jpg';
   return {
     title,
     description,
@@ -41,13 +42,14 @@ export default async function BeritaDetailPage({ params }: Props) {
   if (!article) notFound();
 
   const latest = (await fetchArticles(4)).filter((a) => a.slug !== article.slug).slice(0, 3);
+  const cover = coverSrc(article.cover_url, 960) ?? article.cover_url;
 
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'Article',
     headline: article.title,
     description: article.excerpt ?? undefined,
-    image: article.cover_url ?? undefined,
+    image: cover ?? undefined,
     datePublished: article.published_at ?? undefined,
     url: `${getSiteUrl()}/berita/${params.slug}`,
   };
@@ -66,14 +68,13 @@ export default async function BeritaDetailPage({ params }: Props) {
       </Link>
 
       <article className="overflow-hidden rounded-lg border border-slate-100 bg-white shadow-sm">
-        {article.cover_url && (
+        {cover && (
           <Image
-            src={article.cover_url}
+            src={cover}
             alt={article.excerpt ?? article.title}
             width={960}
             height={540}
             sizes="(max-width:768px) 100vw, 768px"
-            unoptimized
             className="aspect-[16/9] w-full object-cover"
           />
         )}

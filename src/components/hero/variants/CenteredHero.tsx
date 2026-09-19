@@ -27,33 +27,34 @@ export default function CenteredHero({ banners, siteName, tagline }: HeroProps) 
       onMouseLeave={() => setPaused(false)}
     >
       <div className="relative aspect-[16/10] w-full overflow-hidden rounded-[var(--radius-lg)] bg-brand-strong text-[var(--surface)] shadow-[var(--shadow-md)] sm:aspect-[21/9]">
-        {banners.map((b, i) => (
-          <div
-            key={b.id}
-            aria-hidden={i !== idx}
-            className={`absolute inset-0 transition-opacity duration-700 ${
-              i === idx ? 'opacity-100' : 'pointer-events-none opacity-0'
-            }`}
-          >
-            <Image
-              src={b.image_url}
-              alt={b.title}
-              width={1280}
-              height={600}
-              sizes="100vw"
-              unoptimized
-              priority={i === 0}
-              loading={i === 0 ? 'eager' : 'lazy'}
-              fetchPriority={i === 0 ? 'high' : 'low'}
-              className="h-full w-full object-cover"
-            />
-            <div className="absolute inset-0 bg-brand-strong/60" aria-hidden="true" />
+        {banners.map((b, i) =>
+          i > 1 && i !== idx ? null : (
             <div
-              className="absolute inset-0 bg-gradient-to-t from-brand-strong/90 via-brand-strong/40 to-transparent"
-              aria-hidden="true"
-            />
-          </div>
-        ))}
+              key={b.id}
+              aria-hidden={i !== idx}
+              className={`absolute inset-0 transition-opacity duration-700 ${
+                i === idx ? 'opacity-100' : 'pointer-events-none opacity-0'
+              }`}
+            >
+              <Image
+                src={b.image_url}
+                alt={i === idx ? b.title : ''}
+                width={1280}
+                height={600}
+                sizes="100vw"
+                priority={i === 0}
+                loading={i === 0 ? 'eager' : 'lazy'}
+                fetchPriority={i === 0 ? 'high' : 'low'}
+                className="h-full w-full object-cover"
+              />
+              <div className="absolute inset-0 bg-brand-strong/60" aria-hidden="true" />
+              <div
+                className="absolute inset-0 bg-gradient-to-t from-brand-strong/90 via-brand-strong/40 to-transparent"
+                aria-hidden="true"
+              />
+            </div>
+          )
+        )}
 
         <div className="absolute inset-0 flex flex-col items-center justify-center p-5 text-center sm:p-8">
           <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-accent">

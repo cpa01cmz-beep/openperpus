@@ -26,28 +26,29 @@ export default function StackedHero({ banners, siteName, tagline }: HeroProps) {
       onMouseLeave={() => setPaused(false)}
     >
       <div className="relative aspect-[16/9] w-full sm:aspect-[21/8]">
-        {banners.map((b, i) => (
-          <div
-            key={b.id}
-            aria-hidden={i !== idx}
-            className={`absolute inset-0 transition-opacity duration-700 ${
-              i === idx ? 'opacity-100' : 'pointer-events-none opacity-0'
-            }`}
-          >
-            <Image
-              src={b.image_url}
-              alt={b.title}
-              width={1280}
-              height={600}
-              sizes="100vw"
-              unoptimized
-              priority={i === 0}
-              loading={i === 0 ? 'eager' : 'lazy'}
-              fetchPriority={i === 0 ? 'high' : 'low'}
-              className="h-full w-full object-cover"
-            />
-          </div>
-        ))}
+        {banners.map((b, i) =>
+          i > 1 && i !== idx ? null : (
+            <div
+              key={b.id}
+              aria-hidden={i !== idx}
+              className={`absolute inset-0 transition-opacity duration-700 ${
+                i === idx ? 'opacity-100' : 'pointer-events-none opacity-0'
+              }`}
+            >
+              <Image
+                src={b.image_url}
+                alt={i === idx ? b.title : ''}
+                width={1280}
+                height={600}
+                sizes="100vw"
+                priority={i === 0}
+                loading={i === 0 ? 'eager' : 'lazy'}
+                fetchPriority={i === 0 ? 'high' : 'low'}
+                className="h-full w-full object-cover"
+              />
+            </div>
+          )
+        )}
         {total > 1 && (
           <div className="absolute right-4 top-4 flex gap-2">
             <button
