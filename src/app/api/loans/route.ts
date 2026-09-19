@@ -24,6 +24,26 @@ function isUuid(v: unknown): boolean {
   );
 }
 
+async function writeLog(
+  supabase: ReturnType<typeof createClient>,
+  userId: string | undefined,
+  action: string,
+  entityId: string,
+  metadata: Record<string, unknown> = {}
+) {
+  try {
+    await supabase.from('activity_logs').insert({
+      user_id: userId ?? null,
+      action,
+      entity_type: 'loans',
+      entity_id: entityId,
+      metadata,
+    });
+  } catch {
+    /* best-effort */
+  }
+}
+
 export async function GET(req: Request) {
   const guard = await requireStaff();
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
@@ -71,7 +91,10 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const guard = await requireStaff(['admin', 'librarian']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
-  const { supabase } = guard as { supabase: ReturnType<typeof createClient> };
+  const { supabase, user } = guard as {
+    supabase: ReturnType<typeof createClient>;
+    user: { id: string };
+  };
 
   let body: Record<string, unknown>;
   try {
@@ -116,6 +139,14 @@ export async function POST(req: Request) {
     p_notes: (body.notes as string | null) ?? null,
   });
   if (!rpcError) {
+    try {
+      await writeLog(supabase, user?.id, 'loans.create', (rpcLoan as { id: string }).id, {
+        member_id,
+        book_id,
+      });
+    } catch {
+      /* best-effort */
+    }
     return NextResponse.json({ data: rpcLoan }, { status: 201 });
   }
   const rpcCode = (rpcError as { code?: string }).code ?? '';
@@ -187,6 +218,14 @@ export async function POST(req: Request) {
   if (error) {
     await supabase.from('books').update({ stock_available: avail }).eq('id', book_id); // rollback
     return jsonError('SAVE_FAILED', 'Gagal mencatat peminjaman.', 500, error.message);
+  }
+  try {
+    await writeLog(supabase, user?.id, 'loans.create', (data as { id: string }).id, {
+      member_id,
+      book_id,
+    });
+  } catch {
+    /* best-effort */
   }
   return NextResponse.json({ data }, { status: 201 });
 }
