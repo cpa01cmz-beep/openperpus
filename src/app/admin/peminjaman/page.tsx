@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import nextDynamic from 'next/dynamic';
 import DataTable from '@/components/admin/DataTable';
+import DunningButton from '@/components/admin/DunningButton';
 import Modal from '@/components/ui/Modal';
 
 const LoanForm = nextDynamic(() => import('@/components/admin/LoanForm'), {
@@ -36,6 +37,7 @@ export default function PeminjamanPage() {
   const [overdueOnly, setOverdueOnly] = useState(false);
   const [pendingReturn, setPendingReturn] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [denied, setDenied] = useState(false);
   const optionsLoaded = useRef(false);
 
   useEffect(() => {
@@ -53,6 +55,12 @@ export default function PeminjamanPage() {
       ...(overdueOnly ? { overdue: '1' } : status ? { status } : {}),
     });
     const res = await fetch(`/api/loans?${q}`);
+    if (res.status === 401 || res.status === 403) {
+      setDenied(true);
+      setLoans([]);
+      return;
+    }
+    setDenied(false);
     const json = (await res.json()) as { data?: Loan[] };
     if (!res.ok) return;
     const rows = json.data ?? [];
@@ -162,6 +170,15 @@ export default function PeminjamanPage() {
         </div>
       )}
       <h1 className="text-2xl font-bold">Peminjaman</h1>
+      {denied && (
+        <div
+          role="alert"
+          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+        >
+          Akses ditolak (401/403). Silakan login sebagai petugas untuk menagih dan memproses
+          pengembalian.
+        </div>
+      )}
       <LoanForm members={members} books={books} />
       <div className="flex flex-wrap items-center gap-2 text-sm">
         <label>Filter:</label>
@@ -230,12 +247,25 @@ export default function PeminjamanPage() {
             header: 'Aksi',
             render: (r) =>
               r.status === 'borrowed' || r.status === 'overdue' ? (
-                <button
-                  onClick={() => onReturn(r.id)}
-                  className="rounded bg-slate-900 px-2 py-1 text-xs text-white"
-                >
-                  Kembalikan
-                </button>
+                <span className="inline-flex flex-wrap items-center gap-1">
+                  <button
+                    onClick={() => onReturn(r.id)}
+                    disabled={denied}
+                    className="rounded bg-slate-900 px-2 py-1 text-xs text-white disabled:opacity-50"
+                  >
+                    Kembalikan
+                  </button>
+                  {r.is_overdue && (
+                    <DunningButton
+                      loanId={r.id}
+                      memberCode={r.members?.member_code ?? '-'}
+                      title={r.books?.title ?? '-'}
+                      dueAt={r.due_at}
+                      fine={r.fine_amount}
+                      disabled={denied}
+                    />
+                  )}
+                </span>
               ) : (
                 <span className="text-xs text-slate-400">-</span>
               ),
