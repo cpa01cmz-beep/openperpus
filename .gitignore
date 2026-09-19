@@ -58,5 +58,5 @@ next-env.d.ts
 # personal tooling backups
 opencode.json.bak
 
-# CI menyusul (butuh token scope workflow)
-.github/workflows/
+# agent memory (orchestrator state, bukan source)
+.agent_memory/

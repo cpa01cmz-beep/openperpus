@@ -4,7 +4,9 @@ import { defineCloudflareConfig } from '@opennextjs/cloudflare';
 // TIDAK BOLEH memanggil opennext (rekursi tanpa akhir). buildCommand
 // dialihkan ke script non-rekursif. Lihat:
 // https://opennext.js.org/cloudflare/cli#build-command
-export default {
+const cloudflareConfig = {
   ...defineCloudflareConfig(),
   buildCommand: 'npm run next:build',
 };
+
+export default cloudflareConfig;

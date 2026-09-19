@@ -18,10 +18,12 @@ not_found_handling = "none"
 # Public env (NEXT_PUBLIC_* ikut ke client bundle — aman di-commit, bukan secret)
 # Anon key dirancang publik: semua akses data tetap dijaga RLS Supabase.
 # Jangan taruh SUPABASE_SERVICE_ROLE_KEY di sini (server-only, via `wrangler secret put`).
+# CATATAN: [vars] di bawah hanya untuk preview lokal (`npm run cf:preview`).
+# Produksi WAJIB override via `wrangler secret put` (lihat README "Secret di Cloudflare").
+# Jangan commit nilai secret nyata ke file ini.
 [vars]
 NEXT_PUBLIC_SUPABASE_URL = "https://oliwjoxsdtieujioeets.supabase.co"
 NEXT_PUBLIC_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9saXdqb3hzZHRpZXVqaW9lZXRzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3MDYyNzgsImV4cCI6MjEwNTI4MjI3OH0.Kms_lYWPGruan-88LxJii9ZshGqBOde9XkNOr_HfBNY"
 
-# Contoh observability (opsional, aktifkan bila perlu)
-# [observability.logs]
-# enabled = true
+[observability.logs]
+enabled = true
