@@ -1,16 +1,39 @@
+import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Newspaper } from 'lucide-react';
 import { fetchArticles, fetchSettings } from '@/lib/books';
 import { coverSrc } from '@/lib/cover';
+import { getSiteUrl } from '@/lib/site';
+import Breadcrumb from '@/components/public/Breadcrumb';
 
 export const revalidate = 60;
 
-export async function generateMetadata() {
+export async function generateMetadata(): Promise<Metadata> {
   const s = await fetchSettings();
+  const siteName = s.name ?? 'Perpustakaan';
+  const title = `Berita & Artikel — ${siteName}`;
+  const description = `Kabar, kegiatan, dan artikel literasi dari ${siteName}.`;
+  const canonical = `${getSiteUrl()}/berita`;
   return {
-    title: `Berita & Artikel — ${s.name ?? 'Perpustakaan'}`,
-    description: `Kabar, kegiatan, dan artikel literasi dari ${s.name ?? 'perpustakaan'}.`,
+    title,
+    description,
+    alternates: { canonical },
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      locale: 'id_ID',
+      url: canonical,
+      siteName,
+      images: [{ url: '/og-default.jpg', width: 1200, height: 630, alt: title }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: ['/og-default.jpg'],
+    },
   };
 }
 
@@ -20,6 +43,20 @@ export default async function BeritaPage() {
 
   return (
     <div className="space-y-6">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              { '@type': 'ListItem', position: 1, name: 'Beranda', item: getSiteUrl() },
+              { '@type': 'ListItem', position: 2, name: 'Berita', item: `${getSiteUrl()}/berita` },
+            ],
+          }),
+        }}
+      />
+      <Breadcrumb items={[{ label: 'Beranda', href: '/' }, { label: 'Berita' }]} />
       <header>
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">
           Kabar perpustakaan

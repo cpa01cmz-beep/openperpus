@@ -1,39 +1,8 @@
 import type { Metadata } from 'next';
-import dynamic from 'next/dynamic';
+import CatalogExplorer from '@/components/public/CatalogExplorer';
 import { fetchBooksPaged, fetchCategories, fetchSettings } from '@/lib/books';
 import { getSiteUrl } from '@/lib/site';
-
-const CatalogExplorer = dynamic(() => import('@/components/public/CatalogExplorer'), {
-  ssr: true,
-  loading: () => <CatalogSkeleton />,
-});
-
-function CatalogSkeleton() {
-  return (
-    <div aria-hidden="true" className="animate-pulse space-y-4">
-      <div className="h-12 rounded-[var(--radius-lg)] bg-[var(--ink)]/5" />
-      <div className="flex gap-2">
-        <div className="h-9 w-24 rounded-full bg-[var(--ink)]/5" />
-        <div className="h-9 w-20 rounded-full bg-[var(--ink)]/5" />
-        <div className="h-9 w-28 rounded-full bg-[var(--ink)]/5" />
-      </div>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4 xl:grid-cols-5">
-        {Array.from({ length: 10 }).map((_, i) => (
-          <div
-            key={i}
-            className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--ink)]/10 bg-[var(--surface)]"
-          >
-            <div className="aspect-[3/4] bg-[var(--ink)]/5" />
-            <div className="space-y-2 p-3">
-              <div className="h-3 w-3/4 rounded bg-[var(--ink)]/10" />
-              <div className="h-3 w-1/2 rounded bg-[var(--ink)]/5" />
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+import Breadcrumb from '@/components/public/Breadcrumb';
 
 export const revalidate = 60;
 
@@ -111,19 +80,36 @@ export default async function KatalogPage({ searchParams }: { searchParams?: Sea
         dangerouslySetInnerHTML={{
           __html: JSON.stringify({
             '@context': 'https://schema.org',
-            '@type': 'ItemList',
-            name: 'Katalog Buku',
-            url: `${getSiteUrl()}/katalog`,
-            numberOfItems: total,
-            itemListElement: books.slice(0, 24).map((b, i) => ({
-              '@type': 'ListItem',
-              position: (page - 1) * perPage + i + 1,
-              url: `${getSiteUrl()}/katalog/${b.slug}`,
-              name: b.title,
-            })),
+            '@graph': [
+              {
+                '@type': 'ItemList',
+                name: 'Katalog Buku',
+                url: `${getSiteUrl()}/katalog`,
+                numberOfItems: total,
+                itemListElement: books.slice(0, 24).map((b, i) => ({
+                  '@type': 'ListItem',
+                  position: (page - 1) * perPage + i + 1,
+                  url: `${getSiteUrl()}/katalog/${b.slug}`,
+                  name: b.title,
+                })),
+              },
+              {
+                '@type': 'BreadcrumbList',
+                itemListElement: [
+                  { '@type': 'ListItem', position: 1, name: 'Beranda', item: getSiteUrl() },
+                  {
+                    '@type': 'ListItem',
+                    position: 2,
+                    name: 'Katalog',
+                    item: `${getSiteUrl()}/katalog`,
+                  },
+                ],
+              },
+            ],
           }),
         }}
       />
+      <Breadcrumb items={[{ label: 'Beranda', href: '/' }, { label: 'Katalog' }]} />
       <header>
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-amber-600">OPAC</p>
         <h1 className="mt-1 font-serif text-3xl font-bold text-emerald-950 sm:text-4xl">

@@ -3,6 +3,7 @@ import { revalidatePath, revalidateTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { requireStaff, jsonError } from '@/lib/supabase/auth';
 import { returnLoan } from '@/lib/loans-return';
+import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
 type Ctx = { params: { id: string } };
 
@@ -14,6 +15,7 @@ type Ctx = { params: { id: string } };
  */
 
 export async function POST(req: Request, { params }: Ctx) {
+  const log = createLogger(requestIdFromHeaders(req.headers));
   const guard = await requireStaff(['admin', 'librarian']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
   const { supabase, user } = guard as {
@@ -36,7 +38,10 @@ export async function POST(req: Request, { params }: Ctx) {
     notes: typeof body.notes === 'string' ? body.notes : undefined,
     kondisi: String(body.kondisi ?? body.condition ?? 'baik'),
   });
-  if (res.status !== 200) return res;
+  if (res.status !== 200) {
+    log.warn('loans.id.return_failed', { status: res.status });
+    return res;
+  }
   const j = (await res.json()) as { data: unknown };
 
   const revalidated: string[] = [];

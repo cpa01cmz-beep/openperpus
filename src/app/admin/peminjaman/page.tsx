@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import nextDynamic from 'next/dynamic';
-import DataTable from '@/components/admin/DataTable';
+import DataTable, { type SortDir } from '@/components/admin/DataTable';
 import DunningButton from '@/components/admin/DunningButton';
+import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
+import Pagination from '@/components/ui/Pagination';
 
 const LoanForm = nextDynamic(() => import('@/components/admin/LoanForm'), {
   ssr: false,
@@ -35,6 +37,11 @@ export default function PeminjamanPage() {
   const [books, setBooks] = useState<{ id: string; label: string; stock?: number }[]>([]);
   const [status, setStatus] = useState('');
   const [overdueOnly, setOverdueOnly] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [sortKey, setSortKey] = useState('');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pendingReturn, setPendingReturn] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [denied, setDenied] = useState(false);
@@ -51,8 +58,10 @@ export default function PeminjamanPage() {
 
   const load = useCallback(async () => {
     const q = new URLSearchParams({
-      per_page: '20',
+      page: String(page),
+      per_page: '10',
       ...(overdueOnly ? { overdue: '1' } : status ? { status } : {}),
+      ...(sortKey ? { sort: sortKey, order: sortDir } : {}),
     });
     const res = await fetch(`/api/loans?${q}`);
     if (res.status === 401 || res.status === 403) {
@@ -61,14 +70,15 @@ export default function PeminjamanPage() {
       return;
     }
     setDenied(false);
-    const json = (await res.json()) as { data?: Loan[] };
+    const json = (await res.json()) as {
+      data?: Loan[];
+      pagination?: { totalPages?: number };
+      meta?: { totalPages?: number };
+    };
     if (!res.ok) return;
-    const rows = json.data ?? [];
-    if (overdueOnly) {
-      rows.sort((a, b) => new Date(a.due_at).getTime() - new Date(b.due_at).getTime());
-    }
-    setLoans(rows);
-  }, [status, overdueOnly]);
+    setLoans(json.data ?? []);
+    setTotalPages(json.pagination?.totalPages ?? json.meta?.totalPages ?? 1);
+  }, [status, overdueOnly, page, sortKey, sortDir]);
 
   const loadOptions = useCallback(async (force = false) => {
     if (optionsLoaded.current && !force) return;
@@ -113,6 +123,27 @@ export default function PeminjamanPage() {
     setPendingReturn(id);
   }
 
+  function toggleSort(key: string) {
+    setSortDir((prev) => (sortKey === key && prev === 'asc' ? 'desc' : 'asc'));
+    setSortKey(key);
+    setPage(1);
+  }
+
+  function toggleSelect(id: string) {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function toggleAll() {
+    setSelected((prev) =>
+      prev.size === loans.length ? new Set() : new Set(loans.map((r) => r.id))
+    );
+  }
+
   async function confirmReturn() {
     const id = pendingReturn;
     if (!id) return;
@@ -142,20 +173,17 @@ export default function PeminjamanPage() {
         description="Denda dihitung otomatis Rp1.000/hari telat."
         footer={
           <>
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={() => setPendingReturn(null)}
-              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
             >
               Batal
-            </button>
-            <button
-              type="button"
-              onClick={() => void confirmReturn()}
-              className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm text-white"
-            >
+            </Button>
+            <Button type="button" size="sm" onClick={() => void confirmReturn()}>
               Ya, kembalikan
-            </button>
+            </Button>
           </>
         }
       >
@@ -180,41 +208,54 @@ export default function PeminjamanPage() {
         </div>
       )}
       <LoanForm members={members} books={books} />
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        <label>Filter:</label>
-        <select
-          className="rounded-lg border px-3 py-1.5"
-          value={status}
-          onChange={(e) => {
-            setStatus(e.target.value);
-            setOverdueOnly(false);
-          }}
-          disabled={overdueOnly}
-        >
-          <option value="">Semua</option>
-          <option value="borrowed">borrowed</option>
-          <option value="overdue">overdue</option>
-          <option value="returned">returned</option>
-          <option value="lost">lost</option>
-        </select>
+      <div className="flex flex-wrap items-end gap-2 text-sm">
+        <div className="grid gap-1">
+          <label htmlFor="peminjaman-status" className="text-sm font-semibold text-slate-700">
+            Filter status
+          </label>
+          <select
+            id="peminjaman-status"
+            className="h-11 min-h-[44px] rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50"
+            value={status}
+            onChange={(e) => {
+              setStatus(e.target.value);
+              setOverdueOnly(false);
+            }}
+            disabled={overdueOnly}
+          >
+            <option value="">Semua</option>
+            <option value="borrowed">borrowed</option>
+            <option value="overdue">overdue</option>
+            <option value="returned">returned</option>
+            <option value="lost">lost</option>
+          </select>
+        </div>
         <button
           type="button"
           aria-pressed={overdueOnly}
           onClick={() => setOverdueOnly((v) => !v)}
-          className={`rounded-lg border px-3 py-1.5 ${overdueOnly ? 'border-red-300 bg-red-50 text-red-700' : ''}`}
+          className={`inline-flex min-h-[44px] items-center justify-center rounded-md border px-3 font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${overdueOnly ? 'border-red-300 bg-red-50 text-red-700' : 'border-slate-200 bg-white text-slate-700 hover:border-brand hover:text-brand'}`}
         >
           Terlambat saja
         </button>
         <button
+          type="button"
           onClick={() => {
             void Promise.all([load(), loadOptions(true)]);
           }}
-          className="rounded-lg border px-3 py-1.5"
+          className="inline-flex min-h-[44px] items-center justify-center rounded-md border border-slate-200 bg-white px-3 font-semibold text-slate-700 transition hover:border-brand hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
         >
           Muat ulang
         </button>
       </div>
       <DataTable<Loan>
+        sortKey={sortKey}
+        sortDir={sortDir}
+        onSort={toggleSort}
+        selectedKeys={selected}
+        onToggleRow={toggleSelect}
+        onToggleAll={toggleAll}
+        bulkLabel={(k) => `Pilih pinjaman ${k}`}
         columns={[
           {
             key: 'peminjam',
@@ -230,6 +271,7 @@ export default function PeminjamanPage() {
           {
             key: 'due_at',
             header: 'Pinjam → Tempo',
+            sortable: true,
             render: (r) => (
               <span>
                 {new Date(r.borrowed_at).toLocaleDateString('id-ID')}
@@ -240,7 +282,7 @@ export default function PeminjamanPage() {
               </span>
             ),
           },
-          { key: 'status', header: 'Status', render: (r) => r.status },
+          { key: 'status', header: 'Status', sortable: true, render: (r) => r.status },
           { key: 'fine_amount', header: 'Denda', render: (r) => fmtRp(r.fine_amount) },
           {
             key: 'aksi',
@@ -249,9 +291,11 @@ export default function PeminjamanPage() {
               r.status === 'borrowed' || r.status === 'overdue' ? (
                 <span className="inline-flex flex-wrap items-center gap-1">
                   <button
+                    type="button"
                     onClick={() => onReturn(r.id)}
                     disabled={denied}
-                    className="rounded bg-slate-900 px-2 py-1 text-xs text-white disabled:opacity-50"
+                    aria-label={`Kembalikan pinjaman ${r.members?.member_code ?? r.id}`}
+                    className="inline-flex min-h-[44px] items-center rounded bg-brand px-3 text-xs font-semibold text-white transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Kembalikan
                   </button>
@@ -275,6 +319,7 @@ export default function PeminjamanPage() {
         getRowKey={(r) => r.id}
         emptyText="Belum ada peminjaman."
       />
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
     </div>
   );
 }

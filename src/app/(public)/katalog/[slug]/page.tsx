@@ -24,7 +24,8 @@ export const revalidate = 60;
 type Props = { params: { slug: string } };
 
 export async function generateStaticParams() {
-  const books = await fetchBooks({ limit: 100 });
+  // Window selaras sitemap (limit 500): detail di luar window tetap OK via ISR (revalidate 60).
+  const books = await fetchBooks({ limit: 500 });
   return books.map((b) => ({ slug: b.slug }));
 }
 
@@ -108,6 +109,25 @@ export default async function BookDetailPage({ params }: Props) {
         inLanguage: book.language ?? 'id',
         image: cover ?? undefined,
         url: `${getSiteUrl()}/katalog/${params.slug}`,
+        offers: {
+          '@type': 'Offer',
+          availability:
+            (Number(book.stock_available) || 0) > 0
+              ? 'https://schema.org/InStock'
+              : 'https://schema.org/OutOfStock',
+          price: '0',
+          priceCurrency: 'IDR',
+        },
+        ...(rating > 0
+          ? {
+              aggregateRating: {
+                '@type': 'AggregateRating',
+                ratingValue: rating.toFixed(1),
+                bestRating: '5',
+                ratingCount: 1,
+              },
+            }
+          : {}),
       },
       {
         '@type': 'BreadcrumbList',
@@ -156,6 +176,8 @@ export default async function BookDetailPage({ params }: Props) {
                 width={560}
                 height={747}
                 sizes="(max-width: 640px) 100vw, 280px"
+                priority
+                fetchPriority="high"
                 className="h-full w-full object-cover"
               />
             ) : (
@@ -238,18 +260,18 @@ export default async function BookDetailPage({ params }: Props) {
             </p>
             {available ? (
               <>
-                <Link
-                  href={`/kontak?buku=${book.slug}`}
-                  className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand px-6 py-3 text-sm font-bold text-white shadow transition hover:bg-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
-                >
-                  Pinjam Buku <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                </Link>
                 <ReserveButton
                   bookId={book.id}
                   slug={book.slug}
                   title={book.title}
                   waHref={waHref}
                 />
+                <Link
+                  href={`/kontak?buku=${book.slug}`}
+                  className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--radius-md)] border border-brand/40 bg-[var(--surface)] px-6 py-3 text-sm font-semibold text-brand-strong shadow-sm transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                >
+                  Pinjam Buku <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </Link>
               </>
             ) : (
               <>
@@ -276,7 +298,7 @@ export default async function BookDetailPage({ params }: Props) {
                 href={waHref}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--radius-md)] border border-[#25D366]/40 bg-[var(--surface)] px-5 py-3 text-sm font-semibold text-[#128C4B] shadow-sm transition hover:bg-[#25D366]/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#25D366]"
+                className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--radius-md)] border border-brand/40 bg-[var(--surface)] px-5 py-3 text-sm font-semibold text-brand-strong shadow-sm transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
                 Tanya via WA
               </a>

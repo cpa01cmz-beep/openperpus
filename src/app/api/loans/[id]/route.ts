@@ -3,6 +3,7 @@ import { revalidatePath, revalidateTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { requireStaff, jsonError } from '@/lib/supabase/auth';
 import { returnLoan } from '@/lib/loans-return';
+import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
 type Ctx = { params: { id: string } };
 
@@ -37,6 +38,7 @@ function revalidateLoans(): string[] {
 }
 
 export async function GET(_req: Request, { params }: Ctx) {
+  const log = createLogger(requestIdFromHeaders(_req.headers));
   const supabase = createClient();
   const {
     data: { user },
@@ -49,8 +51,10 @@ export async function GET(_req: Request, { params }: Ctx) {
     .select('*, members(id,member_code,user_id), books(id,title,slug)')
     .eq('id', params.id)
     .single();
-  if (error || !loan)
-    return jsonError('NOT_FOUND', 'Peminjaman tidak ditemukan.', 404, error?.message);
+  if (error || !loan) {
+    log.warn('loans.id.not_found', { detail: error?.message ?? 'not-found' });
+    return jsonError('NOT_FOUND', 'Peminjaman tidak ditemukan.', 404, { requestId: log.requestId });
+  }
 
   const { data: profile } = await supabase
     .from('profiles')
@@ -96,6 +100,7 @@ export async function PUT(req: Request, { params }: Ctx) {
 }
 
 export async function DELETE(_req: Request, { params }: Ctx) {
+  const log = createLogger(requestIdFromHeaders(_req.headers));
   const guard = await requireStaff(['admin']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
   const { supabase, user } = guard as {
@@ -113,7 +118,12 @@ export async function DELETE(_req: Request, { params }: Ctx) {
   }
 
   const { error } = await supabase.from('loans').delete().eq('id', params.id);
-  if (error) return jsonError('DELETE_FAILED', 'Gagal menghapus peminjaman.', 500, error.message);
+  if (error) {
+    log.error('loans.id.delete_failed', { detail: error.message });
+    return jsonError('DELETE_FAILED', 'Gagal menghapus peminjaman.', 500, {
+      requestId: log.requestId,
+    });
+  }
 
   try {
     await supabase.from('activity_logs').insert({

@@ -1,6 +1,6 @@
 'use client';
 
-import type { Category } from '@/lib/books';
+import type { Category } from '@/lib/types';
 
 type Props = {
   categories: Pick<Category, 'id' | 'name' | 'slug'>[];

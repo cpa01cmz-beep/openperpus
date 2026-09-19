@@ -1,4 +1,4 @@
-import type { Banner } from "@/lib/books";
+import type { Banner } from '@/lib/types';
 
 /** Shared hero props across all variants (same contract as public/Hero). */
 export type HeroProps = {

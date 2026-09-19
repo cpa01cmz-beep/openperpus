@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { requireStaff, jsonError } from '@/lib/supabase/auth';
+import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
 /**
  * GET /api/settings  -> publik (RLS: anon boleh SELECT), library_settings id=1
@@ -54,7 +55,8 @@ function normalizeSettings(input: Record<string, unknown>): Record<string, unkno
   return out;
 }
 
-export async function GET() {
+export async function GET(req: Request) {
+  const log = createLogger(requestIdFromHeaders(req.headers));
   // Publik: pakai anon client langsung (RLS mengizinkan SELECT settings).
   const supabase = createClient();
   const { data, error } = await supabase
@@ -62,12 +64,18 @@ export async function GET() {
     .select('*')
     .eq('id', 1)
     .maybeSingle();
-  if (error) return jsonError('FETCH_FAILED', 'Gagal mengambil pengaturan.', 500, error.message);
+  if (error) {
+    log.error('settings.fetch_failed', { detail: error.message });
+    return jsonError('FETCH_FAILED', 'Gagal mengambil pengaturan.', 500, {
+      requestId: log.requestId,
+    });
+  }
   if (!data) return jsonError('NOT_FOUND', 'Pengaturan belum di-seed.', 404);
   return NextResponse.json({ data });
 }
 
 export async function PUT(req: Request) {
+  const log = createLogger(requestIdFromHeaders(req.headers));
   const guard = await requireStaff(['admin', 'librarian']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
   const { supabase, user } = guard as {
@@ -117,7 +125,12 @@ export async function PUT(req: Request) {
     .select()
     .single();
 
-  if (error) return jsonError('SAVE_FAILED', 'Gagal menyimpan pengaturan.', 500, error.message);
+  if (error) {
+    log.error('settings.save_failed', { detail: error.message });
+    return jsonError('SAVE_FAILED', 'Gagal menyimpan pengaturan.', 500, {
+      requestId: log.requestId,
+    });
+  }
   try {
     await supabase.from('activity_logs').insert({
       user_id: user?.id ?? null,

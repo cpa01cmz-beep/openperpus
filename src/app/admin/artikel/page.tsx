@@ -3,6 +3,9 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import DataTable from '@/components/admin/DataTable';
+import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
+import Pagination from '@/components/ui/Pagination';
 
 type Article = { id: string; title: string; slug: string; status: string };
 
@@ -14,6 +17,8 @@ function errMsg(json: unknown): string {
 
 export default function ArtikelPage() {
   const [rows, setRows] = useState<Article[]>([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [form, setForm] = useState({
     title: '',
     content_md: '',
@@ -24,10 +29,18 @@ export default function ArtikelPage() {
   });
 
   const load = useCallback(async () => {
-    const res = await fetch('/api/articles?per_page=20');
-    const json = (await res.json()) as { data?: Article[] };
-    if (res.ok) setRows(json.data ?? []);
-  }, []);
+    const q = new URLSearchParams({ page: String(page), per_page: '10' });
+    const res = await fetch(`/api/articles?${q}`);
+    const json = (await res.json()) as {
+      data?: Article[];
+      pagination?: { totalPages?: number };
+      meta?: { totalPages?: number };
+    };
+    if (res.ok) {
+      setRows(json.data ?? []);
+      setTotalPages(json.pagination?.totalPages ?? json.meta?.totalPages ?? 1);
+    }
+  }, [page]);
 
   useEffect(() => {
     load();
@@ -62,57 +75,84 @@ export default function ArtikelPage() {
     load();
   }
 
-  const input = 'rounded-lg border px-3 py-2 text-sm';
+  const rawInput =
+    'h-11 min-h-[44px] w-full rounded-md border border-slate-200 bg-white px-4 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1';
   return (
     <div className="grid gap-4">
       <h1 className="text-2xl font-bold">Artikel</h1>
       <form onSubmit={onAdd} className="grid max-w-2xl gap-2 rounded-2xl border bg-white p-4">
-        <input
-          className={input}
+        <Input
+          id="artikel-title"
+          label="Judul"
           placeholder="Judul* (slug otomatis)"
           value={form.title}
           onChange={(e) => setForm({ ...form, title: e.target.value })}
           required
         />
-        <div className="flex gap-2">
-          <input
-            className={input}
-            placeholder="Cover URL"
-            value={form.cover_url}
-            onChange={(e) => setForm({ ...form, cover_url: e.target.value })}
-          />
-          <input
-            className={input}
-            placeholder="Kategori"
-            value={form.category}
-            onChange={(e) => setForm({ ...form, category: e.target.value })}
-          />
+        <div className="flex flex-wrap gap-2">
+          <div className="min-w-[200px] flex-1">
+            <Input
+              id="artikel-cover-url"
+              label="Cover URL"
+              placeholder="Cover URL"
+              value={form.cover_url}
+              onChange={(e) => setForm({ ...form, cover_url: e.target.value })}
+            />
+          </div>
+          <div className="min-w-[160px] flex-1">
+            <Input
+              id="artikel-category"
+              label="Kategori"
+              placeholder="Kategori"
+              value={form.category}
+              onChange={(e) => setForm({ ...form, category: e.target.value })}
+            />
+          </div>
         </div>
-        <input
-          className={input}
+        <Input
+          id="artikel-excerpt"
+          label="Ringkasan"
           placeholder="Ringkasan (excerpt)"
           value={form.excerpt}
           onChange={(e) => setForm({ ...form, excerpt: e.target.value })}
         />
-        <textarea
-          className={input}
-          rows={4}
-          placeholder="Konten markdown* (content_md)"
-          value={form.content_md}
-          onChange={(e) => setForm({ ...form, content_md: e.target.value })}
-          required
-        />
-        <div className="flex gap-2">
-          <select
-            className={input}
-            value={form.status}
-            onChange={(e) => setForm({ ...form, status: e.target.value })}
+        <div className="grid gap-1 text-sm">
+          <label
+            htmlFor="artikel-content"
+            className="mb-1.5 block text-sm font-semibold text-slate-700"
           >
-            <option value="draft">draft</option>
-            <option value="published">published</option>
-            <option value="archived">archived</option>
-          </select>
-          <button className="rounded-lg bg-slate-900 px-4 py-2 text-sm text-white">+ Tambah</button>
+            Konten markdown
+          </label>
+          <textarea
+            id="artikel-content"
+            className={rawInput}
+            rows={4}
+            placeholder="Konten markdown* (content_md)"
+            value={form.content_md}
+            onChange={(e) => setForm({ ...form, content_md: e.target.value })}
+            required
+          />
+        </div>
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="grid gap-1">
+            <label
+              htmlFor="artikel-status"
+              className="mb-1.5 block text-sm font-semibold text-slate-700"
+            >
+              Status
+            </label>
+            <select
+              id="artikel-status"
+              className={rawInput}
+              value={form.status}
+              onChange={(e) => setForm({ ...form, status: e.target.value })}
+            >
+              <option value="draft">draft</option>
+              <option value="published">published</option>
+              <option value="archived">archived</option>
+            </select>
+          </div>
+          <Button type="submit">+ Tambah</Button>
         </div>
       </form>
       <DataTable<Article>
@@ -128,14 +168,19 @@ export default function ArtikelPage() {
             key: 'aksi',
             header: 'Aksi',
             render: (r) => (
-              <span className="flex gap-2">
+              <span className="flex flex-wrap items-center gap-2">
                 <Link
                   href={`/admin/artikel/edit/${r.id}`}
-                  className="text-blue-600 hover:underline"
+                  className="inline-flex min-h-[44px] items-center text-blue-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
                   Edit
                 </Link>
-                <button onClick={() => onDelete(r.id)} className="text-red-600 hover:underline">
+                <button
+                  type="button"
+                  onClick={() => onDelete(r.id)}
+                  aria-label={`Hapus artikel ${r.title}`}
+                  className="inline-flex min-h-[44px] items-center text-red-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                >
                   Hapus
                 </button>
               </span>
@@ -145,6 +190,7 @@ export default function ArtikelPage() {
         rows={rows}
         getRowKey={(r) => r.id}
       />
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
     </div>
   );
 }

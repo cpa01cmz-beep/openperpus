@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { requireStaff, jsonError, parsePaging } from '@/lib/supabase/auth';
+import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
 /**
  * GET /api/banners — urut sort_order (staf; publik via helper lib)
@@ -41,6 +42,7 @@ async function writeLog(
 }
 
 export async function GET(req: Request) {
+  const log = createLogger(requestIdFromHeaders(req.headers));
   const guard = await requireStaff();
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
   const { supabase } = guard as { supabase: ReturnType<typeof createClient> };
@@ -65,7 +67,10 @@ export async function GET(req: Request) {
     .select('id,title,image_url,link,sort_order,is_active,created_at', { count: 'exact' })
     .order(sort, { ascending: asc })
     .range(from, to);
-  if (error) return jsonError('FETCH_FAILED', 'Gagal mengambil banner.', 500, error.message);
+  if (error) {
+    log.error('banners.fetch_failed', { detail: error.message });
+    return jsonError('FETCH_FAILED', 'Gagal mengambil banner.', 500, { requestId: log.requestId });
+  }
   const total = count ?? 0;
   return NextResponse.json({
     data,
@@ -75,6 +80,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const log = createLogger(requestIdFromHeaders(req.headers));
   const guard = await requireStaff(['admin', 'librarian']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
   const { supabase, user } = guard as {
@@ -112,12 +118,16 @@ export async function POST(req: Request) {
     .select()
     .single();
 
-  if (error) return jsonError('SAVE_FAILED', 'Gagal menambah banner.', 500, error.message);
+  if (error) {
+    log.error('banners.save_failed', { detail: error.message });
+    return jsonError('SAVE_FAILED', 'Gagal menambah banner.', 500, { requestId: log.requestId });
+  }
   await writeLog(supabase, user?.id, 'banners.create', (data as { id: string }).id, { title });
   return NextResponse.json({ data, revalidated: revalidateBanners() }, { status: 201 });
 }
 
 export async function PUT(req: Request) {
+  const log = createLogger(requestIdFromHeaders(req.headers));
   const guard = await requireStaff(['admin', 'librarian']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
   const { supabase, user } = guard as {
@@ -155,12 +165,16 @@ export async function PUT(req: Request) {
     .eq('id', id)
     .select()
     .single();
-  if (error) return jsonError('SAVE_FAILED', 'Gagal mengupdate banner.', 500, error.message);
+  if (error) {
+    log.error('banners.save_failed', { detail: error.message });
+    return jsonError('SAVE_FAILED', 'Gagal mengupdate banner.', 500, { requestId: log.requestId });
+  }
   await writeLog(supabase, user?.id, 'banners.update', id, payload);
   return NextResponse.json({ data, revalidated: revalidateBanners() });
 }
 
 export async function DELETE(req: Request) {
+  const log = createLogger(requestIdFromHeaders(req.headers));
   const guard = await requireStaff(['admin']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
   const { supabase, user } = guard as {
@@ -172,7 +186,10 @@ export async function DELETE(req: Request) {
   if (!id) return jsonError('VALIDATION', 'Parameter ?id= wajib.', 400);
 
   const { error } = await supabase.from('banners').delete().eq('id', id);
-  if (error) return jsonError('DELETE_FAILED', 'Gagal menghapus banner.', 500, error.message);
+  if (error) {
+    log.error('banners.delete_failed', { detail: error.message });
+    return jsonError('DELETE_FAILED', 'Gagal menghapus banner.', 500, { requestId: log.requestId });
+  }
   await writeLog(supabase, user?.id, 'banners.delete', id);
   return NextResponse.json({ message: 'Banner dihapus.', revalidated: revalidateBanners() });
 }

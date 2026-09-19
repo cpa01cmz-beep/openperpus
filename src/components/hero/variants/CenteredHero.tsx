@@ -6,6 +6,7 @@ import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useHeroCarousel } from './useHeroCarousel';
 import { HeroFallback } from './HeroFallback';
 import type { HeroProps } from './heroProps';
+import { resolveBannerHref } from '@/lib/banner-link';
 
 /** CenteredHero: emerald-centered variant. Surface-framed carousel card with
  *  brand-strong scrim, Playfair display scale, layered emerald shadows. */
@@ -17,6 +18,7 @@ export default function CenteredHero({ banners, siteName, tagline }: HeroProps) 
 
   const active = banners[idx];
   if (!active) return null;
+  const bannerHref = resolveBannerHref(active.link);
 
   return (
     <section
@@ -70,7 +72,7 @@ export default function CenteredHero({ banners, siteName, tagline }: HeroProps) 
           ) : null}
           <div className="mt-5 flex flex-wrap items-center justify-center gap-3">
             <Link
-              href={active.link ?? '/katalog'}
+              href={bannerHref}
               className="inline-flex items-center gap-2 rounded-[var(--radius-lg)] bg-accent px-5 py-2.5 text-sm font-bold text-brand-strong shadow-[var(--shadow-md)] transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-lg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--surface)]"
             >
               {active.link ? 'Selengkapnya' : 'Jelajahi Katalog'}{' '}

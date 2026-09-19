@@ -70,7 +70,7 @@ export default function DunningButton({ loanId, memberCode, title, dueAt, fine, 
         onClick={() => {
           void logClick();
         }}
-        className={`rounded px-2 py-1 text-xs font-semibold text-white ${disabled ? 'pointer-events-none bg-slate-300' : 'bg-emerald-700 hover:bg-emerald-800'}`}
+        className={`inline-flex min-h-[44px] items-center rounded px-3 text-xs font-semibold text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${disabled ? 'pointer-events-none bg-slate-300' : 'bg-emerald-700 hover:bg-emerald-800'}`}
       >
         Tagih WA
       </a>
@@ -80,7 +80,7 @@ export default function DunningButton({ loanId, memberCode, title, dueAt, fine, 
         onClick={() => {
           void onCopy();
         }}
-        className="rounded border px-2 py-1 text-xs disabled:opacity-50"
+        className="inline-flex min-h-[44px] items-center rounded border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:border-brand hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
       >
         Salin rincian
       </button>

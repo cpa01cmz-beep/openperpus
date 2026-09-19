@@ -3,12 +3,7 @@ import Link from 'next/link';
 import { BookOpen, Star } from 'lucide-react';
 import { ratingNumber, stockState, type Book } from '@/lib/types';
 import { coverSrc } from '@/lib/cover';
-
-const toneClass: Record<string, string> = {
-  emerald: 'bg-brand-soft text-brand border-brand-soft',
-  amber: 'bg-accent-soft text-accent border-accent-soft',
-  rose: 'bg-rose-100 text-rose-800 border-rose-200',
-};
+import Badge from '@/components/ui/Badge';
 
 /** Kartu buku: cover, rating, badge stok. Seluruh kartu berupa link aksesibel. */
 export default function BookCard({ book }: { book: Book }) {
@@ -48,15 +43,16 @@ export default function BookCard({ book }: { book: Book }) {
             </div>
           </div>
         )}
-        <span
-          className={`absolute left-2 top-2 rounded-full border px-2.5 py-1 text-[11px] font-semibold shadow-sm ${toneClass[stock.tone]}`}
-        >
+        <Badge tone={stock.tone} className="absolute left-2 top-2 shadow-sm">
           {stock.label}
-        </span>
+        </Badge>
         {book.featured && (
-          <span className="absolute right-2 top-2 rounded-full bg-accent px-2.5 py-1 text-[11px] font-bold text-brand-strong shadow-sm">
+          <Badge
+            tone="slate"
+            className="absolute right-2 top-2 border-[var(--ink)] bg-[var(--ink)] font-bold text-[var(--surface)] shadow-sm"
+          >
             Unggulan
-          </span>
+          </Badge>
         )}
       </div>
 

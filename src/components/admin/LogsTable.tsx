@@ -18,9 +18,10 @@ export type LogRow = {
  * (tidak serializable -> Server Components render error di produksi).
  * Server hanya mengirim `rows` (data serializable).
  */
-export default function LogsTable({ rows }: { rows: LogRow[] }) {
+export default function LogsTable({ rows, caption }: { rows: LogRow[]; caption?: string }) {
   return (
     <DataTable<LogRow>
+      caption={caption}
       columns={[
         {
           key: 'created_at',
@@ -69,9 +70,7 @@ export default function LogsTable({ rows }: { rows: LogRow[] }) {
           render: (r) =>
             r.metadata ? (
               <details className="text-xs">
-                <summary className="cursor-pointer text-slate-500 underline">
-                  metadata
-                </summary>
+                <summary className="cursor-pointer text-slate-500 underline">metadata</summary>
                 <pre className="mt-1 max-w-[280px] overflow-auto rounded bg-slate-50 p-2 font-mono text-[11px] text-slate-700">
                   {JSON.stringify(r.metadata, null, 2)}
                 </pre>

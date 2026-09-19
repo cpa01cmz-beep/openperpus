@@ -89,7 +89,7 @@ export default function ReserveButton({ bookId, slug, title, waHref, variant = '
               href={waHref}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-md)] bg-[#25D366] px-4 py-2 text-sm font-bold text-white shadow transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-md)] bg-brand px-4 py-2 text-sm font-bold text-white shadow transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             >
               <MessageCircle className="h-4 w-4" aria-hidden="true" /> Reservasi via WA
             </a>

@@ -120,7 +120,11 @@ export default function BookForm({
   return (
     <form onSubmit={onSubmit} className="grid max-w-3xl gap-4 rounded-2xl border bg-white p-6">
       {err && (
-        <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p
+          id="book-form-error"
+          role="alert"
+          className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
+        >
           {err}
         </p>
       )}
@@ -174,19 +178,26 @@ export default function BookForm({
             Kategori
           </label>
           {categories.length > 0 ? (
-            <select
-              id="book-category"
-              className="h-11 w-full rounded-md border border-slate-200 bg-white px-4 text-sm"
-              value={form.category_id ?? ''}
-              onChange={(e) => set('category_id', e.target.value)}
-            >
-              <option value="">— Tanpa kategori —</option>
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
+            <>
+              <select
+                id="book-category"
+                aria-invalid={err ? true : undefined}
+                aria-describedby="book-category-hint"
+                className="h-11 min-h-[44px] w-full rounded-md border border-slate-200 bg-white px-4 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
+                value={form.category_id ?? ''}
+                onChange={(e) => set('category_id', e.target.value)}
+              >
+                <option value="">— Tanpa kategori —</option>
+                {categories.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+              <p id="book-category-hint" className="mt-1.5 text-xs text-slate-500">
+                Pilih kategori buku (opsional).
+              </p>
+            </>
           ) : (
             <Input
               id="book-category"
@@ -202,19 +213,26 @@ export default function BookForm({
             Rak
           </label>
           {racks.length > 0 ? (
-            <select
-              id="book-rack"
-              className="h-11 w-full rounded-md border border-slate-200 bg-white px-4 text-sm"
-              value={form.rack_id ?? ''}
-              onChange={(e) => set('rack_id', e.target.value)}
-            >
-              <option value="">— Tanpa rak —</option>
-              {racks.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.code} — {r.name}
-                </option>
-              ))}
-            </select>
+            <>
+              <select
+                id="book-rack"
+                aria-invalid={err ? true : undefined}
+                aria-describedby="book-rack-hint"
+                className="h-11 min-h-[44px] w-full rounded-md border border-slate-200 bg-white px-4 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
+                value={form.rack_id ?? ''}
+                onChange={(e) => set('rack_id', e.target.value)}
+              >
+                <option value="">— Tanpa rak —</option>
+                {racks.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.code} — {r.name}
+                  </option>
+                ))}
+              </select>
+              <p id="book-rack-hint" className="mt-1.5 text-xs text-slate-500">
+                Pilih rak penyimpanan (opsional).
+              </p>
+            </>
           ) : (
             <Input
               id="book-rack"
@@ -281,11 +299,16 @@ export default function BookForm({
         </label>
         <textarea
           id="book-description"
-          className="w-full rounded-md border border-slate-200 px-4 py-2 text-sm"
+          aria-invalid={err ? true : undefined}
+          aria-describedby={err ? 'book-form-error' : 'book-description-hint'}
+          className="min-h-[44px] w-full rounded-md border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
           rows={4}
           value={form.description}
           onChange={(e) => set('description', e.target.value)}
         />
+        <p id="book-description-hint" className="mt-1.5 text-xs text-slate-500">
+          Ringkasan isi buku untuk katalog (opsional).
+        </p>
       </div>
       <div className="flex gap-4 text-sm">
         <label htmlFor="book-featured" className="flex items-center gap-2">

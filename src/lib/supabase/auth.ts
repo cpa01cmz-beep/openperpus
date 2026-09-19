@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
-import { createClient } from "./server";
+import { NextResponse } from 'next/server';
+import { createClient } from './server';
 
-export type StaffRole = "admin" | "librarian";
+export type StaffRole = 'admin' | 'librarian';
 
 /**
  * Error JSON konsisten mengikuti docs/api-contract.md:
@@ -9,16 +9,14 @@ export type StaffRole = "admin" | "librarian";
  */
 export function jsonError(code: string, message: string, status = 400, details?: unknown) {
   return NextResponse.json(
-    details === undefined
-      ? { error: { code, message } }
-      : { error: { code, message }, details },
+    details === undefined ? { error: { code, message } } : { error: { code, message }, details },
     { status }
   );
 }
 
 /** Alias lama (string-only) tetap didukung bila ada pemanggil lama. */
 export function jsonErrorMsg(message: string, status = 400, details?: unknown) {
-  return jsonError("BAD_REQUEST", message, status, details);
+  return jsonError('BAD_REQUEST', message, status, details);
 }
 
 /**
@@ -27,7 +25,7 @@ export function jsonErrorMsg(message: string, status = 400, details?: unknown) {
  * Mengembalikan { supabase, user, profile } jika lolos,
  * atau { errorResponse } jika gagal (langsung return dari route).
  */
-export async function requireStaff(allowedRoles: StaffRole[] = ["admin", "librarian"]) {
+export async function requireStaff(allowedRoles: StaffRole[] = ['admin', 'librarian']) {
   const supabase = createClient();
   const {
     data: { user },
@@ -35,21 +33,21 @@ export async function requireStaff(allowedRoles: StaffRole[] = ["admin", "librar
   } = await supabase.auth.getUser();
 
   if (userErr || !user) {
-    return { errorResponse: jsonError("UNAUTHORIZED", "Silakan login.", 401) };
+    return { errorResponse: jsonError('UNAUTHORIZED', 'Silakan login.', 401) };
   }
 
   const { data: profile, error: profileErr } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
     .single();
 
   if (profileErr || !profile) {
-    return { errorResponse: jsonError("FORBIDDEN", "Profil tidak ditemukan.", 403) };
+    return { errorResponse: jsonError('FORBIDDEN', 'Profil tidak ditemukan.', 403) };
   }
 
   if (!allowedRoles.includes((profile as { role: string }).role as StaffRole)) {
-    return { errorResponse: jsonError("FORBIDDEN", "Butuh peran admin/librarian.", 403) };
+    return { errorResponse: jsonError('FORBIDDEN', 'Butuh peran admin/librarian.', 403) };
   }
 
   return { supabase, user, profile };
@@ -59,10 +57,10 @@ export async function requireStaff(allowedRoles: StaffRole[] = ["admin", "librar
 export function slugify(input: string): string {
   return input
     .toLowerCase()
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
     .slice(0, 160);
 }
 
@@ -88,19 +86,18 @@ export function addDaysISO(days: number, from: Date = new Date()): string {
 /** Pagination kompatibel kontrak (page/per_page/q) + alias lama (limit/search). */
 export function parsePaging(url: string, defPerPage = 10) {
   const sp = new URL(url).searchParams;
-  const page = Math.max(1, Number(sp.get("page") ?? "1") || 1);
+  const page = Math.max(1, Number(sp.get('page') ?? '1') || 1);
   const perPage = Math.min(
     100,
-    Math.max(1, Number(sp.get("per_page") ?? sp.get("limit") ?? String(defPerPage)) || defPerPage)
+    Math.max(1, Number(sp.get('per_page') ?? sp.get('limit') ?? String(defPerPage)) || defPerPage)
   );
-  const q = (sp.get("q") ?? sp.get("search") ?? "").trim();
-  return { sp, page, perPage, q, from: (page - 1) * perPage, to: (page - 1) * perPage + perPage - 1 };
-}
-
-export function pageMeta(page: number, perPage: number, total: number) {
+  const q = (sp.get('q') ?? sp.get('search') ?? '').trim();
   return {
-    data: undefined as unknown,
-    meta: { page, per_page: perPage, total },
-    pagination: { page, limit: perPage, total, totalPages: Math.ceil(total / perPage) },
+    sp,
+    page,
+    perPage,
+    q,
+    from: (page - 1) * perPage,
+    to: (page - 1) * perPage + perPage - 1,
   };
 }

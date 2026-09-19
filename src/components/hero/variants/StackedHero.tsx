@@ -21,7 +21,7 @@ export default function StackedHero({ banners, siteName, tagline }: HeroProps) {
     <section
       aria-label="Sorotan perpustakaan"
       aria-roledescription="carousel"
-      className="overflow-hidden rounded-none border-2 border-[#111110] bg-brand-strong text-white shadow-[8px_8px_0_0_#111110]"
+      className="overflow-hidden rounded-none border-2 border-ink bg-brand-strong text-white shadow-[8px_8px_0_0_var(--ink)]"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
@@ -55,7 +55,7 @@ export default function StackedHero({ banners, siteName, tagline }: HeroProps) {
               type="button"
               onClick={() => go(-1)}
               aria-label="Banner sebelumnya"
-              className="grid min-h-[44px] min-w-[44px] place-items-center rounded-none border-2 border-white bg-black text-white transition hover:bg-[#111110] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className="grid min-h-[44px] min-w-[44px] place-items-center rounded-none border-2 border-white bg-ink text-white transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
@@ -63,7 +63,7 @@ export default function StackedHero({ banners, siteName, tagline }: HeroProps) {
               type="button"
               onClick={() => go(1)}
               aria-label="Banner berikutnya"
-              className="grid min-h-[44px] min-w-[44px] place-items-center rounded-none border-2 border-white bg-black text-white transition hover:bg-[#111110] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className="grid min-h-[44px] min-w-[44px] place-items-center rounded-none border-2 border-white bg-ink text-white transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               <ChevronRight className="h-5 w-5" />
             </button>
@@ -71,7 +71,7 @@ export default function StackedHero({ banners, siteName, tagline }: HeroProps) {
         )}
       </div>
 
-      <div className="border-t-2 border-[#111110] p-5 sm:p-8">
+      <div className="border-t-2 border-ink p-5 sm:p-8">
         <p className="font-body text-[11px] font-semibold uppercase tracking-[0.2em] text-accent">
           {siteName} · {idx + 1}/{total}
         </p>
@@ -86,7 +86,7 @@ export default function StackedHero({ banners, siteName, tagline }: HeroProps) {
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <Link
             href={active.link ?? '/katalog'}
-            className="inline-flex items-center gap-2 rounded-none border-2 border-[#111110] bg-accent px-5 py-2.5 font-body text-sm font-bold uppercase tracking-wide text-[#111110] shadow-[4px_4px_0_0_#111110] transition hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_#111110] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            className="inline-flex items-center gap-2 rounded-none border-2 border-ink bg-accent px-5 py-2.5 font-body text-sm font-bold uppercase tracking-wide text-ink shadow-[4px_4px_0_0_var(--ink)] transition hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_var(--ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
           >
             {active.link ? 'Selengkapnya' : 'Jelajahi Katalog'}{' '}
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -105,7 +105,7 @@ export default function StackedHero({ banners, siteName, tagline }: HeroProps) {
                 >
                   <span
                     aria-hidden="true"
-                    className={`h-2 rounded-none border border-[#111110] transition-all ${
+                    className={`h-2 rounded-none border border-ink transition-all ${
                       i === idx ? 'w-8 bg-accent' : 'w-4 bg-white'
                     }`}
                   />

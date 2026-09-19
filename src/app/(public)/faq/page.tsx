@@ -1,9 +1,12 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import dynamic from 'next/dynamic';
 import { ArrowRight, Mail, Phone } from 'lucide-react';
 import type { FaqItem } from '@/components/public/FaqAccordion';
 import { fetchSettings } from '@/lib/books';
+import { getSiteUrl } from '@/lib/site';
 import { createClient } from '@/lib/supabase/server';
+import Breadcrumb from '@/components/public/Breadcrumb';
 
 const FaqAccordion = dynamic(() => import('@/components/public/FaqAccordion'), {
   ssr: true,
@@ -34,13 +37,31 @@ function FaqSkeleton() {
 
 export const revalidate = 60;
 
-export async function generateMetadata() {
+export async function generateMetadata(): Promise<Metadata> {
   const s = await fetchSettings();
+  const siteName = s.name ?? 'Perpustakaan';
+  const title = `FAQ — ${siteName}`;
+  const description = `Jawaban atas pertanyaan umum seputar keanggotaan, peminjaman, dan layanan ${siteName}.`;
+  const canonical = `${getSiteUrl()}/faq`;
   return {
-    title: `FAQ — ${s.name ?? 'Perpustakaan'}`,
-    description: `Jawaban atas pertanyaan umum seputar keanggotaan, peminjaman, dan layanan ${
-      s.name ?? 'perpustakaan'
-    }.`,
+    title,
+    description,
+    alternates: { canonical },
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      locale: 'id_ID',
+      url: canonical,
+      siteName,
+      images: [{ url: '/og-default.jpg', width: 1200, height: 630, alt: title }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: ['/og-default.jpg'],
+    },
   };
 }
 
@@ -65,9 +86,37 @@ async function fetchFaqs(): Promise<FaqItem[]> {
 export default async function FaqPage() {
   const [settings, faqs] = await Promise.all([fetchSettings(), fetchFaqs()]);
   const siteName = settings.name ?? 'Perpustakaan Digital';
+  const siteUrl = getSiteUrl();
+  const faqJsonLd = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'FAQPage',
+        name: `FAQ — ${siteName}`,
+        url: `${siteUrl}/faq`,
+        mainEntity: faqs.map((f) => ({
+          '@type': 'Question',
+          name: f.question,
+          acceptedAnswer: { '@type': 'Answer', text: f.answer },
+        })),
+      },
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Beranda', item: siteUrl },
+          { '@type': 'ListItem', position: 2, name: 'FAQ', item: `${siteUrl}/faq` },
+        ],
+      },
+    ],
+  };
 
   return (
     <div className="space-y-6">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
+      <Breadcrumb items={[{ label: 'Beranda', href: '/' }, { label: 'FAQ' }]} />
       <header>
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Bantuan</p>
         <h1 className="mt-1 font-heading text-3xl font-bold text-heading sm:text-4xl">

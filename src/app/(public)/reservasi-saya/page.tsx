@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import Breadcrumb from '@/components/public/Breadcrumb';
 import { LoanCard, ReservationCard } from '@/components/public/ReservationCard';
 import {
@@ -222,7 +223,20 @@ export default function ReservasiSayaPage() {
               Reservasi saya ({reservations.length})
             </h2>
             {reservations.length === 0 ? (
-              <p className="text-sm text-slate-500">Belum ada reservasi.</p>
+              <div className="grid gap-2">
+                <p className="text-sm text-slate-500">
+                  Belum ada reservasi. Temukan buku favorit Anda di katalog lalu reservasi dalam
+                  1-klik.
+                </p>
+                <p>
+                  <Link
+                    href="/katalog"
+                    className="font-semibold text-brand underline-offset-2 hover:underline"
+                  >
+                    Jelajahi katalog
+                  </Link>
+                </p>
+              </div>
             ) : (
               <ul className="grid gap-3">
                 {reservations.map((r) => (
@@ -242,7 +256,20 @@ export default function ReservasiSayaPage() {
               Pinjaman aktif ({loans.length})
             </h2>
             {loans.length === 0 ? (
-              <p className="text-sm text-slate-500">Tidak ada pinjaman aktif.</p>
+              <div className="grid gap-2">
+                <p className="text-sm text-slate-500">
+                  Tidak ada pinjaman aktif. Lihat koleksi yang tersedia dan pinjam lewat petugas
+                  sirkulasi.
+                </p>
+                <p>
+                  <Link
+                    href="/katalog"
+                    className="font-semibold text-brand underline-offset-2 hover:underline"
+                  >
+                    Jelajahi katalog
+                  </Link>
+                </p>
+              </div>
             ) : (
               <ul className="grid gap-3">
                 {loans.map((l) => (

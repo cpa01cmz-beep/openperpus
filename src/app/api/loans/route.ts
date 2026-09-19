@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { requireStaff, jsonError, calcFine, addDaysISO, parsePaging } from '@/lib/supabase/auth';
 import { returnLoan } from '@/lib/loans-return';
 import { sanitizeIlike } from '@/lib/search';
+import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
 /**
  * Sirkulasi — kolom mengikuti migrasi 0001 (loans):
@@ -45,6 +46,7 @@ async function writeLog(
 }
 
 export async function GET(req: Request) {
+  const log = createLogger(requestIdFromHeaders(req.headers));
   const guard = await requireStaff();
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
   const { supabase } = guard as { supabase: ReturnType<typeof createClient> };
@@ -70,7 +72,12 @@ export async function GET(req: Request) {
   }
 
   const { data, error, count } = await query;
-  if (error) return jsonError('FETCH_FAILED', 'Gagal mengambil peminjaman.', 500, error.message);
+  if (error) {
+    log.error('loans.fetch_failed', { detail: error.message });
+    return jsonError('FETCH_FAILED', 'Gagal mengambil peminjaman.', 500, {
+      requestId: log.requestId,
+    });
+  }
 
   const now = new Date();
   const enriched = (data ?? []).map((l: Record<string, unknown>) => {
@@ -89,6 +96,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const log = createLogger(requestIdFromHeaders(req.headers));
   const guard = await requireStaff(['admin', 'librarian']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
   const { supabase, user } = guard as {
@@ -168,7 +176,10 @@ export async function POST(req: Request) {
       return jsonError('VALIDATION', 'due_at harus sesudah borrowed_at.', 422);
     if (rpcCode === '42501')
       return jsonError('FORBIDDEN', 'Tidak berhak meminjam untuk anggota ini.', 403);
-    return jsonError('SAVE_FAILED', 'Gagal mencatat peminjaman.', 500, rpcMsg);
+    log.error('loans.save_failed', { detail: rpcMsg });
+    return jsonError('SAVE_FAILED', 'Gagal mencatat peminjaman.', 500, {
+      requestId: log.requestId,
+    });
   }
 
   // Fallback (fungsi belum terdeploy): guarded read-then-write lama.
@@ -198,7 +209,10 @@ export async function POST(req: Request) {
     .eq('id', book_id)
     .gt('stock_available', 0)
     .select('id');
-  if (stockErr) return jsonError('SAVE_FAILED', 'Gagal mengurangi stok.', 500, stockErr.message);
+  if (stockErr) {
+    log.error('loans.save_failed', { detail: stockErr.message });
+    return jsonError('SAVE_FAILED', 'Gagal mengurangi stok.', 500, { requestId: log.requestId });
+  }
   if (!stockRows || stockRows.length === 0) return jsonError('CONFLICT', 'Stok buku habis.', 409);
 
   const { data, error } = await supabase
@@ -217,7 +231,10 @@ export async function POST(req: Request) {
 
   if (error) {
     await supabase.from('books').update({ stock_available: avail }).eq('id', book_id); // rollback
-    return jsonError('SAVE_FAILED', 'Gagal mencatat peminjaman.', 500, error.message);
+    log.error('loans.save_failed', { detail: error.message });
+    return jsonError('SAVE_FAILED', 'Gagal mencatat peminjaman.', 500, {
+      requestId: log.requestId,
+    });
   }
   try {
     await writeLog(supabase, user?.id, 'loans.create', (data as { id: string }).id, {
@@ -260,6 +277,7 @@ export async function PUT(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  const log = createLogger(requestIdFromHeaders(req.headers));
   const guard = await requireStaff(['admin']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
   const { supabase, user } = guard as {
@@ -280,7 +298,12 @@ export async function DELETE(req: Request) {
   }
 
   const { error } = await supabase.from('loans').delete().eq('id', id);
-  if (error) return jsonError('DELETE_FAILED', 'Gagal menghapus peminjaman.', 500, error.message);
+  if (error) {
+    log.error('loans.delete_failed', { detail: error.message });
+    return jsonError('DELETE_FAILED', 'Gagal menghapus peminjaman.', 500, {
+      requestId: log.requestId,
+    });
+  }
   try {
     await writeLog(supabase, user?.id, 'loans.delete', id);
   } catch {}

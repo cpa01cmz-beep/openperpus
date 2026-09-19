@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { requireStaff, jsonError, slugify, parsePaging } from '@/lib/supabase/auth';
 import { validateBook } from '@/lib/validation';
 import { sanitizeIlike } from '@/lib/search';
+import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
 /**
  * GET /api/books?page=&per_page=&q=&kategori=&rak=&tersedia=1&featured=1
@@ -16,6 +17,7 @@ import { sanitizeIlike } from '@/lib/search';
  */
 
 export async function GET(req: Request) {
+  const log = createLogger(requestIdFromHeaders(req.headers));
   // PUBLIK: tanpa requireStaff. Keamanan dipegang RLS (is_active=true).
   const supabase = createClient();
 
@@ -27,7 +29,10 @@ export async function GET(req: Request) {
 
   let query = supabase
     .from('books')
-    .select('*, categories(id,name,slug), racks(code,name,location)', { count: 'exact' })
+    .select(
+      'id,title,slug,author,publisher,year,isbn,category_id,rack_id,cover_url,pages,language,stock_total,stock_available,featured,rating_avg,created_at,updated_at,categories(id,name,slug),racks(code,name,location)',
+      { count: 'estimated' }
+    )
     .eq('is_active', true)
     .order('created_at', { ascending: false })
     .range(from, to);
@@ -45,7 +50,10 @@ export async function GET(req: Request) {
   if (featured === '1') query = query.eq('featured', true);
 
   const { data, error, count } = await query;
-  if (error) return jsonError('FETCH_FAILED', 'Gagal mengambil buku.', 500, error.message);
+  if (error) {
+    log.error('books.fetch_failed', { detail: error.message });
+    return jsonError('FETCH_FAILED', 'Gagal mengambil buku.', 500, { requestId: log.requestId });
+  }
   const total = count ?? 0;
   return NextResponse.json(
     {
@@ -58,6 +66,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const log = createLogger(requestIdFromHeaders(req.headers));
   const guard = await requireStaff(['admin', 'librarian']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
   const { supabase } = guard as { supabase: ReturnType<typeof createClient> };
@@ -119,9 +128,14 @@ export async function POST(req: Request) {
     .single();
 
   if (error) {
-    if ((error as { code?: string }).code === '23505')
-      return jsonError('CONFLICT', 'Slug/ISBN sudah dipakai.', 409, error.message);
-    return jsonError('SAVE_FAILED', 'Gagal menambah buku.', 500, error.message);
+    if ((error as { code?: string }).code === '23505') {
+      log.warn('books.conflict', { detail: (error as { message?: string }).message ?? 'conflict' });
+      return jsonError('CONFLICT', 'Slug/ISBN sudah dipakai.', 409, { requestId: log.requestId });
+    }
+    log.error('books.save_failed', {
+      detail: (error as { message?: string }).message ?? 'save-failed',
+    });
+    return jsonError('SAVE_FAILED', 'Gagal menambah buku.', 500, { requestId: log.requestId });
   }
   revalidateTag('books');
   return NextResponse.json({ data }, { status: 201 });
@@ -134,6 +148,7 @@ export async function POST(req: Request) {
  * Balikan: { data: { deleted: string[], skipped: string[] } }.
  */
 export async function DELETE(req: Request) {
+  const log = createLogger(requestIdFromHeaders(req.headers));
   const guard = await requireStaff(['admin', 'librarian']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
   const { supabase, user } = guard as {
@@ -166,7 +181,10 @@ export async function DELETE(req: Request) {
 
   if (deletable.length > 0) {
     const { error } = await supabase.from('books').delete().in('id', deletable);
-    if (error) return jsonError('DELETE_FAILED', 'Gagal menghapus buku.', 500, error.message);
+    if (error) {
+      log.error('books.delete_failed', { detail: error.message });
+      return jsonError('DELETE_FAILED', 'Gagal menghapus buku.', 500, { requestId: log.requestId });
+    }
     for (const id of deletable) {
       try {
         await supabase.from('activity_logs').insert({

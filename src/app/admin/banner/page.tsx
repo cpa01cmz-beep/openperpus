@@ -3,6 +3,9 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import DataTable from '@/components/admin/DataTable';
+import Pagination from '@/components/ui/Pagination';
+import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
 
 type Banner = {
   id: string;
@@ -29,13 +32,22 @@ export default function BannerPage() {
   });
   const [sort, setSort] = useState('sort_order');
   const [order, setOrder] = useState('asc');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   const load = useCallback(async () => {
-    const q = new URLSearchParams({ sort, order });
+    const q = new URLSearchParams({ sort, order, page: String(page), per_page: '20' });
     const res = await fetch(`/api/banners?${q}`);
-    const json = (await res.json()) as { data?: Banner[] };
-    if (res.ok) setRows(json.data ?? []);
-  }, [sort, order]);
+    const json = (await res.json()) as {
+      data?: Banner[];
+      pagination?: { totalPages?: number };
+      meta?: { totalPages?: number };
+    };
+    if (res.ok) {
+      setRows(json.data ?? []);
+      setTotalPages(json.pagination?.totalPages ?? json.meta?.totalPages ?? 1);
+    }
+  }, [sort, order, page]);
 
   useEffect(() => {
     load();
@@ -83,63 +95,91 @@ export default function BannerPage() {
     load();
   }
 
-  const input = 'rounded-lg border px-3 py-2 text-sm';
-  const sortBtn = (active: boolean) =>
-    `rounded-lg border px-3 py-1 text-sm ${active ? 'border-slate-900 bg-slate-900 text-white' : 'bg-white text-slate-600'}`;
   return (
     <div className="grid gap-4">
       <h1 className="text-2xl font-bold">Banner</h1>
       <form onSubmit={onAdd} className="grid max-w-2xl gap-2 rounded-2xl border bg-white p-4">
-        <input
-          className={input}
+        <Input
+          id="banner-title"
+          label="Judul"
           placeholder="Judul*"
           value={form.title}
           onChange={(e) => setForm({ ...form, title: e.target.value })}
           required
         />
-        <input
-          className={input}
+        <Input
+          id="banner-subtitle"
+          label="Subtitle"
           placeholder="Subtitle"
           value={form.subtitle}
           onChange={(e) => setForm({ ...form, subtitle: e.target.value })}
         />
-        <input
-          className={input}
+        <Input
+          id="banner-image-url"
+          label="Image URL"
           placeholder="Image URL* https://…"
           value={form.image_url}
           onChange={(e) => setForm({ ...form, image_url: e.target.value })}
           required
         />
-        <div className="flex gap-2">
-          <input
-            className={input}
-            placeholder="Link URL"
-            value={form.link}
-            onChange={(e) => setForm({ ...form, link: e.target.value })}
-          />
-          <input
-            type="number"
-            className={input}
-            placeholder="Urutan (sort_order)"
-            value={form.sort_order}
-            onChange={(e) => setForm({ ...form, sort_order: Number(e.target.value) })}
-          />
-          <button className="rounded-lg bg-slate-900 px-4 py-2 text-sm text-white">+ Tambah</button>
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="min-w-[200px] flex-1">
+            <Input
+              id="banner-link"
+              label="Link URL"
+              placeholder="Link URL"
+              value={form.link}
+              onChange={(e) => setForm({ ...form, link: e.target.value })}
+            />
+          </div>
+          <div className="min-w-[140px]">
+            <Input
+              id="banner-sort-order"
+              label="Urutan"
+              type="number"
+              placeholder="Urutan (sort_order)"
+              value={form.sort_order}
+              onChange={(e) => setForm({ ...form, sort_order: Number(e.target.value) })}
+            />
+          </div>
+          <Button type="submit">+ Tambah</Button>
         </div>
       </form>
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        <span className="text-slate-500">Urut:</span>
-        <button onClick={() => onSort('sort_order')} className={sortBtn(sort === 'sort_order')}>
+      <div
+        className="flex flex-wrap items-center gap-2 text-sm"
+        role="group"
+        aria-label="Urutkan banner"
+      >
+        <span className="text-slate-500" id="banner-sort-label">
+          Urut:
+        </span>
+        <Button
+          size="sm"
+          variant={sort === 'sort_order' ? 'primary' : 'outline'}
+          onClick={() => onSort('sort_order')}
+          aria-pressed={sort === 'sort_order'}
+        >
           Urutan{arrow('sort_order')}
-        </button>
-        <button onClick={() => onSort('title')} className={sortBtn(sort === 'title')}>
+        </Button>
+        <Button
+          size="sm"
+          variant={sort === 'title' ? 'primary' : 'outline'}
+          onClick={() => onSort('title')}
+          aria-pressed={sort === 'title'}
+        >
           Judul{arrow('title')}
-        </button>
-        <button onClick={() => onSort('created_at')} className={sortBtn(sort === 'created_at')}>
+        </Button>
+        <Button
+          size="sm"
+          variant={sort === 'created_at' ? 'primary' : 'outline'}
+          onClick={() => onSort('created_at')}
+          aria-pressed={sort === 'created_at'}
+        >
           Terbaru{arrow('created_at')}
-        </button>
+        </Button>
       </div>
       <DataTable<Banner>
+        caption={`Daftar banner halaman ${page} dari ${totalPages}`}
         columns={[
           {
             key: 'title',
@@ -152,14 +192,27 @@ export default function BannerPage() {
             key: 'aksi',
             header: 'Aksi',
             render: (r) => (
-              <span className="flex gap-2">
-                <Link href={`/admin/banner/edit/${r.id}`} className="text-blue-600 hover:underline">
+              <span className="flex flex-wrap items-center gap-2">
+                <Link
+                  href={`/admin/banner/edit/${r.id}`}
+                  className="inline-flex min-h-[44px] items-center text-blue-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                >
                   Edit
                 </Link>
-                <button onClick={() => onToggle(r)} className="text-blue-600 hover:underline">
+                <button
+                  type="button"
+                  onClick={() => onToggle(r)}
+                  aria-label={`${r.is_active ? 'Nonaktifkan' : 'Aktifkan'} banner ${r.title}`}
+                  className="inline-flex min-h-[44px] items-center text-blue-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                >
                   {r.is_active ? 'Nonaktifkan' : 'Aktifkan'}
                 </button>
-                <button onClick={() => onDelete(r.id)} className="text-red-600 hover:underline">
+                <button
+                  type="button"
+                  onClick={() => onDelete(r.id)}
+                  aria-label={`Hapus banner ${r.title}`}
+                  className="inline-flex min-h-[44px] items-center text-red-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                >
                   Hapus
                 </button>
               </span>
@@ -168,7 +221,9 @@ export default function BannerPage() {
         ]}
         rows={rows}
         getRowKey={(r) => r.id}
+        emptyText="Belum ada banner."
       />
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
     </div>
   );
 }

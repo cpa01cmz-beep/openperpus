@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import DataTable from '@/components/admin/DataTable';
+import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
+import Pagination from '@/components/ui/Pagination';
 
 type Tab = 'pages' | 'faqs' | 'testimonials';
 
@@ -28,16 +31,27 @@ function errMsg(json: unknown): string {
   return typeof err === 'string' ? err : (err.message ?? 'Gagal.');
 }
 
-async function apiList(path: string) {
-  const res = await fetch(`${path}?per_page=20`, { cache: 'no-store' });
-  if (res.status === 404) return { missing: true as const, rows: [] as never[] };
-  const json = (await res.json()) as { data?: never[] };
+async function apiList(path: string, page = 1) {
+  const q = new URLSearchParams({ page: String(page), per_page: '10' });
+  const res = await fetch(`${path}?${q}`, { cache: 'no-store' });
+  if (res.status === 404) return { missing: true as const, rows: [] as never[], totalPages: 1 };
+  const json = (await res.json()) as {
+    data?: never[];
+    pagination?: { totalPages?: number };
+    meta?: { totalPages?: number };
+  };
   if (!res.ok) throw new Error(errMsg(json));
-  return { missing: false as const, rows: (json.data ?? []) as never[] };
+  return {
+    missing: false as const,
+    rows: (json.data ?? []) as never[],
+    totalPages: json.pagination?.totalPages ?? json.meta?.totalPages ?? 1,
+  };
 }
 
 export default function KontenPage() {
   const [tab, setTab] = useState<Tab>('pages');
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
   const [pages, setPages] = useState<PageItem[]>([]);
   const [faqs, setFaqs] = useState<Faq[]>([]);
   const [testis, setTestis] = useState<Testimonial[]>([]);
@@ -59,10 +73,11 @@ export default function KontenPage() {
     setError('');
     try {
       const [p, f, t] = await Promise.all([
-        apiList('/api/pages'),
-        apiList('/api/faqs'),
-        apiList('/api/testimonials'),
+        apiList('/api/pages', page),
+        apiList('/api/faqs', page),
+        apiList('/api/testimonials', page),
       ]);
+      setTotalPages(Math.max(p.totalPages, f.totalPages, t.totalPages));
       setPages(p.rows as PageItem[]);
       setFaqs(f.rows as Faq[]);
       setTestis(t.rows as Testimonial[]);
@@ -72,7 +87,7 @@ export default function KontenPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [page]);
 
   useEffect(() => {
     load();
@@ -137,7 +152,8 @@ export default function KontenPage() {
     missing.faqs && '/api/faqs',
     missing.testimonials && '/api/testimonials',
   ].filter((v): v is string => typeof v === 'string');
-  const input = 'rounded-lg border px-3 py-2 text-sm';
+  const rawInput =
+    'h-11 min-h-[44px] w-full rounded-md border border-slate-200 bg-white px-4 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1';
   const tabs: { key: Tab; label: string }[] = [
     { key: 'pages', label: 'Halaman' },
     { key: 'faqs', label: 'FAQ' },
@@ -178,21 +194,22 @@ export default function KontenPage() {
         </div>
       )}
 
-      <div role="tablist" aria-label="Jenis konten" className="flex gap-2">
+      <div role="tablist" aria-label="Jenis konten" className="flex flex-wrap gap-2">
         {tabs.map((t) => (
-          <button
+          <Button
             key={t.key}
             role="tab"
             aria-selected={tab === t.key}
             onClick={() => setTab(t.key)}
-            className={`rounded-lg px-4 py-2 text-sm font-medium ${tab === t.key ? 'bg-slate-900 text-white' : 'border text-slate-700'}`}
+            variant={tab === t.key ? 'primary' : 'outline'}
+            size="sm"
           >
             {t.label}
-          </button>
+          </Button>
         ))}
-        <button onClick={load} className="ml-auto rounded-lg border px-3 py-2 text-sm">
+        <Button onClick={load} variant="outline" size="sm" className="ml-auto">
           Muat ulang
-        </button>
+        </Button>
       </div>
 
       {loading ? (
@@ -203,6 +220,7 @@ export default function KontenPage() {
         <>
           {tab === 'pages' && (
             <section className="grid gap-4" aria-label="Halaman dinamis">
+              {' '}
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
@@ -212,35 +230,44 @@ export default function KontenPage() {
                 }}
                 className="grid max-w-2xl gap-2 rounded-2xl border bg-white p-4"
               >
-                <input
-                  className={input}
+                <Input
+                  id="konten-page-title"
+                  label="Judul halaman"
                   placeholder="Judul* (slug otomatis)"
                   value={pageForm.title}
                   onChange={(e) => setPageForm({ ...pageForm, title: e.target.value })}
                   required
                 />
-                <input
-                  className={input}
+                <Input
+                  id="konten-page-excerpt"
+                  label="Ringkasan"
                   placeholder="Ringkasan (excerpt)"
                   value={pageForm.excerpt}
                   onChange={(e) => setPageForm({ ...pageForm, excerpt: e.target.value })}
                 />
-                <textarea
-                  className={input}
-                  rows={4}
-                  placeholder="Konten markdown* (content_md)"
-                  value={pageForm.content_md}
-                  onChange={(e) => setPageForm({ ...pageForm, content_md: e.target.value })}
-                  required
-                />
-                <button
-                  disabled={busy}
-                  className="w-fit rounded-lg bg-slate-900 px-4 py-2 text-sm text-white disabled:opacity-50"
-                >
-                  {busy ? '…' : '+ Tambah Halaman'}
-                </button>
+                <div className="grid gap-1 text-sm">
+                  <label
+                    htmlFor="konten-page-content"
+                    className="mb-1.5 block text-sm font-semibold text-slate-700"
+                  >
+                    Konten markdown
+                  </label>
+                  <textarea
+                    id="konten-page-content"
+                    className={rawInput}
+                    rows={4}
+                    placeholder="Konten markdown* (content_md)"
+                    value={pageForm.content_md}
+                    onChange={(e) => setPageForm({ ...pageForm, content_md: e.target.value })}
+                    required
+                  />
+                </div>
+                <Button type="submit" loading={busy} className="w-fit">
+                  + Tambah Halaman
+                </Button>
               </form>
               <DataTable<PageItem>
+                caption={`Daftar konten halaman ${page} dari ${totalPages}`}
                 columns={[
                   {
                     key: 'title',
@@ -260,13 +287,13 @@ export default function KontenPage() {
                       <span className="flex gap-2">
                         <button
                           onClick={() => onToggle('pages', r.id, r.is_active)}
-                          className="text-blue-600 hover:underline"
+                          className="inline-flex min-h-[44px] items-center text-blue-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                         >
                           {r.is_active ? 'Nonaktifkan' : 'Aktifkan'}
                         </button>
                         <button
                           onClick={() => onDelete('pages', r.id)}
-                          className="text-red-600 hover:underline"
+                          className="inline-flex min-h-[44px] items-center text-red-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                         >
                           Hapus
                         </button>
@@ -292,37 +319,48 @@ export default function KontenPage() {
                 }}
                 className="grid max-w-2xl gap-2 rounded-2xl border bg-white p-4"
               >
-                <input
-                  className={input}
+                <Input
+                  id="konten-faq-question"
+                  label="Pertanyaan"
                   placeholder="Pertanyaan*"
                   value={faqForm.question}
                   onChange={(e) => setFaqForm({ ...faqForm, question: e.target.value })}
                   required
                 />
-                <textarea
-                  className={input}
-                  rows={3}
-                  placeholder="Jawaban*"
-                  value={faqForm.answer}
-                  onChange={(e) => setFaqForm({ ...faqForm, answer: e.target.value })}
-                  required
-                />
-                <div className="flex gap-2">
-                  <input
-                    className={input}
-                    placeholder="Kategori (opsional)"
-                    value={faqForm.category}
-                    onChange={(e) => setFaqForm({ ...faqForm, category: e.target.value })}
-                  />
-                  <button
-                    disabled={busy}
-                    className="rounded-lg bg-slate-900 px-4 py-2 text-sm text-white disabled:opacity-50"
+                <div className="grid gap-1 text-sm">
+                  <label
+                    htmlFor="konten-faq-answer"
+                    className="mb-1.5 block text-sm font-semibold text-slate-700"
                   >
-                    {busy ? '…' : '+ Tambah FAQ'}
-                  </button>
+                    Jawaban
+                  </label>
+                  <textarea
+                    id="konten-faq-answer"
+                    className={rawInput}
+                    rows={3}
+                    placeholder="Jawaban*"
+                    value={faqForm.answer}
+                    onChange={(e) => setFaqForm({ ...faqForm, answer: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="flex flex-wrap items-end gap-2">
+                  <div className="min-w-[200px] flex-1">
+                    <Input
+                      id="konten-faq-category"
+                      label="Kategori"
+                      placeholder="Kategori (opsional)"
+                      value={faqForm.category}
+                      onChange={(e) => setFaqForm({ ...faqForm, category: e.target.value })}
+                    />
+                  </div>
+                  <Button type="submit" loading={busy}>
+                    + Tambah FAQ
+                  </Button>
                 </div>
               </form>
               <DataTable<Faq>
+                caption={`Daftar konten halaman ${page} dari ${totalPages}`}
                 columns={[
                   {
                     key: 'question',
@@ -342,13 +380,13 @@ export default function KontenPage() {
                       <span className="flex gap-2">
                         <button
                           onClick={() => onToggle('faqs', r.id, r.is_active)}
-                          className="text-blue-600 hover:underline"
+                          className="inline-flex min-h-[44px] items-center text-blue-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                         >
                           {r.is_active ? 'Nonaktifkan' : 'Aktifkan'}
                         </button>
                         <button
                           onClick={() => onDelete('faqs', r.id)}
-                          className="text-red-600 hover:underline"
+                          className="inline-flex min-h-[44px] items-center text-red-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                         >
                           Hapus
                         </button>
@@ -374,49 +412,72 @@ export default function KontenPage() {
                 }}
                 className="grid max-w-2xl gap-2 rounded-2xl border bg-white p-4"
               >
-                <div className="flex gap-2">
-                  <input
-                    className={input}
-                    placeholder="Nama*"
-                    value={testiForm.name}
-                    onChange={(e) => setTestiForm({ ...testiForm, name: e.target.value })}
+                <div className="flex flex-wrap items-end gap-2">
+                  <div className="min-w-[160px] flex-1">
+                    <Input
+                      id="konten-testi-name"
+                      label="Nama"
+                      placeholder="Nama*"
+                      value={testiForm.name}
+                      onChange={(e) => setTestiForm({ ...testiForm, name: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="min-w-[160px] flex-1">
+                    <Input
+                      id="konten-testi-role"
+                      label="Peran"
+                      placeholder="Peran (ex: Mahasiswa)"
+                      value={testiForm.role}
+                      onChange={(e) => setTestiForm({ ...testiForm, role: e.target.value })}
+                    />
+                  </div>
+                  <div className="grid gap-1">
+                    <label
+                      htmlFor="konten-testi-rating"
+                      className="mb-1.5 block text-sm font-semibold text-slate-700"
+                    >
+                      Rating
+                    </label>
+                    <select
+                      id="konten-testi-rating"
+                      className={rawInput}
+                      value={testiForm.rating}
+                      onChange={(e) =>
+                        setTestiForm({ ...testiForm, rating: Number(e.target.value) })
+                      }
+                    >
+                      {[5, 4, 3, 2, 1].map((n) => (
+                        <option key={n} value={n}>
+                          ★ {n}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="grid gap-1 text-sm">
+                  <label
+                    htmlFor="konten-testi-content"
+                    className="mb-1.5 block text-sm font-semibold text-slate-700"
+                  >
+                    Isi testimoni
+                  </label>
+                  <textarea
+                    id="konten-testi-content"
+                    className={rawInput}
+                    rows={3}
+                    placeholder="Isi testimoni*"
+                    value={testiForm.content}
+                    onChange={(e) => setTestiForm({ ...testiForm, content: e.target.value })}
                     required
                   />
-                  <input
-                    className={input}
-                    placeholder="Peran (ex: Mahasiswa)"
-                    value={testiForm.role}
-                    onChange={(e) => setTestiForm({ ...testiForm, role: e.target.value })}
-                  />
-                  <select
-                    className={input}
-                    aria-label="Rating"
-                    value={testiForm.rating}
-                    onChange={(e) => setTestiForm({ ...testiForm, rating: Number(e.target.value) })}
-                  >
-                    {[5, 4, 3, 2, 1].map((n) => (
-                      <option key={n} value={n}>
-                        ★ {n}
-                      </option>
-                    ))}
-                  </select>
                 </div>
-                <textarea
-                  className={input}
-                  rows={3}
-                  placeholder="Isi testimoni*"
-                  value={testiForm.content}
-                  onChange={(e) => setTestiForm({ ...testiForm, content: e.target.value })}
-                  required
-                />
-                <button
-                  disabled={busy}
-                  className="w-fit rounded-lg bg-slate-900 px-4 py-2 text-sm text-white disabled:opacity-50"
-                >
-                  {busy ? '…' : '+ Tambah Testimoni'}
-                </button>
+                <Button type="submit" loading={busy} className="w-fit">
+                  + Tambah Testimoni
+                </Button>
               </form>
               <DataTable<Testimonial>
+                caption={`Daftar konten halaman ${page} dari ${totalPages}`}
                 columns={[
                   {
                     key: 'name',
@@ -436,13 +497,13 @@ export default function KontenPage() {
                       <span className="flex gap-2">
                         <button
                           onClick={() => onToggle('testimonials', r.id, r.is_active)}
-                          className="text-blue-600 hover:underline"
+                          className="inline-flex min-h-[44px] items-center text-blue-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                         >
                           {r.is_active ? 'Nonaktifkan' : 'Aktifkan'}
                         </button>
                         <button
                           onClick={() => onDelete('testimonials', r.id)}
-                          className="text-red-600 hover:underline"
+                          className="inline-flex min-h-[44px] items-center text-red-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                         >
                           Hapus
                         </button>
@@ -456,6 +517,7 @@ export default function KontenPage() {
               />
             </section>
           )}
+          <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
         </>
       )}
     </div>

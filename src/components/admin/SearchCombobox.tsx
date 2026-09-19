@@ -121,7 +121,8 @@ export default function SearchCombobox({
     }, DEBOUNCE_MS);
   }
 
-  const inputCls = 'w-full rounded-lg border px-3 py-2 text-sm';
+  const inputCls =
+    'h-11 min-h-[44px] w-full rounded-md border border-slate-200 bg-white px-4 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1';
   return (
     <div className="grid gap-1">
       <span className="font-medium">{label}</span>
@@ -134,7 +135,8 @@ export default function SearchCombobox({
           </span>
           <button
             type="button"
-            className="rounded-lg border px-2 py-1 text-xs"
+            aria-label={`Ganti ${label}`}
+            className="inline-flex min-h-[44px] items-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:border-brand hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             onClick={() => {
               setText('');
               setOpen(true);
@@ -151,6 +153,7 @@ export default function SearchCombobox({
             aria-expanded={open}
             aria-controls={listId}
             aria-autocomplete="list"
+            aria-label={label}
             className={inputCls}
             placeholder={placeholder}
             value={text}

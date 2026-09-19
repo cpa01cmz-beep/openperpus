@@ -51,17 +51,19 @@ export async function generateMetadata(): Promise<Metadata> {
 
 /** Landing publik: sections dirender sesuai theme layout.homepageSections (ordered, on/off). */
 export default async function PublicHomePage() {
-  const [settings, banners, featured, articles, testimonials, stats] = await Promise.all([
-    fetchSettings(),
-    fetchBanners(),
-    fetchBooks({ featured: true, limit: 8 }),
-    fetchArticles(3),
-    fetchTestimonials(3),
-    fetchStats(),
-  ]);
+  const [settings, banners, featured, fallbackBooks, articles, testimonials, stats] =
+    await Promise.all([
+      fetchSettings(),
+      fetchBanners(),
+      fetchBooks({ featured: true, limit: 8 }),
+      fetchBooks({ limit: 8 }),
+      fetchArticles(3),
+      fetchTestimonials(3),
+      fetchStats(),
+    ]);
 
   const siteName = settings.name ?? 'Perpustakaan Digital';
-  const fallbackFeatured = featured.length > 0 ? featured : await fetchBooks({ limit: 8 });
+  const fallbackFeatured = featured.length > 0 ? featured : fallbackBooks;
   const lcpImage = banners[0]?.image_url ?? null;
 
   const theme = getTheme(settings.active_theme ?? 'emerald');
@@ -251,7 +253,14 @@ export default async function PublicHomePage() {
 
   return (
     <div className="space-y-10 sm:space-y-12">
-      {lcpImage ? <link rel="preload" as="image" href={lcpImage} fetchPriority="high" /> : null}
+      {lcpImage ? (
+        <link
+          rel="preload"
+          as="image"
+          href={coverSrc(lcpImage, 640) ?? lcpImage}
+          fetchPriority="high"
+        />
+      ) : null}
       {orderedSections
         .filter((s) => s.enabled)
         .map((s) => {

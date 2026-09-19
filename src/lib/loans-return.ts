@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { calcFine, jsonError } from '@/lib/supabase/auth';
+import { createLogger } from '@/lib/logger';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 type SupabaseLike = Pick<SupabaseClient, 'from'> & Partial<Pick<SupabaseClient, 'rpc'>>;
@@ -118,6 +119,23 @@ export async function returnLoan(opts: ReturnLoanOptions): Promise<Response> {
   return legacyReturnLoan(opts, returnedAt, kondisi, hasKondisi);
 }
 
+/**
+ * KOMPENSASI legacy: loan sudah terupdate tetapi langkah berikut (stok)
+ * gagal — coba kembalikan loan ke borrowed agar tidak ada partial state
+ * diam-diam. Best-effort: false berarti panggil details.needsReconciliation.
+ */
+async function tryRevertLoanReturn(supabase: SupabaseLike, id: string): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('loans')
+      .update({ status: 'borrowed', returned_at: null, fine_amount: 0 })
+      .eq('id', id);
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
 async function legacyReturnLoan(
   opts: ReturnLoanOptions,
   returnedAt: Date,
@@ -187,21 +205,27 @@ async function legacyReturnLoan(
           stock_available: Math.min(Math.max(0, b.stock_available), nextTotal),
         })
         .eq('id', l.book_id);
-      if (stockErr)
-        return retryableError(
-          'Pengembalian tersimpan, stok gagal diperbarui. Silakan coba lagi.',
-          stockErr.message
-        );
+      if (stockErr) {
+        const reverted = await tryRevertLoanReturn(supabase, id);
+        return retryableError('Pengembalian tersimpan, stok gagal diperbarui. Silakan coba lagi.', {
+          reason: stockErr.message,
+          reverted,
+          needsReconciliation: !reverted,
+        });
+      }
     } else {
       const { error: stockErr } = await supabase
         .from('books')
         .update({ stock_available: Math.min(b.stock_total, b.stock_available + 1) })
         .eq('id', l.book_id);
-      if (stockErr)
-        return retryableError(
-          'Pengembalian tersimpan, stok gagal diperbarui. Silakan coba lagi.',
-          stockErr.message
-        );
+      if (stockErr) {
+        const reverted = await tryRevertLoanReturn(supabase, id);
+        return retryableError('Pengembalian tersimpan, stok gagal diperbarui. Silakan coba lagi.', {
+          reason: stockErr.message,
+          reverted,
+          needsReconciliation: !reverted,
+        });
+      }
     }
   }
 
@@ -215,11 +239,14 @@ async function legacyReturnLoan(
         ? `Denda keterlambatan otomatis Rp1000/hari (due ${l.due_at}). Kondisi: ${kondisi}.`
         : `Denda keterlambatan otomatis Rp1000/hari (due ${l.due_at}).`,
     });
-    if (fineErr)
-      return retryableError(
-        'Pengembalian tersimpan, denda gagal dicatat. Silakan coba lagi.',
-        fineErr.message
-      );
+    if (fineErr) {
+      const loanReverted = await tryRevertLoanReturn(supabase, id);
+      return retryableError('Pengembalian tersimpan, denda gagal dicatat. Silakan coba lagi.', {
+        reason: fineErr.message,
+        reverted: loanReverted,
+        needsReconciliation: !loanReverted,
+      });
+    }
   }
 
   const auditPayload = {
@@ -231,14 +258,13 @@ async function legacyReturnLoan(
   };
   const firstAudit = await supabase.from('activity_logs').insert(auditPayload);
   if (firstAudit.error) {
-    console.error('[audit] activity_logs insert failed (retrying once):', firstAudit.error.message);
+    createLogger().warn('audit.activity_logs_retry', { detail: firstAudit.error.message });
     const retryAudit = await supabase.from('activity_logs').insert(auditPayload);
     if (retryAudit.error) {
-      console.error(
-        '[audit] activity_logs insert failed twice (500 detail):',
-        retryAudit.error.message,
-        auditPayload
-      );
+      createLogger().error('audit.activity_logs_failed', {
+        detail: retryAudit.error.message,
+        entity_id: id,
+      });
     }
   }
 

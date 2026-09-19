@@ -1,9 +1,11 @@
-import ClassicHero from "./variants/ClassicHero";
-import CenteredHero from "./variants/CenteredHero";
-import EditorialHero from "./variants/EditorialHero";
-import StackedHero from "./variants/StackedHero";
-import SplitHero from "./variants/SplitHero";
-import type { HeroProps } from "./variants/heroProps";
+import dynamic from 'next/dynamic';
+import type { HeroProps } from './variants/heroProps';
+
+const ClassicHero = dynamic(() => import('./variants/ClassicHero'), { ssr: true });
+const CenteredHero = dynamic(() => import('./variants/CenteredHero'), { ssr: true });
+const EditorialHero = dynamic(() => import('./variants/EditorialHero'), { ssr: true });
+const StackedHero = dynamic(() => import('./variants/StackedHero'), { ssr: true });
+const SplitHero = dynamic(() => import('./variants/SplitHero'), { ssr: true });
 
 type Props = HeroProps & {
   variant?: string;
@@ -16,20 +18,20 @@ type Props = HeroProps & {
  */
 export default function HeroSwitch({ variant, ...props }: Props) {
   switch (variant) {
-    case "emerald-centered":
-    case "centered":
+    case 'emerald-centered':
+    case 'centered':
       return <CenteredHero {...props} />;
-    case "paper-editorial":
-    case "editorial":
+    case 'paper-editorial':
+    case 'editorial':
       return <EditorialHero {...props} />;
-    case "brutalist-manifesto":
-    case "stacked":
+    case 'brutalist-manifesto':
+    case 'stacked':
       return <StackedHero {...props} />;
-    case "ocean-tide":
-    case "split":
+    case 'ocean-tide':
+    case 'split':
       return <SplitHero {...props} />;
-    case "midnight-showcase":
-    case "classic":
+    case 'midnight-showcase':
+    case 'classic':
       return <ClassicHero {...props} />;
     default:
       // Emerald default: emerald-centered

@@ -1,6 +1,6 @@
 import Image from 'next/image';
 import { Quote, Star } from 'lucide-react';
-import type { Testimonial } from '@/lib/books';
+import type { Testimonial } from '@/lib/types';
 
 /** Kartu testimoni: avatar inisial bila tanpa foto, rating bintang aksesibel. */
 export default function TestimonialCard({ item }: { item: Testimonial }) {

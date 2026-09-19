@@ -1,6 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
+import Breadcrumb from '@/components/public/Breadcrumb';
 import Modal from '@/components/ui/Modal';
 
 type Fine = {
@@ -299,7 +301,8 @@ export default function DendaSayaPage() {
         )}
       </Modal>
       <div>
-        <h1 className="text-2xl font-bold">Denda Saya</h1>
+        <Breadcrumb items={[{ label: 'Beranda', href: '/' }, { label: 'Denda Saya' }]} />
+        <h1 className="mt-3 text-2xl font-bold">Denda Saya</h1>
         <p className="text-sm text-slate-500">
           Denda terbentuk otomatis saat pengembalian terlambat (Rp1.000/hari). Bayar langsung tanpa
           payment gateway.
@@ -345,7 +348,7 @@ export default function DendaSayaPage() {
         <label htmlFor="denda-status">Filter:</label>
         <select
           id="denda-status"
-          className="rounded-lg border px-3 py-1.5"
+          className="min-h-[44px] rounded-lg border px-3 py-1.5"
           value={status}
           onChange={(e) => {
             setPage(1);
@@ -361,7 +364,7 @@ export default function DendaSayaPage() {
         <label htmlFor="denda-method">Metode bayar:</label>
         <select
           id="denda-method"
-          className="rounded-lg border px-3 py-1.5"
+          className="min-h-[44px] rounded-lg border px-3 py-1.5"
           value={method}
           onChange={(e) => setMethod(e.target.value as (typeof METHOD_OPTS)[number])}
         >
@@ -371,7 +374,7 @@ export default function DendaSayaPage() {
             </option>
           ))}
         </select>
-        <button onClick={load} className="rounded-lg border px-3 py-1.5">
+        <button onClick={load} className="min-h-[44px] rounded-lg border px-4 py-1.5">
           Muat ulang
         </button>
       </div>
@@ -381,7 +384,19 @@ export default function DendaSayaPage() {
           Memuat…
         </p>
       ) : rows.length === 0 ? (
-        <p className="text-sm text-slate-500">Belum ada denda.</p>
+        <div className="grid gap-2">
+          <p className="text-sm text-slate-500">
+            Belum ada denda. Kabar baik — jaga riwayat pinjaman agar tetap bersih.
+          </p>
+          <p>
+            <Link
+              href="/katalog"
+              className="font-semibold text-brand underline-offset-2 hover:underline"
+            >
+              Jelajahi katalog
+            </Link>
+          </p>
+        </div>
       ) : (
         <ul className="grid gap-3">
           {rows.map((r) => {
@@ -418,7 +433,7 @@ export default function DendaSayaPage() {
                     <button
                       disabled={payingId === r.id}
                       onClick={() => onPay(r)}
-                      className="rounded bg-slate-900 px-3 py-1.5 text-sm text-white disabled:opacity-50"
+                      className="inline-flex min-h-[44px] items-center justify-center rounded bg-slate-900 px-4 py-1.5 text-sm text-white disabled:opacity-50"
                     >
                       {payingId === r.id ? '…' : 'Bayar'}
                     </button>
