@@ -62,7 +62,7 @@ npm run cf:build
 npm run cf:preview
 ```
 
-Konfigurasi CF: `wrangler.toml` (`compatibility_date = "2026-09-01"`) + `open-next.config.ts` minimal.
+Konfigurasi CF: `wrangler.toml` (`compatibility_date = "2025-01-01"`) + `open-next.config.ts` minimal.
 
 ### Secret di Cloudflare (jangan taruh di repo)
 
@@ -94,16 +94,19 @@ Jalankan urut di SQL Editor (nama file persis):
 supabase/migrations/0001_core.sql
 supabase/migrations/0002_rls.sql
 supabase/migrations/0003_hardening.sql
-supabase/migrations/0003_storage.sql
-supabase/migrations/0004_checkout.sql
-supabase/migrations/0004_content.sql
+supabase/migrations/0004_storage.sql
+supabase/migrations/0005_checkout.sql
+supabase/migrations/0006_content.sql
+supabase/migrations/0007_storage_guard.sql
+supabase/migrations/0008_theme.sql
+supabase/migrations/0009_drop_legacy_theme.sql
 ```
 
-Catatan: ada dua file `0003_*` dan dua file `0004_*`. Nomornya dobel, tapi itu nama aslinya. Tetap jalankan semua sesuai urutan di atas.
+Catatan: penomoran 0001–0009 unik dan berurutan, tanpa nomor dobel. Jalankan semua sesuai urutan di atas.
 
 ## Keamanan
 
-RLS aktif plus hardening di `0003_hardening.sql`. Next.js dipin ke `14.2.33` (memenuhi syarat `>=14.2.25` untuk CVE). Input pencarian disanitasi sebelum dipakai di query `ilike`. `service_role` hanya dipakai di server, jangan taruh di kode klien.
+RLS aktif plus hardening di `0003_hardening.sql`. Next.js dipin ke `14.2.35` (memenuhi syarat `>=14.2.25` untuk CVE). Input pencarian disanitasi sebelum dipakai di query `ilike`. `service_role` hanya dipakai di server, jangan taruh di kode klien.
 
 ## Tes
 
