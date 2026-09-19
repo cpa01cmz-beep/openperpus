@@ -1,5 +1,5 @@
-import * as React from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import * as React from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 export interface PaginationProps {
   page: number;
@@ -11,14 +11,14 @@ export interface PaginationProps {
   className?: string;
 }
 
-function pageItems(page: number, total: number): (number | "…")[] {
+function pageItems(page: number, total: number): (number | '…')[] {
   if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
   const set = new Set<number>([1, 2, page - 1, page, page + 1, total - 1, total]);
   const nums = [...set].filter((n) => n >= 1 && n <= total).sort((a, b) => a - b);
-  const out: (number | "…")[] = [];
+  const out: (number | '…')[] = [];
   let prev = 0;
   for (const n of nums) {
-    if (n - prev > 1) out.push("…");
+    if (n - prev > 1) out.push('…');
     out.push(n);
     prev = n;
   }
@@ -31,17 +31,18 @@ export default function Pagination({
   totalPages,
   hrefForPage,
   onPageChange,
-  className = "",
+  className = '',
 }: PaginationProps) {
   if (totalPages <= 1) return null;
   const safe = Math.min(Math.max(1, page), totalPages);
   const items = pageItems(safe, totalPages);
 
   const baseBtn =
-    "inline-flex h-10 min-w-10 items-center justify-center rounded-md px-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand";
-  const idle = "border border-slate-200 bg-white text-slate-700 hover:border-brand hover:text-brand";
-  const active = "bg-brand text-white shadow-sm";
-  const disabled = "cursor-not-allowed opacity-40";
+    'inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md px-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand';
+  const idle =
+    'border border-slate-200 bg-white text-slate-700 hover:border-brand hover:text-brand';
+  const active = 'bg-brand text-white shadow-sm';
+  const disabled = 'cursor-not-allowed opacity-40';
 
   const renderControl = (
     target: number,
@@ -78,16 +79,19 @@ export default function Pagination({
   };
 
   return (
-    <nav aria-label="Navigasi halaman" className={`flex items-center justify-center gap-1.5 ${className}`}>
+    <nav
+      aria-label="Navigasi halaman"
+      className={`flex items-center justify-center gap-1.5 ${className}`}
+    >
       {renderControl(
         safe - 1,
-        "Halaman sebelumnya",
+        'Halaman sebelumnya',
         <ChevronLeft className="h-4 w-4" aria-hidden="true" />,
         safe <= 1,
-        "prev"
+        'prev'
       )}
       {items.map((it, i) =>
-        it === "…" ? (
+        it === '…' ? (
           <span key={`gap-${i}`} aria-hidden="true" className="px-1 text-sm text-slate-400">
             …
           </span>
@@ -96,7 +100,7 @@ export default function Pagination({
             key={it}
             href={hrefForPage(it)}
             aria-label={`Halaman ${it}`}
-            aria-current={it === safe ? "page" : undefined}
+            aria-current={it === safe ? 'page' : undefined}
             className={`${baseBtn} ${it === safe ? active : idle}`}
           >
             {it}
@@ -106,7 +110,7 @@ export default function Pagination({
             key={it}
             type="button"
             aria-label={`Halaman ${it}`}
-            aria-current={it === safe ? "page" : undefined}
+            aria-current={it === safe ? 'page' : undefined}
             disabled={it === safe}
             onClick={() => onPageChange?.(it)}
             className={`${baseBtn} ${it === safe ? active : `${idle} disabled:opacity-100`}`}
@@ -117,10 +121,10 @@ export default function Pagination({
       )}
       {renderControl(
         safe + 1,
-        "Halaman berikutnya",
+        'Halaman berikutnya',
         <ChevronRight className="h-4 w-4" aria-hidden="true" />,
         safe >= totalPages,
-        "next"
+        'next'
       )}
     </nav>
   );
