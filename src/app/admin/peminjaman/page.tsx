@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import DataTable from '@/components/admin/DataTable';
+import Modal from '@/components/ui/Modal';
 
 const LoanForm = dynamic(() => import('@/components/admin/LoanForm'), {
   ssr: false,
@@ -32,14 +33,34 @@ export default function PeminjamanPage() {
   const [members, setMembers] = useState<{ id: string; label: string; sub?: string }[]>([]);
   const [books, setBooks] = useState<{ id: string; label: string; stock?: number }[]>([]);
   const [status, setStatus] = useState('');
+  const [overdueOnly, setOverdueOnly] = useState(false);
+  const [pendingReturn, setPendingReturn] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const optionsLoaded = useRef(false);
 
+  useEffect(() => {
+    try {
+      const sp = new URLSearchParams(window.location.search);
+      if (sp.get('overdue') === '1') setOverdueOnly(true);
+    } catch {
+      /* abaikan */
+    }
+  }, []);
+
   const load = useCallback(async () => {
-    const q = new URLSearchParams({ per_page: '20', ...(status ? { status } : {}) });
+    const q = new URLSearchParams({
+      per_page: '20',
+      ...(overdueOnly ? { overdue: '1' } : status ? { status } : {}),
+    });
     const res = await fetch(`/api/loans?${q}`);
     const json = (await res.json()) as { data?: Loan[] };
-    if (res.ok) setLoans(json.data ?? []);
-  }, [status]);
+    if (!res.ok) return;
+    const rows = json.data ?? [];
+    if (overdueOnly) {
+      rows.sort((a, b) => new Date(a.due_at).getTime() - new Date(b.due_at).getTime());
+    }
+    setLoans(rows);
+  }, [status, overdueOnly]);
 
   const loadOptions = useCallback(async (force = false) => {
     if (optionsLoaded.current && !force) return;
@@ -81,15 +102,24 @@ export default function PeminjamanPage() {
   }, [loadOptions]);
 
   async function onReturn(id: string) {
-    if (!confirm('Proses pengembalian? Denda dihitung otomatis Rp1.000/hari telat.')) return;
+    setPendingReturn(id);
+  }
+
+  async function confirmReturn() {
+    const id = pendingReturn;
+    if (!id) return;
+    setPendingReturn(null);
     const res = await fetch(`/api/loans?id=${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'return' }),
     });
     const json = (await res.json()) as { data?: { fine_amount?: number } | null };
-    if (!res.ok) return alert(errMsg(json));
-    alert(`Dikembalikan. Denda: Rp${(json.data?.fine_amount ?? 0).toLocaleString('id-ID')}`);
+    if (!res.ok) {
+      setNotice(errMsg(json));
+      return;
+    }
+    setNotice(`Dikembalikan. Denda: Rp${(json.data?.fine_amount ?? 0).toLocaleString('id-ID')}`);
     void Promise.all([load(), loadOptions(true)]);
   }
 
@@ -97,14 +127,52 @@ export default function PeminjamanPage() {
 
   return (
     <div className="grid gap-6">
+      <Modal
+        open={pendingReturn !== null}
+        onClose={() => setPendingReturn(null)}
+        title="Proses pengembalian"
+        description="Denda dihitung otomatis Rp1.000/hari telat."
+        footer={
+          <>
+            <button
+              type="button"
+              onClick={() => setPendingReturn(null)}
+              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={() => void confirmReturn()}
+              className="rounded-lg bg-slate-900 px-3 py-1.5 text-sm text-white"
+            >
+              Ya, kembalikan
+            </button>
+          </>
+        }
+      >
+        <p>Proses pengembalian buku ini?</p>
+      </Modal>
+      {notice && (
+        <div
+          role="status"
+          className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+        >
+          {notice}
+        </div>
+      )}
       <h1 className="text-2xl font-bold">Peminjaman</h1>
       <LoanForm members={members} books={books} />
-      <div className="flex items-center gap-2 text-sm">
+      <div className="flex flex-wrap items-center gap-2 text-sm">
         <label>Filter:</label>
         <select
           className="rounded-lg border px-3 py-1.5"
           value={status}
-          onChange={(e) => setStatus(e.target.value)}
+          onChange={(e) => {
+            setStatus(e.target.value);
+            setOverdueOnly(false);
+          }}
+          disabled={overdueOnly}
         >
           <option value="">Semua</option>
           <option value="borrowed">borrowed</option>
@@ -112,6 +180,14 @@ export default function PeminjamanPage() {
           <option value="returned">returned</option>
           <option value="lost">lost</option>
         </select>
+        <button
+          type="button"
+          aria-pressed={overdueOnly}
+          onClick={() => setOverdueOnly((v) => !v)}
+          className={`rounded-lg border px-3 py-1.5 ${overdueOnly ? "border-red-300 bg-red-50 text-red-700" : ""}`}
+        >
+          Terlambat saja
+        </button>
         <button
           onClick={() => {
             void Promise.all([load(), loadOptions(true)]);

@@ -79,12 +79,18 @@ export async function POST(req: Request, { params }: Ctx) {
     });
   }
 
-  try {
-    await supabase.from("activity_logs").insert({
-      user_id: user?.id ?? null, action: "loans.return", entity_type: "loans", entity_id: params.id,
-      metadata: { fine, kondisi },
-    });
-  } catch { /* best-effort */ }
+  const auditPayload = {
+    user_id: user?.id ?? null, action: "loans.return", entity_type: "loans", entity_id: params.id,
+    metadata: { fine, kondisi, book_id: l.book_id },
+  };
+  const firstAudit = await supabase.from("activity_logs").insert(auditPayload);
+  if (firstAudit.error) {
+    console.error("[audit] activity_logs insert failed (retrying once):", firstAudit.error.message);
+    const retryAudit = await supabase.from("activity_logs").insert(auditPayload);
+    if (retryAudit.error) {
+      console.error("[audit] activity_logs insert failed twice (500 detail):", retryAudit.error.message, auditPayload);
+    }
+  }
 
   const revalidated: string[] = [];
   try { revalidateTag("loans"); revalidated.push("loans"); } catch { /* abaikan */ }

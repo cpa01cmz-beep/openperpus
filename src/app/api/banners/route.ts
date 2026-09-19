@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { requireStaff, jsonError } from "@/lib/supabase/auth";
 
@@ -8,6 +9,19 @@ import { requireStaff, jsonError } from "@/lib/supabase/auth";
  * PUT /api/banners?id= | DELETE /api/banners?id= (admin untuk hapus; tulis staf)
  * Kolom migrasi: title, subtitle, image_url, link, sort_order, is_active.
  */
+
+function revalidateBanners(): string[] {
+  const done: string[] = [];
+  try {
+    revalidateTag("banners");
+    done.push("banners");
+  } catch { /* abaikan di runtime tanpa cache-tag */ }
+  try {
+    revalidatePath("/");
+    done.push("/");
+  } catch { /* abaikan */ }
+  return done;
+}
 
 export async function GET() {
   const guard = await requireStaff();
@@ -50,7 +64,7 @@ export async function POST(req: Request) {
     .single();
 
   if (error) return jsonError("SAVE_FAILED", "Gagal menambah banner.", 500, error.message);
-  return NextResponse.json({ data }, { status: 201 });
+  return NextResponse.json({ data, revalidated: revalidateBanners() }, { status: 201 });
 }
 
 export async function PUT(req: Request) {
@@ -79,7 +93,7 @@ export async function PUT(req: Request) {
 
   const { data, error } = await supabase.from("banners").update(payload).eq("id", id).select().single();
   if (error) return jsonError("SAVE_FAILED", "Gagal mengupdate banner.", 500, error.message);
-  return NextResponse.json({ data });
+  return NextResponse.json({ data, revalidated: revalidateBanners() });
 }
 
 export async function DELETE(req: Request) {
@@ -92,5 +106,5 @@ export async function DELETE(req: Request) {
 
   const { error } = await supabase.from("banners").delete().eq("id", id);
   if (error) return jsonError("DELETE_FAILED", "Gagal menghapus banner.", 500, error.message);
-  return NextResponse.json({ message: "Banner dihapus." });
+  return NextResponse.json({ message: "Banner dihapus.", revalidated: revalidateBanners() });
 }

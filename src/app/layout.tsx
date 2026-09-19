@@ -89,6 +89,8 @@ export function fontVariablesForTheme(themeId: string): string {
   }
 }
 
+export const OG_DEFAULT_IMAGE = '/og-default.jpg';
+
 export const metadata: Metadata = {
   metadataBase: new URL(getSiteUrl()),
   title: {
@@ -106,18 +108,20 @@ export const metadata: Metadata = {
     locale: 'id_ID',
     url: getSiteUrl(),
     siteName: 'Perpustakaan',
+    images: [{ url: OG_DEFAULT_IMAGE, width: 1200, height: 630, alt: 'Perpustakaan' }],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Perpustakaan',
     description: 'CMS Perpustakaan — katalog, peminjaman, dan konten.',
+    images: [OG_DEFAULT_IMAGE],
   },
 };
 
 export async function generateViewport(): Promise<Viewport> {
   const settings = await getLibrarySettings();
   const theme = getTheme(settings.active_theme ?? 'emerald');
-  return { themeColor: theme.tokens.brand };
+  return { themeColor: theme.tokens.brand, width: 'device-width', initialScale: 1 };
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -146,7 +150,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     '--spacing-card': theme.spacing.card,
   } as CSSProperties;
   return (
-    <html lang="id" data-theme={theme.id} style={themeStyle} className={fontVariablesForTheme(theme.id)}>
+    <html
+      lang="id"
+      data-theme={theme.id}
+      style={themeStyle}
+      className={fontVariablesForTheme(theme.id)}
+    >
       <body className="min-h-dvh bg-[var(--surface)] font-sans text-[var(--ink)] antialiased">
         {/* CSS variables --brand dkk. diisi dari tabel `settings` oleh worker lain.
             Default aman di globals.css agar first paint tetap rapi. */}

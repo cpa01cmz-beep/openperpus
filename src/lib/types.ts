@@ -64,6 +64,7 @@ export type Book = {
   featured: boolean;
   rating_avg: number | string | null;
   created_at?: string;
+  updated_at?: string | null;
   categories?: { id: string; name: string; slug: string } | null;
   racks?: { code: string; name: string; location: string | null } | null;
 };
@@ -104,6 +105,7 @@ export type PageDoc = {
   title: string;
   content_md: string | null;
   excerpt: string | null;
+  updated_at?: string | null;
 };
 
 export type FetchBooksOpts = {
@@ -115,16 +117,16 @@ export type FetchBooksOpts = {
 
 export const FALLBACK_SETTINGS: LibrarySettings = {
   id: 1,
-  name: "Perpustakaan Digital",
-  tagline: "Membaca, Meminjam, Tumbuh Bersama",
+  name: 'Perpustakaan Digital',
+  tagline: 'Membaca, Meminjam, Tumbuh Bersama',
   logo_url: null,
   favicon_url: null,
-  address: "Alamat perpustakaan akan tampil di sini setelah diisi admin.",
+  address: 'Alamat perpustakaan akan tampil di sini setelah diisi admin.',
   phone: null,
   email: null,
   operational_hours: [
-    { hari: "Senin – Jumat", buka: "08:00", tutup: "16:00" },
-    { hari: "Sabtu", buka: "09:00", tutup: "12:00" },
+    { hari: 'Senin – Jumat', buka: '08:00', tutup: '16:00' },
+    { hari: 'Sabtu', buka: '09:00', tutup: '12:00' },
   ],
   socials: {},
   welcome_text: null,
@@ -134,19 +136,19 @@ export const FALLBACK_SETTINGS: LibrarySettings = {
   seo_title: null,
   seo_desc: null,
   announcement: null,
-  active_theme: "emerald",
+  active_theme: 'emerald',
 };
 
 /* ---------- formatter kecil dipakai komponen (murni, tanpa I/O) ---------- */
 
-export function stockState(book: Pick<Book, "stock_available" | "stock_total">) {
+export function stockState(book: Pick<Book, 'stock_available' | 'stock_total'>) {
   const avail = Number(book.stock_available) || 0;
-  if (avail <= 0) return { label: "Habis dipinjam", tone: "rose" as const };
-  if (avail <= 2) return { label: `Sisa ${avail}`, tone: "amber" as const };
-  return { label: `Tersedia · ${avail}`, tone: "emerald" as const };
+  if (avail <= 0) return { label: 'Habis dipinjam', tone: 'rose' as const };
+  if (avail <= 2) return { label: `Sisa ${avail}`, tone: 'amber' as const };
+  return { label: `Tersedia · ${avail}`, tone: 'emerald' as const };
 }
 
-export function ratingNumber(v: Book["rating_avg"]): number {
-  const n = typeof v === "string" ? parseFloat(v) : Number(v ?? 0);
+export function ratingNumber(v: Book['rating_avg']): number {
+  const n = typeof v === 'string' ? parseFloat(v) : Number(v ?? 0);
   return Number.isFinite(n) ? Math.min(5, Math.max(0, n)) : 0;
 }

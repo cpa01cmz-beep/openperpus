@@ -1,17 +1,26 @@
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import { calcFine } from "@/lib/supabase/auth";
 import StatCard from "@/components/admin/StatCard";
 
 export default async function AdminDashboard() {
   const supabase = createClient();
 
-  const [{ count: totalBooks }, { count: totalMembers }, { data: activeLoans }, { data: recent }] = await Promise.all([
+  const [{ count: totalBooks }, { count: totalMembers }, { data: activeLoans }, { data: recent }, { data: overdueQueue }] = await Promise.all([
     supabase.from("books").select("id", { count: "exact", head: true }),
     supabase.from("members").select("id", { count: "exact", head: true }),
-    supabase.from("loans").select("id,due_at").in("status", ["borrowed", "overdue"]),
+    supabase.from("loans").select("id,due_at").in("status", ["borrowed", "overdue"]).limit(500),
     supabase
       .from("loans")
       .select("id,borrowed_at,due_at,status,fine_amount,members(id,member_code),books(title)")
       .order("borrowed_at", { ascending: false })
+      .limit(8),
+    supabase
+      .from("loans")
+      .select("id,due_at,status,fine_amount,members(id,member_code),books(title)")
+      .in("status", ["borrowed", "overdue"])
+      .lt("due_at", new Date().toISOString())
+      .order("due_at", { ascending: true })
       .limit(8),
   ]);
 
@@ -29,7 +38,8 @@ export default async function AdminDashboard() {
   const { data: weekLoans } = await supabase
     .from("loans")
     .select("borrowed_at")
-    .gte("borrowed_at", new Date(Date.now() - 7 * 86400000).toISOString());
+    .gte("borrowed_at", new Date(Date.now() - 7 * 86400000).toISOString())
+    .limit(500);
   (weekLoans ?? []).forEach((l: { borrowed_at: string }) => {
     const idx = days.findIndex((_, i) => {
       const dt = new Date();
@@ -43,6 +53,16 @@ export default async function AdminDashboard() {
   });
   const max = Math.max(1, ...days.map((d) => d.count));
 
+  type OverdueRow = {
+    id: string;
+    due_at: string;
+    fine_amount: number;
+    members: { member_code: string } | { member_code: string }[] | null;
+    books: { title: string } | { title: string }[] | null;
+  };
+  const overdue = (overdueQueue ?? []) as OverdueRow[];
+  const fmtRp = (n: number) => `Rp${(n ?? 0).toLocaleString("id-ID")}`;
+
   return (
     <div className="grid gap-6">
       <h1 className="text-2xl font-bold">Dashboard</h1>
@@ -52,6 +72,35 @@ export default async function AdminDashboard() {
         <StatCard label="Dipinjam" value={dipinjam} hint="borrowed/overdue berjalan" />
         <StatCard label="Terlambat" value={terlambat} hint="Denda Rp1.000/hari" />
       </div>
+
+      <section className="rounded-2xl border bg-white p-6">
+        <div className="mb-4 flex items-center justify-between gap-2">
+          <h2 className="font-semibold">Perlu dikembalikan (terlambat)</h2>
+          <Link href="/admin/peminjaman?overdue=1" className="text-sm font-medium text-slate-700 underline">
+            Lihat antrean
+          </Link>
+        </div>
+        <ul className="grid gap-2 text-sm">
+          {overdue.length === 0 && <li className="text-slate-500">Belum ada keterlambatan.</li>}
+          {overdue.map((o) => {
+            const due = new Date(o.due_at);
+            const lateDays = Math.max(
+              0,
+              Math.floor((now.getTime() - new Date(due).setHours(0, 0, 0, 0)) / 86400000)
+            );
+            const preview = calcFine(due, now);
+            return (
+              <li key={o.id} className="flex items-center justify-between gap-2 rounded-lg bg-red-50 px-3 py-2">
+                <span className="truncate">
+                  {(Array.isArray(o.members) ? o.members[0]?.member_code : o.members?.member_code) ?? "?"} → {(Array.isArray(o.books) ? o.books[0]?.title : o.books?.title) ?? "?"}
+                  <span className="ml-1 text-xs text-red-700">telat {lateDays} hari</span>
+                </span>
+                <span className="shrink-0 text-xs font-semibold tabular-nums">{fmtRp(preview)}</span>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="rounded-2xl border bg-white p-6">

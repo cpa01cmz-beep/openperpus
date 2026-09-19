@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -11,7 +11,13 @@ import { resolveLogoSrc } from '../types';
  * MinimalHeader — slim single row, text links only, no CTA button.
  * Structural variant for paper-minimal / midnight-slim.
  */
-export default function MinimalHeader({ siteName, tagline, settings, logo_url, logoUrl }: HeaderVariantProps) {
+export default function MinimalHeader({
+  siteName,
+  tagline,
+  settings,
+  logo_url,
+  logoUrl,
+}: HeaderVariantProps) {
   const [open, setOpen] = useState(false);
   const logoSrc = resolveLogoSrc({ logo_url, logoUrl }) ?? settings?.logo_url ?? null;
   const name = siteName || settings?.name || 'Perpustakaan Digital';
@@ -23,11 +29,20 @@ export default function MinimalHeader({ siteName, tagline, settings, logo_url, l
         aria-label="Navigasi utama"
         className="mx-auto flex h-12 w-full max-w-[var(--container)] items-center justify-between gap-3 px-4 sm:px-6 lg:px-8"
       >
-        <Link href="/" className="flex min-w-0 items-center gap-2 rounded-[var(--radius-md)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+        <Link
+          href="/"
+          className="flex min-w-0 items-center gap-2 rounded-[var(--radius-md)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+        >
           <LogoMark siteName={name} logoSrc={logoSrc} size="sm" />
           <span className="min-w-0 leading-tight">
-            <span className="block truncate font-heading text-sm font-bold text-[var(--ink)]">{name}</span>
-            {tag ? <span className="hidden truncate text-[11px] text-[var(--ink)] opacity-70 sm:block">{tag}</span> : null}
+            <span className="block truncate font-heading text-sm font-bold text-[var(--ink)]">
+              {name}
+            </span>
+            {tag ? (
+              <span className="hidden truncate text-[11px] text-[var(--ink)] opacity-70 sm:block">
+                {tag}
+              </span>
+            ) : null}
           </span>
         </Link>
 
@@ -50,14 +65,17 @@ export default function MinimalHeader({ siteName, tagline, settings, logo_url, l
           aria-expanded={open}
           aria-controls="menu-minimal-mobile"
           aria-label={open ? 'Tutup menu' : 'Buka menu'}
-          className="grid h-9 w-9 place-items-center rounded-[var(--radius-md)] border border-[var(--ink)]/15 text-[var(--ink)] transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand md:hidden"
+          className="grid h-9 w-9 min-h-[44px] min-w-[44px] place-items-center rounded-[var(--radius-md)] border border-[var(--ink)]/15 text-[var(--ink)] transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand md:hidden"
         >
           {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
         </button>
       </nav>
 
       {open && (
-        <div id="menu-minimal-mobile" className="border-t border-[var(--ink)]/10 bg-[var(--surface)] md:hidden">
+        <div
+          id="menu-minimal-mobile"
+          className="border-t border-[var(--ink)]/10 bg-[var(--surface)] md:hidden"
+        >
           <ul className="mx-auto w-full max-w-[var(--container)] space-y-1 px-4 py-3 sm:px-6">
             {LINKS.map((l) => (
               <li key={l.href}>

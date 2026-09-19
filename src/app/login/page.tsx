@@ -16,9 +16,10 @@ export default function LoginPage() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
       <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h1 className="text-xl font-semibold text-slate-900">Masuk Admin</h1>
+        <h1 className="text-xl font-semibold text-slate-900">Masuk Anggota / Pustakawan</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Gunakan akun pustakawan atau admin perpustakaan.
+          Masuk sebagai anggota untuk melihat pinjaman &amp; denda Anda, atau sebagai pustakawan
+          untuk mengelola perpustakaan.
         </p>
 
         <Suspense>
