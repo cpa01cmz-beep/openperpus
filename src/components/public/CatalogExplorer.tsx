@@ -1,25 +1,25 @@
-"use client";
+'use client';
 
-import { useCallback, useEffect, useState } from "react";
-import { usePathname, useRouter } from "next/navigation";
-import { ArrowUpDown, BookX } from "lucide-react";
-import type { Book, Category } from "@/lib/books";
-import BookCard from "./BookCard";
-import CategoryChips from "./CategoryChips";
-import SearchBar from "./SearchBar";
+import { useCallback, useEffect, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
+import { ArrowUpDown, BookX } from 'lucide-react';
+import type { Book, Category } from '@/lib/books';
+import BookCard from './BookCard';
+import CategoryChips from './CategoryChips';
+import SearchBar from './SearchBar';
 
-type SortKey = "terbaru" | "judul" | "rating" | "stok";
+type SortKey = 'terbaru' | 'judul' | 'rating' | 'stok';
 
 const SORTS: { key: SortKey; label: string }[] = [
-  { key: "terbaru", label: "Terbaru" },
-  { key: "judul", label: "Judul A–Z" },
-  { key: "rating", label: "Rating tertinggi" },
-  { key: "stok", label: "Stok terbanyak" },
+  { key: 'terbaru', label: 'Terbaru' },
+  { key: 'judul', label: 'Judul A–Z' },
+  { key: 'rating', label: 'Rating tertinggi' },
+  { key: 'stok', label: 'Stok terbanyak' },
 ];
 
 type Props = {
   books: Book[];
-  categories: Pick<Category, "id" | "name" | "slug">[];
+  categories: Pick<Category, 'id' | 'name' | 'slug'>[];
   total?: number;
   page?: number;
   perPage?: number;
@@ -36,9 +36,9 @@ export default function CatalogExplorer({
   total,
   page = 1,
   perPage = 24,
-  initialQ = "",
+  initialQ = '',
   initialCategoryId = null,
-  initialSort = "terbaru",
+  initialSort = 'terbaru',
   initialAvailableOnly = false,
 }: Props) {
   const router = useRouter();
@@ -63,9 +63,15 @@ export default function CatalogExplorer({
   }, [initialAvailableOnly]);
 
   const pushUrl = useCallback(
-    (next: { q?: string; kategori?: string | null; sort?: SortKey; tersedia?: boolean; page?: number }) => {
+    (next: {
+      q?: string;
+      kategori?: string | null;
+      sort?: SortKey;
+      tersedia?: boolean;
+      page?: number;
+    }) => {
       const sp =
-        typeof window !== "undefined"
+        typeof window !== 'undefined'
           ? new URLSearchParams(window.location.search)
           : new URLSearchParams();
       const curQ = next.q !== undefined ? next.q.trim() : q.trim();
@@ -73,16 +79,16 @@ export default function CatalogExplorer({
       const curSort = next.sort ?? sort;
       const curTersedia = next.tersedia ?? onlyAvailable;
       const curPage = next.page ?? 1;
-      if (curQ) sp.set("q", curQ);
-      else sp.delete("q");
-      if (curCat) sp.set("kategori", curCat);
-      else sp.delete("kategori");
-      if (curSort && curSort !== "terbaru") sp.set("sort", curSort);
-      else sp.delete("sort");
-      if (curTersedia) sp.set("tersedia", "1");
-      else sp.delete("tersedia");
-      sp.set("page", String(curPage));
-      sp.set("per_page", String(perPage));
+      if (curQ) sp.set('q', curQ);
+      else sp.delete('q');
+      if (curCat) sp.set('kategori', curCat);
+      else sp.delete('kategori');
+      if (curSort && curSort !== 'terbaru') sp.set('sort', curSort);
+      else sp.delete('sort');
+      if (curTersedia) sp.set('tersedia', '1');
+      else sp.delete('tersedia');
+      sp.set('page', String(curPage));
+      sp.set('per_page', String(perPage));
       router.push(`${pathname}?${sp.toString()}`, { scroll: false });
     },
     [router, pathname, q, catId, sort, onlyAvailable, perPage]
@@ -90,7 +96,7 @@ export default function CatalogExplorer({
 
   useEffect(() => {
     const needle = q.trim();
-    const initial = (initialQ ?? "").trim();
+    const initial = (initialQ ?? '').trim();
     if (needle === initial) return;
     const t = setTimeout(() => pushUrl({ q: needle, page: 1 }), 400);
     return () => clearTimeout(t);
@@ -105,13 +111,13 @@ export default function CatalogExplorer({
   };
 
   const resetAll = () => {
-    setQ("");
+    setQ('');
     setCatId(null);
-    setSort("terbaru");
+    setSort('terbaru');
     setOnlyAvailable(false);
     const sp = new URLSearchParams();
-    sp.set("page", "1");
-    sp.set("per_page", String(perPage));
+    sp.set('page', '1');
+    sp.set('per_page', String(perPage));
     router.push(`${pathname}?${sp.toString()}`, { scroll: false });
   };
 
@@ -129,7 +135,10 @@ export default function CatalogExplorer({
       />
 
       <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-        <label htmlFor="sort" className="flex items-center gap-1.5 text-xs font-medium text-[var(--ink)]/60">
+        <label
+          htmlFor="sort"
+          className="flex items-center gap-1.5 text-xs font-medium text-[var(--ink)]/60"
+        >
           <ArrowUpDown className="h-3.5 w-3.5" aria-hidden="true" /> Urutkan
         </label>
         <select
@@ -140,7 +149,7 @@ export default function CatalogExplorer({
             setSort(v);
             pushUrl({ sort: v, page: 1 });
           }}
-          className="rounded-[var(--radius-md)] border border-[var(--ink)]/10 bg-[var(--surface)] px-3 py-2 text-sm text-[var(--ink)] shadow-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
+          className="min-h-[44px] rounded-[var(--radius-md)] border border-[var(--ink)]/10 bg-[var(--surface)] px-3 py-2 text-sm text-[var(--ink)] shadow-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
         >
           {SORTS.map((s) => (
             <option key={s.key} value={s.key}>
@@ -167,7 +176,8 @@ export default function CatalogExplorer({
         Menampilkan {books.length} dari {serverTotal} buku
         {q.trim() && (
           <>
-            {" "}untuk “<span className="font-semibold text-[var(--ink)]/80">{q.trim()}</span>”
+            {' '}
+            untuk “<span className="font-semibold text-[var(--ink)]/80">{q.trim()}</span>”
           </>
         )}
       </p>
@@ -181,14 +191,16 @@ export default function CatalogExplorer({
       ) : (
         <div className="grid place-items-center rounded-[var(--radius-lg)] border border-dashed border-[var(--ink)]/10 bg-[var(--surface)] px-6 py-14 text-center">
           <BookX className="h-10 w-10 text-[var(--ink)]/25" aria-hidden="true" />
-          <h2 className="mt-3 font-heading text-lg font-bold text-[var(--ink)]">Tidak ada buku yang cocok</h2>
+          <h2 className="mt-3 font-heading text-lg font-bold text-[var(--ink)]">
+            Tidak ada buku yang cocok
+          </h2>
           <p className="mt-1 max-w-sm text-sm text-[var(--ink)]/60">
             Coba kata kunci lain, ubah kategori, atau matikan filter “hanya yang tersedia”.
           </p>
           <button
             type="button"
             onClick={resetAll}
-            className="mt-4 rounded-[var(--radius-lg)] bg-brand px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            className="mt-4 min-h-[44px] rounded-[var(--radius-lg)] bg-brand px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
             Atur ulang filter
           </button>
@@ -201,18 +213,21 @@ export default function CatalogExplorer({
             type="button"
             disabled={safePage <= 1}
             onClick={() => goPage(safePage - 1)}
-            className="rounded-[var(--radius-md)] border border-[var(--ink)]/10 bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--ink)] shadow-sm transition enabled:hover:border-brand enabled:hover:text-brand disabled:cursor-not-allowed disabled:opacity-40"
+            className="min-h-[44px] rounded-[var(--radius-md)] border border-[var(--ink)]/10 bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--ink)] shadow-sm transition enabled:hover:border-brand enabled:hover:text-brand disabled:cursor-not-allowed disabled:opacity-40"
           >
             Sebelumnya
           </button>
-          <span aria-current="page" className="rounded-[var(--radius-md)] bg-brand px-4 py-2 text-sm font-bold text-white shadow">
+          <span
+            aria-current="page"
+            className="rounded-[var(--radius-md)] bg-brand px-4 py-2 text-sm font-bold text-white shadow"
+          >
             {safePage} / {totalPages}
           </span>
           <button
             type="button"
             disabled={safePage >= totalPages}
             onClick={() => goPage(safePage + 1)}
-            className="rounded-[var(--radius-md)] border border-[var(--ink)]/10 bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--ink)] shadow-sm transition enabled:hover:border-brand enabled:hover:text-brand disabled:cursor-not-allowed disabled:opacity-40"
+            className="min-h-[44px] rounded-[var(--radius-md)] border border-[var(--ink)]/10 bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--ink)] shadow-sm transition enabled:hover:border-brand enabled:hover:text-brand disabled:cursor-not-allowed disabled:opacity-40"
           >
             Berikutnya
           </button>

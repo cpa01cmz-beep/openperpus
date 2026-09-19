@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 import { useState } from 'react';
 import Link from 'next/link';
@@ -11,7 +11,13 @@ import { resolveLogoSrc } from '../types';
  * TopBarHeader — utility top bar (contact/address from settings) + main nav row.
  * Structural variant for ocean-wave. Same LINKS, same var tokens.
  */
-export default function TopBarHeader({ siteName, tagline, settings, logo_url, logoUrl }: HeaderVariantProps) {
+export default function TopBarHeader({
+  siteName,
+  tagline,
+  settings,
+  logo_url,
+  logoUrl,
+}: HeaderVariantProps) {
   const [open, setOpen] = useState(false);
   const logoSrc = resolveLogoSrc({ logo_url, logoUrl }) ?? settings?.logo_url ?? null;
   const name = siteName || settings?.name || 'Perpustakaan Digital';
@@ -37,12 +43,18 @@ export default function TopBarHeader({ siteName, tagline, settings, logo_url, lo
             </p>
             <p className="hidden shrink-0 items-center gap-3 sm:flex">
               {phone ? (
-                <a href={`tel:${phone}`} className="flex items-center gap-1 rounded hover:text-white">
+                <a
+                  href={`tel:${phone}`}
+                  className="flex items-center gap-1 rounded hover:text-white"
+                >
                   <Phone className="h-3.5 w-3.5 text-accent" aria-hidden="true" /> {phone}
                 </a>
               ) : null}
               {email ? (
-                <a href={`mailto:${email}`} className="flex items-center gap-1 rounded hover:text-white">
+                <a
+                  href={`mailto:${email}`}
+                  className="flex items-center gap-1 rounded hover:text-white"
+                >
                   <Mail className="h-3.5 w-3.5 text-accent" aria-hidden="true" /> {email}
                 </a>
               ) : null}
@@ -55,13 +67,20 @@ export default function TopBarHeader({ siteName, tagline, settings, logo_url, lo
           aria-label="Navigasi utama"
           className="mx-auto flex h-16 w-full max-w-[var(--container)] items-center justify-between gap-3 px-4 sm:px-6 lg:px-8"
         >
-          <Link href="/" className="flex min-w-0 items-center gap-2.5 rounded-[var(--radius-md)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand">
+          <Link
+            href="/"
+            className="flex min-w-0 items-center gap-2.5 rounded-[var(--radius-md)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          >
             <LogoMark siteName={name} logoSrc={logoSrc} />
             <span className="min-w-0 leading-tight">
               <span className="block truncate font-heading text-base font-semibold tracking-tight text-heading sm:text-lg">
                 {name}
               </span>
-              {tag ? <span className="block truncate text-[11px] uppercase tracking-[0.18em] text-[var(--ink)] opacity-70">{tag}</span> : null}
+              {tag ? (
+                <span className="block truncate text-[11px] uppercase tracking-[0.18em] text-[var(--ink)] opacity-70">
+                  {tag}
+                </span>
+              ) : null}
             </span>
           </Link>
 
@@ -92,14 +111,17 @@ export default function TopBarHeader({ siteName, tagline, settings, logo_url, lo
             aria-expanded={open}
             aria-controls="menu-topbar-mobile"
             aria-label={open ? 'Tutup menu' : 'Buka menu'}
-            className="grid h-10 w-10 place-items-center rounded-[var(--radius-md)] border border-[var(--ink)]/15 text-[var(--ink)] transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand md:hidden"
+            className="grid h-10 w-10 min-h-[44px] min-w-[44px] place-items-center rounded-[var(--radius-md)] border border-[var(--ink)]/15 text-[var(--ink)] transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand md:hidden"
           >
             {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </nav>
 
         {open && (
-          <div id="menu-topbar-mobile" className="border-t border-[var(--ink)]/10 bg-[var(--surface)] md:hidden">
+          <div
+            id="menu-topbar-mobile"
+            className="border-t border-[var(--ink)]/10 bg-[var(--surface)] md:hidden"
+          >
             <ul className="mx-auto w-full max-w-[var(--container)] space-y-1 px-4 py-3 sm:px-6">
               {LINKS.map((l) => (
                 <li key={l.href}>
