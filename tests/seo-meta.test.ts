@@ -15,9 +15,18 @@ const BERITA_SLUG = 'src/app/(public)/berita/[slug]/page.tsx';
 
 /** S-seo-meta: home h1, OG images fallback, per-slug canonical, JSON-LD Book/Article. */
 describe('S-seo-meta', () => {
-  it('home has exactly one h1', () => {
+  it('home has exactly one h1 (hero title; page.tsx holds none)', () => {
     const n = h1Count(read(HOME_PAGE));
-    expect(n, `S-seo-meta RED: home page.tsx has ${n} <h1> — need exactly 1`).toBe(1);
+    expect(
+      n,
+      `S-seo-meta: home page.tsx has ${n} <h1> — must hold 0 (hero owns the single H1)`
+    ).toBe(0);
+    for (const h of [
+      'src/components/hero/variants/ClassicHero.tsx',
+      'src/components/hero/variants/HeroFallback.tsx',
+    ]) {
+      expect(h1Count(read(h)), `S-seo-meta: ${h} must hold exactly 1 <h1>`).toBe(1);
+    }
   });
 
   it('root layout OG + Twitter images[] non-empty with /og-default.jpg fallback', () => {

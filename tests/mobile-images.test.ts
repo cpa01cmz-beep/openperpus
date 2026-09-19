@@ -16,8 +16,11 @@ const HERO_FILES = [
 /** T-M5: BookCard sizes + hero priority-only-first (Mobile 88→90+).
  * RED first: BookCard lacks fetchPriority/decoding; heroes prioritize
  * active slide (i === idx) instead of first-only (i === 0).
- * CF constraint: next.config.mjs keeps global unoptimized:true, and
- * per-component `unoptimized` props stay as belt-and-braces.
+ * Iteration 1 (2026-09-19): global unoptimized:true REPLACED by custom
+ * Supabase-transform loader (src/lib/imageLoader.ts) — valid on CF Workers
+ * (pure URL rewrite, no optimization server needed) and restores srcset.
+ * Assertions below lock the NEW contract: no unoptimized bypass anywhere,
+ * custom loader configured, srcset/sizes active.
  */
 describe('T-M5 BookCard image hints', () => {
   const f = 'src/components/public/BookCard.tsx';
@@ -40,9 +43,10 @@ describe('T-M5 BookCard image hints', () => {
     ).toBe(true);
   });
 
-  it('BookCard keeps unoptimized (CF constraint)', () => {
+  it('BookCard uses responsive srcset (no unoptimized bypass)', () => {
     const src = read(f);
-    expect(src.includes('unoptimized'), `${f} must keep unoptimized`).toBe(true);
+    expect(src.includes('unoptimized'), `${f} must not bypass optimization`).toBe(false);
+    expect(src.includes('sizes='), `${f} must keep sizes for srcset`).toBe(true);
   });
 
   it('BookCard cover stays lazy', () => {
@@ -66,11 +70,11 @@ describe('T-M5 hero priority-only-first', () => {
       ).toBe(false);
     });
 
-    it(`${f} keeps sizes 100vw + unoptimized + lazy rest`, () => {
+    it(`${f} keeps sizes 100vw + responsive srcset (no bypass)`, () => {
       const src = read(f);
       expect(src.includes('sizes="100vw"'), `${f} must keep sizes="100vw"`).toBe(true);
-      expect(src.includes('unoptimized'), `${f} must keep unoptimized`).toBe(true);
-      expect(src.includes('"lazy"'), `${f} must keep lazy for non-first slides`).toBe(true);
+      expect(src.includes('unoptimized'), `${f} must not bypass via unoptimized`).toBe(false);
+      expect(src.includes('lazy'), `${f} must keep lazy for non-first slides`).toBe(true);
     });
 
     it(`${f} has at most one priority Image`, () => {
@@ -80,10 +84,10 @@ describe('T-M5 hero priority-only-first', () => {
     });
   }
 
-  it('next.config.mjs keeps global unoptimized (CF constraint)', () => {
+  it('next.config.mjs uses custom Supabase-transform loader (CF-safe srcset)', () => {
     const src = read('next.config.mjs');
-    expect(src.includes('unoptimized: true'), 'next.config.mjs must keep unoptimized: true').toBe(
-      true
-    );
+    expect(src.includes("loader: 'custom'"), 'next.config.mjs must use custom loader').toBe(true);
+    expect(src.includes('loaderFile'), 'next.config.mjs must point at loaderFile').toBe(true);
+    expect(src.includes('unoptimized: true'), 'global unoptimized must be removed').toBe(false);
   });
 });
