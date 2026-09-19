@@ -13,14 +13,6 @@ export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'fatal';
 
 type LogContext = Record<string, unknown>;
 
-let sentryDsn: string | undefined;
-try {
-  // eslint-disable-next-line no-undef
-  sentryDsn = typeof process !== 'undefined' ? process.env?.SENTRY_DSN : undefined;
-} catch {
-  sentryDsn = undefined;
-}
-
 function emit(level: LogLevel, msg: string, requestId: string | undefined, ctx?: LogContext): void {
   const line = JSON.stringify({
     ts: new Date().toISOString(),
@@ -42,26 +34,16 @@ function emit(level: LogLevel, msg: string, requestId: string | undefined, ctx?:
 }
 
 async function reportToSentry(
-  level: 'error' | 'fatal',
-  msg: string,
-  ctx?: LogContext
+  _level: 'error' | 'fatal',
+  _msg: string,
+  _ctx?: LogContext
 ): Promise<void> {
-  if (!sentryDsn) return;
-  // Integrasi Sentry: pasang `@sentry/nextjs` + set SENTRY_DSN untuk
-  // meneruskan error ke Sentry. Tanpa dep tersebut, event tetap tercatat
-  // sebagai JSON (dibaca via `wrangler tail --format json`).
-  try {
-    // @ts-expect-error — @sentry/nextjs opsional, hanya bila SENTRY_DSN diset
-    const mod = (await import('@sentry/nextjs').catch(() => null)) as {
-      captureException?: (err: Error, opts?: { level?: string }) => void;
-    } | null;
-    if (mod && typeof mod.captureException === 'function') {
-      const err = (ctx?.error instanceof Error ? ctx.error : new Error(msg)) as Error;
-      mod.captureException(err, { level: level === 'fatal' ? 'fatal' : 'error' });
-    }
-  } catch {
-    // Sentry tidak boleh memecahkan request — telan kegagalan report.
-  }
+  void _level;
+  void _msg;
+  void _ctx;
+  // Sentry dinonaktifkan: pasang `@sentry/nextjs` + set SENTRY_DSN untuk
+  // mengaktifkannya kembali. Event tetap tercatat sebagai JSON
+  // (dibaca via `wrangler tail --format json`).
 }
 
 export function createLogger(requestId?: string) {
