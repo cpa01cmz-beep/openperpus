@@ -170,7 +170,7 @@ export default function CatalogExplorer({
           ))}
         </select>
 
-        <label className="ml-auto inline-flex cursor-pointer items-center gap-2 text-sm text-[var(--ink)]/70">
+        <label className="ml-auto inline-flex min-h-[44px] cursor-pointer items-center gap-2 text-sm text-[var(--ink)]/70">
           <input
             type="checkbox"
             checked={onlyAvailable}
@@ -178,7 +178,7 @@ export default function CatalogExplorer({
               setOnlyAvailable(e.target.checked);
               pushUrl({ tersedia: e.target.checked, page: 1 });
             }}
-            className="h-4 w-4 rounded accent-brand"
+            className="h-5 w-5 shrink-0 rounded accent-brand"
           />
           Hanya yang tersedia
         </label>
