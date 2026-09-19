@@ -150,8 +150,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     '--spacing-card': theme.spacing.card,
   } as CSSProperties;
   return (
-    <html
-      lang="id"
+    <html lang="id"
       data-theme={theme.id}
       style={themeStyle}
       className={fontVariablesForTheme(theme.id)}
