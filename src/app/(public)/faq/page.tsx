@@ -1,17 +1,45 @@
-import Link from "next/link";
-import { ArrowRight, Mail, Phone } from "lucide-react";
-import FaqAccordion, { type FaqItem } from "@/components/public/FaqAccordion";
-import { fetchSettings } from "@/lib/books";
-import { createClient } from "@/lib/supabase/server";
+import Link from 'next/link';
+import dynamic from 'next/dynamic';
+import { ArrowRight, Mail, Phone } from 'lucide-react';
+import type { FaqItem } from '@/components/public/FaqAccordion';
+import { fetchSettings } from '@/lib/books';
+import { createClient } from '@/lib/supabase/server';
+
+const FaqAccordion = dynamic(() => import('@/components/public/FaqAccordion'), {
+  ssr: true,
+  loading: () => <FaqSkeleton />,
+});
+
+function FaqSkeleton() {
+  return (
+    <div aria-hidden="true" className="animate-pulse space-y-3">
+      <div className="h-12 rounded-[var(--radius-lg)] bg-[var(--ink)]/5" />
+      <div className="flex gap-2">
+        <div className="h-9 w-20 rounded-full bg-[var(--ink)]/5" />
+        <div className="h-9 w-24 rounded-full bg-[var(--ink)]/5" />
+        <div className="h-9 w-20 rounded-full bg-[var(--ink)]/5" />
+      </div>
+      {[0, 1, 2].map((i) => (
+        <div
+          key={i}
+          className="rounded-[var(--radius-lg)] border border-[var(--ink)]/10 bg-[var(--surface)] p-4"
+        >
+          <div className="h-4 w-3/4 rounded bg-[var(--ink)]/10" />
+          <div className="mt-2 h-3 w-1/2 rounded bg-[var(--ink)]/5" />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export const revalidate = 60;
 
 export async function generateMetadata() {
   const s = await fetchSettings();
   return {
-    title: `FAQ — ${s.name ?? "Perpustakaan"}`,
+    title: `FAQ — ${s.name ?? 'Perpustakaan'}`,
     description: `Jawaban atas pertanyaan umum seputar keanggotaan, peminjaman, dan layanan ${
-      s.name ?? "perpustakaan"
+      s.name ?? 'perpustakaan'
     }.`,
   };
 }
@@ -21,11 +49,11 @@ async function fetchFaqs(): Promise<FaqItem[]> {
   try {
     const supabase = createClient();
     const { data, error } = await supabase
-      .from("faqs")
-      .select("id,question,answer,category")
-      .eq("is_active", true)
-      .order("sort_order", { ascending: true })
-      .order("created_at", { ascending: true });
+      .from('faqs')
+      .select('id,question,answer,category')
+      .eq('is_active', true)
+      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true });
     if (error || !data) return [];
     return data as FaqItem[];
   } catch {
@@ -36,14 +64,12 @@ async function fetchFaqs(): Promise<FaqItem[]> {
 /** FAQ: cari + filter kategori + kartu bantuan dari settings. */
 export default async function FaqPage() {
   const [settings, faqs] = await Promise.all([fetchSettings(), fetchFaqs()]);
-  const siteName = settings.name ?? "Perpustakaan Digital";
+  const siteName = settings.name ?? 'Perpustakaan Digital';
 
   return (
     <div className="space-y-6">
       <header>
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">
-          Bantuan
-        </p>
+        <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Bantuan</p>
         <h1 className="mt-1 font-heading text-3xl font-bold text-heading sm:text-4xl">
           Pertanyaan Umum
         </h1>

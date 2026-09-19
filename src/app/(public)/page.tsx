@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
+import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Megaphone, Quote } from 'lucide-react';
 import { getSiteUrl } from '@/lib/site';
-import HeroSwitch from '@/components/hero/HeroSwitch';
+import { HeroFallback } from '@/components/hero/variants/HeroFallback';
 import StatsBar from '@/components/public/StatsBar';
 import BookCard from '@/components/public/BookCard';
 import TestimonialCard from '@/components/public/TestimonialCard';
@@ -16,6 +17,11 @@ import {
   fetchStats,
   fetchTestimonials,
 } from '@/lib/books';
+
+const HeroSwitch = dynamic(() => import('@/components/hero/HeroSwitch'), {
+  ssr: true,
+  loading: () => <HeroFallback siteName="Perpustakaan Digital" />,
+});
 
 export const revalidate = 60;
 
