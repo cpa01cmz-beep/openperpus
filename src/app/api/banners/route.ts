@@ -9,22 +9,35 @@ import { requireStaff, jsonError, parsePaging } from '@/lib/supabase/auth';
  * PUT /api/banners?id= | DELETE /api/banners?id= (admin untuk hapus; tulis staf)
  * Kolom migrasi: title, subtitle, image_url, link, sort_order, is_active.
  */
-
 function revalidateBanners(): string[] {
   const done: string[] = [];
   try {
     revalidateTag('banners');
     done.push('banners');
-  } catch {
-    /* abaikan di runtime tanpa cache-tag */
-  }
+  } catch {}
   try {
     revalidatePath('/');
     done.push('/');
-  } catch {
-    /* abaikan */
-  }
+  } catch {}
   return done;
+}
+
+async function writeLog(
+  supabase: ReturnType<typeof createClient>,
+  userId: string | undefined,
+  action: string,
+  entityId: string,
+  metadata: Record<string, unknown> = {}
+) {
+  try {
+    await supabase.from('activity_logs').insert({
+      user_id: userId ?? null,
+      action,
+      entity_type: 'banners',
+      entity_id: entityId,
+      metadata,
+    });
+  } catch {}
 }
 
 export async function GET(req: Request) {
@@ -32,12 +45,25 @@ export async function GET(req: Request) {
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
   const { supabase } = guard as { supabase: ReturnType<typeof createClient> };
 
-  const { page, perPage, from, to } = parsePaging(req.url, 10);
+  const { sp, page, perPage, from, to } = parsePaging(req.url, 10);
+
+  const SORTABLE = ['title', 'sort_order', 'created_at'] as const;
+  const sortParam = (sp.get('sort') ?? '').trim();
+  const sort: (typeof SORTABLE)[number] = (SORTABLE as readonly string[]).includes(sortParam)
+    ? (sortParam as (typeof SORTABLE)[number])
+    : 'sort_order';
+  const orderParam = (sp.get('order') ?? '').trim().toLowerCase();
+  const asc =
+    orderParam === 'asc'
+      ? true
+      : orderParam === 'desc'
+        ? false
+        : sort === 'sort_order' || sort === 'title';
 
   const { data, error, count } = await supabase
     .from('banners')
     .select('id,title,image_url,link,sort_order,is_active,created_at', { count: 'exact' })
-    .order('sort_order', { ascending: true })
+    .order(sort, { ascending: asc })
     .range(from, to);
   if (error) return jsonError('FETCH_FAILED', 'Gagal mengambil banner.', 500, error.message);
   const total = count ?? 0;
@@ -51,7 +77,10 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const guard = await requireStaff(['admin', 'librarian']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
-  const { supabase } = guard as { supabase: ReturnType<typeof createClient> };
+  const { supabase, user } = guard as {
+    supabase: ReturnType<typeof createClient>;
+    user: { id: string };
+  };
 
   let body: Record<string, unknown>;
   try {
@@ -84,13 +113,17 @@ export async function POST(req: Request) {
     .single();
 
   if (error) return jsonError('SAVE_FAILED', 'Gagal menambah banner.', 500, error.message);
+  await writeLog(supabase, user?.id, 'banners.create', (data as { id: string }).id, { title });
   return NextResponse.json({ data, revalidated: revalidateBanners() }, { status: 201 });
 }
 
 export async function PUT(req: Request) {
   const guard = await requireStaff(['admin', 'librarian']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
-  const { supabase } = guard as { supabase: ReturnType<typeof createClient> };
+  const { supabase, user } = guard as {
+    supabase: ReturnType<typeof createClient>;
+    user: { id: string };
+  };
 
   const id = new URL(req.url).searchParams.get('id');
   if (!id) return jsonError('VALIDATION', 'Parameter ?id= wajib.', 400);
@@ -123,18 +156,23 @@ export async function PUT(req: Request) {
     .select()
     .single();
   if (error) return jsonError('SAVE_FAILED', 'Gagal mengupdate banner.', 500, error.message);
+  await writeLog(supabase, user?.id, 'banners.update', id, payload);
   return NextResponse.json({ data, revalidated: revalidateBanners() });
 }
 
 export async function DELETE(req: Request) {
   const guard = await requireStaff(['admin']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
-  const { supabase } = guard as { supabase: ReturnType<typeof createClient> };
+  const { supabase, user } = guard as {
+    supabase: ReturnType<typeof createClient>;
+    user: { id: string };
+  };
 
   const id = new URL(req.url).searchParams.get('id');
   if (!id) return jsonError('VALIDATION', 'Parameter ?id= wajib.', 400);
 
   const { error } = await supabase.from('banners').delete().eq('id', id);
   if (error) return jsonError('DELETE_FAILED', 'Gagal menghapus banner.', 500, error.message);
+  await writeLog(supabase, user?.id, 'banners.delete', id);
   return NextResponse.json({ message: 'Banner dihapus.', revalidated: revalidateBanners() });
 }

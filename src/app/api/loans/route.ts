@@ -262,7 +262,10 @@ export async function PUT(req: Request) {
 export async function DELETE(req: Request) {
   const guard = await requireStaff(['admin']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
-  const { supabase } = guard as { supabase: ReturnType<typeof createClient> };
+  const { supabase, user } = guard as {
+    supabase: ReturnType<typeof createClient>;
+    user: { id: string };
+  };
 
   const id = new URL(req.url).searchParams.get('id');
   if (!id) return jsonError('VALIDATION', 'Parameter ?id= wajib.', 400);
@@ -278,5 +281,8 @@ export async function DELETE(req: Request) {
 
   const { error } = await supabase.from('loans').delete().eq('id', id);
   if (error) return jsonError('DELETE_FAILED', 'Gagal menghapus peminjaman.', 500, error.message);
+  try {
+    await writeLog(supabase, user?.id, 'loans.delete', id);
+  } catch {}
   return NextResponse.json({ message: 'Peminjaman dihapus.' });
 }
