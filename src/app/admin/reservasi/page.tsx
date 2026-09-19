@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import DataTable from '@/components/admin/DataTable';
 import StatCard from '@/components/admin/StatCard';
 import { checkoutReservation } from '@/lib/reservation-checkout';
+import { findExpiredCandidates, sweepExpiredReservations } from '@/lib/reservation-sweep';
 
 type Reservation = {
   id: string;
@@ -34,6 +35,7 @@ export default function ReservasiPage() {
   const [actingId, setActingId] = useState<string | null>(null);
   const [apiMissing, setApiMissing] = useState(false);
   const [error, setError] = useState('');
+  const [sweeping, setSweeping] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -125,8 +127,43 @@ export default function ReservasiPage() {
     }
   }
 
+  async function onSweep() {
+    // S-roi6 1-klik: PUT expired per kandidat via reservation-sweep.ts.
+    // 422 per-baris diskip + failure count; 403/offline → zero sukses + alert.
+    if (expired.length === 0) return;
+    if (!confirm(`Tandai ${expired.length} reservasi kedaluwarsa sebagai expired?`)) return;
+    setSweeping(true);
+    try {
+      const out = await sweepExpiredReservations(
+        {
+          fetchLike: (url, init) =>
+            fetch(url, { ...(init ?? {}), cache: 'no-store' }) as unknown as Promise<{
+              ok: boolean;
+              status: number;
+              json: () => Promise<unknown>;
+            }>,
+          isStaff: true,
+        },
+        { candidates: expired.map((r) => ({ id: r.id })) }
+      );
+      if (out.failed > 0) {
+        alert(
+          `${out.succeeded} ditandai kedaluwarsa, ${out.failed} gagal: ${out.errors
+            .map((e) => `${e.id}: ${e.message}`)
+            .join('; ')}`
+        );
+      }
+      load();
+    } catch (e) {
+      alert((e as Error).message);
+    } finally {
+      setSweeping(false);
+    }
+  }
+
   const pending = rows.filter((r) => r.status === 'pending').length;
   const ready = rows.filter((r) => r.status === 'ready').length;
+  const expired = findExpiredCandidates(rows);
 
   return (
     <div className="grid gap-4">
@@ -152,6 +189,30 @@ export default function ReservasiPage() {
           className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
         >
           {error}
+        </div>
+      )}
+
+      {expired.length > 0 && (
+        <div
+          role="alert"
+          className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+        >
+          <p className="font-semibold">Kedaluwarsa {expired.length} baris</p>
+          <ul className="mt-1 list-disc pl-5">
+            {expired.map((r) => (
+              <li key={r.id}>
+                {r.members?.member_code ?? '-'} · {r.books?.title ?? '-'} ·{' '}
+                {r.expires_at ? new Date(r.expires_at).toLocaleDateString('id-ID') : '-'}
+              </li>
+            ))}
+          </ul>
+          <button
+            onClick={onSweep}
+            disabled={sweeping}
+            className="mt-2 rounded-lg bg-amber-600 px-3 py-1.5 text-white disabled:opacity-50"
+          >
+            {sweeping ? 'Menandai…' : 'Tandai kedaluwarsa'}
+          </button>
         </div>
       )}
 
