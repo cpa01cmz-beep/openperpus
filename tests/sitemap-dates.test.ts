@@ -51,7 +51,8 @@ describe('S-seo-sitemap dates', () => {
   });
 
   it('pages select-list fetches updated_at', () => {
-    const src = read(BOOKS_LIB);
+    // Iterasi-2: kanonis di pages.ts (facade re-export di books.ts).
+    const src = read('src/lib/pages.ts');
     const pagesIdx = src.indexOf('fetchPagesUncached');
     const pagesBlock = pagesIdx >= 0 ? src.slice(pagesIdx, pagesIdx + 800) : '';
     expect(

@@ -16,71 +16,24 @@ export type {
   PageDoc,
 } from '@/lib/types';
 export { FALLBACK_SETTINGS, stockState, ratingNumber } from '@/lib/types';
-import { FALLBACK_SETTINGS } from '@/lib/types';
-import type {
-  LibrarySettings,
-  Banner,
-  Article,
-  Testimonial,
-  PageDoc,
-  Book,
-  Category,
-} from '@/lib/types';
+import type { Book, Category } from '@/lib/types';
 
 /* ============================================================
- * src/lib/books.ts — helper data PUBLIK (Server Components)
- * Sumber: Supabase langsung (RLS publik: is_active / published).
- * Semua helper aman-null: gagal fetch -> fallback elegan, UI tak blank.
- * Revalidate 60 ditaruh di tiap page (export const revalidate = 60),
- * bukan di sini, agar reusable di server component mana pun.
+ * src/lib/books.ts — FASADE domain buku + re-ekspor kompatibel.
+ * Kanonis per-domain tinggal di modulnya masing-masing:
+ * settings.ts, banners.ts, articles.ts, testimonials.ts,
+ * pages.ts, stats.ts. Modul ini HANYA berisi logika buku
+ * (BOOKS_SELECT, applyBooksSort, fetchBooks*, fetchBookBySlug,
+ * fetchCategories) + re-ekspor agar 18 importer tak berubah.
+ * S-cache: fetchSettings dibungkus unstable_cache di settings.ts;
+ * sanitizeIlike dipakai di fetchBooksUncached/fetchBooksPagedUncached.
  * ============================================================ */
 
-/** Identitas perpus — single row id=1. Fallback elegan bila null/error. */
-export async function fetchSettings(): Promise<LibrarySettings> {
-  return unstable_cache(() => fetchSettingsUncached(), ['library-settings'], {
-    tags: ['settings'],
-    revalidate: 60,
-  })();
-}
+/** Identitas perpus — single row id=1 (kanonis di settings.ts, unstable_cache). */
+export { fetchSettings, getLibrarySettings, getOperationalHours, getSocials } from './settings';
 
-async function fetchSettingsUncached(): Promise<LibrarySettings> {
-  try {
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from('library_settings')
-      .select('*')
-      .eq('id', 1)
-      .maybeSingle();
-    if (error || !data) return FALLBACK_SETTINGS;
-    return { ...FALLBACK_SETTINGS, ...(data as LibrarySettings) };
-  } catch {
-    return FALLBACK_SETTINGS;
-  }
-}
-
-/** Banner hero aktif, urut sort_order. */
-export async function fetchBanners(): Promise<Banner[]> {
-  return unstable_cache(() => fetchBannersUncached(), ['banners'], {
-    tags: [BANNERS_TAG],
-    revalidate: 60,
-  })();
-}
-
-async function fetchBannersUncached(): Promise<Banner[]> {
-  try {
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from('banners')
-      .select('id,title,subtitle,image_url,link,sort_order')
-      .eq('is_active', true)
-      .order('sort_order', { ascending: true })
-      .limit(6);
-    if (error) return [];
-    return (data ?? []) as Banner[];
-  } catch {
-    return [];
-  }
-}
+/** Banner hero aktif (kanonis di banners.ts). */
+export { fetchBanners } from './banners';
 
 export type FetchBooksOpts = BaseFetchBooksOpts & {
   q?: string;
@@ -262,163 +215,14 @@ async function fetchCategoriesUncached(): Promise<Category[]> {
   }
 }
 
-/** Artikel published terbaru. */
-export async function fetchArticles(limit = 3): Promise<Article[]> {
-  return unstable_cache(() => fetchArticlesUncached(limit), ['articles', String(limit)], {
-    tags: [ARTICLES_TAG],
-    revalidate: 60,
-  })();
-}
+/** Artikel published (kanonis di articles.ts). */
+export { fetchArticles, fetchArticleBySlug } from './articles';
 
-async function fetchArticlesUncached(limit = 3): Promise<Article[]> {
-  try {
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from('articles')
-      .select('id,title,slug,excerpt,content_md,cover_url,category,published_at,views')
-      .eq('status', 'published')
-      .order('published_at', { ascending: false, nullsFirst: false })
-      .limit(limit);
-    if (error) return [];
-    return (data ?? []) as Article[];
-  } catch {
-    return [];
-  }
-}
+/** Testimoni aktif (kanonis di testimonials.ts). */
+export { fetchTestimonials } from './testimonials';
 
-export async function fetchArticleBySlug(slug: string): Promise<Article | null> {
-  return unstable_cache(() => fetchArticleBySlugUncached(slug), ['article-slug', slug], {
-    tags: [ARTICLES_TAG],
-    revalidate: 60,
-  })();
-}
+/** Halaman dinamis aktif (kanonis di pages.ts). */
+export { fetchPages, fetchPage } from './pages';
 
-async function fetchArticleBySlugUncached(slug: string): Promise<Article | null> {
-  try {
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from('articles')
-      .select('id,title,slug,excerpt,content_md,cover_url,category,published_at,views')
-      .eq('slug', slug)
-      .eq('status', 'published')
-      .maybeSingle();
-    if (error || !data) return null;
-    return data as Article;
-  } catch {
-    return null;
-  }
-}
-
-/** Testimoni aktif. */
-export async function fetchTestimonials(limit = 6): Promise<Testimonial[]> {
-  return unstable_cache(() => fetchTestimonialsUncached(limit), ['testimonials', String(limit)], {
-    tags: [TESTIMONIALS_TAG],
-    revalidate: 60,
-  })();
-}
-
-async function fetchTestimonialsUncached(limit = 6): Promise<Testimonial[]> {
-  try {
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from('testimonials')
-      .select('id,name,role,content,avatar_url,rating')
-      .eq('is_active', true)
-      .order('sort_order', { ascending: true })
-      .limit(limit);
-    if (error) return [];
-    return (data ?? []) as Testimonial[];
-  } catch {
-    return [];
-  }
-}
-
-/** Daftar halaman dinamis aktif (untuk sitemap /halaman/*). Gagal fetch → fallback []. */
-export async function fetchPages(limit = 100): Promise<PageDoc[]> {
-  return unstable_cache(() => fetchPagesUncached(limit), ['pages', String(limit)], {
-    tags: [PAGES_TAG],
-    revalidate: 60,
-  })();
-}
-
-async function fetchPagesUncached(limit = 100): Promise<PageDoc[]> {
-  try {
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from('pages')
-      .select('id,slug,title,content_md,excerpt,updated_at')
-      .eq('is_active', true)
-      .order('title', { ascending: true })
-      .limit(limit);
-    if (error) return [];
-    return (data ?? []) as PageDoc[];
-  } catch {
-    return [];
-  }
-}
-
-/** Halaman dinamis (tentang/layanan/...) by slug. */
-export async function fetchPage(slug: string): Promise<PageDoc | null> {
-  return unstable_cache(() => fetchPageUncached(slug), ['page-slug', slug], {
-    tags: [PAGES_TAG],
-    revalidate: 60,
-  })();
-}
-
-async function fetchPageUncached(slug: string): Promise<PageDoc | null> {
-  try {
-    const supabase = createClient();
-    const { data, error } = await supabase
-      .from('pages')
-      .select('id,slug,title,content_md,excerpt,updated_at')
-      .eq('slug', slug)
-      .eq('is_active', true)
-      .maybeSingle();
-    if (error || !data) return null;
-    return data as PageDoc;
-  } catch {
-    return null;
-  }
-}
-
-/** Angka statistik untuk StatsBar (head-count ringan). */
-export async function fetchStats(): Promise<{
-  totalBooks: number;
-  totalCategories: number;
-  totalArticles: number;
-  totalCopies: number;
-}> {
-  return unstable_cache(() => fetchStatsUncached(), ['stats'], {
-    tags: [STATS_TAG],
-    revalidate: 60,
-  })();
-}
-
-async function fetchStatsUncached(): Promise<{
-  totalBooks: number;
-  totalCategories: number;
-  totalArticles: number;
-  totalCopies: number;
-}> {
-  try {
-    const supabase = createClient();
-    const { data, error } = await supabase.rpc('get_library_stats');
-    if (error || !data || data.length === 0) {
-      return { totalBooks: 0, totalCategories: 0, totalArticles: 0, totalCopies: 0 };
-    }
-    const row = data[0] as {
-      total_books: number;
-      total_categories: number;
-      total_articles: number;
-      total_copies: number;
-    };
-    return {
-      totalBooks: row.total_books ?? 0,
-      totalCategories: row.total_categories ?? 0,
-      totalArticles: row.total_articles ?? 0,
-      totalCopies: row.total_copies ?? 0,
-    };
-  } catch {
-    return { totalBooks: 0, totalCategories: 0, totalArticles: 0, totalCopies: 0 };
-  }
-}
+/** Statistik StatsBar (kanonis di stats.ts, RPC get_library_stats). */
+export { fetchStats, type LibraryStats } from './stats';
