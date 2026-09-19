@@ -7,9 +7,7 @@ import { join } from 'node:path';
 // and LogsTable must render an expandable metadata toggle.
 
 vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(
-    () => (globalThis as unknown as { __mockSupabase: unknown }).__mockSupabase
-  ),
+  createClient: vi.fn(() => (globalThis as unknown as { __mockSupabase: unknown }).__mockSupabase),
 }));
 
 vi.mock('next/cache', () => ({
@@ -65,7 +63,11 @@ function setReturnAuditMock(opts: {
   let auditCalls = 0;
   const from = vi.fn((table: string) => {
     if (table === 'profiles')
-      return { select: () => ({ eq: () => ({ single: async () => ({ data: { role: 'admin' }, error: null }) }) }) };
+      return {
+        select: () => ({
+          eq: () => ({ single: async () => ({ data: { role: 'admin' }, error: null }) }),
+        }),
+      };
     if (table === 'loans') {
       const chain: Record<string, unknown> = {};
       let isUpdate = false;
@@ -122,10 +124,18 @@ function setReturnAuditMock(opts: {
 function setReturnMock(loan: Record<string, unknown> | null) {
   const from = vi.fn((table: string) => {
     if (table === 'profiles')
-      return { select: () => ({ eq: () => ({ single: async () => ({ data: { role: 'admin' }, error: null }) }) }) };
+      return {
+        select: () => ({
+          eq: () => ({ single: async () => ({ data: { role: 'admin' }, error: null }) }),
+        }),
+      };
     if (table === 'loans')
-      return { select: () => ({ eq: () => ({ single: async () => ({ data: loan, error: null }) }) }) };
-    return { select: () => ({ eq: () => ({ single: async () => ({ data: null, error: null }) }) }) };
+      return {
+        select: () => ({ eq: () => ({ single: async () => ({ data: loan, error: null }) }) }),
+      };
+    return {
+      select: () => ({ eq: () => ({ single: async () => ({ data: null, error: null }) }) }),
+    };
   });
   setGlobal({
     auth: { getUser: async () => ({ data: { user: { id: 'U-ADMIN' } }, error: null }) },
@@ -150,7 +160,13 @@ describe('S-admin-audit return audit + logs metadata', () => {
   });
 
   it('return POST already returned -> 409 CONFLICT exact', async () => {
-    setReturnMock({ id: 'L-1', status: 'returned', due_at: new Date().toISOString(), book_id: BID, member_id: MID });
+    setReturnMock({
+      id: 'L-1',
+      status: 'returned',
+      due_at: new Date().toISOString(),
+      book_id: BID,
+      member_id: MID,
+    });
     const res = await RETURN_POST(postReq('http://localhost/api/loans/L-1/return', {}), {
       params: { id: 'L-1' },
     });
@@ -162,9 +178,12 @@ describe('S-admin-audit return audit + logs metadata', () => {
   it('POST return inserts activity_logs with {fine,kondisi,book_id}', async () => {
     const seen: Record<string, unknown>[] = [];
     setReturnAuditMock({ onAuditInsert: (p) => seen.push(p) });
-    const res = await RETURN_POST(postReq('http://localhost/api/loans/L-1/return', { kondisi: 'baik' }), {
-      params: { id: 'L-1' },
-    });
+    const res = await RETURN_POST(
+      postReq('http://localhost/api/loans/L-1/return', { kondisi: 'baik' }),
+      {
+        params: { id: 'L-1' },
+      }
+    );
     expect(res.status).toBe(200);
     expect(seen.length >= 1, 'S-AUDIT RED: POST return must insert activity_logs').toBe(true);
     const meta = (seen[0] as { metadata?: Record<string, unknown> }).metadata ?? {};
@@ -178,9 +197,12 @@ describe('S-admin-audit return audit + logs metadata', () => {
     const { getAuditCalls } = setReturnAuditMock({
       auditResults: [{ error: { message: 'db down' } }, { error: null }],
     });
-    const res = await RETURN_POST(postReq('http://localhost/api/loans/L-1/return', { kondisi: 'rusak' }), {
-      params: { id: 'L-1' },
-    });
+    const res = await RETURN_POST(
+      postReq('http://localhost/api/loans/L-1/return', { kondisi: 'rusak' }),
+      {
+        params: { id: 'L-1' },
+      }
+    );
     expect(res.status).toBe(200);
     expect(getAuditCalls()).toBe(2);
     errSpy.mockRestore();
@@ -191,19 +213,27 @@ describe('S-admin-audit return audit + logs metadata', () => {
     setReturnAuditMock({
       auditResults: [{ error: { message: 'boom-500' } }, { error: { message: 'boom-500' } }],
     });
-    const res = await RETURN_POST(postReq('http://localhost/api/loans/L-1/return', { kondisi: 'baik' }), {
-      params: { id: 'L-1' },
-    });
+    const res = await RETURN_POST(
+      postReq('http://localhost/api/loans/L-1/return', { kondisi: 'baik' }),
+      {
+        params: { id: 'L-1' },
+      }
+    );
     expect(res.status).toBe(200);
     expect(errSpy).toHaveBeenCalled();
     const logged = errSpy.mock.calls.map((c) => String(c.join(' ')).toLowerCase()).join('\n');
-    expect(logged.includes('activity_logs') || logged.includes('audit') || logged.includes('boom-500')).toBe(true);
+    expect(
+      logged.includes('activity_logs') || logged.includes('audit') || logged.includes('boom-500')
+    ).toBe(true);
     errSpy.mockRestore();
   });
 
   it('return route audit is non-best-effort (retry + log, no silent swallow)', () => {
-    const src = read('src/app/api/loans/[id]/return/route.ts');
-    expect(src.includes('best-effort'), 'S-AUDIT RED: route still swallows audit silently').toBe(false);
+    const src =
+      read('src/app/api/loans/[id]/return/route.ts') + '\n' + read('src/lib/loans-return.ts');
+    expect(src.includes('best-effort'), 'S-AUDIT RED: route still swallows audit silently').toBe(
+      false
+    );
     expect(src.includes('console.error'), 'S-AUDIT RED: route must log audit failure').toBe(true);
     expect(src.includes('metadata'), 'S-AUDIT RED: route must write metadata').toBe(true);
     expect(src.includes('book_id'), 'S-AUDIT RED: audit metadata must include book_id').toBe(true);

@@ -8,9 +8,7 @@ import { join } from 'node:path';
 // activeLoans query must be bounded with .limit().
 
 vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(
-    () => (globalThis as unknown as { __mockSupabase: unknown }).__mockSupabase
-  ),
+  createClient: vi.fn(() => (globalThis as unknown as { __mockSupabase: unknown }).__mockSupabase),
 }));
 
 vi.mock('next/cache', () => ({
@@ -59,7 +57,11 @@ function setReturnMock(opts: {
   let auditCalls = 0;
   const from = vi.fn((table: string) => {
     if (table === 'profiles')
-      return { select: () => ({ eq: () => ({ single: async () => ({ data: { role: 'admin' }, error: null }) }) }) };
+      return {
+        select: () => ({
+          eq: () => ({ single: async () => ({ data: { role: 'admin' }, error: null }) }),
+        }),
+      };
     if (table === 'loans') {
       const chain: Record<string, unknown> = {};
       let isUpdate = false;
@@ -103,7 +105,9 @@ function setReturnMock(opts: {
           return { error: r.error };
         },
       };
-    return { select: () => ({ eq: () => ({ single: async () => ({ data: null, error: null }) }) }) };
+    return {
+      select: () => ({ eq: () => ({ single: async () => ({ data: null, error: null }) }) }),
+    };
   });
   setGlobal({
     auth: { getUser: async () => ({ data: { user: { id: 'U-ADMIN' } }, error: null }) },
@@ -130,7 +134,9 @@ describe('S-admin-audit2 alias+collective audit + dashboard bound', () => {
 
   it('(contract) collective PUT missing loan -> 404 NOT_FOUND exact', async () => {
     setReturnMock({ loan: null });
-    const res = await COLLECTIVE_PUT(putReq('http://localhost/api/loans?id=L-1', { action: 'return' }));
+    const res = await COLLECTIVE_PUT(
+      putReq('http://localhost/api/loans?id=L-1', { action: 'return' })
+    );
     expect(res.status).toBe(404);
     const j = (await res.json()) as { error: { code: string } };
     expect(j.error.code).toBe('NOT_FOUND');
@@ -164,16 +170,31 @@ describe('S-admin-audit2 alias+collective audit + dashboard bound', () => {
 
   it('(a) alias PUT audit is non-best-effort (retry + log)', () => {
     const src = read('src/app/api/loans/[id]/route.ts');
-    const putBody = src.slice(src.indexOf('export async function PUT'), src.indexOf('export async function DELETE'));
-    expect(putBody.includes('best-effort'), 'S-AUDIT2 RED: alias PUT still swallows audit silently').toBe(false);
-    expect(putBody.includes('console.error'), 'S-AUDIT2 RED: alias PUT must log audit failure').toBe(true);
+    const putBody = src.slice(
+      src.indexOf('export async function PUT'),
+      src.indexOf('export async function DELETE')
+    );
+    const helper = read('src/lib/loans-return.ts');
+    expect(
+      putBody.includes('best-effort'),
+      'S-AUDIT2 RED: alias PUT still swallows audit silently'
+    ).toBe(false);
+    expect(
+      helper.includes('best-effort'),
+      'S-AUDIT2 RED: helper still swallows audit silently'
+    ).toBe(false);
+    expect(putBody + helper, 'S-AUDIT2 RED: alias PUT must log audit failure').toContain(
+      'console.error'
+    );
   });
 
   // --- (b) collective PUT audit ---
   it('(b) collective PUT return inserts activity_logs with {fine}', async () => {
     const seen: Record<string, unknown>[] = [];
     setReturnMock({ onAuditInsert: (p) => seen.push(p) });
-    const res = await COLLECTIVE_PUT(putReq('http://localhost/api/loans?id=L-1', { action: 'return' }));
+    const res = await COLLECTIVE_PUT(
+      putReq('http://localhost/api/loans?id=L-1', { action: 'return' })
+    );
     expect(res.status).toBe(200);
     expect(seen.length >= 1, 'S-AUDIT2 RED: collective PUT must insert activity_logs').toBe(true);
     const meta = (seen[0] as { metadata?: Record<string, unknown> }).metadata ?? {};
@@ -185,16 +206,24 @@ describe('S-admin-audit2 alias+collective audit + dashboard bound', () => {
     const { getAuditCalls } = setReturnMock({
       auditResults: [{ error: { message: 'db down' } }, { error: null }],
     });
-    const res = await COLLECTIVE_PUT(putReq('http://localhost/api/loans?id=L-1', { action: 'return' }));
+    const res = await COLLECTIVE_PUT(
+      putReq('http://localhost/api/loans?id=L-1', { action: 'return' })
+    );
     expect(res.status).toBe(200);
     expect(getAuditCalls()).toBe(2);
     errSpy.mockRestore();
   });
 
   it('(b) collective PUT audit is non-best-effort (retry + log)', () => {
-    const src = read('src/app/api/loans/route.ts');
-    expect(src.includes('activity_logs'), 'S-AUDIT2 RED: collective PUT never writes activity_logs').toBe(true);
-    expect(src.includes('console.error'), 'S-AUDIT2 RED: collective PUT must log audit failure').toBe(true);
+    const src = read('src/app/api/loans/route.ts') + '\n' + read('src/lib/loans-return.ts');
+    expect(
+      src.includes('activity_logs'),
+      'S-AUDIT2 RED: collective PUT never writes activity_logs'
+    ).toBe(true);
+    expect(
+      src.includes('console.error'),
+      'S-AUDIT2 RED: collective PUT must log audit failure'
+    ).toBe(true);
   });
 
   // --- (c) dashboard activeLoans bound ---
@@ -202,6 +231,9 @@ describe('S-admin-audit2 alias+collective audit + dashboard bound', () => {
     const src = read('src/app/admin/page.tsx');
     const line = src.split('\n').find((l) => l.includes('id,due_at'));
     expect(line, 'S-AUDIT2 RED: activeLoans select missing').toBeDefined();
-    expect(line as string, 'S-AUDIT2 RED: activeLoans query has no .limit() — unbounded dashboard fetch').toMatch(/\.limit\(\s*500\s*\)/);
+    expect(
+      line as string,
+      'S-AUDIT2 RED: activeLoans query has no .limit() — unbounded dashboard fetch'
+    ).toMatch(/\.limit\(\s*500\s*\)/);
   });
 });

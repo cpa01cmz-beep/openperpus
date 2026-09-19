@@ -96,7 +96,7 @@ describe('CONC loans concurrency guards', () => {
   });
 
   it('CONC-04 return clamp: stock_available tidak melebihi stock_total + penanda', () => {
-    const route = read('src/app/api/loans/route.ts');
+    const route = read('src/app/api/loans/route.ts') + '\n' + read('src/lib/loans-return.ts');
     expect(
       route.includes('Math.min(') && route.includes('stock_total'),
       'CONC-04 RED: return harus clamp Math.min(stock_total, available+1)'
