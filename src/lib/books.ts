@@ -102,7 +102,7 @@ export const STATS_TAG = 'stats';
 
 /** Kolom select buku + relasi kategori & rak — dipakai fetchBooks(Uncached), fetchBooksPaged(Uncached), fetchBookBySlug(Uncached). */
 const BOOKS_SELECT =
-  'id,title,slug,author,publisher,year,isbn,category_id,rack_id,cover_url,description,pages,language,stock_total,stock_available,featured,rating_avg,created_at,categories(id,name,slug),racks(code,name,location)';
+  'id,title,slug,author,publisher,year,isbn,category_id,rack_id,cover_url,description,pages,language,stock_total,stock_available,featured,rating_avg,created_at,updated_at,categories(id,name,slug),racks(code,name,location)';
 
 /** Terapkan urutan katalog dari opts.sort — dipakai fetchBooksUncached + fetchBooksPagedUncached. */
 function applyBooksSort<Q extends { order(column: string, options?: Record<string, unknown>): Q }>(
@@ -346,7 +346,7 @@ async function fetchPagesUncached(limit = 100): Promise<PageDoc[]> {
     const supabase = createClient();
     const { data, error } = await supabase
       .from('pages')
-      .select('id,slug,title,content_md,excerpt')
+      .select('id,slug,title,content_md,excerpt,updated_at')
       .eq('is_active', true)
       .order('title', { ascending: true })
       .limit(limit);
@@ -370,7 +370,7 @@ async function fetchPageUncached(slug: string): Promise<PageDoc | null> {
     const supabase = createClient();
     const { data, error } = await supabase
       .from('pages')
-      .select('id,slug,title,content_md,excerpt')
+      .select('id,slug,title,content_md,excerpt,updated_at')
       .eq('slug', slug)
       .eq('is_active', true)
       .maybeSingle();
