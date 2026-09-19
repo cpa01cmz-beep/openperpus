@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 const MENU = [
   { href: '/admin', label: 'Dashboard' },
@@ -25,6 +25,15 @@ export default function Sidebar({ libraryName = 'Perpustakaan' }: { libraryName?
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
 
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [open]);
+
   const nav = (
     <nav className="flex flex-col gap-1 p-4">
       <p className="px-2 pb-2 text-sm font-semibold uppercase tracking-wide opacity-70">
@@ -37,6 +46,7 @@ export default function Sidebar({ libraryName = 'Perpustakaan' }: { libraryName?
             key={m.href}
             href={m.href}
             onClick={() => setOpen(false)}
+            aria-current={active ? 'page' : undefined}
             className={`flex min-h-[44px] items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
               active ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-100'
             }`}
@@ -63,6 +73,8 @@ export default function Sidebar({ libraryName = 'Perpustakaan' }: { libraryName?
           onClick={() => setOpen((v) => !v)}
           className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border px-3 py-1.5 text-sm"
           aria-label="Toggle menu"
+          aria-expanded={open}
+          aria-controls="admin-mobile-nav"
         >
           {open ? 'Tutup' : 'Menu'}
         </button>
@@ -72,8 +84,18 @@ export default function Sidebar({ libraryName = 'Perpustakaan' }: { libraryName?
       {/* Mobile drawer */}
       {open && (
         <div className="fixed inset-0 z-40 lg:hidden">
-          <div className="absolute inset-0 bg-black/40" onClick={() => setOpen(false)} />
-          <aside className="absolute left-0 top-0 h-full w-64 bg-white shadow-xl">{nav}</aside>
+          <button
+            type="button"
+            aria-label="Tutup menu navigasi"
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setOpen(false)}
+          />
+          <aside
+            id="admin-mobile-nav"
+            className="absolute left-0 top-0 h-full w-64 bg-white shadow-xl"
+          >
+            {nav}
+          </aside>
         </div>
       )}
     </>

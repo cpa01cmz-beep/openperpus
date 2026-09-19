@@ -1,14 +1,16 @@
-"use client";
+'use client';
 
-import { Suspense, useState } from "react";
-import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { Suspense, useState } from 'react';
+import Link from 'next/link';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { createClient } from '@/lib/supabase/client';
+import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
 
 /** Validasi redirect internal saja (cegah open-redirect). */
 function safeNext(raw: string | null): string {
-  if (!raw) return "/admin";
-  if (!raw.startsWith("/") || raw.startsWith("//")) return "/admin";
+  if (!raw) return '/admin';
+  if (!raw.startsWith('/') || raw.startsWith('//')) return '/admin';
   return raw;
 }
 
@@ -26,7 +28,7 @@ export default function LoginPage() {
           <LoginForm />
         </Suspense>
 
-        <Link href="/" className="mt-4 inline-block text-sm text-emerald-700 hover:underline">
+        <Link href="/" className="mt-4 inline-block text-sm text-brand hover:underline">
           ← Kembali ke beranda
         </Link>
       </div>
@@ -37,10 +39,10 @@ export default function LoginPage() {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = safeNext(searchParams.get("next"));
+  const next = safeNext(searchParams.get('next'));
 
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -49,7 +51,7 @@ function LoginForm() {
     setError(null);
 
     if (!email.trim() || !password) {
-      setError("Email dan kata sandi wajib diisi.");
+      setError('Email dan kata sandi wajib diisi.');
       return;
     }
 
@@ -61,13 +63,13 @@ function LoginForm() {
         password,
       });
       if (signInError) {
-        setError("Email atau kata sandi salah. Silakan coba lagi.");
+        setError('Email atau kata sandi salah. Silakan coba lagi.');
         return;
       }
       router.push(next);
       router.refresh();
     } catch {
-      setError("Terjadi kesalahan jaringan. Silakan coba lagi.");
+      setError('Terjadi kesalahan jaringan. Silakan coba lagi.');
     } finally {
       setLoading(false);
     }
@@ -75,31 +77,27 @@ function LoginForm() {
 
   return (
     <form onSubmit={onSubmit} className="mt-5 space-y-3">
-      <label className="block">
-        <span className="mb-1 block text-sm font-medium text-slate-700">Email</span>
-        <input
-          type="email"
-          autoComplete="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
-          placeholder="admin@perpus.id"
-        />
-      </label>
+      <Input
+        id="login-email"
+        label="Email"
+        type="email"
+        autoComplete="email"
+        required
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="admin@perpus.id"
+      />
 
-      <label className="block">
-        <span className="mb-1 block text-sm font-medium text-slate-700">Kata sandi</span>
-        <input
-          type="password"
-          autoComplete="current-password"
-          required
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-emerald-600 focus:ring-2 focus:ring-emerald-100"
-          placeholder="••••••••"
-        />
-      </label>
+      <Input
+        id="login-password"
+        label="Kata sandi"
+        type="password"
+        autoComplete="current-password"
+        required
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        placeholder="••••••••"
+      />
 
       {error && (
         <p role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
@@ -107,13 +105,9 @@ function LoginForm() {
         </p>
       )}
 
-      <button
-        type="submit"
-        disabled={loading}
-        className="w-full rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white hover:bg-emerald-800 disabled:opacity-60"
-      >
-        {loading ? "Memproses…" : "Masuk"}
-      </button>
+      <Button type="submit" loading={loading} fullWidth>
+        Masuk
+      </Button>
     </form>
   );
 }
