@@ -402,34 +402,21 @@ async function fetchStatsUncached(): Promise<{
 }> {
   try {
     const supabase = createClient();
-    const [books, cats, arts, copies] = await Promise.all([
-      supabase.from('books').select('id', { count: 'exact', head: true }).eq('is_active', true),
-      supabase
-        .from('categories')
-        .select('id', { count: 'exact', head: true })
-        .eq('is_active', true),
-      supabase
-        .from('articles')
-        .select('id', { count: 'exact', head: true })
-        .eq('status', 'published'),
-      supabase
-        .from('books')
-        .select('stock_total')
-        .eq('is_active', true)
-        .order('stock_total', { ascending: false })
-        .limit(5000),
-    ]);
-    const totalCopies =
-      copies.data?.reduce(
-        (s: number, b: { stock_total?: number | string | null }) =>
-          s + (Number(b.stock_total) || 0),
-        0
-      ) ?? 0;
+    const { data, error } = await supabase.rpc('get_library_stats');
+    if (error || !data || data.length === 0) {
+      return { totalBooks: 0, totalCategories: 0, totalArticles: 0, totalCopies: 0 };
+    }
+    const row = data[0] as {
+      total_books: number;
+      total_categories: number;
+      total_articles: number;
+      total_copies: number;
+    };
     return {
-      totalBooks: books.count ?? books.data?.length ?? 0,
-      totalCategories: cats.count ?? cats.data?.length ?? 0,
-      totalArticles: arts.count ?? arts.data?.length ?? 0,
-      totalCopies,
+      totalBooks: row.total_books ?? 0,
+      totalCategories: row.total_categories ?? 0,
+      totalArticles: row.total_articles ?? 0,
+      totalCopies: row.total_copies ?? 0,
     };
   } catch {
     return { totalBooks: 0, totalCategories: 0, totalArticles: 0, totalCopies: 0 };

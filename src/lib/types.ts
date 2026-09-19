@@ -29,13 +29,42 @@ export type LibrarySettings = {
 };
 
 export type OperationalHour = {
-  hari?: string;
-  day?: string;
-  buka?: string;
-  open?: string;
-  tutup?: string;
-  close?: string;
+  day: string;
+  open: string | null;
+  close: string | null;
 };
+
+export type OperationalHourInput = {
+  hari?: unknown;
+  day?: unknown;
+  buka?: unknown;
+  open?: unknown;
+  tutup?: unknown;
+  close?: unknown;
+};
+
+export function normalizeOperationalHour(h: unknown): OperationalHour | null {
+  if (!h || typeof h !== 'object') return null;
+  const r = h as OperationalHourInput;
+  const day = [r.day, r.hari].find((v) => typeof v === 'string' && v.trim());
+  if (!day) return null;
+  const pick = (v: unknown): string | null => (typeof v === 'string' && v.trim() ? v.trim() : null);
+  return {
+    day: (day as string).trim(),
+    open: pick(r.open ?? r.buka),
+    close: pick(r.close ?? r.tutup),
+  };
+}
+
+export function normalizeOperationalHours(v: unknown): OperationalHour[] {
+  if (!Array.isArray(v)) return [];
+  const out: OperationalHour[] = [];
+  for (const h of v) {
+    const n = normalizeOperationalHour(h);
+    if (n) out.push(n);
+  }
+  return out;
+}
 
 export type Category = {
   id: string;
@@ -62,7 +91,7 @@ export type Book = {
   stock_total: number;
   stock_available: number;
   featured: boolean;
-  rating_avg: number | string | null;
+  rating_avg: number | null;
   created_at?: string;
   updated_at?: string | null;
   categories?: { id: string; name: string; slug: string } | null;
@@ -125,8 +154,8 @@ export const FALLBACK_SETTINGS: LibrarySettings = {
   phone: null,
   email: null,
   operational_hours: [
-    { hari: 'Senin – Jumat', buka: '08:00', tutup: '16:00' },
-    { hari: 'Sabtu', buka: '09:00', tutup: '12:00' },
+    { day: 'Senin – Jumat', open: '08:00', close: '16:00' },
+    { day: 'Sabtu', open: '09:00', close: '12:00' },
   ],
   socials: {},
   welcome_text: null,
@@ -148,7 +177,29 @@ export function stockState(book: Pick<Book, 'stock_available' | 'stock_total'>) 
   return { label: `Tersedia · ${avail}`, tone: 'emerald' as const };
 }
 
-export function ratingNumber(v: Book['rating_avg']): number {
+export function ratingNumber(v: Book['rating_avg'] | unknown): number {
   const n = typeof v === 'string' ? parseFloat(v) : Number(v ?? 0);
   return Number.isFinite(n) ? Math.min(5, Math.max(0, n)) : 0;
+}
+
+export function coerceRating(v: unknown): number | null {
+  if (v === null || v === undefined || v === '') return null;
+  const n = typeof v === 'string' ? parseFloat(v) : Number(v);
+  if (!Number.isFinite(n)) return null;
+  if (n < 0 || n > 5) return null;
+  return n;
+}
+
+export function normalizeBook<T extends { rating_avg?: unknown }>(
+  row: T
+): Omit<T, 'rating_avg'> & { rating_avg: number | null } {
+  const rest = { ...row };
+  delete rest.rating_avg;
+  return { ...rest, rating_avg: coerceRating(row.rating_avg) };
+}
+
+export function normalizeBooks<T extends { rating_avg?: unknown }>(
+  rows: T[]
+): (Omit<T, 'rating_avg'> & { rating_avg: number | null })[] {
+  return rows.map(normalizeBook);
 }
