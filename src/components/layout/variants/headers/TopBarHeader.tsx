@@ -1,11 +1,9 @@
-'use client';
-
-import { useState } from 'react';
 import Link from 'next/link';
-import { Mail, MapPin, Menu, Phone, X } from 'lucide-react';
+import { Mail, MapPin, Phone } from 'lucide-react';
 import type { HeaderVariantProps } from '../types';
 import { LINKS, LogoMark } from '../shared';
 import { resolveLogoSrc } from '../types';
+import MenuButton from './MenuButton';
 
 /**
  * TopBarHeader — utility top bar (contact/address from settings) + main nav row.
@@ -18,7 +16,6 @@ export default function TopBarHeader({
   logo_url,
   logoUrl,
 }: HeaderVariantProps) {
-  const [open, setOpen] = useState(false);
   const logoSrc = resolveLogoSrc({ logo_url, logoUrl }) ?? settings?.logo_url ?? null;
   const name = siteName || settings?.name || 'Perpustakaan Digital';
   const tag = tagline ?? settings?.tagline ?? null;
@@ -105,47 +102,37 @@ export default function TopBarHeader({
             </li>
           </ul>
 
-          <button
-            type="button"
-            onClick={() => setOpen((v) => !v)}
-            aria-expanded={open}
-            aria-controls="menu-topbar-mobile"
-            aria-label={open ? 'Tutup menu' : 'Buka menu'}
-            className="grid h-10 w-10 min-h-[44px] min-w-[44px] place-items-center rounded-[var(--radius-md)] border border-[var(--ink)]/15 text-[var(--ink)] transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand md:hidden"
-          >
-            {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
+          <MenuButton
+            menuId="menu-topbar-mobile"
+            toggleClassName="grid h-10 w-10 min-h-[44px] min-w-[44px] place-items-center rounded-[var(--radius-md)] border border-[var(--ink)]/15 text-[var(--ink)] transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand md:hidden"
+          />
         </nav>
 
-        {open && (
-          <div
-            id="menu-topbar-mobile"
-            className="border-t border-[var(--ink)]/10 bg-[var(--surface)] md:hidden"
-          >
-            <ul className="mx-auto w-full max-w-[var(--container)] space-y-1 px-4 py-3 sm:px-6">
-              {LINKS.map((l) => (
-                <li key={l.href}>
-                  <Link
-                    href={l.href}
-                    onClick={() => setOpen(false)}
-                    className="block rounded-[var(--radius-md)] px-3 py-2.5 text-sm font-medium text-[var(--ink)] transition hover:bg-brand-soft hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                  >
-                    {l.label}
-                  </Link>
-                </li>
-              ))}
-              <li className="pt-1">
+        <div
+          id="menu-topbar-mobile"
+          className="hidden border-t border-[var(--ink)]/10 bg-[var(--surface)] md:hidden"
+        >
+          <ul className="mx-auto w-full max-w-[var(--container)] space-y-1 px-4 py-3 sm:px-6">
+            {LINKS.map((l) => (
+              <li key={l.href}>
                 <Link
-                  href="/katalog"
-                  onClick={() => setOpen(false)}
-                  className="block rounded-[var(--radius-lg)] bg-accent px-4 py-2.5 text-center text-sm font-semibold text-white shadow-[var(--shadow-md)] transition hover:brightness-105"
+                  href={l.href}
+                  className="block rounded-[var(--radius-md)] px-3 py-2.5 text-sm font-medium text-[var(--ink)] transition hover:bg-brand-soft hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
-                  Cari Buku
+                  {l.label}
                 </Link>
               </li>
-            </ul>
-          </div>
-        )}
+            ))}
+            <li className="pt-1">
+              <Link
+                href="/katalog"
+                className="block rounded-[var(--radius-lg)] bg-accent px-4 py-2.5 text-center text-sm font-semibold text-white shadow-[var(--shadow-md)] transition hover:brightness-105"
+              >
+                Cari Buku
+              </Link>
+            </li>
+          </ul>
+        </div>
       </div>
     </header>
   );
