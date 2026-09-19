@@ -1,11 +1,11 @@
-"use client";
+'use client';
 
-import Image from "next/image";
-import Link from "next/link";
-import { ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
-import { useHeroCarousel } from "./useHeroCarousel";
-import { HeroFallback } from "./HeroFallback";
-import type { HeroProps } from "./heroProps";
+import Image from 'next/image';
+import Link from 'next/link';
+import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useHeroCarousel } from './useHeroCarousel';
+import { HeroFallback } from './HeroFallback';
+import type { HeroProps } from './heroProps';
 
 /** ClassicHero: exact reuse of public/Hero carousel logic. Emerald default.
  * Midnight luxury-dark: navy surface, gold hairline, Cormorant display, deep black shadows. */
@@ -32,7 +32,7 @@ export default function ClassicHero({ banners, siteName, tagline }: HeroProps) {
             key={b.id}
             aria-hidden={i !== idx}
             className={`absolute inset-0 transition-opacity duration-700 ${
-              i === idx ? "opacity-100" : "pointer-events-none opacity-0"
+              i === idx ? 'opacity-100' : 'pointer-events-none opacity-0'
             }`}
           >
             <Image
@@ -42,11 +42,15 @@ export default function ClassicHero({ banners, siteName, tagline }: HeroProps) {
               height={600}
               sizes="100vw"
               unoptimized
-              priority={i === idx}
-              loading={i === idx ? "eager" : "lazy"}
+              priority={i === 0}
+              loading={i === 0 ? 'eager' : 'lazy'}
+              fetchPriority={i === 0 ? 'high' : 'low'}
               className="h-full w-full object-cover"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-brand-strong/90 via-brand-strong/40 to-transparent" aria-hidden="true" />
+            <div
+              className="absolute inset-0 bg-gradient-to-t from-brand-strong/90 via-brand-strong/40 to-transparent"
+              aria-hidden="true"
+            />
           </div>
         ))}
 
@@ -58,7 +62,9 @@ export default function ClassicHero({ banners, siteName, tagline }: HeroProps) {
             {active.title}
           </h1>
           {active.subtitle ? (
-            <p className="mt-2 max-w-xl text-sm text-[var(--ink)]/80 sm:text-base">{active.subtitle}</p>
+            <p className="mt-2 max-w-xl text-sm text-[var(--ink)]/80 sm:text-base">
+              {active.subtitle}
+            </p>
           ) : null}
           <div className="mt-4 flex flex-wrap items-center gap-3">
             {active.link ? (
@@ -87,7 +93,7 @@ export default function ClassicHero({ banners, siteName, tagline }: HeroProps) {
               type="button"
               onClick={() => go(-1)}
               aria-label="Banner sebelumnya"
-              className="grid h-9 w-9 place-items-center rounded-full border border-accent/30 bg-[var(--surface)]/60 text-[var(--ink)] backdrop-blur transition hover:bg-[var(--surface)]/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className="grid min-h-[44px] min-w-[44px] place-items-center rounded-full border border-accent/30 bg-[var(--surface)]/60 text-[var(--ink)] backdrop-blur transition hover:bg-[var(--surface)]/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
@@ -95,12 +101,16 @@ export default function ClassicHero({ banners, siteName, tagline }: HeroProps) {
               type="button"
               onClick={() => go(1)}
               aria-label="Banner berikutnya"
-              className="grid h-9 w-9 place-items-center rounded-full border border-accent/30 bg-[var(--surface)]/60 text-[var(--ink)] backdrop-blur transition hover:bg-[var(--surface)]/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className="grid min-h-[44px] min-w-[44px] place-items-center rounded-full border border-accent/30 bg-[var(--surface)]/60 text-[var(--ink)] backdrop-blur transition hover:bg-[var(--surface)]/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               <ChevronRight className="h-5 w-5" />
             </button>
           </div>
-          <div className="absolute bottom-4 right-5 flex gap-1.5 sm:right-8" role="tablist" aria-label="Pilih banner">
+          <div
+            className="absolute bottom-4 right-5 flex gap-1.5 sm:right-8"
+            role="tablist"
+            aria-label="Pilih banner"
+          >
             {banners.map((b, i) => (
               <button
                 key={b.id}
@@ -109,10 +119,15 @@ export default function ClassicHero({ banners, siteName, tagline }: HeroProps) {
                 aria-selected={i === idx}
                 aria-label={`Banner ${i + 1}: ${b.title}`}
                 onClick={() => setIdx(i)}
-                className={`h-1.5 rounded-full transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
-                  i === idx ? "w-8 bg-accent" : "w-3 bg-[var(--ink)]/40 hover:bg-[var(--ink)]/70"
-                }`}
-              />
+                className="flex min-h-[44px] min-w-[44px] items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              >
+                <span
+                  aria-hidden="true"
+                  className={`h-1.5 rounded-full transition-all ${
+                    i === idx ? 'w-8 bg-accent' : 'w-3 bg-[var(--ink)]/40'
+                  }`}
+                />
+              </button>
             ))}
           </div>
         </>
