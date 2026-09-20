@@ -158,6 +158,8 @@ export async function POST(req: Request) {
     .eq('id', book_id)
     .single();
   if (!book) return jsonError('NOT_FOUND', 'Buku tidak ditemukan.', 404);
+  if ((book as { is_active?: boolean }).is_active === false)
+    return jsonError('GONE', 'Buku sudah tidak aktif, tidak bisa direservasi.', 410);
 
   const { data: member } = await supabase
     .from('members')
@@ -174,7 +176,18 @@ export async function POST(req: Request) {
   if (expiresRaw) {
     const d = new Date(expiresRaw);
     if (Number.isNaN(d.getTime())) return jsonError('VALIDATION', 'expires_at tidak valid.', 422);
+    if (d.getTime() <= Date.now())
+      return jsonError('VALIDATION', 'expires_at harus di masa depan.', 422);
     expires_at = d.toISOString();
+  }
+
+  const notesRaw = body.notes;
+  let notes: string | null = null;
+  if (notesRaw !== undefined && notesRaw !== null) {
+    if (typeof notesRaw !== 'string')
+      return jsonError('VALIDATION', 'notes harus string atau null.', 422);
+    if (notesRaw.length > 500) return jsonError('VALIDATION', 'notes maksimal 500 karakter.', 422);
+    notes = notesRaw;
   }
 
   const { data, error } = await supabase
@@ -184,7 +197,7 @@ export async function POST(req: Request) {
       member_id: targetMember,
       status: 'pending',
       expires_at,
-      notes: (body.notes as string | null) ?? null,
+      notes,
     })
     .select()
     .single();

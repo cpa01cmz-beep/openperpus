@@ -100,9 +100,14 @@ supabase/migrations/0006_content.sql
 supabase/migrations/0007_storage_guard.sql
 supabase/migrations/0008_theme.sql
 supabase/migrations/0009_drop_legacy_theme.sql
+supabase/migrations/0011_return_loan.sql
+supabase/migrations/0012_perf.sql
+supabase/migrations/0013_pay_own_fine.sql
+supabase/migrations/0014_fine_rate.sql
+supabase/migrations/0015_checkout_active_guard.sql
 ```
 
-Catatan: penomoran 0001–0009 unik dan berurutan, tanpa nomor dobel. Jalankan semua sesuai urutan di atas.
+Catatan: penomoran unik dan berurutan (0010 dilewati, tidak dipakai). Jalankan semua sesuai urutan di atas.
 
 ## Keamanan
 

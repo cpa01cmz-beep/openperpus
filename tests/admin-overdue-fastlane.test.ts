@@ -86,11 +86,10 @@ describe('US-2 overdue fastlane — peminjaman preselect + 1-click return', () =
   });
 
   it('edge: fine boundary (on-time 0, 1-day Rp1.000)', () => {
-    // Mirror of calcFine in src/lib/supabase/auth.ts (FINE_PER_DAY=1000,
-    // floor late-days, on-time=0). Direct import would pull next/server via
-    // auth.ts → server.ts cache() which has no node runtime here, so assert
+    // Mirror of calcFine di src/lib/finecalc.ts (kanonis; auth.ts shim re-export).
+    // Direct import would pull next/server via auth.ts → server.ts cache() which has no node runtime here, so assert
     // the contract source + verify boundary math on the same formula.
-    const auth = read('src/lib/supabase/auth.ts');
+    const auth = read('src/lib/finecalc.ts');
     expect(auth, 'fine logic must define FINE_PER_DAY = 1000').toMatch(/FINE_PER_DAY\s*=\s*1000/);
     expect(auth, 'calcFine must floor late-days').toMatch(/Math\.floor/);
     const FINE_PER_DAY = 1000;

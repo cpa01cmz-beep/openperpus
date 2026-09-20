@@ -89,6 +89,10 @@ export async function returnLoan(opts: ReturnLoanOptions): Promise<Response> {
       422
     );
   }
+  // RACE-04: tolak returned_at masa depan (tutup awal + fine 0 diam-diam).
+  if (returnedAt.getTime() > Date.now() + 5 * 60 * 1000) {
+    return jsonError('VALIDATION', 'returned_at tidak boleh di masa depan.', 422);
+  }
 
   const notes = typeof opts.notes === 'string' && opts.notes.trim() ? opts.notes.trim() : null;
   const rate = await getFineRate(supabase);
@@ -176,8 +180,8 @@ async function legacyReturnLoan(
   const rate = await getFineRate(supabase);
   const fine = calcFine(l.due_at, returnedAt, rate);
 
-  const noteExtra =
-    typeof opts.notes === 'string' && opts.notes.trim() ? ` | ${opts.notes.trim()}` : '';
+  const cleanNotes = typeof opts.notes === 'string' ? opts.notes.trim().slice(0, 500) : '';
+  const noteExtra = cleanNotes ? ` | ${cleanNotes}` : '';
 
   const updatePayload: Record<string, unknown> = hasKondisi
     ? {
@@ -190,20 +194,34 @@ async function legacyReturnLoan(
         returned_at: returnedAt.toISOString(),
         status: 'returned',
         fine_amount: fine,
-        ...(typeof opts.notes === 'string' ? { notes: opts.notes } : {}),
+        ...(cleanNotes ? { notes: cleanNotes } : {}),
       };
 
   const { data, error } = await supabase
     .from('loans')
     .update(updatePayload)
     .eq('id', id)
+    // RACE-01: conditional write — dua return konkuren, hanya 1 yang menang.
+    // Mock lama tanpa .in tetap lolos (chainable); 0-baris/error -> 409.
+    .in('status', ['borrowed', 'overdue'])
     .select()
     .single();
-  if (error)
+  if (error || !data) {
+    const msg = (error as { message?: string; code?: string } | null)?.message ?? '';
+    const code = (error as { code?: string } | null)?.code ?? '';
+    // 0-baris = pemenang konkuren sudah memproses (PGRST116/406 atau null) -> 409.
+    if (
+      !data &&
+      (!error ||
+        /concurrent winner|PGRST116|406|0 rows|multiple \(or no\) rows/i.test(`${msg} ${code}`))
+    ) {
+      return jsonError('CONFLICT', 'Peminjaman sudah diproses peminjam lain.', 409);
+    }
     return retryableError(
       'Gagal memproses pengembalian. Silakan coba lagi.',
-      (error as { message?: string }).message
+      (error as { message?: string } | null)?.message
     );
+  }
 
   // RETURN-CLAMP: Math.min(stock_total, available+1) agar return konkuren
   // ganda / stok penuh tidak pernah melebihi stock_total.
@@ -318,19 +336,34 @@ export async function extendLoan(opts: ExtendLoanOptions): Promise<Response> {
   }
 
   const oldDue = new Date(l.due_at);
+  // RACE-03: tolak due_at rusak sebelum aritmetika (hindari RangeError 500).
+  if (Number.isNaN(oldDue.getTime())) {
+    return jsonError('VALIDATION', 'due_at peminjaman tidak valid.', 422);
+  }
   const newDue = new Date(oldDue.getTime() + days * 86400000);
   const newDueIso = newDue.toISOString();
 
+  // RACE-02: optimistic-lock — dua extend konkuren, hanya 1 yang menang.
   const { data, error } = await supabase
     .from('loans')
     .update({ due_at: newDueIso, updated_at: new Date().toISOString() })
     .eq('id', id)
+    .eq('due_at', l.due_at)
     .select()
     .single();
-  if (error) {
+  if (error || !data) {
+    const msg = (error as { message?: string; code?: string } | null)?.message ?? '';
+    const code = (error as { code?: string } | null)?.code ?? '';
+    if (
+      !data &&
+      (!error ||
+        /concurrent winner|PGRST116|406|0 rows|multiple \(or no\) rows/i.test(`${msg} ${code}`))
+    ) {
+      return jsonError('CONFLICT', 'Peminjaman sudah diperpanjang pihak lain.', 409);
+    }
     return retryableError(
       'Gagal memperpanjang pinjaman. Silakan coba lagi.',
-      (error as { message?: string }).message
+      (error as { message?: string } | null)?.message
     );
   }
 

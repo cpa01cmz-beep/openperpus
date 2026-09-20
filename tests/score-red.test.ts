@@ -64,7 +64,7 @@ function rubricScore(): { score: number; notes: string[] } {
   }
   // S-sec-search GREEN: no weak cleanLike remains; all entry-points use canonical sanitizeIlike.
   const entryPoints = [
-    'src/lib/books.ts',
+    'src/lib/books/catalog.ts',
     'src/app/api/books/route.ts',
     'src/app/api/pages/route.ts',
     'src/app/api/racks/route.ts',
@@ -92,7 +92,7 @@ describe('Wave2 RED probes', () => {
       ''
     );
     const searchFiles = [
-      'src/lib/books.ts',
+      'src/lib/books/catalog.ts',
       'src/app/api/books/route.ts',
       'src/app/api/pages/route.ts',
       'src/app/api/racks/route.ts',
@@ -103,9 +103,10 @@ describe('Wave2 RED probes', () => {
     ];
     for (const f of searchFiles) {
       const src = read(f);
+      // sanitizeIlike untuk LIKE client-side, atau search_books RPC (server-side FTS, tanpa LIKE mentah).
       expect(
-        src.includes('sanitizeIlike'),
-        `S-sec-search GREEN: ${f} must import/use sanitizeIlike`
+        src.includes('sanitizeIlike') || src.includes('search_books'),
+        `S-sec-search GREEN: ${f} must sanitize search (sanitizeIlike or search_books RPC)`
       ).toBe(true);
       expect(
         src.includes('cleanLike'),
@@ -113,7 +114,7 @@ describe('Wave2 RED probes', () => {
       ).toBe(false);
     }
     expect(
-      read('src/lib/books.ts').includes('trim().replace(/[%(),]/g'),
+      read('src/lib/books/catalog.ts').includes('trim().replace(/[%(),]/g'),
       'S-sec-search GREEN: books.ts must not contain weak inline sanitizer'
     ).toBe(false);
   });

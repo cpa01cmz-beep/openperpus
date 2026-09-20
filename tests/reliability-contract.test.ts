@@ -78,6 +78,16 @@ function setLoansMock(rpcError: { code: string; message: string } | null) {
   const from = vi.fn((table: string) => {
     if (table === 'profiles' || table === 'members')
       return (fromOrig as (t: string) => unknown)(table);
+    if (table === 'loans') {
+      const c: Record<string, unknown> = {};
+      c.select = () => c;
+      c.eq = () => c;
+      c.in = () => c;
+      c.gt = () => c;
+      c.limit = async () => ({ data: [], error: null });
+      c.single = async () => ({ data: null, error: null });
+      return c;
+    }
     return {
       select: () => ({
         eq: () => ({

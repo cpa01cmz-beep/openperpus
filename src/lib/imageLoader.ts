@@ -13,6 +13,12 @@ const RENDER_MARKER = '/storage/v1/render/image/public/';
  * renders the resized variant (?width=&quality=75&resize=cover) so mobile
  * clients get a proper srcset instead of the full-size original.
  * Non-Supabase URLs (local /og-default.jpg, data:, blob:) pass through.
+ *
+ * NOTE untuk layout owner (jangan edit layout dari sini): tambahkan preconnect
+ * + dns-prefetch ke origin Supabase di <head> agar LCP hero lebih cepat:
+ *   <link rel="preconnect" href="https://xyzcompany.supabase.co" crossorigin>
+ *   <link rel="dns-prefetch" href="https://xyzcompany.supabase.co">
+ * Ganti hostname dengan NEXT_PUBLIC_SUPABASE_URL aktif. Do NOT edit layout here.
  */
 export default function imageLoader({ src, width, quality }: LoaderParams): string {
   if (!src.includes(OBJECT_MARKER) && !src.includes(RENDER_MARKER)) return src;

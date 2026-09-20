@@ -3,6 +3,7 @@ import { revalidateTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { requireStaff, jsonError, slugify } from '@/lib/supabase/auth';
 import { isUuid, createWriteLog } from '@/lib/api-utils';
+import { validateBook } from '@/lib/validation';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
 type Ctx = { params: { id: string } };
@@ -68,6 +69,9 @@ export async function PUT(req: Request, { params }: Ctx) {
   if (typeof body.slug === 'string' && body.slug.trim()) payload.slug = slugify(body.slug);
   else if (typeof payload.title === 'string' && payload.title.trim())
     payload.slug = slugify(payload.title);
+
+  const err = validateBook(payload, true);
+  if (err) return jsonError('VALIDATION', err, 422);
 
   if (
     payload.category_id !== undefined &&

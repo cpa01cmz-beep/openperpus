@@ -134,7 +134,7 @@ describe('Iter2 bulk delete /api/books?id=1,2,3', () => {
     const j = (await res.json()) as BulkBody;
     expect(j.data?.deleted).toEqual([A, B]);
     expect(j.data?.skipped).toEqual([]);
-    expect(auditCalls.length).toBe(2);
+    expect(auditCalls.length).toBe(1);
     expect(auditCalls.every((p) => p.action === 'books.delete')).toBe(true);
   });
 

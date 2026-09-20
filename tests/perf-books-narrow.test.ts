@@ -21,7 +21,8 @@ describe('Perf books narrow select + estimated count', () => {
   });
 
   it('src/lib/books.ts list select drops description, detail keeps it', () => {
-    const src = read('src/lib/books.ts');
+    // Kanonis di books/catalog.ts (shim books.ts re-export).
+    const src = read('src/lib/books/catalog.ts');
     const listIdx = src.indexOf('BOOKS_LIST_SELECT =');
     expect(listIdx, 'BOOKS_LIST_SELECT must exist').toBeGreaterThanOrEqual(0);
     const listBlock = src.slice(listIdx, listIdx + 800);
@@ -33,7 +34,7 @@ describe('Perf books narrow select + estimated count', () => {
   });
 
   it('fetchBooksPaged keeps exact total for pagination UI', () => {
-    const src = read('src/lib/books.ts');
+    const src = read('src/lib/books/catalog.ts');
     const pagedIdx = src.indexOf('async function fetchBooksPagedUncached');
     const pagedBlock = src.slice(pagedIdx, pagedIdx + 1200);
     expect(pagedBlock, 'paged katalog query keeps count exact for totalPages').toMatch(

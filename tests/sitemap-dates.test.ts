@@ -6,7 +6,7 @@ const ROOT = process.cwd();
 const read = (p: string) => readFileSync(join(ROOT, p), 'utf8');
 
 const SITEMAP = 'src/app/sitemap.ts';
-const BOOKS_LIB = 'src/lib/books.ts';
+const BOOKS_LIB = 'src/lib/books/catalog.ts';
 
 /** S-seo-sitemap: book/page sitemap URLs use per-row updated_at, not single new Date(). */
 describe('S-seo-sitemap dates', () => {

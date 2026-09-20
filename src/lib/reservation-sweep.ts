@@ -45,7 +45,8 @@ export function findExpiredCandidates<T extends SweepableRow>(
   });
 }
 
-/** AC2+AC3: sweep 1-klik. Guard staff dulu (zero mutations bila non-staff). */
+/** AC2+AC3: sweep 1-klik. Guard staff dulu (zero mutations bila non-staff).
+ * Konkuren terbatas 5 agar N kandidat tidak serial 1-per-1. */
 export async function sweepExpiredReservations(
   deps: { fetchLike: FetchLike; isStaff: boolean },
   input: { candidates: SweepCandidate[] }
@@ -54,24 +55,33 @@ export async function sweepExpiredReservations(
     throw new Error('Hanya pustakawan/staff yang boleh menandai kedaluwarsa.');
   }
   const result: SweepResult = { succeeded: 0, failed: 0, errors: [] };
-  for (const c of input.candidates) {
-    try {
-      const res = await deps.fetchLike(`/api/reservations?id=${encodeURIComponent(c.id)}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'expired' }),
-      });
-      const json = (await res.json().catch(() => ({}))) as unknown;
-      if (!res.ok) {
+  const CONCURRENCY = 5;
+  const queue = [...input.candidates];
+  async function worker(): Promise<void> {
+    while (queue.length > 0) {
+      const c = queue.shift();
+      if (!c) return;
+      try {
+        const res = await deps.fetchLike(`/api/reservations?id=${encodeURIComponent(c.id)}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: 'expired' }),
+        });
+        const json = (await res.json().catch(() => ({}))) as unknown;
+        if (!res.ok) {
+          result.failed += 1;
+          result.errors.push({ id: c.id, message: serverMessage(json) });
+          continue;
+        }
+        result.succeeded += 1;
+      } catch (e) {
         result.failed += 1;
-        result.errors.push({ id: c.id, message: serverMessage(json) });
-        continue;
+        result.errors.push({ id: c.id, message: (e as Error).message });
       }
-      result.succeeded += 1;
-    } catch (e) {
-      result.failed += 1;
-      result.errors.push({ id: c.id, message: (e as Error).message });
     }
   }
+  await Promise.all(
+    Array.from({ length: Math.min(CONCURRENCY, Math.max(queue.length, 1)) }, () => worker())
+  );
   return result;
 }

@@ -39,6 +39,7 @@ const nextConfig = {
     return config;
   },
   // Security headers: CSP, HSTS, X-Frame-Options, Referrer-Policy, X-Content-Type-Options
+  // CSP keeps unsafe-inline (Next.js runtime requires it); eval dropped.
   async headers() {
     const isProd = process.env.NODE_ENV === 'production';
     return [
@@ -51,16 +52,18 @@ const nextConfig = {
             value: isProd
               ? [
                   "default-src 'self'",
-                  "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://*.supabase.co",
+                  "script-src 'self' 'unsafe-inline' https://*.supabase.co",
                   "style-src 'self' 'unsafe-inline' https://*.supabase.co",
                   "img-src 'self' data: https: blob:",
                   "font-src 'self' data: https://*.supabase.co",
                   "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+                  "object-src 'none'",
                   "frame-ancestors 'none'",
                   "base-uri 'self'",
                   "form-action 'self'",
+                  'upgrade-insecure-requests',
                 ].join('; ')
-              : "default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; frame-ancestors 'none'",
+              : "default-src 'self' 'unsafe-inline' https: data: blob:; frame-ancestors 'none' object-src 'none'; upgrade-insecure-requests",
           },
           // HSTS: enforce HTTPS for 1 year (prod only)
           ...(isProd
@@ -80,6 +83,14 @@ const nextConfig = {
           // Permissions policy
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
         ],
+      },
+      {
+        source: '/_next/static/:path*',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=31536000, immutable' }],
+      },
+      {
+        source: '/og-default.jpg',
+        headers: [{ key: 'Cache-Control', value: 'public, max-age=86400, immutable' }],
       },
     ];
   },

@@ -88,6 +88,10 @@ function setOpnameMock(opts: {
         inIds = vals as string[];
         return chain;
       };
+      chain.upsert = (rows: unknown) => {
+        for (const r of rows as { id: string }[]) updates[r.id] = r as Record<string, unknown>;
+        return Promise.resolve({ data: rows, error: null });
+      };
       chain.single = async () => {
         if (mode === 'update' && eqId) {
           updates[eqId] = updPayload ?? {};
@@ -147,7 +151,10 @@ describe('S-roi9 stok opname massal', () => {
     expect(j.data.skipped).toEqual([]);
     expect(Object.keys(updates).sort()).toEqual([A, B, C, D, E].sort());
     const opnameAudits = audit.filter((r) => r.action === 'books.stock_opname');
-    expect(opnameAudits.length, 'RED: must audit books.stock_opname per row').toBe(5);
+    expect(opnameAudits.length, 'single bulk audit with ids metadata').toBe(1);
+    expect(
+      ((opnameAudits[0] as { metadata: { ids: string[] } }).metadata.ids ?? []).sort()
+    ).toEqual([A, B, C, D, E].sort());
   });
 
   it('OPNAME-02 buku dipinjam dilewati dengan reason; baris invalid 422, lainnya tetap update', async () => {

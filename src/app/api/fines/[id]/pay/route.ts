@@ -92,6 +92,41 @@ export async function POST(req: Request, { params }: Ctx) {
   const newPaid = Math.round((paid + payAmount) * 100) / 100;
   const isFull = Math.round(newPaid * 100) >= Math.round(total * 100);
 
+  // RACE-FINE: jalur atomik dulu — pay_own_fine RPC (row lock + guard 409
+  // + validasi nominal single-txn). Fallback CAS bila fungsi belum terdeploy.
+  const rpc = supabase.rpc as unknown as
+    | ((fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: unknown }>)
+    | undefined;
+  if (typeof rpc === 'function') {
+    try {
+      const { data: rpcData, error: rpcErr } = await rpc('pay_own_fine', {
+        p_fine_id: params.id,
+        p_amount: payAmount,
+        p_method: method,
+        p_user_id: user.id,
+      });
+      const rc = (rpcErr as { code?: string; message?: string } | null) ?? null;
+      const rpcMissing =
+        rc?.code === '42883' ||
+        rc?.code === 'PGRST202' ||
+        /could not find.*pay_own_fine|function.*pay_own_fine.*does not exist/i.test(
+          rc?.message ?? ''
+        );
+      if (!rpcMissing && !rpcErr && rpcData) {
+        return NextResponse.json({ data: rpcData, revalidated: ['fines', '/admin/peminjaman'] });
+      }
+      if (!rpcMissing && rc) {
+        if (rc.code === '25001') return jsonError('CONFLICT', 'Denda sudah lunas/dibebaskan.', 409);
+        if (rc.code === '02000') return jsonError('NOT_FOUND', 'Denda tidak ditemukan.', 404);
+        if (rc.code === '22000')
+          return jsonError('VALIDATION', rc.message || 'Nominal tidak valid.', 422);
+        if (rc.code === '42501') return jsonError('FORBIDDEN', 'Denda tidak ditemukan.', 403);
+      }
+    } catch {
+      // jatuh ke fallback CAS di bawah
+    }
+  }
+
   const { data, error } = await supabase
     .from('fines')
     .update({
@@ -104,6 +139,7 @@ export async function POST(req: Request, { params }: Ctx) {
           : `Dibayar via ${method}.`,
     })
     .eq('id', params.id)
+    .eq('paid_amount', paid)
     .in('status', ['unpaid', 'partial'])
     .select()
     .single();
