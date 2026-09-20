@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { calcFine, jsonError } from '@/lib/supabase/auth';
+import { calcFine, jsonError, FINE_PER_DAY } from '@/lib/supabase/auth';
 import { createLogger } from '@/lib/logger';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -36,6 +36,21 @@ function mapRpcError(code: string, msg: string) {
   if (code === '42501')
     return jsonError('FORBIDDEN', 'Tidak berhak mengembalikan peminjaman ini.', 403);
   return null;
+}
+
+async function getFineRate(supabase: SupabaseLike): Promise<number> {
+  try {
+    const { data } = await supabase
+      .from('library_settings')
+      .select('fine_per_day')
+      .eq('id', 1)
+      .single();
+    const v = Number((data as { fine_per_day?: unknown } | null)?.fine_per_day);
+    if (Number.isFinite(v) && v > 0) return v;
+  } catch {
+    // Intentionally empty: fall through to FINE_PER_DAY default below.
+  }
+  return FINE_PER_DAY;
 }
 
 /**
@@ -76,6 +91,7 @@ export async function returnLoan(opts: ReturnLoanOptions): Promise<Response> {
   }
 
   const notes = typeof opts.notes === 'string' && opts.notes.trim() ? opts.notes.trim() : null;
+  const rate = await getFineRate(supabase);
 
   if (typeof supabase.rpc === 'function') {
     try {
@@ -90,6 +106,7 @@ export async function returnLoan(opts: ReturnLoanOptions): Promise<Response> {
         p_kondisi: kondisi,
         p_notes: notes,
         p_user_id: userId,
+        p_fine_per_day: rate,
       })) as { data: unknown; error: { code?: string; message?: string } | null };
       if (!error) return NextResponse.json({ data });
       const rpcErr = error as { code?: string; message?: string };
@@ -156,7 +173,8 @@ async function legacyReturnLoan(
   if (l.status === 'returned' || l.status === 'lost')
     return jsonError('CONFLICT', 'Sudah dikembalikan.', 409);
 
-  const fine = calcFine(l.due_at, returnedAt);
+  const rate = await getFineRate(supabase);
+  const fine = calcFine(l.due_at, returnedAt, rate);
 
   const noteExtra =
     typeof opts.notes === 'string' && opts.notes.trim() ? ` | ${opts.notes.trim()}` : '';
@@ -236,8 +254,8 @@ async function legacyReturnLoan(
       amount: fine,
       status: 'unpaid',
       notes: hasKondisi
-        ? `Denda keterlambatan otomatis Rp1000/hari (due ${l.due_at}). Kondisi: ${kondisi}.`
-        : `Denda keterlambatan otomatis Rp1000/hari (due ${l.due_at}).`,
+        ? `Denda keterlambatan otomatis Rp${rate}/hari (due ${l.due_at}). Kondisi: ${kondisi}.`
+        : `Denda keterlambatan otomatis Rp${rate}/hari (due ${l.due_at}).`,
     });
     if (fineErr) {
       const loanReverted = await tryRevertLoanReturn(supabase, id);
@@ -269,4 +287,73 @@ async function legacyReturnLoan(
   }
 
   return NextResponse.json({ data });
+}
+
+export type ExtendLoanOptions = {
+  supabase: SupabaseLike;
+  id: string;
+  userId?: string | null;
+  /** jumlah hari perpanjangan (1..90). Default 7. */
+  days?: number;
+};
+
+/**
+ * S-roi7 single-source extend — due_at += N days untuk loan aktif.
+ * Aktif = borrowed|overdue. returned/lost -> 409. Audit loans.extend
+ * dengan old_due_at + new_due_at. is_overdue dihitung ulang dari new due.
+ */
+export async function extendLoan(opts: ExtendLoanOptions): Promise<Response> {
+  const { supabase, id } = opts;
+  const userId = opts.userId ?? null;
+  const days = opts.days === undefined ? 7 : Number(opts.days);
+  if (!Number.isInteger(days) || days < 1 || days > 90) {
+    return jsonError('VALIDATION', 'days harus bilangan bulat 1..90.', 422);
+  }
+
+  const { data: loan } = await supabase.from('loans').select('*').eq('id', id).single();
+  if (!loan) return jsonError('NOT_FOUND', 'Peminjaman tidak ditemukan.', 404);
+  const l = loan as { status: string; due_at: string };
+  if (l.status === 'returned' || l.status === 'lost') {
+    return jsonError('CONFLICT', 'Peminjaman sudah selesai, tidak bisa diperpanjang.', 409);
+  }
+
+  const oldDue = new Date(l.due_at);
+  const newDue = new Date(oldDue.getTime() + days * 86400000);
+  const newDueIso = newDue.toISOString();
+
+  const { data, error } = await supabase
+    .from('loans')
+    .update({ due_at: newDueIso, updated_at: new Date().toISOString() })
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) {
+    return retryableError(
+      'Gagal memperpanjang pinjaman. Silakan coba lagi.',
+      (error as { message?: string }).message
+    );
+  }
+
+  const row = { ...(data as Record<string, unknown>), is_overdue: newDue.getTime() < Date.now() };
+
+  const auditPayload = {
+    user_id: userId,
+    action: 'loans.extend',
+    entity_type: 'loans',
+    entity_id: id,
+    metadata: { old_due_at: l.due_at, new_due_at: newDueIso, days },
+  };
+  const firstAudit = await supabase.from('activity_logs').insert(auditPayload);
+  if (firstAudit.error) {
+    createLogger().warn('audit.activity_logs_retry', { detail: firstAudit.error.message });
+    const retryAudit = await supabase.from('activity_logs').insert(auditPayload);
+    if (retryAudit.error) {
+      createLogger().error('audit.activity_logs_failed', {
+        detail: retryAudit.error.message,
+        entity_id: id,
+      });
+    }
+  }
+
+  return NextResponse.json({ data: row });
 }

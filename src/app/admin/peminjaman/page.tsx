@@ -43,6 +43,18 @@ export default function PeminjamanPage() {
   const [sortDir, setSortDir] = useState<SortDir>('desc');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pendingReturn, setPendingReturn] = useState<string | null>(null);
+  const [finePerDay, setFinePerDay] = useState(1000);
+  useEffect(() => {
+    fetch('/api/settings')
+      .then((r) => r.json() as Promise<{ data?: { fine_per_day?: unknown } }>)
+      .then((j) => {
+        const v = Number(j.data?.fine_per_day);
+        if (Number.isFinite(v) && v > 0) setFinePerDay(v);
+      })
+      .catch(() => {});
+  }, []);
+  const [pendingExtend, setPendingExtend] = useState<string | null>(null);
+  const [extendDays, setExtendDays] = useState('7');
   const [notice, setNotice] = useState<string | null>(null);
   const [denied, setDenied] = useState(false);
   const optionsLoaded = useRef(false);
@@ -123,6 +135,11 @@ export default function PeminjamanPage() {
     setPendingReturn(id);
   }
 
+  async function onExtend(id: string) {
+    setExtendDays('7');
+    setPendingExtend(id);
+  }
+
   function toggleSort(key: string) {
     setSortDir((prev) => (sortKey === key && prev === 'asc' ? 'desc' : 'asc'));
     setSortKey(key);
@@ -162,6 +179,26 @@ export default function PeminjamanPage() {
     void Promise.all([load(), loadOptions(true)]);
   }
 
+  async function confirmExtend() {
+    const id = pendingExtend;
+    if (!id) return;
+    setPendingExtend(null);
+    const days = Number(extendDays);
+    const res = await fetch(`/api/loans?id=${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'extend', days }),
+    });
+    const json = (await res.json()) as { data?: { due_at?: string } | null };
+    if (!res.ok) {
+      setNotice(errMsg(json));
+      return;
+    }
+    const due = json.data?.due_at ? new Date(json.data.due_at).toLocaleDateString('id-ID') : '-';
+    setNotice(`Diperpanjang ${Number.isFinite(days) ? days : '?'} hari. Tempo baru: ${due}.`);
+    void Promise.all([load(), loadOptions(true)]);
+  }
+
   const fmtRp = (n: number) => `Rp${(n ?? 0).toLocaleString('id-ID')}`;
 
   return (
@@ -170,7 +207,7 @@ export default function PeminjamanPage() {
         open={pendingReturn !== null}
         onClose={() => setPendingReturn(null)}
         title="Proses pengembalian"
-        description="Denda dihitung otomatis Rp1.000/hari telat."
+        description={`Denda dihitung otomatis Rp${finePerDay.toLocaleString('id-ID')}/hari telat (tarif denda_per_hari).`}
         footer={
           <>
             <Button
@@ -188,6 +225,45 @@ export default function PeminjamanPage() {
         }
       >
         <p>Proses pengembalian buku ini?</p>
+      </Modal>
+      <Modal
+        open={pendingExtend !== null}
+        onClose={() => setPendingExtend(null)}
+        title="Perpanjang pinjaman"
+        description="Tempo mundur sejauh jumlah hari yang dipilih."
+        footer={
+          <>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setPendingExtend(null)}
+            >
+              Batal
+            </Button>
+            <Button type="button" size="sm" onClick={() => void confirmExtend()}>
+              Ya, perpanjang
+            </Button>
+          </>
+        }
+      >
+        <div className="grid gap-1">
+          <label htmlFor="extend-days" className="text-sm font-semibold text-slate-700">
+            Lama perpanjangan (hari)
+          </label>
+          <select
+            id="extend-days"
+            className="h-11 min-h-[44px] rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900"
+            value={extendDays}
+            onChange={(e) => setExtendDays(e.target.value)}
+          >
+            {['3', '7', '14', '30'].map((d) => (
+              <option key={d} value={d}>
+                {d} hari
+              </option>
+            ))}
+          </select>
+        </div>
       </Modal>
       {notice && (
         <div
@@ -298,6 +374,15 @@ export default function PeminjamanPage() {
                     className="inline-flex min-h-[44px] items-center rounded bg-brand px-3 text-xs font-semibold text-white transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Kembalikan
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onExtend(r.id)}
+                    disabled={denied}
+                    aria-label={`Perpanjang pinjaman ${r.members?.member_code ?? r.id}`}
+                    className="inline-flex min-h-[44px] items-center rounded border border-brand px-3 text-xs font-semibold text-brand transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    Perpanjang
                   </button>
                   {r.is_overdue && (
                     <DunningButton

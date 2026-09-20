@@ -48,6 +48,16 @@ export default function DendaSayaPage() {
   const [receipt, setReceipt] = useState<(Fine & { methodUsed: string }) | null>(null);
   const [copied, setCopied] = useState(false);
   const [downloadError, setDownloadError] = useState('');
+  const [finePerDay, setFinePerDay] = useState(1000);
+  useEffect(() => {
+    fetch('/api/settings')
+      .then((r) => r.json() as Promise<{ data?: { fine_per_day?: unknown } }>)
+      .then((j) => {
+        const v = Number(j.data?.fine_per_day);
+        if (Number.isFinite(v) && v > 0) setFinePerDay(v);
+      })
+      .catch(() => {});
+  }, []);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -304,7 +314,8 @@ export default function DendaSayaPage() {
         <Breadcrumb items={[{ label: 'Beranda', href: '/' }, { label: 'Denda Saya' }]} />
         <h1 className="mt-3 text-2xl font-bold">Denda Saya</h1>
         <p className="text-sm text-slate-500">
-          Denda terbentuk otomatis saat pengembalian terlambat (Rp1.000/hari). Bayar langsung tanpa
+          Denda terbentuk otomatis saat pengembalian terlambat (Rp
+          {finePerDay.toLocaleString('id-ID')}/hari, tarif denda_per_hari). Bayar langsung tanpa
           payment gateway.
         </p>
       </div>

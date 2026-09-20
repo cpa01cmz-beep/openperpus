@@ -21,6 +21,7 @@ export type SettingsRow = {
   seo_title?: string | null;
   seo_desc?: string | null;
   announcement?: string | null;
+  fine_per_day?: number | null;
 };
 
 function toText(v: unknown): string {
@@ -67,6 +68,11 @@ export default function SettingsForm({ initial }: { initial: SettingsRow }) {
     seo_title: initial.seo_title ?? '',
     seo_desc: initial.seo_desc ?? '',
     announcement: initial.announcement ?? '',
+    fine_per_day: String(
+      typeof initial.fine_per_day === 'number' && initial.fine_per_day > 0
+        ? initial.fine_per_day
+        : 1000
+    ),
   });
 
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
@@ -76,6 +82,9 @@ export default function SettingsForm({ initial }: { initial: SettingsRow }) {
     setErr('');
     setMsg('');
     if (form.name.trim().length < 3) return setErr('Nama perpustakaan minimal 3 karakter.');
+    const rate = Number(form.fine_per_day);
+    if (!Number.isFinite(rate) || rate <= 0)
+      return setErr('Tarif denda per hari (denda_per_hari) harus lebih dari 0.');
     setLoading(true);
     try {
       const payload = {
@@ -95,6 +104,7 @@ export default function SettingsForm({ initial }: { initial: SettingsRow }) {
         seo_title: form.seo_title || null,
         seo_desc: form.seo_desc || null,
         announcement: form.announcement || null,
+        fine_per_day: rate,
       };
       const res = await fetch('/api/settings', {
         method: 'PUT',
@@ -347,6 +357,20 @@ export default function SettingsForm({ initial }: { initial: SettingsRow }) {
             rows={2}
             value={form.announcement}
             onChange={(e) => set('announcement', e.target.value)}
+          />
+        </label>
+        <label className={label} htmlFor="settings-fine-per-day">
+          Tarif denda per hari / denda_per_hari (Rp)
+          <input
+            id="settings-fine-per-day"
+            aria-invalid={err ? true : undefined}
+            aria-describedby="settings-form-status"
+            className={input}
+            type="number"
+            min={1}
+            step={500}
+            value={form.fine_per_day}
+            onChange={(e) => set('fine_per_day', e.target.value)}
           />
         </label>
         <button

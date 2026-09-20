@@ -87,6 +87,52 @@ export default function BukuPage() {
     }
   }
 
+  async function onBulkOpname() {
+    if (selected.size === 0) return;
+    const total = prompt(
+      `Stok opname ${selected.size} buku terpilih.\nMasukkan stok_total baru (angka bulat >= 0):`,
+      ''
+    );
+    if (total === null) return;
+    const st = Number(total);
+    if (!Number.isInteger(st) || st < 0) return alert('stok_total harus bilangan bulat >= 0.');
+    const availRaw = prompt(
+      `Masukkan stok_available baru (0–${st}, kosongkan = samakan dengan total):`,
+      String(st)
+    );
+    if (availRaw === null) return;
+    const sa = availRaw.trim() === '' ? st : Number(availRaw);
+    if (!Number.isInteger(sa) || sa < 0 || sa > st) return alert('stok_available harus 0–total.');
+    if (!confirm(`Terapkan stok ${sa}/${st} ke ${selected.size} buku?`)) return;
+    setBulkLoading(true);
+    try {
+      const items = [...selected].map((id) => ({ id, stock_total: st, stock_available: sa }));
+      const res = await fetch('/api/books', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'stock_opname', items }),
+      });
+      const json = (await res.json()) as {
+        data?: { updated?: string[]; skipped?: { id: string; reason: string }[] };
+        error?: { message?: string } | string;
+      };
+      if (!res.ok) return alert(errMsg(json));
+      const updated = json.data?.updated ?? [];
+      const skipped = json.data?.skipped ?? [];
+      if (skipped.length > 0)
+        alert(
+          `${updated.length} terupdate, ${skipped.length} dilewati (${skipped
+            .slice(0, 3)
+            .map((s) => s.reason)
+            .join('; ')}).`
+        );
+      setSelected(new Set());
+      load();
+    } finally {
+      setBulkLoading(false);
+    }
+  }
+
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -118,6 +164,9 @@ export default function BukuPage() {
             </Button>
             <Button variant="danger" size="sm" loading={bulkLoading} onClick={onBulkDelete}>
               {`Hapus terpilih (${selected.size})`}
+            </Button>
+            <Button variant="outline" size="sm" loading={bulkLoading} onClick={onBulkOpname}>
+              {`Stok opname (${selected.size})`}
             </Button>
           </>
         )}

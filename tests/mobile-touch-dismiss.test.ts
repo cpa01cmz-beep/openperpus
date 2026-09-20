@@ -64,8 +64,10 @@ describe('T-M6 onboarding + modal dismiss targets 44px', () => {
     expect(src.includes('max-h-[60dvh]'), 'Modal body must keep max-h-[60dvh]').toBe(true);
     expect(src.includes('flex-col-reverse'), 'Modal footer must keep flex-col-reverse').toBe(true);
     expect(src.includes('sm:flex-row'), 'Modal footer must keep sm:flex-row').toBe(true);
-    expect(src.includes('document.addEventListener("keydown"'), 'Modal must keep focus-trap').toBe(
-      true
-    );
+    expect(
+      src.includes('document.addEventListener("keydown"') ||
+        src.includes("document.addEventListener('keydown'"),
+      'Modal must keep focus-trap'
+    ).toBe(true);
   });
 });

@@ -142,6 +142,96 @@ export async function POST(req: Request) {
 }
 
 /**
+ * PUT /api/books { action: 'stock_opname', items: [{ id, stock_total, stock_available }] }
+ * Stok opname massal: update stok per baris, lewati buku dengan loan aktif,
+ * baris invalid (available > total / negatif) dilewati dengan reason.
+ * Audit books.stock_opname best-effort per baris terupdate.
+ * Balikan: { data: { updated: string[], skipped: [{ id, reason }] } }.
+ */
+export async function PUT(req: Request) {
+  const log = createLogger(requestIdFromHeaders(req.headers));
+  const guard = await requireStaff(['admin', 'librarian']);
+  if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
+  const { supabase, user } = guard as {
+    supabase: ReturnType<typeof createClient>;
+    user: { id: string };
+  };
+
+  let body: Record<string, unknown>;
+  try {
+    body = (await req.json()) as Record<string, unknown>;
+  } catch {
+    return jsonError('INVALID_JSON', 'Body JSON tidak valid.', 400);
+  }
+  if (body.action !== 'stock_opname' || !Array.isArray(body.items)) {
+    return jsonError('VALIDATION', 'Body harus { action: stock_opname, items: [...] }.', 422);
+  }
+  const items = body.items as { id?: unknown; stock_total?: unknown; stock_available?: unknown }[];
+  if (items.length === 0) {
+    return jsonError('VALIDATION', 'items tidak boleh kosong.', 422);
+  }
+  const ids = [...new Set(items.map((i) => String(i.id ?? '')).filter(Boolean))];
+  if (ids.length === 0) {
+    return jsonError('VALIDATION', 'Setiap item wajib punya id UUID.', 422);
+  }
+
+  // Guard: buku dengan loan aktif tidak ikut diopname.
+  const { data: active } = await supabase
+    .from('loans')
+    .select('book_id')
+    .in('book_id', ids)
+    .in('status', ['borrowed', 'overdue']);
+  const blocked = new Set(((active ?? []) as { book_id: string }[]).map((r) => r.book_id));
+
+  const updated: string[] = [];
+  const skipped: { id: string; reason: string }[] = [];
+  for (const item of items) {
+    const id = String(item.id ?? '');
+    if (!id) {
+      skipped.push({ id: '(tanpa id)', reason: 'id wajib UUID valid.' });
+      continue;
+    }
+    if (blocked.has(id)) {
+      skipped.push({ id, reason: 'Dilewati: buku masih dipinjam.' });
+      continue;
+    }
+    const st = Number(item.stock_total);
+    const sa = Number(item.stock_available);
+    if (!Number.isInteger(st) || st < 0 || !Number.isInteger(sa) || sa < 0) {
+      skipped.push({ id, reason: 'Stok tidak valid: harus bilangan bulat >= 0.' });
+      continue;
+    }
+    if (sa > st) {
+      skipped.push({ id, reason: 'Stok tersedia melebihi stok total.' });
+      continue;
+    }
+    const { error } = await supabase
+      .from('books')
+      .update({ stock_total: st, stock_available: sa })
+      .eq('id', id);
+    if (error) {
+      log.error('books.stock_opname_failed', { detail: error.message });
+      skipped.push({ id, reason: 'Gagal menyimpan.' });
+      continue;
+    }
+    updated.push(id);
+    try {
+      await supabase.from('activity_logs').insert({
+        user_id: user?.id ?? null,
+        action: 'books.stock_opname',
+        entity_type: 'books',
+        entity_id: id,
+        metadata: { stock_total: st, stock_available: sa, bulk: items.length > 1 },
+      });
+    } catch {
+      /* best-effort */
+    }
+  }
+  revalidateTag('books');
+  return NextResponse.json({ data: { updated, skipped } });
+}
+
+/**
  * DELETE /api/books?id=<uuid>[,<uuid>...] -> staf (admin/librarian).
  * Bulk delete: lewati buku yang masih dipinjam (borrowed/overdue),
  * audit books.delete best-effort untuk tiap buku yang terhapus.

@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireStaff, jsonError, calcFine, addDaysISO, parsePaging } from '@/lib/supabase/auth';
-import { returnLoan } from '@/lib/loans-return';
+import { returnLoan, extendLoan } from '@/lib/loans-return';
 import { sanitizeIlike } from '@/lib/search';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
@@ -263,6 +263,15 @@ export async function PUT(req: Request) {
     body = (await req.json()) as Record<string, unknown>;
   } catch {
     return jsonError('INVALID_JSON', 'Body JSON tidak valid.', 400);
+  }
+  if (body.action === 'extend') {
+    // S-roi7 single-source: delegasi ke extendLoan (guard 409 + due_at shift + audit).
+    return extendLoan({
+      supabase,
+      id,
+      userId: user?.id ?? null,
+      days: body.days as number | undefined,
+    });
   }
   if (body.action !== 'return') return jsonError('VALIDATION', "Kirim { action: 'return' }.", 422);
 

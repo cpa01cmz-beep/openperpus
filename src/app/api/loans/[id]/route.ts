@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { requireStaff, jsonError } from '@/lib/supabase/auth';
-import { returnLoan } from '@/lib/loans-return';
+import { returnLoan, extendLoan } from '@/lib/loans-return';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
 type Ctx = { params: { id: string } };
@@ -84,6 +84,17 @@ export async function PUT(req: Request, { params }: Ctx) {
     body = (await req.json()) as Record<string, unknown>;
   } catch {
     return jsonError('INVALID_JSON', 'Body JSON tidak valid.', 400);
+  }
+  if (body.action === 'extend') {
+    const res = await extendLoan({
+      supabase,
+      id: params.id,
+      userId: user?.id ?? null,
+      days: body.days as number | undefined,
+    });
+    if (res.status !== 200) return res;
+    const j = (await res.json()) as { data: unknown };
+    return NextResponse.json({ data: j.data, revalidated: revalidateLoans() });
   }
   if (body.action !== 'return') return jsonError('VALIDATION', "Kirim { action: 'return' }.", 422);
 

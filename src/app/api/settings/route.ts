@@ -30,6 +30,7 @@ const ALLOWED: Record<string, string> = {
   seo_desc: 'seo_desc',
   announcement: 'announcement',
   active_theme: 'active_theme',
+  fine_per_day: 'fine_per_day',
   // alias Indonesia (docs) -> canonical
   nama: 'name',
   nama_perpus: 'name',
@@ -102,6 +103,14 @@ export async function PUT(req: Request) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(em)) {
       return jsonError('VALIDATION', 'Format email tidak valid.', 422);
     }
+  }
+  if ('fine_per_day' in payload) {
+    const v = payload.fine_per_day;
+    const rate = typeof v === 'string' && v.trim() !== '' ? Number(v) : Number(v);
+    if (v === null || !Number.isFinite(rate) || rate <= 0) {
+      return jsonError('VALIDATION', 'Tarif denda per hari harus lebih dari 0.', 422);
+    }
+    payload.fine_per_day = rate;
   }
   if (
     payload.active_theme !== undefined &&
