@@ -74,8 +74,8 @@ describe('ops observability — health/readyz/docs/docker (RED first)', () => {
     for (const p of ['/api/health', '/api/readyz', '/api/docs', '/api/books']) {
       expect(yaml, `openapi.yaml missing path ${p}`).toContain(p);
     }
-    // Parity eksak: 29 route files (26 baseline + 3 baru).
-    expect(pathLines.length).toBe(29);
+    // Parity eksak: 30 route files (26 baseline + health/readyz/docs + register).
+    expect(pathLines.length).toBe(30);
   });
 
   it('Dockerfile multistage with HEALTHCHECK curl /api/health', () => {

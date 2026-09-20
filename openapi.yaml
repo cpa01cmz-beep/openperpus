@@ -246,6 +246,16 @@ paths:
       responses:
         '200':
           description: ok
+  /api/register:
+    post:
+      summary: Self member registration (public, pending activation)
+      responses:
+        '201':
+          description: created pending
+        '409':
+          description: duplicate
+        '422':
+          description: validation
   /api/members:
     get:
       summary: List members (staff)

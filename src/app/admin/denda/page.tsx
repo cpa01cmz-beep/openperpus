@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import DataTable from '@/components/admin/DataTable';
+import ExportCsvButton from '@/components/admin/ExportCsvButton';
 import StatCard from '@/components/admin/StatCard';
 import Pagination from '@/components/ui/Pagination';
 
@@ -204,6 +205,18 @@ export default function DendaPage() {
         >
           Muat ulang
         </button>
+        <ExportCsvButton
+          filename="denda.csv"
+          headers={['ID', 'Anggota', 'Tagihan', 'Dibayar', 'Status', 'Terbit']}
+          rows={rows.map((r) => [
+            r.id,
+            r.members?.member_code ?? '',
+            num(r.amount),
+            num(r.paid_amount),
+            r.status,
+            r.issued_at,
+          ])}
+        />
       </div>
 
       {loading ? (

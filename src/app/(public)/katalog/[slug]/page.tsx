@@ -15,6 +15,7 @@ import {
 import BookCard from '@/components/public/BookCard';
 import Breadcrumb from '@/components/public/Breadcrumb';
 import ReserveButton from '@/components/public/ReserveButton';
+import WishlistButton from '@/components/public/WishlistButton';
 import { fetchBookBySlug, fetchBooks, fetchSettings, ratingNumber, stockState } from '@/lib/books';
 import { coverSrc } from '@/lib/cover';
 import { getSiteUrl } from '@/lib/site';
@@ -266,6 +267,7 @@ export default async function BookDetailPage({ params }: Props) {
                   title={book.title}
                   waHref={waHref}
                 />
+                <WishlistButton slug={book.slug} title={book.title} />
                 <Link
                   href={`/kontak?buku=${book.slug}`}
                   className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--radius-md)] border border-brand/40 bg-[var(--surface)] px-6 py-3 text-sm font-semibold text-brand-strong shadow-sm transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"

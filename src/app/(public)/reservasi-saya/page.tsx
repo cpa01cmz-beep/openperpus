@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import Breadcrumb from '@/components/public/Breadcrumb';
 import { LoanCard, ReservationCard } from '@/components/public/ReservationCard';
+import WishlistButton from '@/components/public/WishlistButton';
+import { getWishlist } from '@/lib/wishlist';
 import {
   cancelMyReservation,
   fetchMyLoans,
@@ -42,6 +44,7 @@ export default function ReservasiSayaPage() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [wishlist, setWishlist] = useState<string[]>([]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -116,6 +119,7 @@ export default function ReservasiSayaPage() {
 
   useEffect(() => {
     void load();
+    setWishlist(getWishlist());
   }, [load]);
 
   async function onCancel(id: string) {
@@ -274,6 +278,39 @@ export default function ReservasiSayaPage() {
               <ul className="grid gap-3">
                 {loans.map((l) => (
                   <LoanCard key={l.id} row={l} />
+                ))}
+              </ul>
+            )}
+          </section>
+          {/* S-roi11 Wishlist Simpanku (localStorage, klien saja) */}
+          <section aria-labelledby="roi11-wishlist-h" className="grid gap-3">
+            <h2 id="roi11-wishlist-h" className="text-lg font-bold">
+              Wishlist Simpanku ({wishlist.length})
+            </h2>
+            {wishlist.length === 0 ? (
+              <p className="text-sm text-slate-500">
+                Belum ada buku tersimpan. Tandai buku favorit dengan tombol Simpanku di katalog.
+              </p>
+            ) : (
+              <ul className="grid gap-2">
+                {wishlist.map((slug) => (
+                  <li
+                    key={slug}
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5"
+                  >
+                    <Link
+                      href={`/katalog/${slug}`}
+                      className="min-h-[44px] content-center font-semibold text-brand underline-offset-2 hover:underline"
+                    >
+                      {slug}
+                    </Link>
+                    <WishlistButton
+                      slug={slug}
+                      onChange={(saved) =>
+                        saved ? null : setWishlist((prev) => prev.filter((s) => s !== slug))
+                      }
+                    />
+                  </li>
                 ))}
               </ul>
             )}

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import DataTable from '@/components/admin/DataTable';
+import ExportCsvButton from '@/components/admin/ExportCsvButton';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Pagination from '@/components/ui/Pagination';
@@ -157,6 +158,18 @@ export default function BukuPage() {
             }}
           />
         </div>
+        <ExportCsvButton
+          filename="buku.csv"
+          headers={['ID', 'Judul', 'Penulis', 'Kategori', 'Tersedia', 'Total']}
+          rows={rows.map((r) => [
+            r.id,
+            r.title,
+            r.author,
+            r.categories?.name ?? '',
+            r.stock_available,
+            r.stock_total,
+          ])}
+        />
         {selected.size > 0 && (
           <>
             <Button variant="outline" size="sm" onClick={toggleAll}>
