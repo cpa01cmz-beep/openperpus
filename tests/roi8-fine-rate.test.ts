@@ -98,7 +98,8 @@ describe('S-roi8 configurable fine rate', () => {
   });
 
   it('RATE-02 late return memakai configured rate (bukan hardcode 1000)', async () => {
-    const auth = read('src/lib/supabase/auth.ts');
+    // Kanonis di finecalc.ts (auth.ts shim re-export).
+    const auth = read('src/lib/finecalc.ts');
     expect(auth, 'RED: calcFine must accept rate as 3rd param').toMatch(
       /export function calcFine\(\s*dueDate[^=]*=\s*new Date\(\)[\s\S]*?rate/
     );

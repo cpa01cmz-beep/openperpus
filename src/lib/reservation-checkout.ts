@@ -5,6 +5,10 @@
 // error dilempar + logger.error untuk visibilitas, staff menyelesaikan manual.
 // (Rollback loan via DELETE dilarang: DELETE loans hanya admin + hanya
 // returned/lost, dan menghapus loan valid merusak stok/audit.)
+// IDEMPOTENCY: guard client-side per reservationId (inflight Set, satu tab).
+// Guard server-side: PUT reservations completed hanya dari status pending/ready
+// (ditolak 409 bila sudah completed — src/app/api/reservations/route.ts),
+// sehingga retry setelah PUT-sukses-sebagian aman diulang.
 
 import { logger } from '@/lib/logger';
 

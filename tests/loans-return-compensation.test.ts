@@ -46,12 +46,14 @@ function makeLegacyMock(opts: {
               return { error: null };
             }
             log.push('update-loan');
-            return {
+            const r: Record<string, unknown> = {
               error: null,
               select: () => ({
                 single: async () => ({ data: { ...loan, ...payload }, error: null }),
               }),
             };
+            r.in = () => r;
+            return r;
           },
         }),
       };

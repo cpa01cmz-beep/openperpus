@@ -15,6 +15,11 @@ import { createLogger, requestIdFromHeaders } from '@/lib/logger';
  *   -> due auto +14 hari, stok_available -1 (guard >0)
  * PUT /api/loans?id= { action:"return", returned_at?, notes? }
  *   -> denda otomatis Rp1000/hari + stok +1 + row fines bila denda >0
+ * PUT /api/loans?id= { action:"extend", days? } -> due_at += N hari (1..90).
+ * STATE-MACHINE (transisi legal, ilegal -> 409/422):
+ *   return: borrowed|overdue -> returned|lost (sudah returned/lost -> 409).
+ *   extend: borrowed|overdue -> due_at baru (sudah returned/lost -> 409).
+ *   completed/cancelled/expired bukan status loan — ditolak 422.
  * DELETE /api/loans?id= (admin, hanya yang sudah returned/lost)
  */
 
@@ -116,6 +121,13 @@ export async function POST(req: Request) {
   if (!isUuid(member_id)) return jsonError('VALIDATION', 'member_id harus UUID valid.', 422);
   if (!isUuid(book_id)) return jsonError('VALIDATION', 'book_id harus UUID valid.', 422);
 
+  // NOTES-CAP: trim + batasi 500 karakter agar kolom notes konsisten.
+  const notesRaw = typeof body.notes === 'string' ? body.notes.trim() : null;
+  if (notesRaw !== null && notesRaw.length > 500) {
+    return jsonError('VALIDATION', 'notes maksimal 500 karakter.', 422);
+  }
+  const notes = notesRaw && notesRaw.length > 0 ? notesRaw : null;
+
   const borrowedAt = body.borrowed_at ? new Date(body.borrowed_at as string) : new Date();
   if (Number.isNaN(borrowedAt.getTime()))
     return jsonError('VALIDATION', 'borrowed_at tidak valid.', 422);
@@ -136,6 +148,19 @@ export async function POST(req: Request) {
     return jsonError('VALIDATION', 'Anggota tidak aktif (suspended/expired/pending).', 422);
   }
 
+  // IDEMPOTENCY (pre-check murah; otoritatif di checkout_loan 0015 -> 25001/409):
+  // satu pasangan (buku, anggota) hanya 1 loan aktif. Retry aman.
+  const { data: activeLoan } = await supabase
+    .from('loans')
+    .select('id')
+    .eq('book_id', book_id)
+    .eq('member_id', member_id)
+    .in('status', ['borrowed', 'overdue'])
+    .limit(1);
+  if (activeLoan && (activeLoan as unknown[]).length > 0) {
+    return jsonError('CONFLICT', 'Anggota sudah meminjam buku ini (loan aktif).', 409);
+  }
+
   // T-S4: atomic checkout via checkout_loan RPC (row lock + decrement + insert
   // in one transaction). Falls back to the guarded update when the function
   // is not deployed yet (42883 / PGRST202).
@@ -144,7 +169,7 @@ export async function POST(req: Request) {
     p_member_id: member_id,
     p_borrowed_at: borrowedAt.toISOString(),
     p_due_at: dueAt.toISOString(),
-    p_notes: (body.notes as string | null) ?? null,
+    p_notes: notes,
   });
   if (!rpcError) {
     try {
@@ -166,8 +191,10 @@ export async function POST(req: Request) {
   if (!rpcMissing) {
     // S-REL: exact Postgres/SQLSTATE match (not fragile message contains).
     // checkout_loan raises: 25000 stok habis, 02000 buku hilang,
-    // 22000 due invalid, 42501 forbidden. Legacy message regex kept
+    // 22000 due invalid, 42501 forbidden, 25001 loan aktif ganda. Legacy message regex kept
     // as fallback when code is absent.
+    if (rpcCode === '25001' || /sudah meminjam buku ini|loan aktif/i.test(rpcMsg))
+      return jsonError('CONFLICT', 'Anggota sudah meminjam buku ini (loan aktif).', 409);
     if (rpcCode === '25000' || /Stok buku habis/i.test(rpcMsg))
       return jsonError('CONFLICT', 'Stok buku habis.', 409);
     if (rpcCode === '02000' || /Buku tidak ditemukan/i.test(rpcMsg))
@@ -224,7 +251,7 @@ export async function POST(req: Request) {
       due_at: dueAt.toISOString(),
       status: 'borrowed',
       fine_amount: 0,
-      notes: (body.notes as string | null) ?? null,
+      notes,
     })
     .select()
     .single();

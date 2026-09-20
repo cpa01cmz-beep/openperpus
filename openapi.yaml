@@ -1,0 +1,485 @@
+openapi: 3.1.0
+info:
+  title: OpenPerpus API
+  version: 0.1.0
+  description: CMS Perpustakaan — 26 resource routes + observability (health/readyz/docs). Deploy stays Cloudflare Workers; Docker is local preview/CI only.
+servers:
+  - url: http://localhost:3000
+    description: local
+paths:
+  /api/health:
+    get:
+      summary: Liveness probe
+      responses:
+        '200':
+          description: ok
+  /api/readyz:
+    get:
+      summary: Readiness probe (Supabase ping)
+      responses:
+        '200':
+          description: ready
+        '503':
+          description: not ready
+  /api/docs:
+    get:
+      summary: Scalar/Swagger UI for this contract
+      responses:
+        '200':
+          description: html
+  /api/articles:
+    get:
+      summary: List articles
+      responses:
+        '200':
+          description: ok
+    post:
+      summary: Create article (staff)
+      responses:
+        '201':
+          description: created
+    put:
+      summary: Bulk article ops (staff)
+      responses:
+        '200':
+          description: ok
+    delete:
+      summary: Bulk delete articles (staff)
+      responses:
+        '200':
+          description: ok
+  /api/banners:
+    get:
+      summary: List banners
+      responses:
+        '200':
+          description: ok
+    post:
+      summary: Create banner (staff)
+      responses:
+        '201':
+          description: created
+    put:
+      summary: Bulk banner ops (staff)
+      responses:
+        '200':
+          description: ok
+    delete:
+      summary: Bulk delete banners (staff)
+      responses:
+        '200':
+          description: ok
+  /api/books:
+    get:
+      summary: List books (public, paginated)
+      responses:
+        '200':
+          description: ok
+    post:
+      summary: Create book (staff)
+      responses:
+        '201':
+          description: created
+    put:
+      summary: Stock opname bulk (staff)
+      responses:
+        '200':
+          description: ok
+    delete:
+      summary: Bulk delete books (staff)
+      responses:
+        '200':
+          description: ok
+  /api/books/{id}:
+    get:
+      summary: Get book by id
+      responses:
+        '200':
+          description: ok
+    put:
+      summary: Update book (staff)
+      responses:
+        '200':
+          description: ok
+    delete:
+      summary: Delete book (staff)
+      responses:
+        '200':
+          description: ok
+  /api/categories:
+    get:
+      summary: List categories
+      responses:
+        '200':
+          description: ok
+    post:
+      summary: Create category (staff)
+      responses:
+        '201':
+          description: created
+    put:
+      summary: Bulk category ops (staff)
+      responses:
+        '200':
+          description: ok
+    delete:
+      summary: Bulk delete categories (staff)
+      responses:
+        '200':
+          description: ok
+  /api/categories/{id}:
+    get:
+      summary: Get category by id
+      responses:
+        '200':
+          description: ok
+    put:
+      summary: Update category (staff)
+      responses:
+        '200':
+          description: ok
+    delete:
+      summary: Delete category (staff)
+      responses:
+        '200':
+          description: ok
+  /api/faqs:
+    get:
+      summary: List faqs
+      responses:
+        '200':
+          description: ok
+    post:
+      summary: Create faq (staff)
+      responses:
+        '201':
+          description: created
+    put:
+      summary: Bulk faq ops (staff)
+      responses:
+        '200':
+          description: ok
+    delete:
+      summary: Bulk delete faqs (staff)
+      responses:
+        '200':
+          description: ok
+  /api/faqs/{id}:
+    get:
+      summary: Get faq by id
+      responses:
+        '200':
+          description: ok
+    put:
+      summary: Update faq (staff)
+      responses:
+        '200':
+          description: ok
+    delete:
+      summary: Delete faq (staff)
+      responses:
+        '200':
+          description: ok
+  /api/fines:
+    get:
+      summary: List fines
+      responses:
+        '200':
+          description: ok
+    post:
+      summary: Issue fine (staff)
+      responses:
+        '201':
+          description: created
+  /api/fines/{id}:
+    get:
+      summary: Get fine by id
+      responses:
+        '200':
+          description: ok
+  /api/fines/{id}/pay:
+    post:
+      summary: Pay fine
+      responses:
+        '200':
+          description: ok
+  /api/loans:
+    get:
+      summary: List loans
+      responses:
+        '200':
+          description: ok
+    post:
+      summary: Create loan (borrow)
+      responses:
+        '201':
+          description: created
+    put:
+      summary: Extend loan
+      responses:
+        '200':
+          description: ok
+    delete:
+      summary: Cancel loan (staff)
+      responses:
+        '200':
+          description: ok
+  /api/loans/{id}:
+    get:
+      summary: Get loan by id
+      responses:
+        '200':
+          description: ok
+    put:
+      summary: Update loan (staff)
+      responses:
+        '200':
+          description: ok
+    delete:
+      summary: Cancel loan (staff)
+      responses:
+        '200':
+          description: ok
+  /api/loans/{id}/return:
+    post:
+      summary: Return loan
+      responses:
+        '200':
+          description: ok
+  /api/register:
+    post:
+      summary: Self member registration (public, pending activation)
+      responses:
+        '201':
+          description: created pending
+        '409':
+          description: duplicate
+        '422':
+          description: validation
+  /api/members:
+    get:
+      summary: List members (staff)
+      responses:
+        '200':
+          description: ok
+    post:
+      summary: Create member (staff)
+      responses:
+        '201':
+          description: created
+    put:
+      summary: Bulk member ops (staff)
+      responses:
+        '200':
+          description: ok
+    delete:
+      summary: Bulk delete members (staff)
+      responses:
+        '200':
+          description: ok
+  /api/menus:
+    get:
+      summary: List menus
+      responses:
+        '200':
+          description: ok
+    post:
+      summary: Create menu (staff)
+      responses:
+        '201':
+          description: created
+    put:
+      summary: Bulk menu ops (staff)
+      responses:
+        '200':
+          description: ok
+    delete:
+      summary: Bulk delete menus (staff)
+      responses:
+        '200':
+          description: ok
+  /api/menus/{id}:
+    get:
+      summary: Get menu by id
+      responses:
+        '200':
+          description: ok
+    put:
+      summary: Update menu (staff)
+      responses:
+        '200':
+          description: ok
+    delete:
+      summary: Delete menu (staff)
+      responses:
+        '200':
+          description: ok
+  /api/pages:
+    get:
+      summary: List pages
+      responses:
+        '200':
+          description: ok
+    post:
+      summary: Create page (staff)
+      responses:
+        '201':
+          description: created
+    put:
+      summary: Bulk page ops (staff)
+      responses:
+        '200':
+          description: ok
+    delete:
+      summary: Bulk delete pages (staff)
+      responses:
+        '200':
+          description: ok
+  /api/pages/{id}:
+    get:
+      summary: Get page by id
+      responses:
+        '200':
+          description: ok
+    put:
+      summary: Update page (staff)
+      responses:
+        '200':
+          description: ok
+    delete:
+      summary: Delete page (staff)
+      responses:
+        '200':
+          description: ok
+  /api/racks:
+    get:
+      summary: List racks
+      responses:
+        '200':
+          description: ok
+    post:
+      summary: Create rack (staff)
+      responses:
+        '201':
+          description: created
+    put:
+      summary: Bulk rack ops (staff)
+      responses:
+        '200':
+          description: ok
+    delete:
+      summary: Bulk delete racks (staff)
+      responses:
+        '200':
+          description: ok
+  /api/racks/{id}:
+    get:
+      summary: Get rack by id
+      responses:
+        '200':
+          description: ok
+    put:
+      summary: Update rack (staff)
+      responses:
+        '200':
+          description: ok
+    delete:
+      summary: Delete rack (staff)
+      responses:
+        '200':
+          description: ok
+  /api/reservations:
+    get:
+      summary: List reservations
+      responses:
+        '200':
+          description: ok
+    post:
+      summary: Create reservation
+      responses:
+        '201':
+          description: created
+    put:
+      summary: Bulk reservation ops (staff)
+      responses:
+        '200':
+          description: ok
+    patch:
+      summary: Patch reservation
+      responses:
+        '200':
+          description: ok
+    delete:
+      summary: Cancel reservation
+      responses:
+        '200':
+          description: ok
+  /api/reservations/{id}:
+    get:
+      summary: Get reservation by id
+      responses:
+        '200':
+          description: ok
+    put:
+      summary: Update reservation (staff)
+      responses:
+        '200':
+          description: ok
+    patch:
+      summary: Patch reservation
+      responses:
+        '200':
+          description: ok
+    delete:
+      summary: Cancel reservation
+      responses:
+        '200':
+          description: ok
+  /api/settings:
+    get:
+      summary: Get library settings (public)
+      responses:
+        '200':
+          description: ok
+    put:
+      summary: Update settings (staff)
+      responses:
+        '200':
+          description: ok
+  /api/testimonials:
+    get:
+      summary: List testimonials
+      responses:
+        '200':
+          description: ok
+    post:
+      summary: Create testimonial
+      responses:
+        '201':
+          description: created
+    put:
+      summary: Moderate testimonial (staff)
+      responses:
+        '200':
+          description: ok
+    delete:
+      summary: Bulk delete testimonials (staff)
+      responses:
+        '200':
+          description: ok
+  /api/testimonials/{id}:
+    get:
+      summary: Get testimonial by id
+      responses:
+        '200':
+          description: ok
+    put:
+      summary: Update testimonial (staff)
+      responses:
+        '200':
+          description: ok
+    delete:
+      summary: Delete testimonial (staff)
+      responses:
+        '200':
+          description: ok

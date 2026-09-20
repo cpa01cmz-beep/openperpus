@@ -31,6 +31,12 @@ export default function LoginPage() {
         <Link href="/" className="mt-4 inline-block text-sm text-brand hover:underline">
           ← Kembali ke beranda
         </Link>
+        <p className="mt-2 text-sm text-slate-500">
+          Belum punya akun?{' '}
+          <Link href="/daftar" className="text-brand hover:underline">
+            Daftar sebagai anggota
+          </Link>
+        </p>
       </div>
     </main>
   );

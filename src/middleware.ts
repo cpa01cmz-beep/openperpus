@@ -3,9 +3,45 @@ import { updateSession } from '@/lib/supabase/middleware';
 import { checkRateLimit, WRITE_API_LIMIT, WRITE_API_WINDOW_MS } from '@/lib/rate-limit';
 
 /**
+ * CSRF guard untuk write /api/*: Origin/Referer harus sama-origin dengan Host.
+ * - Browser selalu kirim Origin (atau Referer) pada POST/PUT/PATCH/DELETE.
+ * - Null (curl/server-to-server tanpa Origin+Referer) diizinkan agar cronjob
+ *   dan non-browser tidak pecah — auth/rate-limit tetap menjadi pertahanan.
+ * - Mismatch -> 403 CSRF_MISMATCH tanpa menyentuh Supabase/rate-limit.
+ */
+function isSameOrigin(request: NextRequest): boolean {
+  const origin = request.headers.get('origin');
+  const referer = request.headers.get('referer');
+  if (!origin && !referer) return true;
+  const host =
+    (
+      request.headers.get('x-forwarded-host') ??
+      request.headers.get('host') ??
+      request.nextUrl.host ??
+      ''
+    )
+      .split(',')[0]
+      ?.trim()
+      .toLowerCase() ?? '';
+  const hostName = host.split(':')[0] ?? '';
+  for (const candidate of [origin, referer]) {
+    if (!candidate) continue;
+    try {
+      const url = new URL(candidate);
+      if (url.hostname.toLowerCase() === hostName) return true;
+    } catch {
+      return false;
+    }
+  }
+  // Ada header browser tapi tak satu pun cocok -> cross-site.
+  if (origin || referer) return false;
+  return true;
+}
+/**
  * Root middleware (src/middleware.ts).
  * - Me-refresh sesi Supabase via updateSession() dari @/lib/supabase/middleware.
  * - Redirect /admin/* tanpa session -> /login?next=<path>.
+ * - CSRF: Origin/Referer vs Host untuk write /api/* (403 bila mismatch).
  * - Rate-limit write API (POST/PUT/PATCH/DELETE /api/*): 429 + Retry-After bila abusif.
  * - Edge-safe: hanya next/server + @supabase/ssr + Map/Date (tanpa API Node-only),
  *   aman untuk Cloudflare Workers via OpenNext.
@@ -18,10 +54,16 @@ export async function middleware(request: NextRequest) {
   const isLogin = pathname === '/login' || pathname.startsWith('/login');
   const isApi = pathname === '/api' || pathname.startsWith('/api/');
 
-  // Rate-limit hanya untuk write API — read (GET/HEAD/OPTIONS) bebas.
+  // Rate-limit + CSRF hanya untuk write API — read (GET/HEAD/OPTIONS) bebas.
   if (isApi) {
     const method = request.method.toUpperCase();
     if (method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE') {
+      if (!isSameOrigin(request)) {
+        return NextResponse.json(
+          { error: { code: 'CSRF_MISMATCH', message: 'Origin tidak valid.' } },
+          { status: 403 }
+        );
+      }
       const ip =
         request.headers.get('cf-connecting-ip') ??
         request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??

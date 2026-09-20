@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import nextDynamic from 'next/dynamic';
 import DataTable, { type SortDir } from '@/components/admin/DataTable';
 import DunningButton from '@/components/admin/DunningButton';
+import ExportCsvButton from '@/components/admin/ExportCsvButton';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
 import Pagination from '@/components/ui/Pagination';
@@ -323,6 +324,19 @@ export default function PeminjamanPage() {
         >
           Muat ulang
         </button>
+        <ExportCsvButton
+          filename="peminjaman.csv"
+          headers={['ID', 'Anggota', 'Buku', 'Pinjam', 'Tempo', 'Status', 'Denda']}
+          rows={loans.map((r) => [
+            r.id,
+            r.members?.member_code ?? '',
+            r.books?.title ?? '',
+            r.borrowed_at,
+            r.due_at,
+            r.status,
+            r.fine_amount,
+          ])}
+        />
       </div>
       <DataTable<Loan>
         sortKey={sortKey}

@@ -1,23 +1,15 @@
-import { NextResponse } from 'next/server';
 import { createClient } from './server';
 
 export type StaffRole = 'admin' | 'librarian';
 
-/**
- * Error JSON konsisten mengikuti docs/api-contract.md:
- * { "error": { "code": "FORBIDDEN", "message": "..." }, "details"?: ... }
- */
-export function jsonError(code: string, message: string, status = 400, details?: unknown) {
-  return NextResponse.json(
-    details === undefined ? { error: { code, message } } : { error: { code, message }, details },
-    { status }
-  );
-}
-
-/** Alias lama (string-only) tetap didukung bila ada pemanggil lama. */
-export function jsonErrorMsg(message: string, status = 400, details?: unknown) {
-  return jsonError('BAD_REQUEST', message, status, details);
-}
+/* SHIM: logika kanonis per-modul (tanpa perubahan perilaku).
+ * jsonError -> http-error.ts, slugify -> slug.ts,
+ * FINE_PER_DAY/calcFine/addDaysISO -> finecalc.ts, parsePaging -> paging.ts.
+ * 31 importer tetap from '@/lib/supabase/auth' tanpa perubahan. */
+export { jsonError, jsonErrorMsg } from '@/lib/http-error';
+export { slugify } from '@/lib/slug';
+export { FINE_PER_DAY, calcFine, addDaysISO } from '@/lib/finecalc';
+export { parsePaging } from '@/lib/paging';
 
 /**
  * Guard API: pastikan ada user login + profiles.role termasuk allowedRoles.
@@ -26,6 +18,7 @@ export function jsonErrorMsg(message: string, status = 400, details?: unknown) {
  * atau { errorResponse } jika gagal (langsung return dari route).
  */
 export async function requireStaff(allowedRoles: StaffRole[] = ['admin', 'librarian']) {
+  const { jsonError } = await import('@/lib/http-error');
   const supabase = createClient();
   const {
     data: { user },
@@ -51,58 +44,4 @@ export async function requireStaff(allowedRoles: StaffRole[] = ['admin', 'librar
   }
 
   return { supabase, user, profile };
-}
-
-/** Slug otomatis: "Judul Buku 101" -> "judul-buku-101" */
-export function slugify(input: string): string {
-  return input
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 160);
-}
-
-/** Denda per hari telat — default; tarif aktual dari library_settings.fine_per_day. */
-export const FINE_PER_DAY = 1000;
-
-export function calcFine(
-  dueDate: string | Date,
-  returnDate: string | Date = new Date(),
-  rate: number = FINE_PER_DAY
-): number {
-  const due = new Date(dueDate);
-  const ret = new Date(returnDate);
-  due.setHours(0, 0, 0, 0);
-  ret.setHours(0, 0, 0, 0);
-  const diffMs = ret.getTime() - due.getTime();
-  const lateDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-  const perDay = Number.isFinite(rate) && rate > 0 ? rate : FINE_PER_DAY;
-  return lateDays > 0 ? lateDays * perDay : 0;
-}
-
-export function addDaysISO(days: number, from: Date = new Date()): string {
-  const d = new Date(from);
-  d.setDate(d.getDate() + days);
-  return d.toISOString();
-}
-
-/** Pagination kompatibel kontrak (page/per_page/q) + alias lama (limit/search). */
-export function parsePaging(url: string, defPerPage = 10) {
-  const sp = new URL(url).searchParams;
-  const page = Math.max(1, Number(sp.get('page') ?? '1') || 1);
-  const perPage = Math.min(
-    100,
-    Math.max(1, Number(sp.get('per_page') ?? sp.get('limit') ?? String(defPerPage)) || defPerPage)
-  );
-  const q = (sp.get('q') ?? sp.get('search') ?? '').trim();
-  return {
-    sp,
-    page,
-    perPage,
-    q,
-    from: (page - 1) * perPage,
-    to: (page - 1) * perPage + perPage - 1,
-  };
 }

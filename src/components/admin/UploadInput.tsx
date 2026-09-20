@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
+import { isAllowedImageUrl } from '@/lib/content-validation';
 
 const BUCKET = 'library-assets';
 const MAX_SIZE = 10485760; // 10MB — matches supabase/migrations/0004_storage.sql
@@ -35,6 +36,8 @@ export type UploadInputProps = {
   label?: string;
 };
 
+// Pasted-URL allowlist: https Supabase host or relative ("/...") only.
+// Rejects javascript:/data:/blob:/vbscript:/file: + plain http (XSS/SSR bypass).
 function sanitizeFolder(folder: string): string {
   return (ALLOWED_FOLDERS as readonly string[]).includes(folder) ? folder : 'covers';
 }
@@ -83,6 +86,20 @@ export default function UploadInput({
     }
   }
 
+  function onPasteUrl(e: React.ChangeEvent<HTMLInputElement>) {
+    const url = e.target.value.trim();
+    if (!url) {
+      onUploaded('');
+      return;
+    }
+    if (!isAllowedImageUrl(url)) {
+      setErr('URL tidak diizinkan: harus HTTPS Supabase, relatif (/...), atau kosong.');
+      return;
+    }
+    setErr('');
+    onUploaded(url);
+  }
+
   return (
     <div className="grid gap-2">
       <label className="grid gap-1 text-sm">
@@ -99,11 +116,11 @@ export default function UploadInput({
       <input
         type="text"
         value={value}
-        onChange={(e) => onUploaded(e.target.value)}
+        onChange={onPasteUrl}
         placeholder="https://… (atau pilih file di atas)"
         className="w-full rounded-lg border px-3 py-2 text-sm"
       />
-      {value && isImageUrl(value) && (
+      {value && isAllowedImageUrl(value) && isImageUrl(value) && (
         <Image
           src={value}
           alt="pratinjau"

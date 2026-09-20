@@ -3,7 +3,7 @@ import { revalidateTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { requireStaff, jsonError, slugify, parsePaging } from '@/lib/supabase/auth';
 import { validateBook } from '@/lib/validation';
-import { sanitizeIlike } from '@/lib/search';
+import { isUuid } from '@/lib/api-utils';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
 /**
@@ -27,6 +27,30 @@ export async function GET(req: Request) {
   const tersedia = sp.get('tersedia');
   const featured = sp.get('featured');
 
+  // Pencarian via RPC search_books (full-text + trigram, server-side).
+  let searchIds: string[] | null = null;
+  if (q) {
+    const { data: found, error: searchErr } = await supabase.rpc('search_books', {
+      p_q: q,
+      p_limit: 100,
+    });
+    if (searchErr) {
+      log.error('books.search_failed', { detail: searchErr.message });
+      return jsonError('FETCH_FAILED', 'Gagal mencari buku.', 500, { requestId: log.requestId });
+    }
+    searchIds = ((found ?? []) as { id: string }[]).map((r) => r.id);
+    if (searchIds.length === 0) {
+      return NextResponse.json(
+        {
+          data: [],
+          meta: { page, per_page: perPage, total: 0 },
+          pagination: { page, limit: perPage, total: 0, totalPages: 0 },
+        },
+        { headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60' } }
+      );
+    }
+  }
+
   let query = supabase
     .from('books')
     .select(
@@ -37,13 +61,7 @@ export async function GET(req: Request) {
     .order('created_at', { ascending: false })
     .range(from, to);
 
-  if (q) {
-    const clean = sanitizeIlike(q);
-    if (clean)
-      query = query.or(
-        `title.ilike.%${clean}%,author.ilike.%${clean}%,publisher.ilike.%${clean}%,isbn.ilike.%${clean}%`
-      );
-  }
+  if (searchIds) query = query.in('id', searchIds);
   if (kategori) query = query.eq('category_id', kategori);
   if (rak) query = query.eq('rack_id', rak);
   if (tersedia === '1') query = query.gt('stock_available', 0);
@@ -98,7 +116,9 @@ export async function POST(req: Request) {
   const stock_total = body.stock_total === undefined ? 1 : Number(body.stock_total);
   const stock_available =
     body.stock_available === undefined ? stock_total : Number(body.stock_available);
-  if (stock_available < 0)
+  if (!Number.isInteger(stock_total) || stock_total < 0)
+    return jsonError('VALIDATION', 'stock_total harus bilangan bulat >= 0.', 422);
+  if (!Number.isInteger(stock_available) || stock_available < 0)
     return jsonError('VALIDATION', 'stock_available tidak boleh negatif.', 422);
   if (stock_available > stock_total)
     return jsonError('VALIDATION', 'stock_available tidak boleh melebihi stock_total.', 422);
@@ -170,25 +190,28 @@ export async function PUT(req: Request) {
   if (items.length === 0) {
     return jsonError('VALIDATION', 'items tidak boleh kosong.', 422);
   }
-  const ids = [...new Set(items.map((i) => String(i.id ?? '')).filter(Boolean))];
-  if (ids.length === 0) {
+  if (items.length > 100) {
+    return jsonError('VALIDATION', 'Maksimal 100 item per stock_opname.', 422);
+  }
+  const validIds = [...new Set(items.filter((i) => isUuid(i.id)).map((i) => i.id as string))];
+  if (validIds.length === 0) {
     return jsonError('VALIDATION', 'Setiap item wajib punya id UUID.', 422);
   }
 
-  // Guard: buku dengan loan aktif tidak ikut diopname.
   const { data: active } = await supabase
     .from('loans')
     .select('book_id')
-    .in('book_id', ids)
+    .in('book_id', validIds)
     .in('status', ['borrowed', 'overdue']);
   const blocked = new Set(((active ?? []) as { book_id: string }[]).map((r) => r.book_id));
 
-  const updated: string[] = [];
   const skipped: { id: string; reason: string }[] = [];
+  const rows: { id: string; stock_total: number; stock_available: number }[] = [];
   for (const item of items) {
-    const id = String(item.id ?? '');
-    if (!id) {
-      skipped.push({ id: '(tanpa id)', reason: 'id wajib UUID valid.' });
+    const rawId = item.id;
+    const id = typeof rawId === 'string' ? rawId : String(rawId ?? '');
+    if (!isUuid(rawId)) {
+      skipped.push({ id: id || '(tanpa id)', reason: 'id wajib UUID valid.' });
       continue;
     }
     if (blocked.has(id)) {
@@ -205,26 +228,27 @@ export async function PUT(req: Request) {
       skipped.push({ id, reason: 'Stok tersedia melebihi stok total.' });
       continue;
     }
-    const { error } = await supabase
-      .from('books')
-      .update({ stock_total: st, stock_available: sa })
-      .eq('id', id);
+    if (!rows.some((r) => r.id === id)) rows.push({ id, stock_total: st, stock_available: sa });
+  }
+  let updated: string[] = [];
+  if (rows.length > 0) {
+    const { error } = await supabase.from('books').upsert(rows, { onConflict: 'id' });
     if (error) {
       log.error('books.stock_opname_failed', { detail: error.message });
-      skipped.push({ id, reason: 'Gagal menyimpan.' });
-      continue;
-    }
-    updated.push(id);
-    try {
-      await supabase.from('activity_logs').insert({
-        user_id: user?.id ?? null,
-        action: 'books.stock_opname',
-        entity_type: 'books',
-        entity_id: id,
-        metadata: { stock_total: st, stock_available: sa, bulk: items.length > 1 },
-      });
-    } catch {
-      /* best-effort */
+      for (const r of rows) skipped.push({ id: r.id, reason: 'Gagal menyimpan.' });
+    } else {
+      updated = rows.map((r) => r.id);
+      try {
+        await supabase.from('activity_logs').insert({
+          user_id: user?.id ?? null,
+          action: 'books.stock_opname',
+          entity_type: 'books',
+          entity_id: updated[0] as string,
+          metadata: { ids: updated, bulk: items.length > 1 },
+        });
+      } catch {
+        /* best-effort */
+      }
     }
   }
   revalidateTag('books');
@@ -275,18 +299,16 @@ export async function DELETE(req: Request) {
       log.error('books.delete_failed', { detail: error.message });
       return jsonError('DELETE_FAILED', 'Gagal menghapus buku.', 500, { requestId: log.requestId });
     }
-    for (const id of deletable) {
-      try {
-        await supabase.from('activity_logs').insert({
-          user_id: user?.id ?? null,
-          action: 'books.delete',
-          entity_type: 'books',
-          entity_id: id,
-          metadata: { bulk: ids.length > 1 },
-        });
-      } catch {
-        /* best-effort: jangan gagalkan request bila log gagal */
-      }
+    try {
+      await supabase.from('activity_logs').insert({
+        user_id: user?.id ?? null,
+        action: 'books.delete',
+        entity_type: 'books',
+        entity_id: deletable[0] as string,
+        metadata: { ids: deletable, bulk: ids.length > 1 },
+      });
+    } catch {
+      /* best-effort: jangan gagalkan request bila log gagal */
     }
     revalidateTag('books');
   }

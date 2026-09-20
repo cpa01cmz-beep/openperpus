@@ -14,6 +14,7 @@ export type FaqItem = {
 export default function FaqAccordion({ faqs }: { faqs: FaqItem[] }) {
   const [q, setQ] = useState('');
   const [cat, setCat] = useState<string | null>(null);
+  const [open, setOpen] = useState<Record<string, boolean>>({});
 
   const categories = useMemo(
     () => Array.from(new Set(faqs.map((f) => f.category).filter(Boolean))) as string[],
@@ -118,32 +119,46 @@ export default function FaqAccordion({ faqs }: { faqs: FaqItem[] }) {
 
       {filtered.length > 0 ? (
         <div className="space-y-3">
-          {filtered.map((f) => (
-            <details
-              key={f.id}
-              className="group rounded-[var(--radius-lg)] border border-[var(--ink)]/10 bg-[var(--surface)] shadow-sm transition open:shadow-md"
-            >
-              <summary className="flex cursor-pointer list-none items-start justify-between gap-3 rounded-[var(--radius-lg)] p-4 font-heading text-base font-bold text-heading transition hover:bg-brand-soft/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand sm:p-5 [&::-webkit-details-marker]:hidden">
-                <span>
-                  {f.category && (
-                    <span className="mb-1 block font-sans text-[11px] font-semibold uppercase tracking-wide text-brand">
-                      {f.category}
-                    </span>
-                  )}
-                  {f.question}
-                </span>
-                <span
-                  className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand/10 text-brand transition group-open:rotate-180"
-                  aria-hidden="true"
+          {filtered.map((f) => {
+            const panelId = `faq-panel-${f.id}`;
+            const expanded = open[f.id] ?? false;
+            return (
+              <details
+                key={f.id}
+                onToggle={(e) =>
+                  setOpen((o) => ({ ...o, [f.id]: (e.target as HTMLDetailsElement).open }))
+                }
+                className="group rounded-[var(--radius-lg)] border border-[var(--ink)]/10 bg-[var(--surface)] shadow-sm transition open:shadow-md"
+              >
+                <summary
+                  aria-expanded={expanded}
+                  aria-controls={panelId}
+                  className="flex cursor-pointer list-none items-start justify-between gap-3 rounded-[var(--radius-lg)] p-4 font-heading text-base font-bold text-heading transition hover:bg-brand-soft/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand sm:p-5 [&::-webkit-details-marker]:hidden"
                 >
-                  <ChevronDown className="h-4 w-4" />
-                </span>
-              </summary>
-              <p className="whitespace-pre-line px-4 pb-4 text-sm leading-relaxed text-[var(--ink)]/70 sm:px-5 sm:pb-5 sm:text-base">
-                {f.answer}
-              </p>
-            </details>
-          ))}
+                  <span>
+                    {f.category && (
+                      <span className="mb-1 block font-sans text-[11px] font-semibold uppercase tracking-wide text-brand">
+                        {f.category}
+                      </span>
+                    )}
+                    {f.question}
+                  </span>
+                  <span
+                    className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand/10 text-brand transition group-open:rotate-180"
+                    aria-hidden="true"
+                  >
+                    <ChevronDown className="h-4 w-4" />
+                  </span>
+                </summary>
+                <p
+                  id={panelId}
+                  className="whitespace-pre-line px-4 pb-4 text-sm leading-relaxed text-[var(--ink)]/70 sm:px-5 sm:pb-5 sm:text-base"
+                >
+                  {f.answer}
+                </p>
+              </details>
+            );
+          })}
         </div>
       ) : (
         <div className="grid place-items-center rounded-[var(--radius-lg)] border border-dashed border-[var(--ink)]/10 bg-[var(--surface)] px-6 py-14 text-center">

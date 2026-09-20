@@ -68,6 +68,7 @@ function setReturnMock(opts: {
       let payload: Record<string, unknown> | null = null;
       chain.select = () => chain;
       chain.eq = () => chain;
+      chain.in = () => chain;
       chain.update = (p: Record<string, unknown>) => {
         isUpdate = true;
         payload = p;
@@ -85,6 +86,7 @@ function setReturnMock(opts: {
       let isUpdate = false;
       chain.select = () => chain;
       chain.eq = () => chain;
+      chain.in = () => chain;
       chain.update = () => {
         isUpdate = true;
         return chain;

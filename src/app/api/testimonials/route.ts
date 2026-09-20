@@ -3,6 +3,7 @@ import { revalidatePath, revalidateTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { requireStaff, jsonError, parsePaging } from '@/lib/supabase/auth';
 import { sanitizeIlike } from '@/lib/search';
+import { isAllowedImageUrl, validateContentFields } from '@/lib/content-validation';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
 /**
@@ -177,6 +178,26 @@ export async function POST(req: Request) {
   if (!name) return jsonError('VALIDATION', 'name/nama wajib diisi.', 422);
   const content = String(body.content ?? body.isi ?? body.testimoni ?? body.pesan ?? '').trim();
   if (!content) return jsonError('VALIDATION', 'content/isi wajib diisi.', 422);
+  const roleRaw = body.role ?? body.peran ?? null;
+  const avatarRaw =
+    ((body.avatar_url ?? body.foto ?? body.image_url ?? body.gambar_url) as string | null) ?? null;
+  const capErr = validateContentFields('testimonials', {
+    name,
+    content,
+    role: roleRaw ?? '',
+  });
+  if (capErr) return jsonError('VALIDATION', capErr, 422);
+  if (
+    typeof avatarRaw === 'string' &&
+    avatarRaw.trim() !== '' &&
+    !isAllowedImageUrl(avatarRaw.trim())
+  ) {
+    return jsonError(
+      'VALIDATION',
+      'avatar_url harus HTTPS Supabase atau path relatif (/...).',
+      422
+    );
+  }
   const rating = toInt(body.rating, 5);
   if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
     return jsonError('VALIDATION', 'rating harus bilangan bulat 1-5.', 422);

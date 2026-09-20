@@ -1,4 +1,4 @@
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import { createClient as createSupabaseClient, type SupabaseClient } from '@supabase/supabase-js';
 
 /**
  * Klien Supabase PUBLIK tanpa cookies — untuk helper data publik
@@ -15,15 +15,19 @@ import { createClient as createSupabaseClient } from "@supabase/supabase-js";
  * JANGAN pakai untuk operasi butuh sesi (admin/API guard) —
  * tetap pakai @/lib/supabase/server di sana.
  */
+let cached: SupabaseClient | null = null;
+
 export function createPublicClient() {
+  if (cached) return cached;
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!url || !anon) {
     throw new Error(
-      "NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY belum diset — salin .env.example ke .env.local."
+      'NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY belum diset — salin .env.example ke .env.local.'
     );
   }
-  return createSupabaseClient(url, anon, {
+  cached = createSupabaseClient(url, anon, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
+  return cached;
 }
