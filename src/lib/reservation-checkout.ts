@@ -76,14 +76,15 @@ export async function checkoutReservation(
       data?: unknown;
     };
     if (!putRes.ok) {
-      // Kompensasi: SENGAJA tanpa rollback loan (lihat komentar file atas).
+      const detail = serverMessage(putJson);
+      const loanId = (loanJson as { data?: { id?: string } }).data?.id ?? 'tak-dikenal';
       logger.error(
         `[US-02] loan dibuat tetapi reservasi ${key} gagal completed — selesaikan manual.`,
         {
-          detail: serverMessage(putJson),
+          detail,
         }
       );
-      throw new Error(serverMessage(putJson));
+      throw new Error(`${detail} (loan ${loanId} perlu rekonsiliasi manual)`);
     }
 
     return { loan: loanJson.data ?? null, reservation: putJson.data ?? null };

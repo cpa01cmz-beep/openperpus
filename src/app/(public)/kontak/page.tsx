@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import Link from 'next/link';
 import {
   ArrowRight,
@@ -12,17 +13,39 @@ import {
   Youtube,
 } from 'lucide-react';
 import { fetchBookBySlug, fetchPage, fetchSettings } from '@/lib/books';
+import { getSiteUrl } from '@/lib/site';
 import { sanitizeIlike } from '@/lib/search';
+import Breadcrumb from '@/components/public/Breadcrumb';
 
 export const revalidate = 60;
 
-export async function generateMetadata() {
+export async function generateMetadata(): Promise<Metadata> {
   const s = await fetchSettings();
+  const siteName = s.name ?? 'Perpustakaan';
+  const title = `Kontak — ${siteName}`;
+  const description = s.address
+    ? `Hubungi ${siteName}: ${s.address}`
+    : `Alamat, telepon, jam operasional, dan media sosial ${siteName}.`;
+  const canonical = `${getSiteUrl()}/kontak`;
   return {
-    title: `Kontak — ${s.name ?? 'Perpustakaan'}`,
-    description: s.address
-      ? `Hubungi ${s.name ?? 'perpustakaan'}: ${s.address}`
-      : `Alamat, telepon, jam operasional, dan media sosial ${s.name ?? 'perpustakaan'}.`,
+    title,
+    description,
+    alternates: { canonical },
+    openGraph: {
+      title,
+      description,
+      type: 'website',
+      locale: 'id_ID',
+      url: canonical,
+      siteName,
+      images: [{ url: '/og-default.jpg', width: 1200, height: 630, alt: title }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: ['/og-default.jpg'],
+    },
   };
 }
 
@@ -70,6 +93,20 @@ export default async function KontakPage({
 
   return (
     <div className="space-y-6">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            '@context': 'https://schema.org',
+            '@type': 'BreadcrumbList',
+            itemListElement: [
+              { '@type': 'ListItem', position: 1, name: 'Beranda', item: getSiteUrl() },
+              { '@type': 'ListItem', position: 2, name: 'Kontak', item: `${getSiteUrl()}/kontak` },
+            ],
+          }),
+        }}
+      />
+      <Breadcrumb items={[{ label: 'Beranda', href: '/' }, { label: 'Kontak' }]} />
       <header>
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Hubungi kami</p>
         <h1 className="mt-1 font-heading text-3xl font-bold text-heading sm:text-4xl">
@@ -104,7 +141,7 @@ export default async function KontakPage({
                   href={waHref}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-[#25D366] px-5 py-2.5 text-sm font-bold text-white shadow transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-brand px-5 py-2.5 text-sm font-bold text-white shadow transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
                 >
                   <MessageCircle className="h-4 w-4" aria-hidden="true" />
                   Reservasi via WA

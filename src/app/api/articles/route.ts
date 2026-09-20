@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireStaff, jsonError, slugify, parsePaging } from '@/lib/supabase/auth';
 import { sanitizeIlike } from '@/lib/search';
+import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
 /**
  * GET /api/articles?page=&per_page=&q=&status= (staf; publik via helper lib)
@@ -32,6 +33,7 @@ async function writeLog(
 }
 
 export async function GET(req: Request) {
+  const log = createLogger(requestIdFromHeaders(req.headers));
   const guard = await requireStaff();
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
   const { supabase } = guard as { supabase: ReturnType<typeof createClient> };
@@ -54,7 +56,10 @@ export async function GET(req: Request) {
   if (status) query = query.eq('status', status);
 
   const { data, error, count } = await query;
-  if (error) return jsonError('FETCH_FAILED', 'Gagal mengambil artikel.', 500, error.message);
+  if (error) {
+    log.error('articles.fetch_failed', { detail: error.message });
+    return jsonError('FETCH_FAILED', 'Gagal mengambil artikel.', 500, { requestId: log.requestId });
+  }
   const total = count ?? 0;
   return NextResponse.json({
     data,
@@ -64,6 +69,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const log = createLogger(requestIdFromHeaders(req.headers));
   const guard = await requireStaff(['admin', 'librarian']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
   const { supabase, user } = guard as {
@@ -108,9 +114,16 @@ export async function POST(req: Request) {
     .single();
 
   if (error) {
-    if ((error as { code?: string }).code === '23505')
-      return jsonError('CONFLICT', 'Slug sudah dipakai.', 409, error.message);
-    return jsonError('SAVE_FAILED', 'Gagal menambah artikel.', 500, error.message);
+    if ((error as { code?: string }).code === '23505') {
+      log.warn('articles.conflict', {
+        detail: (error as { message?: string }).message ?? 'conflict',
+      });
+      return jsonError('CONFLICT', 'Slug sudah dipakai.', 409, { requestId: log.requestId });
+    }
+    log.error('articles.save_failed', {
+      detail: (error as { message?: string }).message ?? 'save-failed',
+    });
+    return jsonError('SAVE_FAILED', 'Gagal menambah artikel.', 500, { requestId: log.requestId });
   }
   await writeLog(supabase, user?.id, 'articles.create', (data as { id: string }).id, {
     title,
@@ -120,6 +133,7 @@ export async function POST(req: Request) {
 }
 
 export async function PUT(req: Request) {
+  const log = createLogger(requestIdFromHeaders(req.headers));
   const guard = await requireStaff(['admin', 'librarian']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
   const { supabase, user } = guard as {
@@ -170,12 +184,16 @@ export async function PUT(req: Request) {
     .eq('id', id)
     .select()
     .single();
-  if (error) return jsonError('SAVE_FAILED', 'Gagal mengupdate artikel.', 500, error.message);
+  if (error) {
+    log.error('articles.save_failed', { detail: error.message });
+    return jsonError('SAVE_FAILED', 'Gagal mengupdate artikel.', 500, { requestId: log.requestId });
+  }
   await writeLog(supabase, user?.id, 'articles.update', id, payload);
   return NextResponse.json({ data });
 }
 
 export async function DELETE(req: Request) {
+  const log = createLogger(requestIdFromHeaders(req.headers));
   const guard = await requireStaff(['admin']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
   const { supabase, user } = guard as {
@@ -187,7 +205,12 @@ export async function DELETE(req: Request) {
   if (!id) return jsonError('VALIDATION', 'Parameter ?id= wajib.', 400);
 
   const { error } = await supabase.from('articles').delete().eq('id', id);
-  if (error) return jsonError('DELETE_FAILED', 'Gagal menghapus artikel.', 500, error.message);
+  if (error) {
+    log.error('articles.delete_failed', { detail: error.message });
+    return jsonError('DELETE_FAILED', 'Gagal menghapus artikel.', 500, {
+      requestId: log.requestId,
+    });
+  }
   await writeLog(supabase, user?.id, 'articles.delete', id);
   return NextResponse.json({ message: 'Artikel dihapus.' });
 }

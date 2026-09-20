@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import DataTable from '@/components/admin/DataTable';
 import StatCard from '@/components/admin/StatCard';
+import Pagination from '@/components/ui/Pagination';
 import { checkoutReservation } from '@/lib/reservation-checkout';
 import { findExpiredCandidates, sweepExpiredReservations } from '@/lib/reservation-sweep';
 
@@ -207,9 +208,10 @@ export default function ReservasiPage() {
             ))}
           </ul>
           <button
+            type="button"
             onClick={onSweep}
             disabled={sweeping}
-            className="mt-2 rounded-lg bg-amber-600 px-3 py-1.5 text-white disabled:opacity-50"
+            className="mt-2 inline-flex min-h-[44px] items-center justify-center rounded-lg bg-amber-600 px-3 font-semibold text-white transition hover:bg-amber-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
           >
             {sweeping ? 'Menandai…' : 'Tandai kedaluwarsa'}
           </button>
@@ -226,24 +228,32 @@ export default function ReservasiPage() {
         />
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        <label htmlFor="filter-status">Filter:</label>
-        <select
-          id="filter-status"
-          className="rounded-lg border px-3 py-1.5"
-          value={status}
-          onChange={(e) => {
-            setPage(1);
-            setStatus(e.target.value);
-          }}
+      <div className="flex flex-wrap items-end gap-2 text-sm">
+        <div className="grid gap-1">
+          <label htmlFor="filter-status" className="text-sm font-semibold text-slate-700">
+            Filter status
+          </label>
+          <select
+            id="filter-status"
+            className="h-11 min-h-[44px] rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
+            value={status}
+            onChange={(e) => {
+              setPage(1);
+              setStatus(e.target.value);
+            }}
+          >
+            {STATUS_OPTS.map((s) => (
+              <option key={s} value={s}>
+                {s === '' ? 'Semua' : s}
+              </option>
+            ))}
+          </select>
+        </div>
+        <button
+          type="button"
+          onClick={load}
+          className="inline-flex min-h-[44px] items-center justify-center rounded-md border border-slate-200 bg-white px-3 font-semibold text-slate-700 transition hover:border-brand hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
         >
-          {STATUS_OPTS.map((s) => (
-            <option key={s} value={s}>
-              {s === '' ? 'Semua' : s}
-            </option>
-          ))}
-        </select>
-        <button onClick={load} className="rounded-lg border px-3 py-1.5">
           Muat ulang
         </button>
       </div>
@@ -290,9 +300,10 @@ export default function ReservasiPage() {
                   <span className="flex flex-wrap gap-2">
                     {r.status === 'pending' && (
                       <button
+                        type="button"
                         disabled={actingId === r.id}
                         onClick={() => onUpdate(r.id, 'ready')}
-                        className="rounded bg-slate-900 px-2 py-1 text-xs text-white disabled:opacity-50"
+                        className="inline-flex min-h-[44px] items-center rounded bg-brand px-3 text-xs font-semibold text-white transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {actingId === r.id ? '…' : 'Setujui'}
                       </button>
@@ -300,25 +311,28 @@ export default function ReservasiPage() {
                     {r.status === 'ready' && (
                       <>
                         <button
+                          type="button"
                           disabled={actingId === r.id}
                           onClick={() => onCheckout(r)}
-                          className="rounded bg-blue-700 px-2 py-1 text-xs text-white disabled:opacity-50"
+                          className="inline-flex min-h-[44px] items-center rounded bg-brand px-3 text-xs font-semibold text-white transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           {actingId === r.id ? '…' : 'Pinjamkan'}
                         </button>
                         <button
+                          type="button"
                           disabled={actingId === r.id}
                           onClick={() => onUpdate(r.id, 'completed')}
-                          className="rounded bg-green-700 px-2 py-1 text-xs text-white disabled:opacity-50"
+                          className="inline-flex min-h-[44px] items-center rounded bg-brand px-3 text-xs font-semibold text-white transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           {actingId === r.id ? '…' : 'Selesaikan'}
                         </button>
                       </>
                     )}
                     <button
+                      type="button"
                       disabled={actingId === r.id}
                       onClick={() => onUpdate(r.id, 'cancelled')}
-                      className="rounded border px-2 py-1 text-xs text-red-600 disabled:opacity-50"
+                      className="inline-flex min-h-[44px] items-center rounded border border-slate-200 bg-white px-3 text-xs font-semibold text-red-600 transition hover:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Batal
                     </button>
@@ -334,25 +348,7 @@ export default function ReservasiPage() {
         />
       )}
 
-      <div className="flex items-center gap-2 text-sm">
-        <button
-          disabled={page <= 1}
-          onClick={() => setPage((p) => p - 1)}
-          className="rounded border px-3 py-1 disabled:opacity-50"
-        >
-          ‹ Prev
-        </button>
-        <span>
-          Halaman {page} / {totalPages}
-        </span>
-        <button
-          disabled={page >= totalPages}
-          onClick={() => setPage((p) => p + 1)}
-          className="rounded border px-3 py-1 disabled:opacity-50"
-        >
-          Next ›
-        </button>
-      </div>
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
     </div>
   );
 }

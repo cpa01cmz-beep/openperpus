@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { jsonError, parsePaging, requireStaff } from '@/lib/supabase/auth';
+import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
 /**
  * GET /api/fines?member_id=&status=&page=&per_page=
@@ -22,6 +23,7 @@ function isUuid(v: unknown): boolean {
 }
 
 export async function GET(req: Request) {
+  const log = createLogger(requestIdFromHeaders(req.headers));
   const supabase = createClient();
   const {
     data: { user },
@@ -63,7 +65,10 @@ export async function GET(req: Request) {
   if (memberFilter) query = query.eq('member_id', memberFilter);
 
   const { data, error, count } = await query;
-  if (error) return jsonError('FETCH_FAILED', 'Gagal mengambil denda.', 500, error.message);
+  if (error) {
+    log.error('fines.fetch_failed', { detail: error.message });
+    return jsonError('FETCH_FAILED', 'Gagal mengambil denda.', 500, { requestId: log.requestId });
+  }
   const total = count ?? 0;
   return NextResponse.json(
     {
@@ -76,6 +81,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const log = createLogger(requestIdFromHeaders(req.headers));
   const guard = await requireStaff(['admin', 'librarian']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
   const { supabase, user } = guard as {
@@ -113,7 +119,10 @@ export async function POST(req: Request) {
     })
     .select()
     .single();
-  if (error) return jsonError('SAVE_FAILED', 'Gagal mencatat denda.', 500, error.message);
+  if (error) {
+    log.error('fines.save_failed', { detail: error.message });
+    return jsonError('SAVE_FAILED', 'Gagal mencatat denda.', 500, { requestId: log.requestId });
+  }
 
   try {
     await supabase.from('activity_logs').insert({

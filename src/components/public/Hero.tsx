@@ -1,6 +1,6 @@
-import HeroSwitch from "@/components/hero/HeroSwitch";
-import type { HeroProps } from "@/components/hero/variants/heroProps";
-import type { Banner } from "@/lib/books";
+import HeroSwitch from '@/components/hero/HeroSwitch';
+import type { HeroProps } from '@/components/hero/variants/heroProps';
+import type { Banner } from '@/lib/types';
 
 type Props = {
   banners: Banner[];

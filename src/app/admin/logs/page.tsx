@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import LogsTable from '@/components/admin/LogsTable';
+import Button from '@/components/ui/Button';
+import Pagination from '@/components/ui/Pagination';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -76,7 +78,33 @@ export default async function LogsPage({
 
   const ACTIONS = [
     '',
+    'books.create',
+    'books.update',
     'books.delete',
+    'members.create',
+    'members.update',
+    'members.delete',
+    'loans.create',
+    'loans.return',
+    'loans.delete',
+    'fines.create',
+    'fines.pay',
+    'reservations.create',
+    'reservations.ready',
+    'reservations.completed',
+    'reservations.cancelled',
+    'reservations.expired',
+    'reservations.update',
+    'reservations.delete',
+    'categories.create',
+    'categories.update',
+    'categories.delete',
+    'racks.create',
+    'racks.update',
+    'racks.delete',
+    'menus.create',
+    'menus.update',
+    'menus.delete',
     'loans.create',
     'loans.return',
     'loans.delete',
@@ -94,9 +122,13 @@ export default async function LogsPage({
   const ENTITIES = [
     '',
     'books',
+    'members',
     'loans',
     'fines',
     'reservations',
+    'categories',
+    'racks',
+    'menus',
     'banners',
     'articles',
     'settings',
@@ -121,56 +153,57 @@ export default async function LogsPage({
         </div>
       )}
 
-      <form method="get" className="flex flex-wrap items-center gap-2 text-sm">
-        <label className="flex items-center gap-1">
-          <span className="text-slate-500">Aksi</span>
-          <select name="action" defaultValue={actionFilter} className="rounded-lg border px-2 py-1">
+      <form method="get" className="flex flex-wrap items-end gap-2 text-sm">
+        <div className="grid gap-1">
+          <label htmlFor="log-action" className="text-sm font-semibold text-slate-700">
+            Aksi
+          </label>
+          <select
+            id="log-action"
+            name="action"
+            defaultValue={actionFilter}
+            className="h-11 min-h-[44px] rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
+          >
             {ACTIONS.map((a) => (
               <option key={a || 'all-a'} value={a}>
                 {a || 'Semua aksi'}
               </option>
             ))}
           </select>
-        </label>
-        <label className="flex items-center gap-1">
-          <span className="text-slate-500">Entitas</span>
-          <select name="entity" defaultValue={entityFilter} className="rounded-lg border px-2 py-1">
+        </div>
+        <div className="grid gap-1">
+          <label htmlFor="log-entity" className="text-sm font-semibold text-slate-700">
+            Entitas
+          </label>
+          <select
+            id="log-entity"
+            name="entity"
+            defaultValue={entityFilter}
+            className="h-11 min-h-[44px] rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
+          >
             {ENTITIES.map((e) => (
               <option key={e || 'all-e'} value={e}>
                 {e || 'Semua entitas'}
               </option>
             ))}
           </select>
-        </label>
-        <button className="rounded-lg bg-slate-900 px-3 py-1 text-white">Filter</button>
+        </div>
+        <Button type="submit" size="sm">
+          Filter
+        </Button>
         {(actionFilter || entityFilter) && (
-          <Link href="/admin/logs" className="rounded-lg border px-3 py-1 text-slate-600">
+          <Link
+            href="/admin/logs"
+            className="inline-flex min-h-[44px] items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:border-brand hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          >
             Reset
           </Link>
         )}
       </form>
 
-      <LogsTable rows={rows} />
+      <LogsTable rows={rows} caption={`Log aktivitas halaman ${page} dari ${totalPages}`} />
 
-      <div className="flex items-center gap-2 text-sm">
-        <Link
-          href={qs(page - 1)}
-          aria-disabled={page <= 1}
-          className={`rounded border px-3 py-1 ${page <= 1 ? 'pointer-events-none opacity-50' : ''}`}
-        >
-          ‹ Prev
-        </Link>
-        <span>
-          Halaman {page} / {totalPages}
-        </span>
-        <Link
-          href={qs(page + 1)}
-          aria-disabled={page >= totalPages}
-          className={`rounded border px-3 py-1 ${page >= totalPages ? 'pointer-events-none opacity-50' : ''}`}
-        >
-          Next ›
-        </Link>
-      </div>
+      <Pagination page={page} totalPages={totalPages} hrefForPage={qs} />
     </div>
   );
 }

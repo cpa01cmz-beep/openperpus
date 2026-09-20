@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { jsonError } from '@/lib/supabase/auth';
+import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
 type Ctx = { params: { id: string } };
 
@@ -16,6 +17,7 @@ type Ctx = { params: { id: string } };
  */
 
 export async function POST(req: Request, { params }: Ctx) {
+  const log = createLogger(requestIdFromHeaders(req.headers));
   const supabase = createClient();
   const {
     data: { user },
@@ -106,13 +108,12 @@ export async function POST(req: Request, { params }: Ctx) {
     .select()
     .single();
 
-  if (error || !data)
-    return jsonError(
-      'CONFLICT',
-      'Denda sudah berubah status, muat ulang dulu.',
-      409,
-      error?.message
-    );
+  if (error || !data) {
+    log.warn('fines.id.pay.conflict', { detail: error?.message ?? 'conflict' });
+    return jsonError('CONFLICT', 'Denda sudah berubah status, muat ulang dulu.', 409, {
+      requestId: log.requestId,
+    });
+  }
 
   try {
     await supabase.from('activity_logs').insert({

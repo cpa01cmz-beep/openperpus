@@ -80,7 +80,9 @@ describe('US-2 overdue fastlane — peminjaman preselect + 1-click return', () =
     expect(api, 'return must free stock (+1)').toMatch(/stock_available/);
     expect(api, 'return must create fines row when fine > 0').toMatch(/from\(['"]fines['"]\)/);
     expect(api, 'PRESERVE: collective PUT audit retry must stay').toContain('activity_logs');
-    expect(api, 'PRESERVE: audit retry log must stay').toContain('console.error');
+    expect(api, 'PRESERVE: audit retry log must stay (structured logger)').toMatch(
+      /createLogger|audit\.activity_logs_retry/
+    );
   });
 
   it('edge: fine boundary (on-time 0, 1-day Rp1.000)', () => {

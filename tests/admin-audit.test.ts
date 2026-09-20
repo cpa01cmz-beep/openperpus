@@ -234,7 +234,10 @@ describe('S-admin-audit return audit + logs metadata', () => {
     expect(src.includes('best-effort'), 'S-AUDIT RED: route still swallows audit silently').toBe(
       false
     );
-    expect(src.includes('console.error'), 'S-AUDIT RED: route must log audit failure').toBe(true);
+    expect(
+      src.includes('createLogger') || src.includes('audit.activity_logs_retry'),
+      'S-AUDIT RED: route must log audit failure (structured logger)'
+    ).toBe(true);
     expect(src.includes('metadata'), 'S-AUDIT RED: route must write metadata').toBe(true);
     expect(src.includes('book_id'), 'S-AUDIT RED: audit metadata must include book_id').toBe(true);
   });

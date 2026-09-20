@@ -183,9 +183,10 @@ describe('S-admin-audit2 alias+collective audit + dashboard bound', () => {
       helper.includes('best-effort'),
       'S-AUDIT2 RED: helper still swallows audit silently'
     ).toBe(false);
-    expect(putBody + helper, 'S-AUDIT2 RED: alias PUT must log audit failure').toContain(
-      'console.error'
-    );
+    expect(
+      putBody + helper,
+      'S-AUDIT2 RED: alias PUT must log audit failure (structured logger)'
+    ).toMatch(/createLogger|audit\.activity_logs_retry/);
   });
 
   // --- (b) collective PUT audit ---
@@ -221,8 +222,8 @@ describe('S-admin-audit2 alias+collective audit + dashboard bound', () => {
       'S-AUDIT2 RED: collective PUT never writes activity_logs'
     ).toBe(true);
     expect(
-      src.includes('console.error'),
-      'S-AUDIT2 RED: collective PUT must log audit failure'
+      src.includes('createLogger') || src.includes('audit.activity_logs_retry'),
+      'S-AUDIT2 RED: collective PUT must log audit failure (structured logger)'
     ).toBe(true);
   });
 

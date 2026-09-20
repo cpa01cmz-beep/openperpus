@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { jsonError, parsePaging } from '@/lib/supabase/auth';
+import { isUuid, createWriteLog } from '@/lib/api-utils';
+import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
 /**
  * GET /api/reservations?status=&member_id=&book_id=&page=&per_page=
@@ -17,12 +19,7 @@ import { jsonError, parsePaging } from '@/lib/supabase/auth';
 
 const STATUSES = ['pending', 'ready', 'completed', 'cancelled', 'expired'] as const;
 
-function isUuid(v: unknown): boolean {
-  return (
-    typeof v === 'string' &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)
-  );
-}
+const writeLog = createWriteLog('reservations');
 
 function normStatus(v: unknown): string | null {
   if (v === undefined || v === null) return null;
@@ -32,26 +29,6 @@ function normStatus(v: unknown): string | null {
   if (s === 'selesai') return 'completed';
   if ((STATUSES as readonly string[]).includes(s)) return s;
   return s; // biarkan validasi di bawah menolak
-}
-
-async function writeLog(
-  supabase: ReturnType<typeof createClient>,
-  userId: string | null,
-  action: string,
-  entityId: string,
-  metadata: Record<string, unknown> = {}
-) {
-  try {
-    await supabase.from('activity_logs').insert({
-      user_id: userId,
-      action,
-      entity_type: 'reservations',
-      entity_id: entityId,
-      metadata,
-    });
-  } catch {
-    /* best-effort */
-  }
 }
 
 function revalidateReservations(): string[] {
@@ -109,6 +86,7 @@ async function getSession(): Promise<
 }
 
 export async function GET(req: Request) {
+  const log = createLogger(requestIdFromHeaders(req.headers));
   const s = await getSession();
   if ('errorResponse' in s) return s.errorResponse;
   const { supabase, memberId, isStaff } = s.session;
@@ -132,7 +110,14 @@ export async function GET(req: Request) {
   if (memberFilter) query = query.eq('member_id', memberFilter);
 
   const { data, error, count } = await query;
-  if (error) return jsonError('FETCH_FAILED', 'Gagal mengambil reservasi.', 500, error.message);
+  if (error) {
+    log.error('reservations.fetch_failed', {
+      detail: (error as { message?: unknown })?.message ?? String(error),
+    });
+    return jsonError('FETCH_FAILED', 'Gagal mengambil reservasi.', 500, {
+      requestId: log.requestId,
+    });
+  }
   const total = count ?? 0;
   return NextResponse.json(
     {
@@ -145,6 +130,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const log = createLogger(requestIdFromHeaders(req.headers));
   const s = await getSession();
   if ('errorResponse' in s) return s.errorResponse;
   const { supabase, userId, memberId, isStaff } = s.session;
@@ -205,14 +191,17 @@ export async function POST(req: Request) {
 
   if (error) {
     if ((error as { code?: string }).code === '23505') {
-      return jsonError(
-        'CONFLICT',
-        'Reservasi pending untuk buku ini sudah ada.',
-        409,
-        error.message
-      );
+      log.warn('reservations.conflict', {
+        detail: (error as { message?: unknown })?.message ?? String(error),
+      });
+      return jsonError('CONFLICT', 'Reservasi pending untuk buku ini sudah ada.', 409, {
+        requestId: log.requestId,
+      });
     }
-    return jsonError('SAVE_FAILED', 'Gagal membuat reservasi.', 500, error.message);
+    log.error('reservations.save_failed', {
+      detail: (error as { message?: unknown })?.message ?? String(error),
+    });
+    return jsonError('SAVE_FAILED', 'Gagal membuat reservasi.', 500, { requestId: log.requestId });
   }
 
   await writeLog(supabase, userId, 'reservations.create', (data as { id: string }).id, {
@@ -223,6 +212,7 @@ export async function POST(req: Request) {
 }
 
 export async function PUT(req: Request) {
+  const log = createLogger(requestIdFromHeaders(req.headers));
   const s = await getSession();
   if ('errorResponse' in s) return s.errorResponse;
   const { supabase, userId, memberId, isStaff, role } = s.session;
@@ -283,7 +273,9 @@ export async function PUT(req: Request) {
     if (body.expires_at === null) payload.expires_at = null;
     else {
       const d = new Date(body.expires_at as string);
-      if (Number.isNaN(d.getTime())) return jsonError('VALIDATION', 'expires_at tidak valid.', 422);
+      if (Number.isNaN(d.getTime())) {
+        return jsonError('VALIDATION', 'expires_at tidak valid.', 422);
+      }
       payload.expires_at = d.toISOString();
     }
   }
@@ -294,7 +286,10 @@ export async function PUT(req: Request) {
     .eq('id', id)
     .select()
     .single();
-  if (error) return jsonError('SAVE_FAILED', 'Gagal mengupdate reservasi.', 500, error.message);
+  if (error)
+    return jsonError('SAVE_FAILED', 'Gagal mengupdate reservasi.', 500, {
+      requestId: log.requestId,
+    });
 
   await writeLog(supabase, userId, `reservations.${String(payload.status ?? 'update')}`, id, {
     role,
@@ -308,12 +303,15 @@ export async function PATCH(req: Request) {
 }
 
 export async function DELETE(req: Request) {
+  const log = createLogger(requestIdFromHeaders(req.headers));
   const s = await getSession();
   if ('errorResponse' in s) return s.errorResponse;
   const { supabase, userId, memberId, isStaff } = s.session;
 
   const id = new URL(req.url).searchParams.get('id');
-  if (!id) return jsonError('VALIDATION', 'Parameter ?id= wajib.', 400);
+  if (!id) {
+    return jsonError('VALIDATION', 'Parameter ?id= wajib.', 400);
+  }
 
   const { data: cur } = await supabase
     .from('reservations')
@@ -333,7 +331,10 @@ export async function DELETE(req: Request) {
   }
 
   const { error } = await supabase.from('reservations').delete().eq('id', id);
-  if (error) return jsonError('DELETE_FAILED', 'Gagal menghapus reservasi.', 500, error.message);
+  if (error)
+    return jsonError('DELETE_FAILED', 'Gagal menghapus reservasi.', 500, {
+      requestId: log.requestId,
+    });
 
   await writeLog(supabase, userId, 'reservations.delete', id);
   return NextResponse.json({

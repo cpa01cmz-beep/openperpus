@@ -5,6 +5,7 @@ import { ArrowLeft, Calendar, Eye } from 'lucide-react';
 import { fetchArticleBySlug, fetchArticles, fetchSettings } from '@/lib/books';
 import { coverSrc } from '@/lib/cover';
 import { getSiteUrl } from '@/lib/site';
+import Breadcrumb from '@/components/public/Breadcrumb';
 
 export const revalidate = 60;
 
@@ -43,15 +44,44 @@ export default async function BeritaDetailPage({ params }: Props) {
 
   const latest = (await fetchArticles(4)).filter((a) => a.slug !== article.slug).slice(0, 3);
   const cover = coverSrc(article.cover_url, 960) ?? article.cover_url;
+  const settings = await fetchSettings();
+  const siteUrl = getSiteUrl();
+  const orgName = settings.name ?? 'Perpustakaan';
 
   const jsonLd = {
     '@context': 'https://schema.org',
-    '@type': 'Article',
-    headline: article.title,
-    description: article.excerpt ?? undefined,
-    image: cover ?? undefined,
-    datePublished: article.published_at ?? undefined,
-    url: `${getSiteUrl()}/berita/${params.slug}`,
+    '@graph': [
+      {
+        '@type': 'NewsArticle',
+        headline: article.title,
+        description: article.excerpt ?? undefined,
+        image: cover ?? undefined,
+        datePublished: article.published_at ?? undefined,
+        dateModified: article.published_at ?? undefined,
+        author: { '@type': 'Organization', name: orgName, url: siteUrl },
+        publisher: {
+          '@type': 'Organization',
+          name: orgName,
+          url: siteUrl,
+          ...(settings.logo_url ? { logo: settings.logo_url } : {}),
+        },
+        mainEntityOfPage: `${siteUrl}/berita/${params.slug}`,
+        url: `${siteUrl}/berita/${params.slug}`,
+      },
+      {
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Beranda', item: siteUrl },
+          { '@type': 'ListItem', position: 2, name: 'Berita', item: `${siteUrl}/berita` },
+          {
+            '@type': 'ListItem',
+            position: 3,
+            name: article.title,
+            item: `${siteUrl}/berita/${params.slug}`,
+          },
+        ],
+      },
+    ],
   };
 
   return (
@@ -59,6 +89,13 @@ export default async function BeritaDetailPage({ params }: Props) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <Breadcrumb
+        items={[
+          { label: 'Beranda', href: '/' },
+          { label: 'Berita', href: '/berita' },
+          { label: article.title },
+        ]}
       />
       <Link
         href="/berita"
@@ -75,6 +112,8 @@ export default async function BeritaDetailPage({ params }: Props) {
             width={960}
             height={540}
             sizes="(max-width:768px) 100vw, 768px"
+            priority
+            fetchPriority="high"
             className="aspect-[16/9] w-full object-cover"
           />
         )}

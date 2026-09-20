@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import Button from '@/components/ui/Button';
 import SearchCombobox, { type SearchOption } from './SearchCombobox';
 
 export type Option = { id: string; label: string; sub?: string };
@@ -68,11 +69,18 @@ export default function LoanForm({
     }
   }
 
-  const input = 'w-full rounded-lg border px-3 py-2 text-sm';
   return (
     <form onSubmit={onSubmit} className="grid max-w-xl gap-4 rounded-2xl border bg-white p-6">
-      {err && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{err}</p>}
-      {msg && <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">{msg}</p>}
+      {err && (
+        <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+          {err}
+        </p>
+      )}
+      {msg && (
+        <p role="status" className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
+          {msg}
+        </p>
+      )}
       <label className="grid gap-1 text-sm font-medium">
         Anggota*
         <SearchCombobox
@@ -111,21 +119,21 @@ export default function LoanForm({
       <p className="text-xs text-slate-500">
         Jatuh tempo otomatis: <strong>{duePreview}</strong> (+14 hari dari hari ini).
       </p>
-      <label className="grid gap-1 text-sm font-medium">
-        Catatan
+      <div className="grid gap-1 text-sm">
+        <label htmlFor="loan-notes" className="text-sm font-semibold text-slate-700">
+          Catatan
+        </label>
         <textarea
-          className={input}
+          id="loan-notes"
+          className="min-h-[44px] w-full rounded-md border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
           rows={2}
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
         />
-      </label>
-      <button
-        disabled={loading}
-        className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-      >
-        {loading ? 'Menyimpan…' : 'Catat Peminjaman'}
-      </button>
+      </div>
+      <Button type="submit" loading={loading}>
+        Catat Peminjaman
+      </Button>
     </form>
   );
 }

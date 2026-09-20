@@ -3,24 +3,19 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import DataTable from '@/components/admin/DataTable';
+import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
+import Pagination from '@/components/ui/Pagination';
+import { errMsg } from '@/lib/admin-errors';
+import type { Book } from '@/lib/types';
 
-type Book = {
-  id: string;
-  title: string;
-  author: string;
-  stock_total: number;
-  stock_available: number;
-  categories?: { name: string } | null;
-};
-
-function errMsg(json: unknown): string {
-  const err = (json as { error?: { message?: string } | string } | null | undefined)?.error;
-  if (!err) return 'Gagal.';
-  return typeof err === 'string' ? err : (err.message ?? 'Gagal.');
-}
+type BukuRow = Pick<
+  Book,
+  'id' | 'title' | 'author' | 'stock_total' | 'stock_available' | 'categories'
+>;
 
 export default function BukuPage() {
-  const [rows, setRows] = useState<Book[]>([]);
+  const [rows, setRows] = useState<BukuRow[]>([]);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -33,7 +28,7 @@ export default function BukuPage() {
     try {
       const q = new URLSearchParams({ page: String(page), per_page: '10', q: search });
       const res = await fetch(`/api/books?${q}`);
-      const json = (await res.json()) as { data?: Book[]; pagination?: { totalPages?: number } };
+      const json = (await res.json()) as { data?: BukuRow[]; pagination?: { totalPages?: number } };
       if (res.ok) {
         setRows(json.data ?? []);
         setTotalPages(json.pagination?.totalPages ?? 1);
@@ -92,61 +87,106 @@ export default function BukuPage() {
     }
   }
 
+  async function onBulkOpname() {
+    if (selected.size === 0) return;
+    const total = prompt(
+      `Stok opname ${selected.size} buku terpilih.\nMasukkan stok_total baru (angka bulat >= 0):`,
+      ''
+    );
+    if (total === null) return;
+    const st = Number(total);
+    if (!Number.isInteger(st) || st < 0) return alert('stok_total harus bilangan bulat >= 0.');
+    const availRaw = prompt(
+      `Masukkan stok_available baru (0–${st}, kosongkan = samakan dengan total):`,
+      String(st)
+    );
+    if (availRaw === null) return;
+    const sa = availRaw.trim() === '' ? st : Number(availRaw);
+    if (!Number.isInteger(sa) || sa < 0 || sa > st) return alert('stok_available harus 0–total.');
+    if (!confirm(`Terapkan stok ${sa}/${st} ke ${selected.size} buku?`)) return;
+    setBulkLoading(true);
+    try {
+      const items = [...selected].map((id) => ({ id, stock_total: st, stock_available: sa }));
+      const res = await fetch('/api/books', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'stock_opname', items }),
+      });
+      const json = (await res.json()) as {
+        data?: { updated?: string[]; skipped?: { id: string; reason: string }[] };
+        error?: { message?: string } | string;
+      };
+      if (!res.ok) return alert(errMsg(json));
+      const updated = json.data?.updated ?? [];
+      const skipped = json.data?.skipped ?? [];
+      if (skipped.length > 0)
+        alert(
+          `${updated.length} terupdate, ${skipped.length} dilewati (${skipped
+            .slice(0, 3)
+            .map((s) => s.reason)
+            .join('; ')}).`
+        );
+      setSelected(new Set());
+      load();
+    } finally {
+      setBulkLoading(false);
+    }
+  }
+
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold">Buku</h1>
         <Link
           href="/admin/buku/tambah"
-          className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
+          className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md bg-brand px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
         >
           + Tambah Buku
         </Link>
       </div>
-      <div className="flex flex-wrap items-center gap-3">
-        <input
-          className="w-full max-w-sm rounded-lg border px-3 py-2 text-sm"
-          placeholder="Cari judul / penulis / ISBN…"
-          value={search}
-          onChange={(e) => {
-            setPage(1);
-            setSearch(e.target.value);
-          }}
-        />
+      <div className="flex flex-wrap items-end gap-3">
+        <div className="w-full max-w-sm">
+          <Input
+            id="buku-search"
+            label="Cari buku"
+            placeholder="Cari judul / penulis / ISBN…"
+            value={search}
+            onChange={(e) => {
+              setPage(1);
+              setSearch(e.target.value);
+            }}
+          />
+        </div>
         {selected.size > 0 && (
           <>
-            <button
-              onClick={toggleAll}
-              className="rounded-lg border px-4 py-2 text-sm font-medium text-slate-600"
-            >
+            <Button variant="outline" size="sm" onClick={toggleAll}>
               {selected.size === rows.length ? 'Batalkan semua' : 'Pilih semua'}
-            </button>
-            <button
-              disabled={bulkLoading}
-              onClick={onBulkDelete}
-              className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
-            >
-              {bulkLoading ? 'Menghapus…' : `Hapus terpilih (${selected.size})`}
-            </button>
+            </Button>
+            <Button variant="danger" size="sm" loading={bulkLoading} onClick={onBulkDelete}>
+              {`Hapus terpilih (${selected.size})`}
+            </Button>
+            <Button variant="outline" size="sm" loading={bulkLoading} onClick={onBulkOpname}>
+              {`Stok opname (${selected.size})`}
+            </Button>
           </>
         )}
       </div>
       {loading ? (
         <p className="text-sm text-slate-500">Memuat…</p>
       ) : (
-        <DataTable<Book>
+        <DataTable<BukuRow>
           columns={[
             {
               key: 'pilih',
               header: 'Pilih',
               render: (r) => (
-                <span className="flex items-center gap-2">
+                <span className="flex min-h-[44px] items-center gap-2">
                   <input
                     type="checkbox"
                     aria-label={`Pilih ${r.title}`}
                     checked={selected.has(r.id)}
                     onChange={() => toggleSelect(r.id)}
-                    className="h-4 w-4"
+                    className="h-5 w-5 accent-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                   />
                 </span>
               ),
@@ -167,11 +207,19 @@ export default function BukuPage() {
               key: 'aksi',
               header: 'Aksi',
               render: (r) => (
-                <span className="flex gap-2">
-                  <Link href={`/admin/buku/edit/${r.id}`} className="text-blue-600 hover:underline">
+                <span className="flex flex-wrap items-center gap-2">
+                  <Link
+                    href={`/admin/buku/edit/${r.id}`}
+                    className="inline-flex min-h-[44px] items-center text-blue-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  >
                     Edit
                   </Link>
-                  <button onClick={() => onDelete(r.id)} className="text-red-600 hover:underline">
+                  <button
+                    type="button"
+                    onClick={() => onDelete(r.id)}
+                    aria-label={`Hapus buku ${r.title}`}
+                    className="inline-flex min-h-[44px] items-center text-red-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  >
                     Hapus
                   </button>
                 </span>
@@ -182,25 +230,7 @@ export default function BukuPage() {
           getRowKey={(r) => r.id}
         />
       )}
-      <div className="flex items-center gap-2 text-sm">
-        <button
-          disabled={page <= 1}
-          onClick={() => setPage((p) => p - 1)}
-          className="rounded border px-3 py-1 disabled:opacity-50"
-        >
-          ‹ Prev
-        </button>
-        <span>
-          Halaman {page} / {totalPages}
-        </span>
-        <button
-          disabled={page >= totalPages}
-          onClick={() => setPage((p) => p + 1)}
-          className="rounded border px-3 py-1 disabled:opacity-50"
-        >
-          Next ›
-        </button>
-      </div>
+      <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
     </div>
   );
 }

@@ -15,8 +15,16 @@ export type {
   Testimonial,
   PageDoc,
 } from '@/lib/types';
-export { FALLBACK_SETTINGS, stockState, ratingNumber } from '@/lib/types';
+export {
+  FALLBACK_SETTINGS,
+  stockState,
+  ratingNumber,
+  normalizeBook,
+  normalizeBooks,
+  coerceRating,
+} from '@/lib/types';
 import type { Book, Category } from '@/lib/types';
+import { normalizeBook, normalizeBooks } from '@/lib/types';
 
 /* ============================================================
  * src/lib/books.ts — FASADE domain buku + re-ekspor kompatibel.
@@ -56,6 +64,63 @@ export const STATS_TAG = 'stats';
 /** Kolom select buku + relasi kategori & rak — dipakai fetchBooks(Uncached), fetchBooksPaged(Uncached), fetchBookBySlug(Uncached). */
 const BOOKS_SELECT =
   'id,title,slug,author,publisher,year,isbn,category_id,rack_id,cover_url,description,pages,language,stock_total,stock_available,featured,rating_avg,created_at,updated_at,categories(id,name,slug),racks(code,name,location)';
+
+/** Select sempit untuk daftar publik/kartu: tanpa description (hemat payload list).
+ *  Detail buku (fetchBookBySlug) + SEO/sitemap (updated_at) tetap memakai BOOKS_SELECT penuh. */
+const BOOKS_LIST_SELECT =
+  'id,title,slug,author,publisher,year,isbn,category_id,rack_id,cover_url,pages,language,stock_total,stock_available,featured,rating_avg,created_at,updated_at,categories(id,name,slug),racks(code,name,location)';
+
+/** Ambil objek pertama bila relasi datang sebagai array (bentuk join Supabase). */
+function firstObj(v: unknown): Record<string, unknown> | null {
+  const item: unknown = Array.isArray(v) ? (v as unknown[])[0] : v;
+  return item !== null && typeof item === 'object' ? (item as Record<string, unknown>) : null;
+}
+
+function strOrNull(v: unknown): string | null {
+  return typeof v === 'string' ? v : null;
+}
+
+function strOrEmpty(v: unknown): string {
+  return typeof v === 'string' ? v : '';
+}
+
+/** Ubah satu baris BOOKS_SELECT menjadi Book kanonis:
+ *  relasi array -> objek tunggal + rating_avg via normalizeBook. */
+function toBook(row: Record<string, unknown>): Book {
+  const cat = firstObj(row.categories);
+  const rak = firstObj(row.racks);
+  return normalizeBook({
+    id: strOrEmpty(row.id),
+    title: strOrEmpty(row.title),
+    slug: strOrEmpty(row.slug),
+    author: strOrNull(row.author),
+    publisher: strOrNull(row.publisher),
+    year: typeof row.year === 'number' ? row.year : null,
+    isbn: strOrNull(row.isbn),
+    category_id: strOrNull(row.category_id),
+    rack_id: strOrNull(row.rack_id),
+    cover_url: strOrNull(row.cover_url),
+    description: strOrNull(row.description),
+    pages: typeof row.pages === 'number' ? row.pages : null,
+    language: strOrNull(row.language),
+    stock_total: typeof row.stock_total === 'number' ? row.stock_total : 0,
+    stock_available: typeof row.stock_available === 'number' ? row.stock_available : 0,
+    featured: row.featured === true,
+    rating_avg: row.rating_avg,
+    created_at: strOrNull(row.created_at) ?? undefined,
+    updated_at: strOrNull(row.updated_at),
+    categories: cat
+      ? { id: strOrEmpty(cat.id), name: strOrEmpty(cat.name), slug: strOrEmpty(cat.slug) }
+      : null,
+    racks: rak
+      ? {
+          code: strOrEmpty(rak.code),
+          name: strOrEmpty(rak.name),
+          location: strOrNull(rak.location),
+        }
+      : null,
+  });
+}
 
 /** Terapkan urutan katalog dari opts.sort — dipakai fetchBooksUncached + fetchBooksPagedUncached. */
 function applyBooksSort<Q extends { order(column: string, options?: Record<string, unknown>): Q }>(
@@ -99,7 +164,7 @@ async function fetchBooksUncached(opts: FetchBooksOpts): Promise<Book[]> {
   try {
     const supabase = createClient();
     const needle = sanitizeIlike(opts.q ?? opts.search ?? '');
-    let query = supabase.from('books').select(BOOKS_SELECT).eq('is_active', true);
+    let query = supabase.from('books').select(BOOKS_LIST_SELECT).eq('is_active', true);
 
     query = applyBooksSort(query, opts.sort);
 
@@ -121,13 +186,13 @@ async function fetchBooksUncached(opts: FetchBooksOpts): Promise<Book[]> {
 
     const { data, error } = await query;
     if (error) return [];
-    return (data ?? []) as unknown as Book[];
+    return normalizeBooks(((data ?? []) as Record<string, unknown>[]).map(toBook));
   } catch {
     return [];
   }
 }
 
-/** Katalog server-paginated: .range(from,to) + count exact (mirror /api/books). */
+/** Katalog server-paginated: .range(from,to) + count exact (katalog UI butuh total pasti). */
 export async function fetchBooksPaged(opts: FetchBooksOpts = {}): Promise<PagedBooks> {
   return unstable_cache(() => fetchBooksPagedUncached(opts), ['books-paged', stableKey(opts)], {
     tags: [BOOKS_TAG],
@@ -146,7 +211,7 @@ async function fetchBooksPagedUncached(opts: FetchBooksOpts): Promise<PagedBooks
 
     let query = supabase
       .from('books')
-      .select(BOOKS_SELECT, { count: 'exact' })
+      .select(BOOKS_LIST_SELECT, { count: 'exact' })
       .eq('is_active', true);
 
     query = applyBooksSort(query, opts.sort);
@@ -162,7 +227,10 @@ async function fetchBooksPagedUncached(opts: FetchBooksOpts): Promise<PagedBooks
 
     const { data, error, count } = await query.range(from, to);
     if (error) return { books: [], total: 0 };
-    return { books: (data ?? []) as unknown as Book[], total: count ?? 0 };
+    return {
+      books: normalizeBooks(((data ?? []) as Record<string, unknown>[]).map(toBook)),
+      total: count ?? 0,
+    };
   } catch {
     return { books: [], total: 0 };
   }
@@ -186,7 +254,7 @@ async function fetchBookBySlugUncached(slug: string): Promise<Book | null> {
       .eq('is_active', true)
       .maybeSingle();
     if (error || !data) return null;
-    return data as unknown as Book;
+    return toBook(data as Record<string, unknown>);
   } catch {
     return null;
   }

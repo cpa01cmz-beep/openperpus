@@ -1,22 +1,41 @@
-import Link from "next/link";
-import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
-import { fetchPage, fetchSettings } from "@/lib/books";
+import type { Metadata } from 'next';
+import Link from 'next/link';
+import { notFound } from 'next/navigation';
+import { ArrowLeft } from 'lucide-react';
+import { fetchPage, fetchSettings } from '@/lib/books';
+import { getSiteUrl } from '@/lib/site';
 
 export const revalidate = 60;
 
 type Props = { params: { slug: string } };
 
-export async function generateMetadata({ params }: Props) {
-  const [settings, page] = await Promise.all([
-    fetchSettings(),
-    fetchPage(params.slug),
-  ]);
-  const siteName = settings.name ?? "Perpustakaan";
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const [settings, page] = await Promise.all([fetchSettings(), fetchPage(params.slug)]);
+  const siteName = settings.name ?? 'Perpustakaan';
+  const siteUrl = getSiteUrl();
   if (!page) return { title: `Halaman tidak ditemukan — ${siteName}` };
+  const title = `${page.title} — ${siteName}`;
+  const description = page.excerpt ?? `Halaman ${page.title} di ${siteName}.`;
+  const canonical = `${siteUrl}/halaman/${params.slug}`;
   return {
-    title: `${page.title} — ${siteName}`,
-    description: page.excerpt ?? `Halaman ${page.title} di ${siteName}.`,
+    title,
+    description,
+    alternates: { canonical },
+    openGraph: {
+      title,
+      description,
+      type: 'article',
+      locale: 'id_ID',
+      url: canonical,
+      siteName,
+      images: [{ url: '/og-default.jpg', width: 1200, height: 630, alt: title }],
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: ['/og-default.jpg'],
+    },
   };
 }
 

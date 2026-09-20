@@ -10,6 +10,8 @@ export const LINKS = [
   { href: '/layanan', label: 'Layanan' },
   { href: '/faq', label: 'FAQ' },
   { href: '/kontak', label: 'Kontak' },
+  { href: '/reservasi-saya', label: 'Reservasi Saya' },
+  { href: '/denda', label: 'Denda Saya' },
 ];
 
 /** Quick links reused by every footer variant. */
@@ -20,6 +22,8 @@ export const FOOTER_LINKS = [
   { href: '/layanan', label: 'Layanan' },
   { href: '/faq', label: 'FAQ' },
   { href: '/kontak', label: 'Kontak' },
+  { href: '/reservasi-saya', label: 'Reservasi Saya' },
+  { href: '/denda', label: 'Denda Saya' },
 ];
 
 export const SOCIAL_ICON: Record<string, typeof Facebook> = {
