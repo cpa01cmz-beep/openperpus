@@ -36,7 +36,8 @@
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260922.1",
     "@next/eslint-plugin-next": "^14.2.35",
-    "@opennextjs/cloudflare": "^1.15.0",
+    "@opennextjs/cloudflare": "1.15.1",
+    "@playwright/test": "^1.63.0",
     "@testing-library/dom": "^10.4.2",
     "@testing-library/react": "^16.3.3",
     "@types/node": "^20.16.13",
