@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { createServerClient } from '@supabase/ssr';
 import { updateSession } from '@/lib/supabase/middleware';
 import { checkRateLimit, WRITE_API_LIMIT, WRITE_API_WINDOW_MS } from '@/lib/rate-limit';
 
@@ -48,6 +49,32 @@ function isSameOrigin(request: NextRequest): boolean {
  * - Single getUser per hit: user dipakai ulang dari updateSession,
  *   tanpa createServerClient->getUser kedua.
  */
+/**
+ * Role gate /admin (defense-in-depth lapisan edge, I5): baca profiles.role
+ * dengan client read-only — cookie sudah di-refresh updateSession, jadi
+ * setAll cukup no-op. Fail-closed: query gagal / role hilang → non-staff.
+ */
+async function getProfileRole(request: NextRequest, userId: string): Promise<string | null> {
+  try {
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll: () => request.cookies.getAll(),
+          setAll: () => {
+            /* refresh token sudah ditangani updateSession; baca-saja di sini */
+          },
+        },
+      }
+    );
+    const { data } = await supabase.from('profiles').select('role').eq('id', userId).single();
+    return (data as { role?: string } | null)?.role ?? null;
+  } catch {
+    return null;
+  }
+}
+
 export async function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const isAdmin = pathname === '/admin' || pathname.startsWith('/admin/');
@@ -112,6 +139,19 @@ export async function middleware(request: NextRequest) {
     url.pathname = '/login';
     url.searchParams.set('next', `${pathname}${search}`);
     return NextResponse.redirect(url);
+  }
+
+  // 3. Role gate /admin (I5 defense-in-depth): sesi SAJA tidak cukup —
+  //    wajib staff (admin|librarian), sejajar admin/layout.tsx.
+  //    Fail-closed: role bukan staff / query gagal → redirect '/'.
+  if (isAdmin && user) {
+    const role = await getProfileRole(request, user.id);
+    if (role !== 'admin' && role !== 'librarian') {
+      const url = request.nextUrl.clone();
+      url.pathname = '/';
+      url.search = '';
+      return NextResponse.redirect(url);
+    }
   }
 
   return sessionResponse;

@@ -8,11 +8,13 @@
 ## 1. Tujuan & Batasan
 
 **Tujuan:**
+
 - OPAC publik (katalog, detail buku, artikel/berita/event, halaman dinamis, testimoni, FAQ, banner) yang cepat (edge) dan SEO-friendly.
 - Admin CMS (kelola settings, buku+stok, kategori, rak, anggota, sirkulasi loans/reservations/fines, konten, menu, banner) dengan RBAC.
 - Satu codebase, dua area: `(public)` dan `(admin)`.
 
 **Batasan (jangan dilanggar worker):**
+
 - Jangan ganti stack. Jangan intro Kafka/microservices/Express terpisah.
 - Jangan hardcode identitas perpus di JSX/metadata. Semua via `settings`.
 - Deploy target = Cloudflare Workers via OpenNext (Workers runtime = edge, Node API terbatas). Hindari API Node-only (`fs`, `sharp` custom) di runtime request.
@@ -63,7 +65,7 @@
 │   │   ├── server.ts               # server/RSC client (createServerClient + cookies)
 │   │   └── middleware.ts           # refresh session (updateSession)
 │   ├── settings.ts                 # getLibrarySettings() cached + helper (jam operasional, sosmed)
-│   ├── auth.ts                     # getSessionUser(), requireRole(['admin','pustakawan'])
+│   ├── auth.ts                     # getSessionUser(), normalizeRole() — guard kanonis: requireStaff (lib/supabase/auth.ts)
 │   └── utils.ts                    # slugify, formatRupiah, due-date calc
 ├── middleware.ts                   # root: pakai lib/supabase/middleware.ts (auth refresh + redirect /login)
 ├── styles/globals.css              # Tailwind + CSS var tema dari settings (primary color)
@@ -72,6 +74,7 @@
 ```
 
 **Keputusan struktur:**
+
 - Opsi A (dipilih): Route Groups `(public)` / `(admin)` satu app — sharing `lib/settings.ts`, satu deploy.
 - Opsi B (ditolak): dua app terpisah (public + admin) — duplikasi auth/settings, 2x deploy cost, over-engineering untuk skala perpus.
 
@@ -95,7 +98,7 @@ Browser → Cloudflare Edge → Next RSC (app/(public))
 ### 3.2 Admin CMS (authenticated, dynamic, no-cache)
 
 ```
-Browser → middleware.ts (refresh session) → app/(admin)/layout.tsx: requireRole()
+Browser → middleware.ts (refresh session + role gate staff) → admin/layout.tsx (cek profiles.role admin|librarian)
   → Server Component fetch via supabase server client (service role TIDAK di client; RLS per role)
   → Mutasi via /api/* (route handler validasi role) atau Server Actions*
 ```
@@ -104,15 +107,15 @@ Browser → middleware.ts (refresh session) → app/(admin)/layout.tsx: requireR
 
 ### 3.3 Diagram Peran
 
-| Aksi | Anon | Anggota | Pustakawan | Admin |
-|---|---|---|---|---|
-| Lihat OPAC/artikel/halaman | ✅ | ✅ | ✅ | ✅ |
-| Reservasi + riwayat pinjaman sendiri | ❌ | ✅ | ✅ | ✅ |
-| CRUD buku/kategori/rak/stok | ❌ | ❌ | ✅ | ✅ |
-| Approve loans/returns/fines | ❌ | ❌ | ✅ | ✅ |
-| Kelola members (non-role) | ❌ | ❌ | ✅ (tanpa ubah role) | ✅ |
-| Ubah settings/menus/roles/logs | ❌ | ❌ | ❌ | ✅ |
-| Hapus permanen | ❌ | ❌ | ❌ | ✅ |
+| Aksi                                 | Anon | Anggota | Pustakawan           | Admin |
+| ------------------------------------ | ---- | ------- | -------------------- | ----- |
+| Lihat OPAC/artikel/halaman           | ✅   | ✅      | ✅                   | ✅    |
+| Reservasi + riwayat pinjaman sendiri | ❌   | ✅      | ✅                   | ✅    |
+| CRUD buku/kategori/rak/stok          | ❌   | ❌      | ✅                   | ✅    |
+| Approve loans/returns/fines          | ❌   | ❌      | ✅                   | ✅    |
+| Kelola members (non-role)            | ❌   | ❌      | ✅ (tanpa ubah role) | ✅    |
+| Ubah settings/menus/roles/logs       | ❌   | ❌      | ❌                   | ✅    |
+| Hapus permanen                       | ❌   | ❌      | ❌                   | ✅    |
 
 ---
 
@@ -121,24 +124,25 @@ Browser → middleware.ts (refresh session) → app/(admin)/layout.tsx: requireR
 - **Provider:** Supabase Auth (email+password). Tabel `profiles(id UUID PK → auth.users, role: admin|pustakawan|anggota, member_id nullable)`.
 - **Alur:** trigger `handle_new_user` buat `profiles` default `anggota` + baris `members` (no_anggota auto). Admin ubah role manual via admin UI (hanya admin).
 - **Enforcement 3 lapis:**
-  1. `middleware.ts` refresh session + redirect `/admin/*` tanpa session → `/login`.
-  2. `(admin)/layout.tsx` panggil `requireRole()` → tampil 403 bila role tak cukup.
-  3. **RLS Supabase** sebagai sumber kebenaran (policies per tabel, lihat db-design). Jangan percaya guard UI saja.
+  1. `middleware.ts` refresh session + redirect `/admin/*` tanpa session → `/login`; non-staff (role bukan admin|librarian) → `/` (fail-closed).
+  2. `admin/layout.tsx` cek `profiles.role` + guard API `requireStaff()` (kanonis, berbasis `normalizeRole`) → 403 bila role tak cukup.
+  3. **RLS Supabase** sebagai sumber kebenaran (policies per tabel, plus trigger 0019 `guard_profiles_role_change` untuk `profiles.role`) — jangan percaya guard UI saja.
 - **Opsi ditolak:** NextAuth terpisah — duplikasi user store, menambah adapter + biaya integrasi tanpa manfaat (Supabase Auth sudah cukup + cocok dengan RLS).
 
 ---
 
 ## 5. Strategi Data-Fetching (SSR + RSC)
 
-| Area | Pola | Contoh |
-|---|---|---|
-| Public SEO (home, detail) | RSC async + `fetch` cache / Supabase langsung, `revalidate` | `getLibrarySettings()` + query books |
-| Katalog search/filter | RSC + `searchParams`, `dynamic='force-dynamic'` bila query ada; prefetch kategori statis | `/katalog` |
-| Admin list | RSC `cache:'no-store'` + pagination server-side | `/admin/loans?page=` |
-| Mutasi | Client → `fetch('/api/...')` → `router.refresh()` + toast | pinjam/kembali |
-| Realtime ringan | Supabase Realtime hanya di dashboard admin (stok/loan baru); JANGAN di public | badge overdue |
+| Area                      | Pola                                                                                     | Contoh                               |
+| ------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------ |
+| Public SEO (home, detail) | RSC async + `fetch` cache / Supabase langsung, `revalidate`                              | `getLibrarySettings()` + query books |
+| Katalog search/filter     | RSC + `searchParams`, `dynamic='force-dynamic'` bila query ada; prefetch kategori statis | `/katalog`                           |
+| Admin list                | RSC `cache:'no-store'` + pagination server-side                                          | `/admin/loans?page=`                 |
+| Mutasi                    | Client → `fetch('/api/...')` → `router.refresh()` + toast                                | pinjam/kembali                       |
+| Realtime ringan           | Supabase Realtime hanya di dashboard admin (stok/loan baru); JANGAN di public            | badge overdue                        |
 
 **Aturan:**
+
 - Public JANGAN pakai `cookies()`-dependent fetch yang memaksa dynamic — pisahkan komponen settings (cached) dari komponen user-specific.
 - Semua query list wajib paginasi (`range()`) + `order()` eksplisit + `count:'exact'` untuk pagination.
 - N+1 dilarang: pakai `select('*, categories(name), book_copies(count)')` / view `books_with_stock`.
@@ -147,14 +151,14 @@ Browser → middleware.ts (refresh session) → app/(admin)/layout.tsx: requireR
 
 ## 6. Caching
 
-| Layer | Kebijakan |
-|---|---|
+| Layer                  | Kebijakan                                                                                                                        |
+| ---------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
 | `getLibrarySettings()` | `unstable_cache` / fetch `next:{tags:['settings']}`; `revalidateTime` 3600 dtk; admin PUT settings → `revalidateTag('settings')` |
-| Home/artikel/banner | ISR `export const revalidate = 300` (5 mnt) |
-| Detail buku | `revalidate = 600` + `generateStaticParams` top-100 |
-| Katalog dengan `?q=` | `force-dynamic`, no cache (hasil personalisasi search) |
-| Cloudflare | Page Rules/CDN cache asset `_next/static/*` + image Supabase (Cache-Control `public,max-age=31536000,immutable`) |
-| Invalidasi | Tiap PUT/POST/DELETE konten → `revalidatePath` + `revalidateTag` yang relevan (worker wajib cantumkan di tiap route) |
+| Home/artikel/banner    | ISR `export const revalidate = 300` (5 mnt)                                                                                      |
+| Detail buku            | `revalidate = 600` + `generateStaticParams` top-100                                                                              |
+| Katalog dengan `?q=`   | `force-dynamic`, no cache (hasil personalisasi search)                                                                           |
+| Cloudflare             | Page Rules/CDN cache asset `_next/static/*` + image Supabase (Cache-Control `public,max-age=31536000,immutable`)                 |
+| Invalidasi             | Tiap PUT/POST/DELETE konten → `revalidatePath` + `revalidateTag` yang relevan (worker wajib cantumkan di tiap route)             |
 
 - Opsi A (dipilih): Next fetch-cache + tag invalidation — sederhana, cocok 1 region DB.
 - Opsi B (ditolak): Redis/Upstash layer — biaya + operasional tambahan, belum perlu di skala perpus (<100k row).
@@ -163,8 +167,8 @@ Browser → middleware.ts (refresh session) → app/(admin)/layout.tsx: requireR
 
 ## 7. Storage (Supabase Buckets)
 
-| Bucket | Public? | Isi | Aturan |
-|---|---|---|---|
+| Bucket           | Public?     | Isi                                                                                              | Aturan                                                                                                                                                                             |
+| ---------------- | ----------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `library-assets` | public read | cover buku (`books/{id}/cover.webp`), logo, favicon, banner slider, gambar artikel, foto anggota | anon SELECT; tulis hanya pustakawan+admin (foto anggota: user boleh tulis folder `auth.uid()` miliknya); batas 2MB, mimetype image/*; pakai transform `?width=400` untuk thumbnail |
 
 - Upload via admin UI → Supabase Storage langsung (signed) lalu simpan `cover_url`/`logo_url` ke DB. Jangan proxy binary lewat Next route (boros Workers subrequest).
@@ -191,9 +195,9 @@ Browser → middleware.ts (refresh session) → app/(admin)/layout.tsx: requireR
 
 ## 10. Risiko & Mitigasi
 
-| Risiko | Mitigasi |
-|---|---|
-| Workers runtime tak support lib Node (sharp/fs) | resize via Supabase Image Transform; validasi file di client+route |
-| RLS salah → bocor data member | RLS default DENY; test matrix anon/anggota/pustakawan/admin di CI (skrip curl) |
-| Single-row settings race | `id=1` PK + CHECK; PUT pakai upsert + `revalidateTag` |
-| Cloudflare + SSR cookie size | `@supabase/ssr` chunk cookie; jangan simpan state besar di cookie |
+| Risiko                                          | Mitigasi                                                                       |
+| ----------------------------------------------- | ------------------------------------------------------------------------------ |
+| Workers runtime tak support lib Node (sharp/fs) | resize via Supabase Image Transform; validasi file di client+route             |
+| RLS salah → bocor data member                   | RLS default DENY; test matrix anon/anggota/pustakawan/admin di CI (skrip curl) |
+| Single-row settings race                        | `id=1` PK + CHECK; PUT pakai upsert + `revalidateTag`                          |
+| Cloudflare + SSR cookie size                    | `@supabase/ssr` chunk cookie; jangan simpan state besar di cookie              |

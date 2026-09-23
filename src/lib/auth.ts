@@ -1,5 +1,5 @@
 /**
- * src/lib/auth.ts — guard role kanonis Indonesia (docs/architecture.md §4).
+ * src/lib/auth.ts — util role & sesi (docs/architecture.md §4).
  *
  * KEPUTUSAN MAPPING ROLE:
  * - Database/migrasi memakai: 'admin' | 'librarian' | 'member'.
@@ -8,26 +8,24 @@
  * - File ini MENERIMA KEDUANYA dan menormalisasi ke bentuk Indonesia:
  *     'librarian' -> 'pustakawan', 'member' -> 'anggota',
  *     'admin'/'pustakawan'/'anggota' tetap.
- * - `requireRole()` membandingkan dalam bentuk ternormalisasi, jadi
- *   `requireRole(['admin','pustakawan'])` lolos untuk baris DB
- *   ber-role 'admin' maupun 'librarian'.
- * - src/lib/supabase/auth.ts TIDAK diubah (requireStaff tetap memakai
- *   'admin'|'librarian' untuk kompatibilitas route lama).
+ * - Lapisan guard kanonis untuk semua route API: `requireStaff()`
+ *   di src/lib/supabase/auth.ts — SATU-satunya guard role aplikasi.
+ *   Guard duplikat kedua (nol pemanggil, bandingkan role di dua ruang
+ *   semantik berbeda) DIHAPUS; kini `requireStaff` berdelegate ke
+ *   `normalizeRole()` di file ini sehingga semua layer sepakat.
  */
 
-import { createClient } from "@/lib/supabase/server";
-import { jsonError } from "@/lib/supabase/auth";
+import { createClient } from '@/lib/supabase/server';
 
-export type DbRole = "admin" | "librarian" | "member";
-export type AppRole = "admin" | "pustakawan" | "anggota";
-export type AnyRole = DbRole | AppRole;
+export type DbRole = 'admin' | 'librarian' | 'member';
+export type AppRole = 'admin' | 'pustakawan' | 'anggota';
 
 /** Normalisasi role DB/Indonesia -> kanonis Indonesia. Tak dikenal -> 'anggota'. */
 export function normalizeRole(role: string | null | undefined): AppRole {
-  if (role === "admin") return "admin";
-  if (role === "librarian" || role === "pustakawan") return "pustakawan";
-  if (role === "member" || role === "anggota") return "anggota";
-  return "anggota";
+  if (role === 'admin') return 'admin';
+  if (role === 'librarian' || role === 'pustakawan') return 'pustakawan';
+  if (role === 'member' || role === 'anggota') return 'anggota';
+  return 'anggota';
 }
 
 export type SessionUser = {
@@ -47,7 +45,13 @@ export type SessionUser = {
  */
 export async function getSessionUser(): Promise<
   | SessionUser
-  | { supabase: ReturnType<typeof createClient>; user: null; profile: null; role: null; rawRole: null }
+  | {
+      supabase: ReturnType<typeof createClient>;
+      user: null;
+      profile: null;
+      role: null;
+      rawRole: null;
+    }
 > {
   const supabase = createClient();
   const {
@@ -59,39 +63,17 @@ export async function getSessionUser(): Promise<
   }
 
   const { data: profile } = await supabase
-    .from("profiles")
-    .select("role")
-    .eq("id", user.id)
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
     .single();
 
-  const rawRole = (profile as { role?: string } | null)?.role ?? "anggota";
+  const rawRole = (profile as { role?: string } | null)?.role ?? 'anggota';
   return {
     supabase,
-    user: user as unknown as SessionUser["user"],
-    profile: (profile ?? { role: rawRole }) as SessionUser["profile"],
+    user: user as unknown as SessionUser['user'],
+    profile: (profile ?? { role: rawRole }) as SessionUser['profile'],
     role: normalizeRole(rawRole),
     rawRole,
   };
-}
-
-/**
- * Guard role untuk Server Component / Route Handler.
- * Pola return mengikuti requireStaff: { supabase,user,profile,role }
- * bila lolos, atau { errorResponse } bila gagal (langsung return ke client).
- */
-export async function requireRole(allowedRoles: AnyRole[] = ["admin", "pustakawan"]) {
-  const session = await getSessionUser();
-
-  if (!session.user) {
-    return { errorResponse: jsonError("UNAUTHORIZED", "Silakan login.", 401) };
-  }
-
-  const allowed = allowedRoles.map(normalizeRole);
-  const role = normalizeRole((session.profile as { role?: string } | null)?.role);
-
-  if (!allowed.includes(role)) {
-    return { errorResponse: jsonError("FORBIDDEN", "Butuh peran admin/pustakawan.", 403) };
-  }
-
-  return { ...session, role } as SessionUser;
 }
