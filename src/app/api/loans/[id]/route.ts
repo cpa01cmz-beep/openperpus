@@ -72,6 +72,7 @@ export async function GET(_req: Request, { params }: Ctx) {
 }
 
 export async function PUT(req: Request, { params }: Ctx) {
+  const log = createLogger(requestIdFromHeaders(req.headers));
   const guard = await requireStaff(['admin', 'librarian']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
   const { supabase, user } = guard as {
@@ -92,7 +93,10 @@ export async function PUT(req: Request, { params }: Ctx) {
       userId: user?.id ?? null,
       days: body.days as number | undefined,
     });
-    if (res.status !== 200) return res;
+    if (res.status !== 200) {
+      log.warn('loans.id.extend_failed', { status: res.status });
+      return res;
+    }
     const j = (await res.json()) as { data: unknown };
     return NextResponse.json({ data: j.data, revalidated: revalidateLoans() });
   }
@@ -105,7 +109,10 @@ export async function PUT(req: Request, { params }: Ctx) {
     returnedAt: body.returned_at as string | undefined,
     notes: typeof body.notes === 'string' ? body.notes : undefined,
   });
-  if (res.status !== 200) return res;
+  if (res.status !== 200) {
+    log.warn('loans.id.return_failed', { status: res.status });
+    return res;
+  }
   const j = (await res.json()) as { data: unknown };
   return NextResponse.json({ data: j.data, revalidated: revalidateLoans() });
 }
