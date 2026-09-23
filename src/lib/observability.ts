@@ -17,7 +17,7 @@ export function captureException(err: Error, ctx?: Record<string, unknown>): voi
   if (!sentryDsn) return;
   // Best-effort: if @sentry/* is present, use it; otherwise log only
   // @ts-expect-error @sentry/nextjs not installed (optional dependency)
-  import('@sentry/nextjs')
+  import(/* webpackIgnore: true */ '@sentry/nextjs')
     .then((Sentry) => {
       if (Sentry?.captureException) {
         Sentry.captureException(err, { extra: ctx });
