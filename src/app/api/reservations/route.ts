@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
 import { revalidatePath, revalidateTag } from 'next/cache';
-import { createClient } from '@/lib/supabase/server';
 import { jsonError, parsePaging } from '@/lib/supabase/auth';
 import { isUuid, createWriteLog } from '@/lib/api-utils';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
+import { getSession } from '@/lib/session';
 
 /**
  * GET /api/reservations?status=&member_id=&book_id=&page=&per_page=
@@ -46,43 +46,6 @@ function revalidateReservations(): string[] {
     /* abaikan */
   }
   return done;
-}
-
-type Session = {
-  supabase: ReturnType<typeof createClient>;
-  userId: string;
-  role: string;
-  memberId: string | null;
-  isStaff: boolean;
-};
-
-/** Sesi login apa pun (anggota boleh). Kembalikan 401 bila belum login. */
-async function getSession(): Promise<
-  { session: Session } | { errorResponse: ReturnType<typeof jsonError> }
-> {
-  const supabase = createClient();
-  const {
-    data: { user },
-    error: userErr,
-  } = await supabase.auth.getUser();
-  if (userErr || !user) return { errorResponse: jsonError('UNAUTHORIZED', 'Silakan login.', 401) };
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .maybeSingle();
-  const role = (profile as { role: string } | null)?.role ?? 'member';
-  const isStaff = role === 'admin' || role === 'librarian';
-
-  const { data: member } = await supabase
-    .from('members')
-    .select('id')
-    .eq('user_id', user.id)
-    .maybeSingle();
-  const memberId = (member as { id: string } | null)?.id ?? null;
-
-  return { session: { supabase, userId: user.id, role, memberId, isStaff } };
 }
 
 export async function GET(req: Request) {

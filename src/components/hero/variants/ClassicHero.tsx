@@ -18,6 +18,10 @@ export default function ClassicHero({ banners, siteName, tagline }: HeroProps) {
   const active = banners[idx];
   if (!active) return null;
 
+  // LCP optimization: only preload first 2 images; defer rest until user interacts
+  const preloadCount = 2;
+  const shouldPreload = (i: number) => i < preloadCount || i === idx;
+
   return (
     <section
       aria-label="Sorotan perpustakaan"
@@ -28,7 +32,7 @@ export default function ClassicHero({ banners, siteName, tagline }: HeroProps) {
     >
       <div className="relative aspect-[16/10] w-full sm:aspect-[21/9]">
         {banners.map((b, i) =>
-          i > 1 && i !== idx ? null : (
+          !shouldPreload(i) && i !== idx ? null : (
             <div
               key={b.id}
               aria-hidden={i !== idx}
