@@ -20,9 +20,6 @@ export default defineConfig({
         statements: 60,
       },
     },
-    chaiConfig: {
-      enable: false,
-    },
     projects: [
       {
         test: {
@@ -52,10 +49,8 @@ export default defineConfig({
           name: 'components',
           environment: 'jsdom',
           include: ['tests/components/**/*.test.tsx'],
-          setupFiles: ['tests/setup.tsx'],
-          setupFilesAfterFramework: ['tests/setup-jest-dom.ts'],
+          setupFiles: ['tests/setup.tsx', 'tests/setup-jest-dom.ts'],
           globals: true,
-          chaiConfig: { enable: false },
           alias: {
             '@': path.resolve(process.cwd(), 'src'),
           },

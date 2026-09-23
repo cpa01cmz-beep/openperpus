@@ -104,10 +104,7 @@ const mockBanners: Banner[] = [
     subtitle: 'Perpustakaan Digital Terbaik',
     image_url: 'https://example.com/banner1.jpg',
     link: '/katalog',
-    is_active: true,
     sort_order: 1,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
   },
   {
     id: '2',
@@ -115,10 +112,7 @@ const mockBanners: Banner[] = [
     subtitle: 'Koleksi Terbaru Bulan Ini',
     image_url: 'https://example.com/banner2.jpg',
     link: '/katalog?new=true',
-    is_active: true,
     sort_order: 2,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
   },
 ];
 
@@ -251,8 +245,12 @@ describe('HeroSwitch', () => {
   it('does not show subtitle when null', () => {
     const bannersWithoutSubtitle: Banner[] = [
       {
-        ...mockBanners[0],
+        id: '1',
+        title: 'Selamat Datang',
         subtitle: null,
+        image_url: 'https://example.com/banner1.jpg',
+        link: '/katalog',
+        sort_order: 1,
       },
     ];
 
