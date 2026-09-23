@@ -69,7 +69,14 @@ describe('US-2 overdue fastlane — peminjaman preselect + 1-click return', () =
 
   it('Modal return creates fine + frees stock (PUT 200, loan leaves ?overdue=1)', () => {
     const ui = read('src/app/admin/peminjaman/page.tsx');
-    const api = read('src/app/api/loans/route.ts') + '\n' + read('src/lib/loans-return.ts');
+    // Modular split: kontrak return (fines insert/clamp/audit) hidup di modul
+    // implementasi di balik facade loans-return.ts.
+    const api =
+      read('src/app/api/loans/route.ts') +
+      '\n' +
+      read('src/lib/loans-return.ts') +
+      read('src/lib/returnLoan.ts') +
+      read('src/lib/legacyReturn.ts');
     // Reuse Modal pattern from dialogs lane (no native confirm/alert).
     expect(ui, 'RED: peminjaman must reuse <Modal for return').toContain('<Modal');
     expect(ui, 'RED: peminjaman must not use native confirm()').not.toMatch(/\bconfirm\s*\(/);
@@ -107,9 +114,29 @@ describe('US-2 overdue fastlane — peminjaman preselect + 1-click return', () =
     expect(calcFine(due, new Date('2026-01-11T00:00:00Z'))).toBe(1000);
   });
 
+  it('GET fine_preview pakai tarif settings + EPOCH hari (bukan EXTRACT(DAY)*1000)', () => {
+    const route = read('src/app/api/loans/route.ts');
+    expect(route, 'GET /api/loans must consume configured rate via getFineRate').toMatch(
+      /getFineRate\(/
+    );
+    expect(
+      route,
+      'fine_preview must count full elapsed days (EPOCH/86400) — EXTRACT(DAY) salah utk telat >31 hari'
+    ).toMatch(/EXTRACT\(EPOCH FROM \(NOW\(\) - due_at\)\)/);
+    expect(
+      route,
+      'fine_preview must not hardcode EXTRACT(DAY)*1000 (tarif dari library_settings)'
+    ).not.toMatch(/EXTRACT\(DAY FROM \(NOW\(\) - due_at\)\)[^*]*\* 1000/);
+    expect(route, 'fine_preview alias must stay on GET /api/loans').toContain('fine_preview');
+  });
+
   it('edge: race/boundary 409 CONFLICT exact codes preserved', () => {
     // S-roi3 single-source: guard lives in helper, routes are thin aliases.
-    const helper = read('src/lib/loans-return.ts');
+    // Modular split: baca facade + modul implementasi (returnLoan/legacyReturn).
+    const helper =
+      read('src/lib/loans-return.ts') +
+      read('src/lib/returnLoan.ts') +
+      read('src/lib/legacyReturn.ts');
     const collective = read('src/app/api/loans/route.ts');
     const single = read('src/app/api/loans/[id]/return/route.ts');
     for (const [name, src] of [
