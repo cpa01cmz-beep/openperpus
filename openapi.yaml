@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: OpenPerpus API
   version: 0.1.0
-  description: CMS Perpustakaan — 26 resource routes + observability (health/readyz/docs/metrics). Deploy stays Cloudflare Workers; Docker is local preview/CI only.
+  description: CMS Perpustakaan — 31 route modules (26 resource + health/readyz/docs/metrics/register). Deploy stays Cloudflare Workers; Docker is local preview/CI only. Enforced bidirectionally by tests/openapi-conformance.test.ts.
 servers:
   - url: http://localhost:3000
     description: local
@@ -12,10 +12,11 @@ components:
       type: http
       scheme: bearer
       bearerFormat: JWT
-      description: Supabase access token (JWT) from client-side auth
+      description: Supabase access token (JWT) from client-side auth; browser sessions use cookies equivalently
   schemas:
     ErrorResponse:
       type: object
+      description: Error envelope emitted by jsonError (src/lib/http-error.ts). details is a SIBLING of error, never nested inside it.
       properties:
         error:
           type: object
@@ -23,286 +24,60 @@ components:
           properties:
             code:
               type: string
-              enum: [VALIDATION, NOT_FOUND, CONFLICT, UNAUTHORIZED, FORBIDDEN, INTERNAL, SAVE_FAILED, FETCH_FAILED, DELETE_FAILED, INVALID_JSON]
+              enum:
+                [
+                  VALIDATION,
+                  NOT_FOUND,
+                  CONFLICT,
+                  UNAUTHORIZED,
+                  FORBIDDEN,
+                  INTERNAL,
+                  SAVE_FAILED,
+                  FETCH_FAILED,
+                  DELETE_FAILED,
+                  INVALID_JSON,
+                  BAD_REQUEST,
+                  SPAM_DETECTED,
+                  RATE_LIMITED,
+                  GONE,
+                  CSRF_MISMATCH,
+                ]
             message:
               type: string
-            details:
-              type: object
-              additionalProperties: true
+        details:
+          description: Optional machine-readable detail payload (sibling of error)
       required: [error]
-    Book:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        title:
-          type: string
-        slug:
-          type: string
-        author:
-          type: string
-          nullable: true
-        publisher:
-          type: string
-          nullable: true
-        year:
-          type: integer
-          nullable: true
-        isbn:
-          type: string
-          nullable: true
-        category_id:
-          type: string
-          format: uuid
-          nullable: true
-        rack_id:
-          type: string
-          format: uuid
-          nullable: true
-        cover_url:
-          type: string
-          nullable: true
-        description:
-          type: string
-          nullable: true
-        pages:
-          type: integer
-          nullable: true
-        language:
-          type: string
-          nullable: true
-        stock_total:
-          type: integer
-        stock_available:
-          type: integer
-        featured:
-          type: boolean
-        rating_avg:
-          type: number
-          nullable: true
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-          nullable: true
-        categories:
-          $ref: '#/components/schemas/Category'
-        racks:
-          $ref: '#/components/schemas/Rack'
-      required: [id, title, slug, stock_total, stock_available, featured]
-    Category:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        name:
-          type: string
-        slug:
-          type: string
-        code:
-          type: string
-        description:
-          type: string
-          nullable: true
-        is_active:
-          type: boolean
-        sort_order:
-          type: integer
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-      required: [id, name, slug, code, is_active, sort_order]
-    Rack:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        code:
-          type: string
-        name:
-          type: string
-        location:
-          type: string
-          nullable: true
-        is_active:
-          type: boolean
-        sort_order:
-          type: integer
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-      required: [id, code, name, is_active, sort_order]
-    Member:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        user_id:
-          type: string
-          format: uuid
-        member_code:
-          type: string
-        full_name:
-          type: string
-        phone:
-          type: string
-          nullable: true
-        address:
-          type: string
-          nullable: true
-        status:
-          type: string
-          enum: [pending, active, suspended]
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-      required: [id, user_id, member_code, full_name, status]
-    Loan:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        book_id:
-          type: string
-          format: uuid
-        member_id:
-          type: string
-          format: uuid
-        status:
-          type: string
-          enum: [borrowed, overdue, returned, lost]
-        borrowed_at:
-          type: string
-          format: date-time
-        due_at:
-          type: string
-          format: date-time
-        returned_at:
-          type: string
-          format: date-time
-          nullable: true
-        kondisi:
-          type: string
-          enum: [baik, rusak, hilang]
-          nullable: true
-        notes:
-          type: string
-          nullable: true
-        fine_amount:
-          type: integer
-          default: 0
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-        book:
-          $ref: '#/components/schemas/Book'
-        member:
-          $ref: '#/components/schemas/Member'
-      required: [id, book_id, member_id, status, borrowed_at, due_at]
-    Reservation:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        book_id:
-          type: string
-          format: uuid
-        member_id:
-          type: string
-          format: uuid
-        status:
-          type: string
-          enum: [pending, ready, completed, cancelled, expired]
-        expires_at:
-          type: string
-          format: date-time
-        completed_at:
-          type: string
-          format: date-time
-          nullable: true
-        notes:
-          type: string
-          nullable: true
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-        book:
-          $ref: '#/components/schemas/Book'
-        member:
-          $ref: '#/components/schemas/Member'
-      required: [id, book_id, member_id, status, expires_at]
-    Fine:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        loan_id:
-          type: string
-          format: uuid
-        member_id:
-          type: string
-          format: uuid
-        amount:
-          type: integer
-        paid_amount:
-          type: integer
-          default: 0
-        status:
-          type: string
-          enum: [unpaid, partial, paid, waived]
-        paid_at:
-          type: string
-          format: date-time
-          nullable: true
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-        loan:
-          $ref: '#/components/schemas/Loan'
-        member:
-          $ref: '#/components/schemas/Member'
-      required: [id, loan_id, member_id, amount, status]
     PaginatedResponse:
       type: object
+      description: Shared list envelope used by paginated collection GETs
       properties:
         data:
           type: array
           items:
             type: object
-        total:
-          type: integer
-        page:
-          type: integer
-        per_page:
-          type: integer
-      required: [data, total, page, per_page]
+        meta:
+          type: object
+          required: [page, per_page, total]
+          properties:
+            page:
+              type: integer
+            per_page:
+              type: integer
+            total:
+              type: integer
+        pagination:
+          type: object
+          required: [page, limit, total, totalPages]
+          properties:
+            page:
+              type: integer
+            limit:
+              type: integer
+            total:
+              type: integer
+            totalPages:
+              type: integer
+      required: [data, meta, pagination]
     Article:
       type: object
       properties:
@@ -316,11 +91,11 @@ components:
         excerpt:
           type: string
           nullable: true
-        content:
+        content_md:
           type: string
         status:
           type: string
-          enum: [draft, published]
+          enum: [draft, published, archived]
         category:
           type: string
           nullable: true
@@ -331,13 +106,20 @@ components:
           type: string
           format: uuid
           nullable: true
+        published_at:
+          type: string
+          format: date-time
+          nullable: true
+        views:
+          type: integer
         created_at:
           type: string
           format: date-time
         updated_at:
           type: string
           format: date-time
-      required: [id, title, slug, content, status]
+          nullable: true
+      required: [id, title, slug, content_md, status]
     Banner:
       type: object
       properties:
@@ -351,7 +133,7 @@ components:
           nullable: true
         image_url:
           type: string
-        link_url:
+        link:
           type: string
           nullable: true
         is_active:
@@ -364,136 +146,8 @@ components:
         updated_at:
           type: string
           format: date-time
+          nullable: true
       required: [id, title, image_url, is_active, sort_order]
-    Page:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        title:
-          type: string
-        slug:
-          type: string
-        content:
-          type: string
-        excerpt:
-          type: string
-          nullable: true
-        status:
-          type: string
-          enum: [draft, published]
-        cover_url:
-          type: string
-          nullable: true
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-      required: [id, title, slug, content, status]
-    FAQ:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        question:
-          type: string
-        answer:
-          type: string
-        sort_order:
-          type: integer
-        is_active:
-          type: boolean
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-      required: [id, question, answer, sort_order, is_active]
-    Testimonial:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        name:
-          type: string
-        role:
-          type: string
-          nullable: true
-        content:
-          type: string
-        rating:
-          type: integer
-          minimum: 1
-          maximum: 5
-        is_approved:
-          type: boolean
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-      required: [id, name, content, rating, is_approved]
-    Menu:
-      type: object
-      properties:
-        id:
-          type: string
-          format: uuid
-        label:
-          type: string
-        href:
-          type: string
-        parent_id:
-          type: string
-          format: uuid
-          nullable: true
-        sort_order:
-          type: integer
-        is_active:
-          type: boolean
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-      required: [id, label, href, sort_order, is_active]
-    Settings:
-      type: object
-      properties:
-        id:
-          type: integer
-          enum: [1]
-        site_name:
-          type: string
-        site_description:
-          type: string
-        contact_email:
-          type: string
-        contact_phone:
-          type: string
-        contact_address:
-          type: string
-        active_theme:
-          type: string
-        max_loan_days:
-          type: integer
-        fine_per_day:
-          type: integer
-        created_at:
-          type: string
-          format: date-time
-        updated_at:
-          type: string
-          format: date-time
-      required: [id, site_name, active_theme, max_loan_days, fine_per_day]
   parameters:
     PageParam:
       name: page
@@ -510,8 +164,8 @@ components:
         type: integer
         minimum: 1
         maximum: 100
-        default: 24
-      description: Items per page
+        default: 10
+      description: Items per page (articles/banners/books/members/loans default 10; other collections default 20)
 paths:
   /api/health:
     get:
@@ -539,21 +193,43 @@ paths:
             application/json:
               schema:
                 type: object
+                required: [ready, checks]
                 properties:
-                  status:
-                    type: string
-                    enum: [ready]
-                  latencyMs:
-                    type: number
+                  ready:
+                    type: boolean
+                    enum: [true]
+                  checks:
+                    type: object
+                    required: [supabase, latencyMs]
+                    properties:
+                      supabase:
+                        type: string
+                        enum: [ok]
+                      latencyMs:
+                        type: number
         '503':
           description: not ready
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                type: object
+                required: [ready, checks]
+                properties:
+                  ready:
+                    type: boolean
+                    enum: [false]
+                  checks:
+                    type: object
+                    required: [supabase]
+                    properties:
+                      supabase:
+                        type: string
+                        enum: [error]
+                      detail:
+                        type: string
   /api/metrics:
     get:
-      summary: Prometheus metrics endpoint
+      summary: Prometheus metrics endpoint (Bearer METRICS_TOKEN when METRICS_TOKEN is set)
       responses:
         '200':
           description: Prometheus text format metrics
@@ -561,6 +237,18 @@ paths:
             text/plain:
               schema:
                 type: string
+        '401':
+          description: Missing or invalid METRICS_TOKEN bearer token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Failed to generate metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/docs:
     get:
       summary: Scalar/Swagger UI for this contract
@@ -569,7 +257,9 @@ paths:
           description: html
   /api/articles:
     get:
-      summary: List articles
+      summary: List articles (staff)
+      security:
+        - BearerAuth: []
       parameters:
         - $ref: '#/components/parameters/PageParam'
         - $ref: '#/components/parameters/PerPageParam'
@@ -590,48 +280,66 @@ paths:
           application/json:
             schema:
               type: object
-              required: [title, slug, content, status]
+              required: [title, content_md]
               properties:
                 title:
                   type: string
                 slug:
                   type: string
+                  description: Optional; slugified from title when omitted or blank (auto-unique, 409 on conflict)
                 excerpt:
                   type: string
-                content:
+                  description: 'Optional (alias: ringkasan)'
+                content_md:
                   type: string
+                  description: 'Markdown body (aliases: konten, content)'
                 status:
                   type: string
-                  enum: [draft, published]
+                  enum: [draft, published, archived]
+                  default: draft
                 category:
                   type: string
                 cover_url:
                   type: string
-                author_id:
-                  type: string
-                  format: uuid
+                  description: 'Alias: gambar_url'
       responses:
         '201':
           description: Created article
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Article'
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Article'
         '401':
           description: Unauthorized
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Slug already used
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     put:
-      summary: Bulk article ops (staff)
+      summary: Update article (staff, ?id=)
       security:
         - BearerAuth: []
       responses:
         '200':
           description: ok
     delete:
-      summary: Bulk delete articles (staff)
+      summary: Delete article (admin, ?id=)
       security:
         - BearerAuth: []
       responses:
@@ -639,199 +347,402 @@ paths:
           description: ok
   /api/banners:
     get:
-      summary: List banners
+      summary: List banners (staff; public site uses helper lib)
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
       responses:
         '200':
-          description: ok
+          description: Paginated banners
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResponse'
     post:
       summary: Create banner (staff)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, image_url]
+              properties:
+                title:
+                  type: string
+                subtitle:
+                  type: string
+                image_url:
+                  type: string
+                link:
+                  type: string
+                  description: 'Target URL (alias: link_url)'
+                sort_order:
+                  type: integer
+                is_active:
+                  type: boolean
+                  default: true
       responses:
         '201':
           description: created
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Banner'
+                  revalidated:
+                    type: array
+                    items:
+                      type: string
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     put:
-      summary: Bulk banner ops (staff)
+      summary: Update banner (staff, ?id=)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
     delete:
-      summary: Bulk delete banners (staff)
+      summary: Delete banner (admin, ?id=)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
   /api/books:
     get:
-      summary: List books (public, paginated)
+      summary: List books (public, paginated; RLS is_active)
       responses:
         '200':
           description: ok
     post:
       summary: Create book (staff)
+      security:
+        - BearerAuth: []
       responses:
         '201':
           description: created
     put:
       summary: Stock opname bulk (staff)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
     delete:
       summary: Bulk delete books (staff)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
   /api/books/{id}:
     get:
-      summary: Get book by id
+      summary: Get book by id (staff)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
     put:
       summary: Update book (staff)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
     delete:
-      summary: Delete book (staff)
+      summary: Delete book (admin)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
   /api/categories:
     get:
-      summary: List categories
+      summary: List categories (public; ?all=1 staff elevation)
+      security:
+        - BearerAuth: []
+        - {}
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
       responses:
         '200':
           description: ok
     post:
       summary: Create category (staff)
+      security:
+        - BearerAuth: []
       responses:
         '201':
           description: created
     put:
-      summary: Bulk category ops (staff)
+      summary: Update category (staff, ?id=)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
     delete:
-      summary: Bulk delete categories (staff)
+      summary: Delete category (admin, ?id=)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
   /api/categories/{id}:
     get:
-      summary: Get category by id
+      summary: Get category by id (public when active; staff otherwise)
+      security:
+        - BearerAuth: []
+        - {}
       responses:
         '200':
           description: ok
     put:
       summary: Update category (staff)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
     delete:
-      summary: Delete category (staff)
+      summary: Delete category (admin)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
   /api/faqs:
     get:
-      summary: List faqs
+      summary: List faqs (public; ?all=1 staff elevation)
+      security:
+        - BearerAuth: []
+        - {}
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
       responses:
         '200':
           description: ok
     post:
       summary: Create faq (staff)
+      security:
+        - BearerAuth: []
       responses:
         '201':
           description: created
     put:
-      summary: Bulk faq ops (staff)
+      summary: Update faq (staff, ?id=)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
     delete:
-      summary: Bulk delete faqs (staff)
+      summary: Delete faq (admin, ?id=)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
   /api/faqs/{id}:
     get:
-      summary: Get faq by id
+      summary: Get faq by id (public when active; staff otherwise)
+      security:
+        - BearerAuth: []
+        - {}
       responses:
         '200':
           description: ok
     put:
       summary: Update faq (staff)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
     delete:
-      summary: Delete faq (staff)
+      summary: Delete faq (admin)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
   /api/fines:
     get:
-      summary: List fines
+      summary: List fines (auth required; members scoped to own)
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
       responses:
         '200':
           description: ok
+        '401':
+          description: Silakan login
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     post:
       summary: Issue fine (staff)
+      security:
+        - BearerAuth: []
       responses:
         '201':
           description: created
   /api/fines/{id}:
     get:
-      summary: Get fine by id
+      summary: Get fine by id (auth required; owner or staff)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
+        '401':
+          description: Silakan login
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/fines/{id}/pay:
     post:
-      summary: Pay fine
+      summary: Pay fine (auth required; staff or owner of the fine)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
+        '401':
+          description: Silakan login
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/loans:
     get:
-      summary: List loans
+      summary: List loans (staff)
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
       responses:
         '200':
           description: ok
     post:
-      summary: Create loan (borrow)
+      summary: Create loan (borrow, staff)
+      security:
+        - BearerAuth: []
       responses:
         '201':
           description: created
     put:
-      summary: Extend loan
+      summary: 'Extend or return loan (action: extend|return, staff)'
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action:
+                  type: string
+                  enum: [extend, return]
+                days:
+                  type: integer
+                  minimum: 1
+                  maximum: 90
+                  description: 'action=extend: days to add to due_at'
+                returned_at:
+                  type: string
+                  format: date-time
+                  description: 'action=return: return timestamp'
+                notes:
+                  type: string
       responses:
         '200':
           description: ok
     delete:
-      summary: Cancel loan (staff)
+      summary: Delete loan (admin, only returned/lost; ?id=)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
   /api/loans/{id}:
     get:
-      summary: Get loan by id
+      summary: Get loan by id (auth required; staff or owner)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
+        '401':
+          description: Silakan login
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     put:
-      summary: Update loan (staff)
+      summary: 'Extend or return loan (action: extend|return, staff)'
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [action]
+              properties:
+                action:
+                  type: string
+                  enum: [extend, return]
+                days:
+                  type: integer
+                  minimum: 1
+                  maximum: 90
+                  description: 'action=extend: days to add to due_at'
+                returned_at:
+                  type: string
+                  format: date-time
+                  description: 'action=return: return timestamp'
+                notes:
+                  type: string
       responses:
         '200':
           description: ok
     delete:
-      summary: Cancel loan (staff)
+      summary: Delete loan (admin, only returned/lost)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
   /api/loans/{id}/return:
     post:
-      summary: Return loan
+      summary: Return loan (staff)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
@@ -848,182 +759,331 @@ paths:
   /api/members:
     get:
       summary: List members (staff)
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
       responses:
         '200':
           description: ok
     post:
       summary: Create member (staff)
+      security:
+        - BearerAuth: []
       responses:
         '201':
           description: created
     put:
-      summary: Bulk member ops (staff)
+      summary: Update member (staff, ?id=)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
     delete:
-      summary: Bulk delete members (staff)
+      summary: Delete member (admin, ?id=)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
   /api/menus:
     get:
-      summary: List menus
+      summary: List menus (public; ?all=1 staff elevation)
+      security:
+        - BearerAuth: []
+        - {}
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
       responses:
         '200':
           description: ok
     post:
       summary: Create menu (staff)
+      security:
+        - BearerAuth: []
       responses:
         '201':
           description: created
     put:
-      summary: Bulk menu ops (staff)
+      summary: Update menu (staff, ?id=)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
     delete:
-      summary: Bulk delete menus (staff)
+      summary: Delete menu (admin, ?id=)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
   /api/menus/{id}:
     get:
-      summary: Get menu by id
+      summary: Get menu by id (public when active; staff otherwise)
+      security:
+        - BearerAuth: []
+        - {}
       responses:
         '200':
           description: ok
     put:
       summary: Update menu (staff)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
     delete:
-      summary: Delete menu (staff)
+      summary: Delete menu (admin)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
   /api/pages:
     get:
-      summary: List pages
+      summary: List pages (public; ?all=1 staff elevation)
+      security:
+        - BearerAuth: []
+        - {}
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
       responses:
         '200':
           description: ok
     post:
       summary: Create page (staff)
+      security:
+        - BearerAuth: []
       responses:
         '201':
           description: created
     put:
-      summary: Bulk page ops (staff)
+      summary: Update page (staff, ?id=)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
     delete:
-      summary: Bulk delete pages (staff)
+      summary: Delete page (admin, ?id=)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
   /api/pages/{id}:
     get:
-      summary: Get page by id
+      summary: Get page by id (public when active; staff otherwise)
+      security:
+        - BearerAuth: []
+        - {}
       responses:
         '200':
           description: ok
     put:
       summary: Update page (staff)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
     delete:
-      summary: Delete page (staff)
+      summary: Delete page (admin)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
   /api/racks:
     get:
-      summary: List racks
+      summary: List racks (public; ?all=1 staff elevation)
+      security:
+        - BearerAuth: []
+        - {}
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
       responses:
         '200':
           description: ok
     post:
       summary: Create rack (staff)
+      security:
+        - BearerAuth: []
       responses:
         '201':
           description: created
     put:
-      summary: Bulk rack ops (staff)
+      summary: Update rack (staff, ?id=)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
     delete:
-      summary: Bulk delete racks (staff)
+      summary: Delete rack (admin, ?id=)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
   /api/racks/{id}:
     get:
-      summary: Get rack by id
+      summary: Get rack by id (public when active; staff otherwise)
+      security:
+        - BearerAuth: []
+        - {}
       responses:
         '200':
           description: ok
     put:
       summary: Update rack (staff)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
     delete:
-      summary: Delete rack (staff)
+      summary: Delete rack (admin)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
   /api/reservations:
     get:
-      summary: List reservations
+      summary: List reservations (auth required; members scoped to own)
+      security:
+        - BearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
       responses:
         '200':
           description: ok
+        '401':
+          description: Silakan login
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     post:
-      summary: Create reservation
+      summary: Create reservation (auth required)
+      security:
+        - BearerAuth: []
       responses:
         '201':
           description: created
+        '401':
+          description: Silakan login
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '410':
+          description: Buku sudah tidak aktif (GONE)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     put:
-      summary: Bulk reservation ops (staff)
+      summary: Update reservation (auth required; owner cancel or staff process, ?id=)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
+        '401':
+          description: Silakan login
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     patch:
-      summary: Patch reservation
+      summary: Alias of PUT (auth required, ?id=)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
+        '401':
+          description: Silakan login
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     delete:
-      summary: Cancel reservation
+      summary: Cancel/delete reservation (auth required; owner or staff, ?id=)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
+        '401':
+          description: Silakan login
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/reservations/{id}:
     get:
-      summary: Get reservation by id
+      summary: Get reservation by id (auth required; owner or staff)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
+        '401':
+          description: Silakan login
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     put:
-      summary: Update reservation (staff)
+      summary: Update reservation (auth required; owner cancel or staff process)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
+        '401':
+          description: Silakan login
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     patch:
-      summary: Patch reservation
+      summary: Alias of PUT (auth required)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
+        '401':
+          description: Silakan login
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     delete:
-      summary: Cancel reservation
+      summary: Delete reservation (auth required; owner or staff)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
+        '401':
+          description: Silakan login
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/settings:
     get:
       summary: Get library settings (public)
@@ -1032,43 +1092,77 @@ paths:
           description: ok
     put:
       summary: Update settings (staff)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
   /api/testimonials:
     get:
-      summary: List testimonials
+      summary: List testimonials (public; ?all=1 and inactive ?id= need staff)
+      security:
+        - BearerAuth: []
+        - {}
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
       responses:
         '200':
           description: ok
     post:
-      summary: Create testimonial
+      summary: Create testimonial (public, moderated; staff may activate)
+      security:
+        - BearerAuth: []
+        - {}
       responses:
         '201':
           description: created
+        '422':
+          description: Validation or SPAM_DETECTED (honeypot)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '429':
+          description: RATE_LIMITED (5/hour per IP)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     put:
-      summary: Moderate testimonial (staff)
+      summary: Moderate/update testimonial (staff, ?id=)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
     delete:
-      summary: Bulk delete testimonials (staff)
+      summary: Delete testimonial (admin, ?id=)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
   /api/testimonials/{id}:
     get:
-      summary: Get testimonial by id
+      summary: Get testimonial by id (public when active; staff otherwise)
+      security:
+        - BearerAuth: []
+        - {}
       responses:
         '200':
           description: ok
     put:
       summary: Update testimonial (staff)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
     delete:
-      summary: Delete testimonial (staff)
+      summary: Delete testimonial (admin)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok

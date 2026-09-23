@@ -3,7 +3,7 @@ import { jsonError } from '@/lib/supabase/auth';
 import { createLogger } from '@/lib/logger';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
-type SupabaseLike = Pick<SupabaseClient, 'from' | 'rpc'> & Partial<Pick<SupabaseClient, 'rpc'>>;
+type SupabaseLike = Pick<SupabaseClient, 'from'> & Partial<Pick<SupabaseClient, 'rpc'>>;
 
 function retryableError(message: string, details?: unknown) {
   return NextResponse.json(
@@ -37,79 +37,81 @@ export async function extendLoan(opts: ExtendLoanOptions): Promise<Response> {
     return jsonError('VALIDATION', 'days harus bilangan bulat 1..90.', 422);
   }
 
-  // Fetch old due_at before RPC for audit metadata
-  const { data: oldLoan } = await supabase.from('loans').select('due_at').eq('id', id).single();
-  const oldDueAt = oldLoan?.due_at ?? null;
+  // Try RPC first (atomic DB-side with SELECT FOR UPDATE).
+  // Guard seperti returnLoan.ts: klien tanpa .rpc (mock/legacy) langsung
+  // jatuh ke fallback optimistic-lock di bawah, bukan TypeError 500.
+  if (typeof supabase.rpc === 'function') {
+    // Fetch old due_at before RPC for audit metadata
+    const { data: oldLoan } = await supabase.from('loans').select('due_at').eq('id', id).single();
+    const oldDueAt = oldLoan?.due_at ?? null;
 
-  // Try RPC first (atomic DB-side with SELECT FOR UPDATE)
-  const { data: rpcData, error: rpcError } = await supabase.rpc('extend_loan', {
-    p_loan_id: id,
-    p_days: days,
-  });
+    const { data: rpcData, error: rpcError } = await supabase.rpc('extend_loan', {
+      p_loan_id: id,
+      p_days: days,
+    });
 
-  // If RPC works, use its result
-  if (!rpcError && rpcData && rpcData.length > 0) {
-    const loan = rpcData[0] as {
-      id: string;
-      due_at: string;
-      status: string;
-      is_overdue: boolean;
-      [key: string]: unknown;
-    };
+    // If RPC works, use its result
+    if (!rpcError && rpcData && rpcData.length > 0) {
+      const loan = rpcData[0] as {
+        id: string;
+        due_at: string;
+        status: string;
+        is_overdue: boolean;
+        [key: string]: unknown;
+      };
 
-    const auditPayload = {
-      user_id: userId,
-      action: 'loans.extend',
-      entity_type: 'loans',
-      entity_id: id,
-      metadata: { old_due_at: oldDueAt, new_due_at: loan.due_at, days },
-    };
-    const firstAudit = await supabase.from('activity_logs').insert(auditPayload);
-    if (firstAudit.error) {
-      createLogger().warn('audit.activity_logs_retry', { detail: firstAudit.error.message });
-      const retryAudit = await supabase.from('activity_logs').insert(auditPayload);
-      if (retryAudit.error) {
-        createLogger().error('audit.activity_logs_failed', {
-          detail: retryAudit.error.message,
-          entity_id: id,
-        });
+      const auditPayload = {
+        user_id: userId,
+        action: 'loans.extend',
+        entity_type: 'loans',
+        entity_id: id,
+        metadata: { old_due_at: oldDueAt, new_due_at: loan.due_at, days },
+      };
+      const firstAudit = await supabase.from('activity_logs').insert(auditPayload);
+      if (firstAudit.error) {
+        createLogger().warn('audit.activity_logs_retry', { detail: firstAudit.error.message });
+        const retryAudit = await supabase.from('activity_logs').insert(auditPayload);
+        if (retryAudit.error) {
+          createLogger().error('audit.activity_logs_failed', {
+            detail: retryAudit.error.message,
+            entity_id: id,
+          });
+        }
       }
+
+      return NextResponse.json({ data: { ...loan, is_overdue: loan.is_overdue } });
     }
 
-    return NextResponse.json({ data: { ...loan, is_overdue: loan.is_overdue } });
-  }
-
-  // Handle RPC 409 (loan returned/lost) - return proper 409
-  const rpcMsg = (rpcError as { message?: string; code?: string } | null)?.message ?? '';
-  const rpcCode = (rpcError as { code?: string } | null)?.code ?? '';
-  if (
-    rpcCode === '40901' ||
-    rpcCode === '409' ||
-    /sudah selesai|already (returned|lost)/i.test(rpcMsg)
-  ) {
-    return NextResponse.json(
-      {
-        error: {
-          code: 'CONFLICT',
-          message: rpcMsg || 'Peminjaman sudah selesai, tidak bisa diperpanjang.',
+    // Handle RPC 409 (loan returned/lost) - return proper 409
+    const rpcMsg = (rpcError as { message?: string; code?: string } | null)?.message ?? '';
+    const rpcCode = (rpcError as { code?: string } | null)?.code ?? '';
+    if (
+      rpcCode === '40901' ||
+      rpcCode === '409' ||
+      /sudah selesai|already (returned|lost)/i.test(rpcMsg)
+    ) {
+      return NextResponse.json(
+        {
+          error: {
+            code: 'CONFLICT',
+            message: rpcMsg || 'Peminjaman sudah selesai, tidak bisa diperpanjang.',
+          },
         },
-      },
-      { status: 409 }
-    );
-  }
+        { status: 409 }
+      );
+    }
 
-  // Fallback: optimistic-lock (existing behavior) for 42883/PGRST202
-  const msg = (rpcError as { message?: string; code?: string } | null)?.message ?? '';
-  const code = (rpcError as { code?: string } | null)?.code ?? '';
-  const isMissingRpc =
-    !rpcData &&
-    (code === '42883' ||
-      code === 'PGRST202' ||
-      /function.*not exist|undefined/i.test(`${msg} ${code}`));
+    // RPC hilang (42883/PGRST202) -> jatuh ke fallback optimistic-lock di bawah.
+    const isMissingRpc =
+      !rpcData &&
+      (rpcCode === '42883' ||
+        rpcCode === 'PGRST202' ||
+        /function.*not exist|undefined/i.test(`${rpcMsg} ${rpcCode}`));
 
-  if (!isMissingRpc) {
-    // Some other RPC error
-    return retryableError('Gagal memperpanjang pinjaman. Silakan coba lagi.', rpcError?.message);
+    if (!isMissingRpc) {
+      // Some other RPC error
+      return retryableError('Gagal memperpanjang pinjaman. Silakan coba lagi.', rpcError?.message);
+    }
   }
 
   // --- Fallback: optimistic-lock ---
