@@ -28,15 +28,17 @@ export const BOOKS_LIST_SELECT =
   'id,title,slug,author,publisher,year,isbn,category_id,rack_id,cover_url,pages,language,stock_total,stock_available,featured,rating_avg,created_at,updated_at,categories(id,name,slug),racks(code,name,location)';
 
 /** Search books via RPC (full-text + trigram) then fetch with relations.
- *  Returns books in search relevance order. */
+ *  Returns books in search relevance order. Supports offset/limit for pagination. */
 async function searchBooksViaRpc(
   supabase: ReturnType<typeof createClient>,
   needle: string,
-  limit: number
+  limit: number,
+  offset: number = 0
 ): Promise<Book[]> {
   const { data: rpcData, error: rpcError } = await supabase.rpc('search_books', {
     p_q: needle,
     p_limit: limit,
+    p_offset: offset,
   });
   if (rpcError || !rpcData || rpcData.length === 0) return [];
 
@@ -194,11 +196,13 @@ async function fetchBooksPagedUncached(opts: FetchBooksOpts): Promise<PagedBooks
     const to = page * perPage - 1;
     const needle = sanitizeIlike(opts.q ?? opts.search ?? '');
 
-    // Search path: use RPC (full-text + trigram), paginate in memory (RPC max 100)
+    // Search path: use RPC (full-text + trigram), paginate via RPC offset/limit
     if (needle) {
-      const allBooks = await searchBooksViaRpc(supabase, needle, 100);
+      const books = await searchBooksViaRpc(supabase, needle, perPage, from);
+      // For total count, we still need a separate query or use max limit
+      // Since RPC is limited to 100, fetch up to 100 for total
+      const allBooks = await searchBooksViaRpc(supabase, needle, 100, 0);
       const total = allBooks.length;
-      const books = allBooks.slice(from, to + 1);
       return { books, total };
     }
 

@@ -15,7 +15,10 @@ export default function ClassicFooter({ settings }: FooterVariantProps) {
   const socialEntries = Object.entries(socials).filter(([, v]) => !!v?.trim?.());
 
   return (
-    <footer className="mt-12 rounded-[var(--radius-lg)] bg-brand-strong text-brand-soft shadow-[var(--shadow-lg)] ring-1 ring-[var(--ink)]/10">
+    <footer
+      role="contentinfo"
+      className="mt-12 rounded-[var(--radius-lg)] bg-brand-strong text-brand-soft shadow-[var(--shadow-lg)] ring-1 ring-[var(--ink)]/10"
+    >
       <div className="mx-auto grid w-full max-w-[var(--container)] gap-8 px-4 py-10 sm:grid-cols-2 sm:px-6 lg:grid-cols-4 lg:px-8">
         {/* identitas */}
         <div>

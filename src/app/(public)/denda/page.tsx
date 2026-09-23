@@ -49,6 +49,8 @@ export default function DendaSayaPage() {
   const [copied, setCopied] = useState(false);
   const [downloadError, setDownloadError] = useState('');
   const [finePerDay, setFinePerDay] = useState(1000);
+  const [memberId, setMemberId] = useState<string | null>(null);
+
   useEffect(() => {
     fetch('/api/settings')
       .then((r) => r.json() as Promise<{ data?: { fine_per_day?: unknown } }>)
@@ -58,6 +60,42 @@ export default function DendaSayaPage() {
       })
       .catch(() => {});
   }, []);
+
+  // Fetch member ID for RPC call
+  useEffect(() => {
+    import('@/lib/supabase/client').then(({ createClient }) => {
+      const supabase = createClient();
+      supabase.auth
+        .getUser()
+        .then((res: { data?: { user?: { id: string } }; error?: Error | null }) => {
+          const user = res.data?.user;
+          if (user) {
+            supabase
+              .from('members')
+              .select('id')
+              .eq('user_id', user.id)
+              .maybeSingle()
+              .then((memRes: { data?: { id: string }; error?: Error | null }) => {
+                if (memRes.data) setMemberId(memRes.data.id);
+              });
+          }
+        });
+    });
+  }, []);
+
+  const loadTotals = useCallback(async () => {
+    if (!memberId) return;
+    try {
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      const { data, error } = await supabase.rpc('get_fines_total', {
+        p_member_id: memberId,
+      });
+      if (!error && typeof data === 'number') {
+        setOpenTotal(data);
+      }
+    } catch {}
+  }, [memberId]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -83,10 +121,6 @@ export default function DendaSayaPage() {
       setNeedLogin(false);
       setRows(json.data ?? []);
       setTotalPages(json.pagination?.totalPages ?? json.meta?.totalPages ?? 1);
-      const terbuka = (json.data ?? [])
-        .filter((r) => r.status === 'unpaid' || r.status === 'partial')
-        .reduce((s, r) => s + (num(r.amount) - num(r.paid_amount)), 0);
-      setOpenTotal(terbuka);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -97,6 +131,10 @@ export default function DendaSayaPage() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    loadTotals();
+  }, [loadTotals]);
 
   async function onPay(f: Fine) {
     setPendingPay(f);
@@ -127,6 +165,7 @@ export default function DendaSayaPage() {
       const data = (json as { data?: Fine }).data;
       if (data) setReceipt({ ...data, methodUsed: usedMethod });
       await load();
+      loadTotals();
     } finally {
       setPayingId(null);
     }

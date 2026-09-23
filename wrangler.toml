@@ -31,3 +31,7 @@ not_found_handling = "none"
 
 [observability.logs]
 enabled = true
+
+# Staging environment — preview env vars only (no secrets)
+[env.staging]
+vars = { NEXT_PUBLIC_SITE_URL = "https://webperpus-oc-staging.workers.dev" }

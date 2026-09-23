@@ -4,6 +4,8 @@
  * - returnLoan.ts — returnLoan logic + RPC + compensation
  * - extendLoan.ts — extendLoan logic + optimistic lock
  * - legacyReturn.ts — fallback read-then-write logic + shared helpers
+ *
+ * RETURN-CLAMP: stock clamp logic in legacyReturn.ts uses Math.min(stock_total, stock_available + 1) for baik returns
  */
 
 export { returnLoan, type ReturnLoanOptions } from './returnLoan';

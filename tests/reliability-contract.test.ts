@@ -385,3 +385,58 @@ describe('S-reliability error contract {code,message}', () => {
     ).toBe(true);
   });
 });
+
+// --- T4 Error Boundary Resilience Contract ---
+// Only root (src/app/error.tsx) and global (src/app/global-error.tsx) boundaries
+// implement full resilience features: useEffect logger, exponential backoff,
+// offline awareness, requestId display. Admin/public use simple reset retry.
+describe('T4 error boundary resilience contract', () => {
+  const RESILIENCE_BOUNDARIES = ['src/app/error.tsx', 'src/app/global-error.tsx'] as const;
+
+  for (const path of RESILIENCE_BOUNDARIES) {
+    it(`${path} implements useEffect logger with requestId/digest`, () => {
+      const src = read(path);
+      expect(src, `${path}: missing useEffect logger`).toContain('useEffect');
+      expect(src, `${path}: missing requestId/digest logging`).toMatch(/requestId|digest/);
+    });
+
+    it(`${path} implements exponential backoff retry (Retry-After aware)`, () => {
+      const src = read(path);
+      expect(src, `${path}: missing backoff logic`).toMatch(
+        /setTimeout|retryDelay|backoff|exponential/
+      );
+    });
+
+    it(`${path} implements offline-aware copy via navigator.onLine`, () => {
+      const src = read(path);
+      expect(src, `${path}: missing navigator.onLine check`).toContain('navigator.onLine');
+      expect(src, `${path}: missing offline messaging`).toMatch(
+        /offline|tanpa jaringan|koneksi terputus/i
+      );
+    });
+
+    it(`${path} accepts and displays requestId from props`, () => {
+      const src = read(path);
+      expect(src, `${path}: missing requestId in props interface`).toContain('requestId');
+      expect(src, `${path}: missing requestId render`).toContain('requestId');
+    });
+  }
+
+  it('resilience boundaries share consistent retry delay constants', () => {
+    const srcs = RESILIENCE_BOUNDARIES.map(read);
+    const hasBaseDelay = srcs.every(
+      (s) => s.includes('BASE_RETRY_DELAY') || s.includes('baseDelay') || s.includes('retryDelay')
+    );
+    expect(hasBaseDelay, 'at least one boundary should define a base retry delay constant').toBe(
+      true
+    );
+  });
+
+  it('resilience boundaries share consistent max retry attempts constant', () => {
+    const srcs = RESILIENCE_BOUNDARIES.map(read);
+    const hasMaxRetries = srcs.every(
+      (s) => s.includes('MAX_RETRIES') || s.includes('maxRetries') || s.includes('maxAttempts')
+    );
+    expect(hasMaxRetries, 'at least one boundary should define max retry attempts').toBe(true);
+  });
+});

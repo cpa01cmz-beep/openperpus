@@ -1,6 +1,15 @@
-import '@testing-library/jest-dom';
-import { vi } from 'vitest';
+import { vi, afterEach } from 'vitest';
 import React from 'react';
+import { cleanup } from '@testing-library/react';
+
+// Make React available globally for JSX
+globalThis.React = React;
+
+// Cleanup after each test to avoid DOM pollution
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+});
 
 Object.defineProperty(window, 'matchMedia', {
   writable: true,

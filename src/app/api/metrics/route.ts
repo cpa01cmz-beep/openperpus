@@ -4,6 +4,27 @@ import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 export async function GET(req: Request) {
   const logger = createLogger(requestIdFromHeaders(req.headers));
 
+  // METRICS_TOKEN auth gate
+  const metricsToken = process.env.METRICS_TOKEN;
+  if (metricsToken) {
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      logger.warn('metrics_unauthorized', { reason: 'missing_or_invalid_auth_header' });
+      return NextResponse.json(
+        { error: { code: 'UNAUTHORIZED', message: 'Invalid or missing Authorization header' } },
+        { status: 401 }
+      );
+    }
+    const providedToken = authHeader.slice('Bearer '.length);
+    if (providedToken !== metricsToken) {
+      logger.warn('metrics_unauthorized', { reason: 'invalid_token' });
+      return NextResponse.json(
+        { error: { code: 'UNAUTHORIZED', message: 'Invalid or missing Authorization header' } },
+        { status: 401 }
+      );
+    }
+  }
+
   try {
     const mem = process.memoryUsage();
     const uptime = process.uptime();

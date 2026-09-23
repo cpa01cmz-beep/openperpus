@@ -23,7 +23,7 @@ export default function MinimalHeader({
   return (
     <header className="sticky top-0 z-40 border-b border-brand-strong/10 bg-[var(--surface)]/90 backdrop-blur">
       <nav
-        aria-label="Navigasi utama"
+        aria-label="Main navigation"
         className="mx-auto flex h-12 w-full max-w-[var(--container)] items-center justify-between gap-3 px-4 sm:px-6 lg:px-8"
       >
         <Link

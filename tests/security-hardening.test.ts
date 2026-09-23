@@ -6,7 +6,7 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
-import { sanitizeHtmlContent } from '@/lib/content-validation';
+import { sanitizeHtmlContent } from '@/lib/validation';
 
 function src(rel: string): string {
   return readFileSync(resolve(process.cwd(), rel), 'utf8');

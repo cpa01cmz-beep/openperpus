@@ -86,3 +86,43 @@ describe('S-mobile 360px no page-level horizontal scroll', () => {
     ).toBe(false);
   });
 });
+
+/** S-mobile-landmarks: header/footer variants must expose proper ARIA landmarks
+ * for mobile screen readers. RED first: header variants used Indonesian aria-label,
+ * footer variants lacked role="contentinfo".
+ */
+describe('S-mobile header/footer landmarks', () => {
+  const headerVariants = [
+    'src/components/layout/variants/headers/ClassicHeader.tsx',
+    'src/components/layout/variants/headers/CenteredHeader.tsx',
+    'src/components/layout/variants/headers/SplitHeader.tsx',
+    'src/components/layout/variants/headers/MinimalHeader.tsx',
+    'src/components/layout/variants/headers/TopBarHeader.tsx',
+  ];
+
+  const footerVariants = [
+    'src/components/layout/variants/footers/ClassicFooter.tsx',
+    'src/components/layout/variants/footers/MinimalFooter.tsx',
+    'src/components/layout/variants/footers/StackedFooter.tsx',
+  ];
+
+  it('all header variants use aria-label="Main navigation" (English)', () => {
+    for (const f of headerVariants) {
+      const src = read(f);
+      expect(
+        src.includes('aria-label="Main navigation"'),
+        `${f} must use aria-label="Main navigation" on <nav>`
+      ).toBe(true);
+    }
+  });
+
+  it('all footer variants have role="contentinfo" on <footer>', () => {
+    for (const f of footerVariants) {
+      const src = read(f);
+      expect(
+        /<footer[^>]*role=["']contentinfo["']/.test(src),
+        `${f} must have role="contentinfo" on <footer>`
+      ).toBe(true);
+    }
+  });
+});

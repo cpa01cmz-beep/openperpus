@@ -41,6 +41,8 @@ export default function DendaPage() {
   const [apiMissing, setApiMissing] = useState(false);
   const [error, setError] = useState('');
   const [finePerDay, setFinePerDay] = useState(1000);
+  const [tagihanTotal, setTagihanTotal] = useState(0);
+
   useEffect(() => {
     fetch('/api/settings')
       .then((r) => r.json() as Promise<{ data?: { fine_per_day?: unknown } }>)
@@ -49,6 +51,20 @@ export default function DendaPage() {
         if (Number.isFinite(v) && v > 0) setFinePerDay(v);
       })
       .catch(() => {});
+  }, []);
+
+  const loadTotals = useCallback(async () => {
+    try {
+      const { createClient } = await import('@/lib/supabase/client');
+      const supabase = createClient();
+      // p_member_id = NULL → sum across all members (admin view)
+      const { data, error } = await supabase.rpc('get_fines_total', {
+        p_member_id: null,
+      });
+      if (!error && typeof data === 'number') {
+        setTagihanTotal(data);
+      }
+    } catch {}
   }, []);
 
   const load = useCallback(async () => {
@@ -84,7 +100,8 @@ export default function DendaPage() {
 
   useEffect(() => {
     load();
-  }, [load]);
+    loadTotals();
+  }, [load, loadTotals]);
 
   async function onPay(f: Fine) {
     const sisa = num(f.amount) - num(f.paid_amount);
@@ -108,14 +125,12 @@ export default function DendaPage() {
       }
       if (!res.ok) return alert(errMsg(json));
       load();
+      loadTotals();
     } finally {
       setPayingId(null);
     }
   }
 
-  const tagihan = rows
-    .filter((r) => r.status === 'unpaid' || r.status === 'partial')
-    .reduce((s, r) => s + (num(r.amount) - num(r.paid_amount)), 0);
   const lunasCount = rows.filter((r) => r.status === 'paid').length;
 
   return (
@@ -134,7 +149,7 @@ export default function DendaPage() {
           className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800"
         >
           API <code className="font-mono">/api/fines</code> belum tersedia di backend (404). Daftar
-          &amp; tombol bayar menunggu worker backend. Sudah dilaporkan ke mandor.
+          & tombol bayar menunggu worker backend. Sudah dilaporkan ke mandor.
         </div>
       )}
       {error && (
@@ -149,8 +164,8 @@ export default function DendaPage() {
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard
           label="Tagihan terbuka"
-          value={fmtRp(tagihan)}
-          hint="unpaid + partial (halaman ini)"
+          value={fmtRp(tagihanTotal)}
+          hint="unpaid + partial (semua anggota)"
         />
         <StatCard label="Lunas" value={lunasCount} hint="Status paid (halaman ini)" />
         <StatCard

@@ -12,7 +12,10 @@ export default function MinimalFooter({ settings }: FooterVariantProps) {
   const name = settings.name ?? 'Perpustakaan Digital';
 
   return (
-    <footer className="mt-12 border-t border-[var(--ink)]/10 bg-[var(--surface)] text-[var(--ink)]">
+    <footer
+      role="contentinfo"
+      className="mt-12 border-t border-[var(--ink)]/10 bg-[var(--surface)] text-[var(--ink)]"
+    >
       <div className="mx-auto flex w-full max-w-[var(--container)] flex-col items-center gap-3 px-4 py-8 text-center sm:px-6 lg:px-8">
         <p className="flex items-center gap-2">
           {settings.logo_url ? (
