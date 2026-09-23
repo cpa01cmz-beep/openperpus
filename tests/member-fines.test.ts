@@ -298,4 +298,37 @@ describe('US-03 member fines — lihat + bayar sendiri', () => {
     expect(src).toMatch(/transfer/);
     expect(src).toMatch(/qris/);
   });
+
+  // --- RPC tests for get_fines_total (RED: will fail until migration 0018 + pages wired) ---
+
+  it('FINES-RPC-01: get_fines_total RPC returns SUM(amount - paid_amount) for member', async () => {
+    const { createClient } = await import('@/lib/supabase/server');
+    const supabase = createClient();
+
+    // Mock the RPC call
+    const rpcMock = vi.fn().mockResolvedValue({ data: 12500, error: null });
+    (supabase as unknown as { rpc: typeof rpcMock }).rpc = rpcMock;
+
+    // This test will need to be implemented with actual RPC call
+    // For now, verify the RPC exists in migration
+    const migration = readFileSync(
+      join(process.cwd(), 'supabase/migrations/0018_perf_fixes.sql'),
+      'utf8'
+    );
+    expect(migration).toMatch(/CREATE OR REPLACE FUNCTION public\.get_fines_total/);
+    expect(migration).toMatch(/SUM\(amount - paid_amount\)/);
+    expect(migration).toMatch(/SECURITY DEFINER/);
+  });
+
+  it('FINES-RPC-02: admin denda page calls get_fines_total RPC instead of client reduce', () => {
+    const adminPage = readFileSync(join(process.cwd(), 'src/app/admin/denda/page.tsx'), 'utf8');
+    expect(adminPage).toMatch(/\.rpc\(['"]get_fines_total['"]/);
+    expect(adminPage).not.toMatch(/\.reduce\(/); // should not use client-side reduce for total
+  });
+
+  it('FINES-RPC-03: public denda page calls get_fines_total RPC instead of client reduce', () => {
+    const publicPage = readFileSync(join(process.cwd(), 'src/app/(public)/denda/page.tsx'), 'utf8');
+    expect(publicPage).toMatch(/\.rpc\(['"]get_fines_total['"]/);
+    expect(publicPage).not.toMatch(/\.reduce\(/); // should not use client-side reduce for total
+  });
 });

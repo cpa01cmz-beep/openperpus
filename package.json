@@ -15,12 +15,14 @@
     "format": "prettier --write .",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
+    "test:integration": "TEST_SUPABASE_URL=$NEXT_PUBLIC_SUPABASE_URL TEST_SUPABASE_ANON_KEY=$NEXT_PUBLIC_SUPABASE_ANON_KEY TEST_SUPABASE_SERVICE_KEY=$SUPABASE_SERVICE_ROLE_KEY vitest run tests/integration",
     "cf:build": "npx @opennextjs/cloudflare build",
     "cf:preview": "npx @opennextjs/cloudflare preview",
     "deploy": "npx @opennextjs/cloudflare build && wrangler deploy",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "postinstall": "patch-package",
-    "prepare": "husky"
+    "prepare": "husky",
+    "preinstall": "npm config set legacy-peer-deps true"
   },
   "dependencies": {
     "@supabase/ssr": "0.5.2",
@@ -32,8 +34,12 @@
     "react-dom": "^18.3.1"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20240925.0",
-    "@opennextjs/cloudflare": "1.13.1",
+    "@cloudflare/workers-types": "^5.20260922.1",
+    "@next/eslint-plugin-next": "^14.2.35",
+    "@opennextjs/cloudflare": "1.15.1",
+    "@playwright/test": "^1.63.0",
+    "@testing-library/dom": "^10.4.2",
+    "@testing-library/react": "^16.3.3",
     "@types/node": "^20.16.13",
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.1",
@@ -42,6 +48,7 @@
     "eslint": "^8.57.1",
     "eslint-config-next": "14.2.35",
     "husky": "^9.1.7",
+    "jsdom": "^24.1.0",
     "lint-staged": "16.1.1",
     "patch-package": "^8.0.0",
     "postcss": "^8.4.47",
@@ -49,7 +56,7 @@
     "tailwindcss": "^3.4.13",
     "typescript": "^5.6.3",
     "vitest": "^3.2.7",
-    "wrangler": "4.49.1"
+    "wrangler": "4.136.3"
   },
   "engines": {
     "node": ">=20.9.0"

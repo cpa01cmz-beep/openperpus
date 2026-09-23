@@ -2,43 +2,46 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-// T-O2: CI matrix expansion — single-job CI splits into 4 jobs.
+// T-O2: CI workflow — 4 jobs: typecheck, lint, test (unit), playwright-list
 function readCi(): string {
   return readFileSync(resolve(process.cwd(), '.github/workflows/ci.yml'), 'utf8');
 }
 
-describe('ops ci matrix (T-O2)', () => {
-  it('RED: has lint-typecheck job', () => {
-    expect(readCi()).toMatch(/lint-typecheck\s*:/);
-  });
-
-  it('RED: has test job', () => {
-    // Match a top-level `test:` job key (2-space indent under jobs:).
-    expect(readCi()).toMatch(/^\s{2}test\s*:/m);
-  });
-
-  it('RED: has cf-build job with cf:build key', () => {
+describe('ops ci workflow (T-O2)', () => {
+  it('RED: has typecheck job running tsc --noEmit', () => {
     const raw = readCi();
-    expect(raw).toMatch(/cf-build\s*:/);
-    expect(raw).toContain('cf:build');
+    expect(raw).toMatch(/typecheck\s*:/);
+    expect(raw).toContain('tsc --noEmit');
   });
 
-  it('RED: has coverage key', () => {
-    const raw = readCi().toLowerCase();
-    expect(raw).toMatch(/coverage/);
-  });
-
-  it('RED: has preview job with preview key, non-blocking + token secret', () => {
+  it('RED: has lint job running eslint', () => {
     const raw = readCi();
-    expect(raw).toMatch(/preview\s*:/);
-    expect(raw.toLowerCase()).toContain('preview');
-    // Non-blocking preview must not fail the pipeline.
-    expect(raw).toContain('continue-on-error: true');
-    // Preview talks to Cloudflare — token via secrets, never literal.
-    expect(raw).toContain('CLOUDFLARE_API_TOKEN');
+    expect(raw).toMatch(/^\s{2}lint\s*:/m);
+    expect(raw).toContain('eslint');
   });
 
-  it('GREEN guard: Node20 + npm ci + npm cache across jobs', () => {
+  it('RED: has test job running vitest --project=unit', () => {
+    const raw = readCi();
+    expect(raw).toMatch(/^\s{2}test\s*:/m);
+    expect(raw).toContain('vitest --project=unit');
+  });
+
+  it('RED: has playwright-list job running npx playwright test --list', () => {
+    const raw = readCi();
+    expect(raw).toMatch(/playwright-list\s*:/);
+    expect(raw).toContain('npx playwright test --list');
+  });
+
+  it('RED: runs on push and PR to main and dev branches', () => {
+    const raw = readCi();
+    expect(raw).toMatch(/on:/);
+    expect(raw).toMatch(/push:/);
+    expect(raw).toMatch(/pull_request:/);
+    expect(raw).toContain('main');
+    expect(raw).toContain('dev');
+  });
+
+  it('GREEN guard: Node 20 + npm ci + npm cache', () => {
     const raw = readCi();
     expect(raw).toMatch(/node-version\s*:\s*['"]?20['"]?/);
     expect(raw).toContain('npm ci');

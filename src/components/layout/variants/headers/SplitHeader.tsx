@@ -52,7 +52,7 @@ export default function SplitHeader({
       </div>
 
       {/* desktop: split nav strip */}
-      <nav aria-label="Navigasi utama" className="hidden border-t border-[var(--ink)]/10 lg:block">
+      <nav aria-label="Main navigation" className="hidden border-t border-[var(--ink)]/10 lg:block">
         <ul className="mx-auto flex w-full max-w-[var(--container)] items-center justify-between px-4 sm:px-6 lg:px-8">
           {LINKS.map((l) => (
             <li key={l.href} className="flex-1">

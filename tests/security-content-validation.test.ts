@@ -4,11 +4,7 @@
  * enforces length caps on settings/pages/articles/testimonials fields.
  */
 import { describe, expect, it } from 'vitest';
-import {
-  CONTENT_LIMITS,
-  sanitizeHtmlContent,
-  validateContentFields,
-} from '@/lib/content-validation';
+import { CONTENT_LIMITS, sanitizeHtmlContent, validateContentFields } from '@/lib/validation';
 
 describe('sanitizeHtmlContent strips XSS vectors', () => {
   it('menghapus <script> beserta isinya', () => {

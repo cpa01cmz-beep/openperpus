@@ -1,5 +1,6 @@
 'use client';
 
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
@@ -13,24 +14,70 @@ export default function ClassicHero({ banners, siteName, tagline }: HeroProps) {
   const total = banners.length;
   const { idx, setIdx, go, setPaused } = useHeroCarousel(total);
 
+  // Track transition state for aria-busy
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const transitionTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Keyboard navigation for tabs
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent, currentIdx: number) => {
+      let newIdx = currentIdx;
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        newIdx = (currentIdx + 1) % total;
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        newIdx = (currentIdx - 1 + total) % total;
+      } else if (e.key === 'Home') {
+        e.preventDefault();
+        newIdx = 0;
+      } else if (e.key === 'End') {
+        e.preventDefault();
+        newIdx = total - 1;
+      }
+      if (newIdx !== currentIdx) {
+        setIdx(newIdx);
+        setIsTransitioning(true);
+        if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
+        transitionTimerRef.current = setTimeout(() => setIsTransitioning(false), 700);
+      }
+    },
+    [total, setIdx]
+  );
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
+    };
+  }, []);
+
   if (total === 0) return <HeroFallback siteName={siteName} tagline={tagline} />;
 
   const active = banners[idx];
   if (!active) return null;
 
+  // LCP optimization: only preload first 2 images; defer rest until user interacts
+  const preloadCount = 2;
+  const shouldPreload = (i: number) => i < preloadCount || i === idx;
+
   return (
     <section
       aria-label="Sorotan perpustakaan"
       aria-roledescription="carousel"
+      aria-busy={isTransitioning}
       className="relative overflow-hidden rounded-[var(--radius-lg)] bg-[var(--surface)] text-[var(--ink)] shadow-[var(--shadow-lg)] ring-1 ring-accent/25"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
       <div className="relative aspect-[16/10] w-full sm:aspect-[21/9]">
         {banners.map((b, i) =>
-          i > 1 && i !== idx ? null : (
+          !shouldPreload(i) && i !== idx ? null : (
             <div
               key={b.id}
+              role="tabpanel"
+              id={`classic-panel-${b.id}`}
+              aria-labelledby={`classic-tab-${b.id}`}
               aria-hidden={i !== idx}
               className={`absolute inset-0 transition-opacity duration-700 ${
                 i === idx ? 'opacity-100' : 'pointer-events-none opacity-0'
@@ -111,15 +158,24 @@ export default function ClassicHero({ banners, siteName, tagline }: HeroProps) {
             className="absolute bottom-4 right-5 flex gap-1.5 sm:right-8"
             role="tablist"
             aria-label="Pilih banner"
+            onKeyDown={(e) => handleKeyDown(e, idx)}
           >
             {banners.map((b, i) => (
               <button
                 key={b.id}
                 type="button"
                 role="tab"
+                id={`classic-tab-${b.id}`}
                 aria-selected={i === idx}
+                aria-controls={`classic-panel-${b.id}`}
                 aria-label={`Banner ${i + 1}: ${b.title}`}
-                onClick={() => setIdx(i)}
+                onClick={() => {
+                  setIdx(i);
+                  setIsTransitioning(true);
+                  if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
+                  transitionTimerRef.current = setTimeout(() => setIsTransitioning(false), 700);
+                }}
+                onKeyDown={(e) => handleKeyDown(e, i)}
                 className="flex min-h-[44px] min-w-[44px] items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
               >
                 <span

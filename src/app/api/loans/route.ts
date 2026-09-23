@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
-import { requireStaff, jsonError, calcFine, addDaysISO, parsePaging } from '@/lib/supabase/auth';
+import { requireStaff, jsonError, addDaysISO, parsePaging } from '@/lib/supabase/auth';
 import { returnLoan, extendLoan } from '@/lib/loans-return';
 import { sanitizeIlike } from '@/lib/search';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
@@ -63,7 +63,13 @@ export async function GET(req: Request) {
 
   let query = supabase
     .from('loans')
-    .select('*, members(id,member_code), books(id,title,slug)', { count: 'exact' })
+    .select(
+      '*, members(id,member_code), books(id,title,slug), ' +
+        "CASE WHEN status IN ('borrowed','overdue') AND due_at < NOW() THEN true ELSE false END AS is_overdue, " +
+        "CASE WHEN status IN ('borrowed','overdue') AND due_at < NOW() " +
+        'THEN GREATEST(EXTRACT(DAY FROM (NOW() - due_at))::int, 0) * 1000 ELSE 0 END AS fine_preview',
+      { count: 'exact' }
+    )
     .order('borrowed_at', { ascending: false })
     .range(from, to);
 
@@ -84,17 +90,9 @@ export async function GET(req: Request) {
     });
   }
 
-  const now = new Date();
-  const enriched = (data ?? []).map((l: Record<string, unknown>) => {
-    const due = l.due_at ? new Date(l.due_at as string) : null;
-    const active = l.status === 'borrowed' || l.status === 'overdue';
-    const isOverdue = !!active && !!due && due < now;
-    return { ...l, is_overdue: isOverdue, fine_preview: isOverdue && due ? calcFine(due, now) : 0 };
-  });
-
   const total = count ?? 0;
   return NextResponse.json({
-    data: enriched,
+    data: data ?? [],
     meta: { page, per_page: perPage, total },
     pagination: { page, limit: perPage, total, totalPages: Math.ceil(total / perPage) },
   });

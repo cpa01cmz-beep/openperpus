@@ -2,10 +2,516 @@ openapi: 3.1.0
 info:
   title: OpenPerpus API
   version: 0.1.0
-  description: CMS Perpustakaan — 26 resource routes + observability (health/readyz/docs). Deploy stays Cloudflare Workers; Docker is local preview/CI only.
+  description: CMS Perpustakaan — 26 resource routes + observability (health/readyz/docs/metrics). Deploy stays Cloudflare Workers; Docker is local preview/CI only.
 servers:
   - url: http://localhost:3000
     description: local
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Supabase access token (JWT) from client-side auth
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum: [VALIDATION, NOT_FOUND, CONFLICT, UNAUTHORIZED, FORBIDDEN, INTERNAL, SAVE_FAILED, FETCH_FAILED, DELETE_FAILED, INVALID_JSON]
+            message:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+      required: [error]
+    Book:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        slug:
+          type: string
+        author:
+          type: string
+          nullable: true
+        publisher:
+          type: string
+          nullable: true
+        year:
+          type: integer
+          nullable: true
+        isbn:
+          type: string
+          nullable: true
+        category_id:
+          type: string
+          format: uuid
+          nullable: true
+        rack_id:
+          type: string
+          format: uuid
+          nullable: true
+        cover_url:
+          type: string
+          nullable: true
+        description:
+          type: string
+          nullable: true
+        pages:
+          type: integer
+          nullable: true
+        language:
+          type: string
+          nullable: true
+        stock_total:
+          type: integer
+        stock_available:
+          type: integer
+        featured:
+          type: boolean
+        rating_avg:
+          type: number
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+        categories:
+          $ref: '#/components/schemas/Category'
+        racks:
+          $ref: '#/components/schemas/Rack'
+      required: [id, title, slug, stock_total, stock_available, featured]
+    Category:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        code:
+          type: string
+        description:
+          type: string
+          nullable: true
+        is_active:
+          type: boolean
+        sort_order:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required: [id, name, slug, code, is_active, sort_order]
+    Rack:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        name:
+          type: string
+        location:
+          type: string
+          nullable: true
+        is_active:
+          type: boolean
+        sort_order:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required: [id, code, name, is_active, sort_order]
+    Member:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        member_code:
+          type: string
+        full_name:
+          type: string
+        phone:
+          type: string
+          nullable: true
+        address:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [pending, active, suspended]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required: [id, user_id, member_code, full_name, status]
+    Loan:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        book_id:
+          type: string
+          format: uuid
+        member_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [borrowed, overdue, returned, lost]
+        borrowed_at:
+          type: string
+          format: date-time
+        due_at:
+          type: string
+          format: date-time
+        returned_at:
+          type: string
+          format: date-time
+          nullable: true
+        kondisi:
+          type: string
+          enum: [baik, rusak, hilang]
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        fine_amount:
+          type: integer
+          default: 0
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        book:
+          $ref: '#/components/schemas/Book'
+        member:
+          $ref: '#/components/schemas/Member'
+      required: [id, book_id, member_id, status, borrowed_at, due_at]
+    Reservation:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        book_id:
+          type: string
+          format: uuid
+        member_id:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, ready, completed, cancelled, expired]
+        expires_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+        notes:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        book:
+          $ref: '#/components/schemas/Book'
+        member:
+          $ref: '#/components/schemas/Member'
+      required: [id, book_id, member_id, status, expires_at]
+    Fine:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        loan_id:
+          type: string
+          format: uuid
+        member_id:
+          type: string
+          format: uuid
+        amount:
+          type: integer
+        paid_amount:
+          type: integer
+          default: 0
+        status:
+          type: string
+          enum: [unpaid, partial, paid, waived]
+        paid_at:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        loan:
+          $ref: '#/components/schemas/Loan'
+        member:
+          $ref: '#/components/schemas/Member'
+      required: [id, loan_id, member_id, amount, status]
+    PaginatedResponse:
+      type: object
+      properties:
+        data:
+          type: array
+          items:
+            type: object
+        total:
+          type: integer
+        page:
+          type: integer
+        per_page:
+          type: integer
+      required: [data, total, page, per_page]
+    Article:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        slug:
+          type: string
+        excerpt:
+          type: string
+          nullable: true
+        content:
+          type: string
+        status:
+          type: string
+          enum: [draft, published]
+        category:
+          type: string
+          nullable: true
+        cover_url:
+          type: string
+          nullable: true
+        author_id:
+          type: string
+          format: uuid
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required: [id, title, slug, content, status]
+    Banner:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        subtitle:
+          type: string
+          nullable: true
+        image_url:
+          type: string
+        link_url:
+          type: string
+          nullable: true
+        is_active:
+          type: boolean
+        sort_order:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required: [id, title, image_url, is_active, sort_order]
+    Page:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        slug:
+          type: string
+        content:
+          type: string
+        excerpt:
+          type: string
+          nullable: true
+        status:
+          type: string
+          enum: [draft, published]
+        cover_url:
+          type: string
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required: [id, title, slug, content, status]
+    FAQ:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        question:
+          type: string
+        answer:
+          type: string
+        sort_order:
+          type: integer
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required: [id, question, answer, sort_order, is_active]
+    Testimonial:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        role:
+          type: string
+          nullable: true
+        content:
+          type: string
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        is_approved:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required: [id, name, content, rating, is_approved]
+    Menu:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        href:
+          type: string
+        parent_id:
+          type: string
+          format: uuid
+          nullable: true
+        sort_order:
+          type: integer
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required: [id, label, href, sort_order, is_active]
+    Settings:
+      type: object
+      properties:
+        id:
+          type: integer
+          enum: [1]
+        site_name:
+          type: string
+        site_description:
+          type: string
+        contact_email:
+          type: string
+        contact_phone:
+          type: string
+        contact_address:
+          type: string
+        active_theme:
+          type: string
+        max_loan_days:
+          type: integer
+        fine_per_day:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required: [id, site_name, active_theme, max_loan_days, fine_per_day]
+  parameters:
+    PageParam:
+      name: page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+      description: Page number
+    PerPageParam:
+      name: per_page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 24
+      description: Items per page
 paths:
   /api/health:
     get:
@@ -13,14 +519,48 @@ paths:
       responses:
         '200':
           description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+                  uptime:
+                    type: number
   /api/readyz:
     get:
       summary: Readiness probe (Supabase ping)
       responses:
         '200':
           description: ready
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ready]
+                  latencyMs:
+                    type: number
         '503':
           description: not ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/metrics:
+    get:
+      summary: Prometheus metrics endpoint
+      responses:
+        '200':
+          description: Prometheus text format metrics
+          content:
+            text/plain:
+              schema:
+                type: string
   /api/docs:
     get:
       summary: Scalar/Swagger UI for this contract
@@ -30,21 +570,70 @@ paths:
   /api/articles:
     get:
       summary: List articles
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
       responses:
         '200':
-          description: ok
+          description: Paginated articles
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedResponse'
     post:
       summary: Create article (staff)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, slug, content, status]
+              properties:
+                title:
+                  type: string
+                slug:
+                  type: string
+                excerpt:
+                  type: string
+                content:
+                  type: string
+                status:
+                  type: string
+                  enum: [draft, published]
+                category:
+                  type: string
+                cover_url:
+                  type: string
+                author_id:
+                  type: string
+                  format: uuid
       responses:
         '201':
-          description: created
+          description: Created article
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Article'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     put:
       summary: Bulk article ops (staff)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok
     delete:
       summary: Bulk delete articles (staff)
+      security:
+        - BearerAuth: []
       responses:
         '200':
           description: ok

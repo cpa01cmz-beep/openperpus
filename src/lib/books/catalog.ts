@@ -27,6 +27,33 @@ export const BOOKS_SELECT =
 export const BOOKS_LIST_SELECT =
   'id,title,slug,author,publisher,year,isbn,category_id,rack_id,cover_url,pages,language,stock_total,stock_available,featured,rating_avg,created_at,updated_at,categories(id,name,slug),racks(code,name,location)';
 
+/** Search books via RPC (full-text + trigram) then fetch with relations.
+ *  Returns books in search relevance order. Supports offset/limit for pagination. */
+async function searchBooksViaRpc(
+  supabase: ReturnType<typeof createClient>,
+  needle: string,
+  limit: number,
+  offset: number = 0
+): Promise<Book[]> {
+  const { data: rpcData, error: rpcError } = await supabase.rpc('search_books', {
+    p_q: needle,
+    p_limit: limit,
+    p_offset: offset,
+  });
+  if (rpcError || !rpcData || rpcData.length === 0) return [];
+
+  const ids = (rpcData as { id: string }[]).map((b) => b.id);
+  const { data, error } = await supabase.from('books').select(BOOKS_LIST_SELECT).in('id', ids);
+  if (error || !data) return [];
+
+  // Preserve RPC relevance order
+  const idOrder = new Map(ids.map((id, idx) => [id, idx]));
+  const sorted = (data as Record<string, unknown>[]).sort(
+    (a, b) => (idOrder.get(strOrEmpty(a.id)) ?? 999) - (idOrder.get(strOrEmpty(b.id)) ?? 999)
+  );
+  return normalizeBooks(sorted.map(toBook));
+}
+
 /** Ambil objek pertama bila relasi datang sebagai array (bentuk join Supabase). */
 function firstObj(v: unknown): Record<string, unknown> | null {
   const item: unknown = Array.isArray(v) ? (v as unknown[])[0] : v;
@@ -121,6 +148,14 @@ async function fetchBooksUncached(opts: FetchBooksOpts): Promise<Book[]> {
   try {
     const supabase = createClient();
     const needle = sanitizeIlike(opts.q ?? opts.search ?? '');
+
+    // Search path: use RPC for relevance (full-text + trigram)
+    if (needle) {
+      const limit = opts.limit ?? opts.perPage ?? 24;
+      return searchBooksViaRpc(supabase, needle, limit);
+    }
+
+    // Non-search path: regular query with sort/filters
     let query = supabase.from('books').select(BOOKS_LIST_SELECT).eq('is_active', true);
 
     query = applyBooksSort(query, opts.sort);
@@ -128,11 +163,6 @@ async function fetchBooksUncached(opts: FetchBooksOpts): Promise<Book[]> {
     if (opts.featured) query = query.eq('featured', true);
     if (opts.categoryId) query = query.eq('category_id', opts.categoryId);
     if (opts.availableOnly) query = query.gt('stock_available', 0);
-    if (needle) {
-      query = query.or(
-        `title.ilike.%${needle}%,author.ilike.%${needle}%,publisher.ilike.%${needle}%,isbn.ilike.%${needle}%`
-      );
-    }
     if (opts.page && opts.perPage) {
       const page = Math.max(1, Math.floor(opts.page));
       const perPage = Math.min(100, Math.max(1, Math.floor(opts.perPage)));
@@ -166,6 +196,17 @@ async function fetchBooksPagedUncached(opts: FetchBooksOpts): Promise<PagedBooks
     const to = page * perPage - 1;
     const needle = sanitizeIlike(opts.q ?? opts.search ?? '');
 
+    // Search path: use RPC (full-text + trigram), paginate via RPC offset/limit
+    if (needle) {
+      const books = await searchBooksViaRpc(supabase, needle, perPage, from);
+      // For total count, we still need a separate query or use max limit
+      // Since RPC is limited to 100, fetch up to 100 for total
+      const allBooks = await searchBooksViaRpc(supabase, needle, 100, 0);
+      const total = allBooks.length;
+      return { books, total };
+    }
+
+    // Non-search path: regular query with count
     let query = supabase
       .from('books')
       .select(BOOKS_LIST_SELECT, { count: 'exact' })
@@ -176,11 +217,6 @@ async function fetchBooksPagedUncached(opts: FetchBooksOpts): Promise<PagedBooks
     if (opts.featured) query = query.eq('featured', true);
     if (opts.categoryId) query = query.eq('category_id', opts.categoryId);
     if (opts.availableOnly) query = query.gt('stock_available', 0);
-    if (needle) {
-      query = query.or(
-        `title.ilike.%${needle}%,author.ilike.%${needle}%,publisher.ilike.%${needle}%,isbn.ilike.%${needle}%`
-      );
-    }
 
     const { data, error, count } = await query.range(from, to);
     if (error) return { books: [], total: 0 };

@@ -5,27 +5,44 @@ import { join } from 'node:path';
 const ROOT = process.cwd();
 const read = (p: string) => readFileSync(join(ROOT, p), 'utf8');
 
-/** A11Y-SKIPLINK (WCAG 2.4.1): layout must render a SkipLink that targets #main.
- * RED first: layout.tsx had no skip link and no main landmark at all.
+/** A11Y-SKIPLINK (WCAG 2.4.1): layout must render a SkipLink that targets #main-content.
+ * RED first: layout.tsx had skip link targeting #main, not #main-content.
  */
-describe('A11Y skip link targets #main', () => {
-  it('layout renders a skip link with href="#main"', () => {
+describe('A11Y skip link targets #main-content', () => {
+  it('layout renders a skip link with href="#main-content"', () => {
     const src = read('src/app/layout.tsx');
-    expect(src.includes('href="#main"'), 'layout must include a skip link with href="#main"').toBe(
-      true
-    );
     expect(
-      /Lewati ke konten utama|Skip to (main )?content|Lewati ke konten/i.test(src),
-      'skip link must carry descriptive link text'
+      src.includes('href="#main-content"'),
+      'layout must include a skip link with href="#main-content"'
+    ).toBe(true);
+    expect(
+      /Skip to main content/i.test(src),
+      'skip link must carry descriptive link text "Skip to main content"'
     ).toBe(true);
   });
 
-  it('layout exposes a main landmark with id="main"', () => {
+  it('layout exposes a main landmark with id="main-content"', () => {
     const src = read('src/app/layout.tsx');
     expect(src.includes('<main'), 'layout must render a <main> landmark').toBe(true);
     expect(
-      src.includes('id="main"'),
-      'main landmark must carry id="main" so the skip link has a target'
+      src.includes('id="main-content"'),
+      'main landmark must carry id="main-content" so the skip link has a target'
+    ).toBe(true);
+  });
+
+  it('layout exposes a header landmark with role="banner"', () => {
+    const src = read('src/app/layout.tsx');
+    expect(
+      /<header[^>]*role=["']banner["']/.test(src),
+      'layout must render a <header role="banner"> landmark'
+    ).toBe(true);
+  });
+
+  it('layout exposes a footer landmark with role="contentinfo"', () => {
+    const src = read('src/app/layout.tsx');
+    expect(
+      /<footer[^>]*role=["']contentinfo["']/.test(src),
+      'layout must render a <footer role="contentinfo"> landmark'
     ).toBe(true);
   });
 });
@@ -109,5 +126,44 @@ describe('A11Y contrast audit note (midnight/ocean)', () => {
       /A11Y-CONTRAST-AUDIT/.test(layout),
       'layout must carry an A11Y-CONTRAST-AUDIT note for midnight/ocean'
     ).toBe(true);
+  });
+});
+
+/** A11Y-LANDMARKS: header/footer variants must expose proper landmarks.
+ * RED first: header variants used "Navigasi utama" (Indonesian), footer variants lacked role="contentinfo".
+ */
+describe('A11Y header/footer variant landmarks', () => {
+  const headerVariants = [
+    'src/components/layout/variants/headers/ClassicHeader.tsx',
+    'src/components/layout/variants/headers/CenteredHeader.tsx',
+    'src/components/layout/variants/headers/SplitHeader.tsx',
+    'src/components/layout/variants/headers/MinimalHeader.tsx',
+    'src/components/layout/variants/headers/TopBarHeader.tsx',
+  ];
+
+  const footerVariants = [
+    'src/components/layout/variants/footers/ClassicFooter.tsx',
+    'src/components/layout/variants/footers/MinimalFooter.tsx',
+    'src/components/layout/variants/footers/StackedFooter.tsx',
+  ];
+
+  it('all header variants use aria-label="Main navigation" (English)', () => {
+    for (const f of headerVariants) {
+      const src = read(f);
+      expect(
+        src.includes('aria-label="Main navigation"'),
+        `${f} must use aria-label="Main navigation" on <nav>`
+      ).toBe(true);
+    }
+  });
+
+  it('all footer variants have role="contentinfo" on <footer>', () => {
+    for (const f of footerVariants) {
+      const src = read(f);
+      expect(
+        /<footer[^>]*role=["']contentinfo["']/.test(src),
+        `${f} must have role="contentinfo" on <footer>`
+      ).toBe(true);
+    }
   });
 });

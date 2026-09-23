@@ -16,7 +16,7 @@ export default function StackedFooter({ settings }: FooterVariantProps) {
   const socialEntries = Object.entries(socials).filter(([, v]) => !!v?.trim?.());
 
   return (
-    <footer className="mt-12 bg-brand-strong text-brand-soft">
+    <footer role="contentinfo" className="mt-12 bg-brand-strong text-brand-soft">
       {/* band 1: identity */}
       <div className="border-b border-[var(--surface)]/10">
         <div className="mx-auto flex w-full max-w-[var(--container)] flex-col gap-2 px-4 py-8 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-8">

@@ -3,7 +3,7 @@ import { revalidatePath, revalidateTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { requireStaff, jsonError, parsePaging } from '@/lib/supabase/auth';
 import { sanitizeIlike } from '@/lib/search';
-import { isAllowedImageUrl, validateContentFields } from '@/lib/content-validation';
+import { isAllowedImageUrl, validateContentFields } from '@/lib/validation';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
 /**
@@ -28,7 +28,44 @@ function toInt(v: unknown, def: number): number {
 // so throttle before touching Supabase. Map pruned lazily per check.
 export const TESTIMONIAL_LIMIT = 5;
 export const TESTIMONIAL_WINDOW_MS = 60 * 60 * 1000;
-const testimonialHits = new Map<string, number[]>();
+
+// Bounded LRU cache for testimonial rate limiting
+export const MAX_TESTIMONIAL_IPS = 10000; // max unique IPs tracked
+export const MAX_TESTIMONIAL_HITS_PER_IP = 100; // max timestamps per IP
+
+interface IpEntry {
+  hits: number[];
+  lastAccess: number;
+}
+
+const testimonialHits = new Map<string, IpEntry>();
+
+function evictIfNeeded(now: number): void {
+  // Evict expired entries first (lazy cleanup)
+  for (const [ip, entry] of testimonialHits.entries()) {
+    const windowStart = now - TESTIMONIAL_WINDOW_MS;
+    const freshHits = entry.hits.filter((t) => t > windowStart);
+    if (freshHits.length === 0) {
+      testimonialHits.delete(ip);
+    } else if (freshHits.length !== entry.hits.length) {
+      entry.hits = freshHits;
+    }
+  }
+
+  // If still over capacity, evict LRU entries
+  if (testimonialHits.size > MAX_TESTIMONIAL_IPS) {
+    // Find LRU entry
+    let lruIp: string | null = null;
+    let lruTime = now;
+    for (const [ip, entry] of testimonialHits.entries()) {
+      if (entry.lastAccess < lruTime) {
+        lruTime = entry.lastAccess;
+        lruIp = ip;
+      }
+    }
+    if (lruIp) testimonialHits.delete(lruIp);
+  }
+}
 
 export function getTestimonialClientIp(req: Request): string {
   const fwd = req.headers.get('x-forwarded-for');
@@ -40,15 +77,35 @@ export function checkTestimonialRateLimit(
   ip: string,
   now = Date.now()
 ): { allowed: boolean; retryAfter: number } {
+  evictIfNeeded(now);
+
+  let entry = testimonialHits.get(ip);
+  if (!entry) {
+    entry = { hits: [], lastAccess: now };
+    testimonialHits.set(ip, entry);
+  }
+  entry.lastAccess = now;
+
   const windowStart = now - TESTIMONIAL_WINDOW_MS;
-  const hits = (testimonialHits.get(ip) ?? []).filter((t) => t > windowStart);
-  if (hits.length >= TESTIMONIAL_LIMIT) {
-    const retryAfter = Math.max(1, Math.ceil((hits[0]! + TESTIMONIAL_WINDOW_MS - now) / 1000));
-    testimonialHits.set(ip, hits);
+  const hits = entry.hits.filter((t) => t > windowStart);
+
+  // Per-IP cap: prune oldest timestamps if over limit
+  if (hits.length >= MAX_TESTIMONIAL_HITS_PER_IP) {
+    // Keep only the most recent MAX_TESTIMONIAL_HITS_PER_IP - 1 entries
+    entry.hits = hits.slice(-(MAX_TESTIMONIAL_HITS_PER_IP - 1));
+  } else {
+    entry.hits = hits;
+  }
+
+  if (entry.hits.length >= TESTIMONIAL_LIMIT) {
+    const retryAfter = Math.max(
+      1,
+      Math.ceil((entry.hits[0]! + TESTIMONIAL_WINDOW_MS - now) / 1000)
+    );
     return { allowed: false, retryAfter };
   }
-  hits.push(now);
-  testimonialHits.set(ip, hits);
+
+  entry.hits.push(now);
   return { allowed: true, retryAfter: 0 };
 }
 

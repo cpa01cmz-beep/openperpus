@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
-import { calcFine } from '@/lib/supabase/auth';
 import StatCard from '@/components/admin/StatCard';
 
 export const dynamic = 'force-dynamic';
@@ -9,25 +8,36 @@ export const revalidate = 0;
 export default async function AdminDashboard() {
   const supabase = createClient();
 
-  const [
-    { count: totalBooks },
-    { count: totalMembers },
-    { count: dipinjamCount },
-    { count: terlambatCount },
-    { data: recent },
-    { data: overdueQueue },
-  ] = await Promise.all([
-    supabase.from('books').select('id', { count: 'exact', head: true }),
-    supabase.from('members').select('id', { count: 'exact', head: true }),
-    supabase
-      .from('loans')
-      .select('id', { count: 'exact', head: true })
-      .in('status', ['borrowed', 'overdue']),
-    supabase
-      .from('loans')
-      .select('id', { count: 'exact', head: true })
-      .in('status', ['borrowed', 'overdue'])
-      .lt('due_at', new Date().toISOString()),
+  const { data: stats, error: statsError } = await supabase.rpc('get_dashboard_stats', {
+    p_days: 7,
+  });
+  if (statsError) {
+    console.error('get_dashboard_stats failed:', statsError.message);
+  }
+
+  const {
+    total_books = 0,
+    total_members = 0,
+    active_loans = 0,
+    overdue_count = 0,
+    loans_per_day = [],
+  } = (stats?.[0] ?? {}) as {
+    total_books: number;
+    total_members: number;
+    active_loans: number;
+    overdue_count: number;
+    loans_per_day: { day: string; total: number }[];
+  };
+
+  const now = new Date();
+
+  const days = (loans_per_day ?? []).map((d) => ({
+    label: new Date(d.day).toLocaleDateString('id-ID', { weekday: 'short' }),
+    count: Number(d.total),
+  }));
+  const max = Math.max(1, ...days.map((d) => d.count));
+
+  const [{ data: recent }, { data: overdueQueue }] = await Promise.all([
     supabase
       .from('loans')
       .select('id,borrowed_at,due_at,status,fine_amount,members(id,member_code),books(title)')
@@ -41,47 +51,6 @@ export default async function AdminDashboard() {
       .order('due_at', { ascending: true })
       .limit(8),
   ]);
-
-  const dipinjam = dipinjamCount ?? 0;
-  const now = new Date();
-  const terlambat = terlambatCount ?? 0;
-
-  let days: { label: string; count: number }[] = [];
-  try {
-    const { data: loansPerDay, error } = await supabase.rpc('get_loans_per_day', { p_days: 7 });
-    if (!error && loansPerDay) {
-      days = (loansPerDay as { day: string; total: number }[]).map((d) => ({
-        label: new Date(d.day).toLocaleDateString('id-ID', { weekday: 'short' }),
-        count: Number(d.total),
-      }));
-    }
-  } catch {
-    days = [];
-  }
-  if (days.length === 0) {
-    const seed: { label: string; count: number }[] = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      seed.push({ label: d.toLocaleDateString('id-ID', { weekday: 'short' }), count: 0 });
-    }
-    const { data: weekLoans } = await supabase
-      .from('loans')
-      .select('borrowed_at')
-      .gte('borrowed_at', new Date(Date.now() - 7 * 86400000).toISOString())
-      .limit(500);
-    for (const l of (weekLoans ?? []) as { borrowed_at: string }[]) {
-      const key = new Date(l.borrowed_at).toDateString();
-      const slot = seed.find((_, i) => {
-        const dt = new Date();
-        dt.setDate(dt.getDate() - (6 - i));
-        return dt.toDateString() === key;
-      });
-      if (slot) slot.count++;
-    }
-    days = seed;
-  }
-  const max = Math.max(1, ...days.map((d) => d.count));
 
   type OverdueRow = {
     id: string;
@@ -97,10 +66,10 @@ export default async function AdminDashboard() {
     <div className="grid gap-6">
       <h1 className="text-2xl font-bold">Dashboard</h1>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Total Buku" value={totalBooks ?? 0} hint="Judul terdaftar" />
-        <StatCard label="Anggota" value={totalMembers ?? 0} hint="Terdaftar" />
-        <StatCard label="Dipinjam" value={dipinjam} hint="borrowed/overdue berjalan" />
-        <StatCard label="Terlambat" value={terlambat} hint="Denda Rp1.000/hari" />
+        <StatCard label="Total Buku" value={total_books} hint="Judul terdaftar" />
+        <StatCard label="Anggota" value={total_members} hint="Terdaftar" />
+        <StatCard label="Dipinjam" value={active_loans} hint="borrowed/overdue berjalan" />
+        <StatCard label="Terlambat" value={overdue_count} hint="Denda Rp1.000/hari" />
       </div>
 
       <section className="rounded-2xl border bg-white p-6">
@@ -121,7 +90,7 @@ export default async function AdminDashboard() {
               0,
               Math.floor((now.getTime() - new Date(due).setHours(0, 0, 0, 0)) / 86400000)
             );
-            const preview = calcFine(due, now);
+            const preview = lateDays * 1000;
             return (
               <li
                 key={o.id}

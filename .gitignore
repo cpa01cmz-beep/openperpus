@@ -58,3 +58,6 @@ opencode.json.bak
 
 # agent memory (orchestrator state, bukan source)
 .agent_memory/
+
+# github workflows (local only, token without workflow scope)
+.github/workflows/

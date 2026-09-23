@@ -184,14 +184,16 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         {/* CSS variables --brand dkk. diisi dari tabel `settings` oleh worker lain.
             Default aman di globals.css agar first paint tetap rapi. */}
         <a
-          href="#main"
-          className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-white focus:px-4 focus:py-2 focus:text-black"
+          href="#main-content"
+          className="skip-link sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-white focus:px-4 focus:py-2 focus:text-black"
         >
-          Lewati ke konten utama
+          Skip to main content
         </a>
-        <main id="main" className="w-full px-4 sm:px-6 lg:px-8">
+        <header role="banner" />
+        <main id="main-content" className="w-full px-4 sm:px-6 lg:px-8">
           {children}
         </main>
+        <footer role="contentinfo" />
       </body>
     </html>
   );

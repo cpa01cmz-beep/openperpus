@@ -52,7 +52,7 @@ export default function CenteredHeader({
         </div>
         {/* desktop: centered nav row */}
         <nav
-          aria-label="Navigasi utama"
+          aria-label="Main navigation"
           className="hidden justify-center border-t border-[var(--ink)]/10 md:flex"
         >
           <ul className="flex items-center gap-1 py-2">

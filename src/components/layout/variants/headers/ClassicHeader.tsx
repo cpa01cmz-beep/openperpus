@@ -23,7 +23,7 @@ export default function ClassicHeader({
   return (
     <header className="sticky top-0 z-40 border-b border-brand-strong/10 bg-[var(--surface)]/90 backdrop-blur">
       <nav
-        aria-label="Navigasi utama"
+        aria-label="Main navigation"
         className="mx-auto flex h-16 w-full max-w-[var(--container)] items-center justify-between gap-3 px-4 sm:px-6 lg:px-8"
       >
         <Link

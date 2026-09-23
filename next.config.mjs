@@ -40,6 +40,8 @@ const nextConfig = {
   },
   // Security headers: CSP, HSTS, X-Frame-Options, Referrer-Policy, X-Content-Type-Options
   // CSP keeps unsafe-inline (Next.js runtime requires it); eval dropped.
+  // TODO(Next 15): Replace 'unsafe-inline' with nonce-based CSP via middleware injection
+  // when migrating to Next.js 15 (middleware can inject nonces into HTML responses).
   async headers() {
     const isProd = process.env.NODE_ENV === 'production';
     return [

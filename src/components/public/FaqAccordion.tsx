@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ChevronDown, Search, SearchX, X } from 'lucide-react';
 
 export type FaqItem = {
@@ -10,11 +10,13 @@ export type FaqItem = {
   category: string | null;
 };
 
-/** Accordion FAQ: cari + filter kategori + <details> aksesibel + empty state. */
+/** Accordion FAQ: cari + filter kategori + <details> aksesibel + empty state.
+ * Single-open mode: opening one closes others.
+ * Live region on answer content for screen readers. */
 export default function FaqAccordion({ faqs }: { faqs: FaqItem[] }) {
   const [q, setQ] = useState('');
   const [cat, setCat] = useState<string | null>(null);
-  const [open, setOpen] = useState<Record<string, boolean>>({});
+  const [open, setOpen] = useState<string | null>(null); // Single-open: store only one open ID
 
   const categories = useMemo(
     () => Array.from(new Set(faqs.map((f) => f.category).filter(Boolean))) as string[],
@@ -34,6 +36,22 @@ export default function FaqAccordion({ faqs }: { faqs: FaqItem[] }) {
     setQ('');
     setCat(null);
   };
+
+  // Single-open toggle: open clicked, close others
+  const toggleOpen = useCallback((id: string) => {
+    setOpen((current) => (current === id ? null : id));
+  }, []);
+
+  // Keyboard support: Escape to close
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent, id: string) => {
+      if (e.key === 'Escape' && open === id) {
+        e.preventDefault();
+        setOpen(null);
+      }
+    },
+    [open]
+  );
 
   return (
     <div className="space-y-4">
@@ -121,18 +139,25 @@ export default function FaqAccordion({ faqs }: { faqs: FaqItem[] }) {
         <div className="space-y-3">
           {filtered.map((f) => {
             const panelId = `faq-panel-${f.id}`;
-            const expanded = open[f.id] ?? false;
+            const expanded = open === f.id;
             return (
               <details
                 key={f.id}
-                onToggle={(e) =>
-                  setOpen((o) => ({ ...o, [f.id]: (e.target as HTMLDetailsElement).open }))
-                }
+                open={expanded}
+                onToggle={(e) => {
+                  const detailsEl = e.target as HTMLDetailsElement;
+                  if (detailsEl.open) {
+                    toggleOpen(f.id);
+                  } else if (open === f.id) {
+                    setOpen(null);
+                  }
+                }}
                 className="group rounded-[var(--radius-lg)] border border-[var(--ink)]/10 bg-[var(--surface)] shadow-sm transition open:shadow-md"
               >
                 <summary
                   aria-expanded={expanded}
                   aria-controls={panelId}
+                  onKeyDown={(e) => handleKeyDown(e, f.id)}
                   className="flex cursor-pointer list-none items-start justify-between gap-3 rounded-[var(--radius-lg)] p-4 font-heading text-base font-bold text-heading transition hover:bg-brand-soft/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand sm:p-5 [&::-webkit-details-marker]:hidden"
                 >
                   <span>
@@ -150,12 +175,15 @@ export default function FaqAccordion({ faqs }: { faqs: FaqItem[] }) {
                     <ChevronDown className="h-4 w-4" />
                   </span>
                 </summary>
-                <p
+                <div
                   id={panelId}
+                  role="region"
+                  aria-live="polite"
+                  aria-labelledby={`faq-summary-${f.id}`}
                   className="whitespace-pre-line px-4 pb-4 text-sm leading-relaxed text-[var(--ink)]/70 sm:px-5 sm:pb-5 sm:text-base"
                 >
                   {f.answer}
-                </p>
+                </div>
               </details>
             );
           })}

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
-import { isAllowedImageUrl } from '@/lib/content-validation';
+import { isAllowedImageUrl } from '@/lib/validation';
 
 const BUCKET = 'library-assets';
 const MAX_SIZE = 10485760; // 10MB — matches supabase/migrations/0004_storage.sql

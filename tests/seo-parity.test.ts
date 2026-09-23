@@ -20,9 +20,9 @@ function jpegSize(buf: Buffer): { w: number; h: number } | null {
       i += 2;
       continue;
     }
-    const len = buf.readUInt16BE(i + 2);
+    const len = (buf as any).readUInt16BE(i + 2);
     if (marker >= 0xc0 && marker <= 0xcf && marker !== 0xc4 && marker !== 0xc8) {
-      return { h: buf.readUInt16BE(i + 5), w: buf.readUInt16BE(i + 7) };
+      return { h: (buf as any).readUInt16BE(i + 5), w: (buf as any).readUInt16BE(i + 7) };
     }
     i += 2 + len;
   }

@@ -1,25 +1,25 @@
-"use client";
+'use client';
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { THEMES, getTheme, themes } from "@/lib/themes";
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { THEMES, getTheme, themes } from '@/lib/themes';
 
 function errMsg(json: unknown): string {
   const err = (json as { error?: { message?: string } | string } | null | undefined)?.error;
-  if (!err) return "Gagal menyimpan tema.";
-  return typeof err === "string" ? err : err.message ?? "Gagal menyimpan tema.";
+  if (!err) return 'Gagal menyimpan tema.';
+  return typeof err === 'string' ? err : (err.message ?? 'Gagal menyimpan tema.');
 }
 
 export default function ThemeSwitcher({ current }: { current: string }) {
   const router = useRouter();
-  const [active, setActive] = useState(current || "emerald");
+  const [active, setActive] = useState(current || 'emerald');
   const [savingId, setSavingId] = useState<string | null>(null);
-  const [msg, setMsg] = useState("");
-  const [err, setErr] = useState("");
+  const [msg, setMsg] = useState('');
+  const [err, setErr] = useState('');
 
   async function onSelect(id: string) {
-    setMsg("");
-    setErr("");
+    setMsg('');
+    setErr('');
     if (!THEMES[id] || getTheme(id).id !== id) {
       setErr(`Tema "${id}" tidak dikenal.`);
       return;
@@ -27,9 +27,9 @@ export default function ThemeSwitcher({ current }: { current: string }) {
     if (id === active) return;
     setSavingId(id);
     try {
-      const res = await fetch("/api/settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ active_theme: id }),
       });
       const json = await res.json();
@@ -48,7 +48,9 @@ export default function ThemeSwitcher({ current }: { current: string }) {
     <section className="grid max-w-4xl gap-4 rounded-2xl border bg-white p-6">
       <div>
         <h2 className="font-semibold">Tema Tampilan</h2>
-        <p className="text-sm text-slate-500">Pilih salah satu dari 5 tema. Perubahan tersimpan otomatis.</p>
+        <p className="text-sm text-slate-500">
+          Pilih salah satu dari 5 tema. Perubahan tersimpan otomatis.
+        </p>
       </div>
       {err && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{err}</p>}
       {msg && <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">{msg}</p>}
@@ -63,7 +65,7 @@ export default function ThemeSwitcher({ current }: { current: string }) {
               disabled={savingId !== null}
               onClick={() => onSelect(t.id)}
               className={`grid gap-2 rounded-xl border p-4 text-left transition disabled:opacity-50 ${
-                isActive ? "border-slate-900 ring-2 ring-slate-900" : "hover:border-slate-400"
+                isActive ? 'border-slate-900 ring-2 ring-slate-900' : 'hover:border-slate-400'
               }`}
             >
               <span className="flex items-center justify-between gap-2">
@@ -77,22 +79,26 @@ export default function ThemeSwitcher({ current }: { current: string }) {
               <span className="text-xs text-slate-500">{t.description}</span>
               <span className="mt-1 flex gap-1.5">
                 <span
-                  title="brand"
+                  role="img"
+                  aria-label={`Warna brand: ${t.tokens.brand}`}
                   className="h-6 w-6 rounded-full border"
                   style={{ backgroundColor: t.tokens.brand }}
                 />
                 <span
-                  title="accent"
+                  role="img"
+                  aria-label={`Warna accent: ${t.tokens.accent}`}
                   className="h-6 w-6 rounded-full border"
                   style={{ backgroundColor: t.tokens.accent }}
                 />
                 <span
-                  title="surface"
+                  role="img"
+                  aria-label={`Warna surface: ${t.tokens.surface}`}
                   className="h-6 w-6 rounded-full border"
                   style={{ backgroundColor: t.tokens.surface }}
                 />
                 <span
-                  title="ink"
+                  role="img"
+                  aria-label={`Warna ink: ${t.tokens.ink}`}
                   className="h-6 w-6 rounded-full border"
                   style={{ backgroundColor: t.tokens.ink }}
                 />
@@ -115,14 +121,14 @@ export default function ThemeSwitcher({ current }: { current: string }) {
                     <span
                       key={s.id}
                       title={s.id}
-                      className={`h-1.5 w-3 rounded-full ${s.enabled ? "" : "opacity-30"}`}
+                      className={`h-1.5 w-3 rounded-full ${s.enabled ? '' : 'opacity-30'}`}
                       style={{ backgroundColor: t.tokens.brand }}
                     />
                   ))}
                 </span>
               </span>
               <span className="text-xs font-medium text-slate-600">
-                {isSaving ? "Menyimpan…" : isActive ? "Tema saat ini" : "Aktifkan tema ini"}
+                {isSaving ? 'Menyimpan…' : isActive ? 'Tema saat ini' : 'Aktifkan tema ini'}
               </span>
             </button>
           );
