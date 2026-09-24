@@ -3,8 +3,13 @@
  * RED-first: asserts sanitizeHtmlContent strips XSS vectors and validateContentFields
  * enforces length caps on settings/pages/articles/testimonials fields.
  */
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, beforeAll } from 'vitest';
 import { CONTENT_LIMITS, sanitizeHtmlContent, validateContentFields } from '@/lib/validation';
+
+// Warm jsdom-backed sanitizer (~3-5s cold require) so per-test 5s timeout isn't flaky under full-suite load.
+beforeAll(async () => {
+  await import('isomorphic-dompurify');
+});
 
 describe('sanitizeHtmlContent strips XSS vectors', () => {
   it('menghapus <script> beserta isinya', () => {
