@@ -42,7 +42,8 @@
     "NEVER redo passed indicators or landed stories US-1/2/3",
     "NEVER re-add exactOptionalPropertyTypes/verbatimModuleSyntax (build risk)",
     "NEVER touch dependabot PRs #19-22, .env files, secrets, node_modules, .agent_memory/, coverage/",
-    "Pre-PR gates must pass: npm run check, npm test, npx playwright test --list (except known 6 ops-ci failures)"
+    "Pre-PR gates must pass: npm run check, npm test, npx playwright test --list (except known 6 ops-ci failures)",
+    "ALL commits to main MUST go via branch → gh pr create → merge (squash); direct push and ruleset bypass are FORBIDDEN — correction recorded after aok-cycle-20260924 (780a068 was direct-pushed; user directive 2026-09-24: PR mechanism is the only path)"
   ],
   "scenarios": { "S1": "not_triggered (no findings <90)", "S2": "not_triggered (no PRs)", "S3": "not_triggered (no iterations; I1 remains prior-cycle Technical Debt)", "S4": "PASS (kernel-adjudicated: HEAD=origin/main=7ab9ee6, check exit 0, no fix/aok-* branches; pre-existing playwright-report/index.html dirt restored pre-commit)", "S5": "PASS (exactly 3 Gherkin issues #23 #24 #25)" },
   "telemetry": { "subagents_spawned": 19, "evaluators": 10, "retries": ["I5 timeout 34m35s→retry ok", "I3 timeout 1h10m→retry ok"], "explore": 3, "plan": 1, "maintainer_quick": 4, "story_writer": 1 },
