@@ -1,6 +1,6 @@
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import FaqAccordion from '@/components/public/FaqAccordion';
-import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect } from 'vitest';
 
 const mockFaqs = [
   {
@@ -30,14 +30,6 @@ const mockFaqs = [
 ];
 
 describe('FaqAccordion', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-  });
-
   it('renders all FAQs with questions and answers', () => {
     render(<FaqAccordion faqs={mockFaqs} />);
 
@@ -91,18 +83,22 @@ describe('FaqAccordion', () => {
     await waitFor(() => expect(firstQuestion).toHaveAttribute('open'));
     expect(secondQuestion).not.toHaveAttribute('open');
 
-    // Click second - should close first and open second
+    // Click second - should close first and open second (toggle event is a macrotask)
     fireEvent.click(screen.getByText('Berapa lama masa pinjam?'));
-    await waitFor(() => expect(secondQuestion).toHaveAttribute('open'));
-    expect(firstQuestion).not.toHaveAttribute('open');
+    await waitFor(() => {
+      expect(secondQuestion).toHaveAttribute('open');
+      expect(firstQuestion).not.toHaveAttribute('open');
+    });
   });
 
   it('closes open FAQ on Escape key', async () => {
     render(<FaqAccordion faqs={mockFaqs} />);
 
     const firstQuestion = screen.getByText('Bagaimana cara pinjam buku?').closest('details');
+    const summary = firstQuestion!.querySelector('summary');
     fireEvent.click(screen.getByText('Bagaimana cara pinjam buku?'));
-    await waitFor(() => expect(firstQuestion).toHaveAttribute('open'));
+    // toggle event is a macrotask; wait for React state (aria-expanded) before Escape
+    await waitFor(() => expect(summary).toHaveAttribute('aria-expanded', 'true'));
 
     fireEvent.keyDown(firstQuestion!, { key: 'Escape' });
     await waitFor(() => expect(firstQuestion).not.toHaveAttribute('open'));
