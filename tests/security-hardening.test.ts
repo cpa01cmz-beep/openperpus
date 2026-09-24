@@ -5,8 +5,13 @@
  */
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { describe, expect, it, vi, beforeEach, beforeAll } from 'vitest';
 import { sanitizeHtmlContent } from '@/lib/validation';
+
+// Warm jsdom-backed sanitizer (~3-5s cold require) so per-test 5s timeout isn't flaky under full-suite load.
+beforeAll(async () => {
+  await import('isomorphic-dompurify');
+});
 
 function src(rel: string): string {
   return readFileSync(resolve(process.cwd(), rel), 'utf8');

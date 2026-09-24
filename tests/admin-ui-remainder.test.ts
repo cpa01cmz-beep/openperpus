@@ -18,7 +18,7 @@ describe('admin UI remainder — server pagination', () => {
   ];
   for (const [file, api] of lists) {
     it(`${file} kirim page param ke ${api}`, () => {
-      const src = read(file);
+      const src = read(file) + (file.includes('/konten/') ? read('src/lib/konten-api.ts') : '');
       expect(src.includes('page: String(page)'), `${file} harus kirim page param`).toBe(true);
       expect(src.includes('totalPages'), `${file} harus baca totalPages`).toBe(true);
       expect(src.includes('<Pagination'), `${file} harus render Pagination`).toBe(true);

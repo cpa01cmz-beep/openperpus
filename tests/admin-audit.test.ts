@@ -232,7 +232,7 @@ describe('S-admin-audit return audit + logs metadata', () => {
 
   it('return route audit is non-best-effort (retry + log, no silent swallow)', () => {
     const src =
-      read('src/app/api/loans/[id]/return/route.ts') + '\n' + read('src/lib/loans-return.ts');
+      read('src/app/api/loans/[id]/return/route.ts') + '\n' + read('src/lib/legacyReturn.ts');
     expect(src.includes('best-effort'), 'S-AUDIT RED: route still swallows audit silently').toBe(
       false
     );

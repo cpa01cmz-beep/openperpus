@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireStaff, jsonError, addDaysISO, parsePaging } from '@/lib/supabase/auth';
-import { returnLoan, extendLoan } from '@/lib/loans-return';
+import { returnLoan, extendLoan, getFineRate } from '@/lib/loans-return';
 import { sanitizeIlike } from '@/lib/search';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
@@ -14,7 +14,7 @@ import { createLogger, requestIdFromHeaders } from '@/lib/logger';
  * POST /api/loans { member_id, book_id, borrowed_at?, due_at?, notes? }
  *   -> due auto +14 hari, stok_available -1 (guard >0)
  * PUT /api/loans?id= { action:"return", returned_at?, notes? }
- *   -> denda otomatis Rp1000/hari + stok +1 + row fines bila denda >0
+ *   -> denda otomatis tarif library_settings/hari (default Rp1000) + stok +1 + row fines bila denda >0
  * PUT /api/loans?id= { action:"extend", days? } -> due_at += N hari (1..90).
  * STATE-MACHINE (transisi legal, ilegal -> 409/422):
  *   return: borrowed|overdue -> returned|lost (sudah returned/lost -> 409).
@@ -61,13 +61,17 @@ export async function GET(req: Request) {
   const memberId = (sp.get('member_id') ?? '').trim();
   const overdue = sp.get('overdue');
 
+  // Tarif denda dari library_settings (fallback FINE_PER_DAY) — jangan hardcode 1000.
+  // Telat pakai EPOCH/86400 (hari penuh); EXTRACT(DAY) salah utk telat >31 hari.
+  const fineRate = await getFineRate(supabase);
+
   let query = supabase
     .from('loans')
     .select(
       '*, members(id,member_code), books(id,title,slug), ' +
         "CASE WHEN status IN ('borrowed','overdue') AND due_at < NOW() THEN true ELSE false END AS is_overdue, " +
         "CASE WHEN status IN ('borrowed','overdue') AND due_at < NOW() " +
-        'THEN GREATEST(EXTRACT(DAY FROM (NOW() - due_at))::int, 0) * 1000 ELSE 0 END AS fine_preview',
+        `THEN GREATEST((EXTRACT(EPOCH FROM (NOW() - due_at)) / 86400)::int, 0) * ${fineRate} ELSE 0 END AS fine_preview`,
       { count: 'exact' }
     )
     .order('borrowed_at', { ascending: false })

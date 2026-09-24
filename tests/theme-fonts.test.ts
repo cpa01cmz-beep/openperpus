@@ -75,7 +75,10 @@ describe('T-FONT-SPLIT: layout.tsx attaches max 2 font families per active theme
   it('preserves display:swap on every font loader', () => {
     const src = readLayout();
     const hits = src.match(/display:\s*['"]swap['"]/g) ?? [];
-    expect(hits.length, `expected 8 display:swap loaders, found ${hits.length}`).toBeGreaterThanOrEqual(8);
+    expect(
+      hits.length,
+      `expected 8 display:swap loaders, found ${hits.length}`
+    ).toBeGreaterThanOrEqual(8);
   });
 
   it('gates font variable assembly per theme.id (conditional, max 2 per render)', () => {
@@ -83,19 +86,19 @@ describe('T-FONT-SPLIT: layout.tsx attaches max 2 font families per active theme
     // Must branch on theme id — not a single static 8-var className.
     expect(src, 'layout.tsx must gate fonts per theme.id').toMatch(/theme\.id|themeId/);
     expect(src, 'layout.tsx must expose a per-theme font helper').toMatch(
-      /fontVariablesForTheme|themeFontVariables|fontVarsForTheme/,
+      /fontVariablesForTheme|themeFontVariables|fontVarsForTheme/
     );
     // <html> must use the helper, not inline all 8 .variable refs.
     // Anchor on the real JSX tag (a doc comment also mentions <html>).
-    const htmlTag = src.match(/<html lang[\s\S]*?className=\{([^}]*)\}/)?.[0] ?? '';
+    const htmlTag = src.match(/<html\s+lang[\s\S]*?className=\{([^}]*)\}/)?.[0] ?? '';
     expect(htmlTag.length > 0, '<html> must have a dynamic className').toBe(true);
     expect(htmlTag, '<html> className must call the per-theme helper').toMatch(
-      /fontVariablesForTheme|themeFontVariables|fontVarsForTheme/,
+      /fontVariablesForTheme|themeFontVariables|fontVarsForTheme/
     );
     const inlineVars = htmlTag.match(/\.variable/g) ?? [];
     expect(
       inlineVars.length,
-      `<html> className inlines ${inlineVars.length} .variable refs, want max 2`,
+      `<html> className inlines ${inlineVars.length} .variable refs, want max 2`
     ).toBeLessThanOrEqual(2);
   });
 
@@ -107,16 +110,17 @@ describe('T-FONT-SPLIT: layout.tsx attaches max 2 font families per active theme
       expect(idx, `layout.tsx must have a branch for theme '${themeId}'`).toBeGreaterThanOrEqual(0);
       const window = src.slice(idx, idx + 600);
       for (const ident of pair) {
-        expect(window, `'${themeId}' branch must attach ${ident}.variable (${VAR_IDENT[ident]})`).toContain(
-          `${ident}.variable`,
-        );
+        expect(
+          window,
+          `'${themeId}' branch must attach ${ident}.variable (${VAR_IDENT[ident]})`
+        ).toContain(`${ident}.variable`);
       }
       const varRefs = window.match(/[a-zA-Z]+\.variable/g) ?? [];
       // First 2 refs in the branch window must be the pair (allow trailing code after).
       const branchRefs = varRefs.slice(0, 2);
       expect(
         branchRefs.sort(),
-        `'${themeId}' branch must attach exactly 2 vars, found [${branchRefs.join(', ')}]`,
+        `'${themeId}' branch must attach exactly 2 vars, found [${branchRefs.join(', ')}]`
       ).toEqual([...pair].sort().map((p) => `${p}.variable`));
     }
   });

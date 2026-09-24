@@ -61,3 +61,6 @@ opencode.json.bak
 
 # github workflows (local only, token without workflow scope)
 .github/workflows/
+
+# test coverage output
+coverage/

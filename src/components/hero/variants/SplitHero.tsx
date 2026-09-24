@@ -10,7 +10,7 @@ import type { HeroProps } from './heroProps';
 /** SplitHero: same carousel + fallback, split text-left / image-right. Uses var tokens. */
 export default function SplitHero({ banners, siteName, tagline }: HeroProps) {
   const total = banners.length;
-  const { idx, setIdx, go, setPaused } = useHeroCarousel(total);
+  const { idx, setIdx, go, setPaused, transitioning, handleTabKeyDown } = useHeroCarousel(total);
 
   if (total === 0) return <HeroFallback siteName={siteName} tagline={tagline} />;
 
@@ -21,6 +21,7 @@ export default function SplitHero({ banners, siteName, tagline }: HeroProps) {
     <section
       aria-label="Sorotan perpustakaan"
       aria-roledescription="carousel"
+      aria-busy={transitioning}
       className="grid overflow-hidden rounded-[var(--radius-lg)] bg-brand-strong text-white shadow-[var(--shadow-md)] lg:grid-cols-2"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
@@ -70,9 +71,12 @@ export default function SplitHero({ banners, siteName, tagline }: HeroProps) {
                   key={b.id}
                   type="button"
                   role="tab"
+                  id={`split-tab-${b.id}`}
                   aria-selected={i === idx}
+                  aria-controls={`split-panel-${b.id}`}
                   aria-label={`Banner ${i + 1}: ${b.title}`}
                   onClick={() => setIdx(i)}
+                  onKeyDown={(e) => handleTabKeyDown(e, i)}
                   className="flex min-h-[44px] min-w-[44px] items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   <span
@@ -93,6 +97,9 @@ export default function SplitHero({ banners, siteName, tagline }: HeroProps) {
           i > 1 && i !== idx ? null : (
             <div
               key={b.id}
+              role="tabpanel"
+              id={`split-panel-${b.id}`}
+              aria-labelledby={`split-tab-${b.id}`}
               aria-hidden={i !== idx}
               className={`absolute inset-0 transition-opacity duration-700 ${
                 i === idx ? 'opacity-100' : 'pointer-events-none opacity-0'

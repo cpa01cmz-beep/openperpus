@@ -1,4 +1,5 @@
 import { createClient } from './server';
+import { normalizeRole } from '@/lib/auth';
 
 export type StaffRole = 'admin' | 'librarian';
 
@@ -12,8 +13,12 @@ export { FINE_PER_DAY, calcFine, addDaysISO } from '@/lib/finecalc';
 export { parsePaging } from '@/lib/paging';
 
 /**
- * Guard API: pastikan ada user login + profiles.role termasuk allowedRoles.
+ * Guard API kanonis (SATU lapisan guard role aplikasi — docs/architecture.md §4):
+ * pastikan ada user login + profiles.role termasuk allowedRoles.
  * roles mengikuti migrasi 0001: 'admin' | 'librarian' | 'member'.
+ * Perbandingan lewat normalizeRole() (lib/auth) — semantik role DB dan
+ * label Indonesia dibandingkan di ruang yang sama; perilaku identik untuk
+ * ketiga nilai CHECK 0001 (admin/librarian/member).
  * Mengembalikan { supabase, user, profile } jika lolos,
  * atau { errorResponse } jika gagal (langsung return dari route).
  */
@@ -39,7 +44,9 @@ export async function requireStaff(allowedRoles: StaffRole[] = ['admin', 'librar
     return { errorResponse: jsonError('FORBIDDEN', 'Profil tidak ditemukan.', 403) };
   }
 
-  if (!allowedRoles.includes((profile as { role: string }).role as StaffRole)) {
+  const allowed = allowedRoles.map(normalizeRole);
+  const role = normalizeRole((profile as { role: string }).role);
+  if (!allowed.includes(role)) {
     return { errorResponse: jsonError('FORBIDDEN', 'Butuh peran admin/librarian.', 403) };
   }
 

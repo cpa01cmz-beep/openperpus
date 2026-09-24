@@ -143,7 +143,9 @@ describe('S-roi3 return single-source', () => {
   });
 
   it('RETURN-SINGLE-03 stok clamp dan denda konsisten di semua jalur', async () => {
-    const helperSrc = read('src/lib/loans-return.ts');
+    // Modular split: loans-return.ts kini facade re-export; clamp + fines insert
+    // hidup di legacyReturn.ts (dipakai returnLoan saat RPC absent).
+    const helperSrc = read('src/lib/legacyReturn.ts');
     expect(helperSrc, 'RED: helper must own Math.min stock clamp').toContain('Math.min');
     expect(helperSrc, 'RED: helper must own fines insert').toMatch(/from\(['"]fines['"]\)/);
     const { returnLoan } = (await import('@/lib/loans-return')) as unknown as {

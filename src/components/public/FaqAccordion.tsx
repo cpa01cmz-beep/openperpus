@@ -135,6 +135,18 @@ export default function FaqAccordion({ faqs }: { faqs: FaqItem[] }) {
         )}
       </p>
 
+      {(q || cat) && (
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={reset}
+            className="inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-lg)] bg-brand px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          >
+            Atur ulang filter
+          </button>
+        </div>
+      )}
+
       {filtered.length > 0 ? (
         <div className="space-y-3">
           {filtered.map((f) => {
@@ -144,6 +156,7 @@ export default function FaqAccordion({ faqs }: { faqs: FaqItem[] }) {
               <details
                 key={f.id}
                 open={expanded}
+                onKeyDown={(e) => handleKeyDown(e, f.id)}
                 onToggle={(e) => {
                   const detailsEl = e.target as HTMLDetailsElement;
                   if (detailsEl.open) {
@@ -157,7 +170,6 @@ export default function FaqAccordion({ faqs }: { faqs: FaqItem[] }) {
                 <summary
                   aria-expanded={expanded}
                   aria-controls={panelId}
-                  onKeyDown={(e) => handleKeyDown(e, f.id)}
                   className="flex cursor-pointer list-none items-start justify-between gap-3 rounded-[var(--radius-lg)] p-4 font-heading text-base font-bold text-heading transition hover:bg-brand-soft/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand sm:p-5 [&::-webkit-details-marker]:hidden"
                 >
                   <span>
@@ -199,15 +211,6 @@ export default function FaqAccordion({ faqs }: { faqs: FaqItem[] }) {
               ? 'Daftar pertanyaan akan muncul di sini setelah diisi pustakawan.'
               : 'Coba kata kunci lain atau ubah kategori yang dipilih.'}
           </p>
-          {(q || cat) && (
-            <button
-              type="button"
-              onClick={reset}
-              className="mt-4 inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-lg)] bg-brand px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-            >
-              Atur ulang filter
-            </button>
-          )}
         </div>
       )}
     </div>

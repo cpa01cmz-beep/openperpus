@@ -6,6 +6,15 @@ import { sanitizeIlike } from '@/lib/search';
 const ROOT = process.cwd();
 const read = (p: string) => readFileSync(join(ROOT, p), 'utf8');
 
+/** tsconfig.json is JSONC (allows // comments) — strip them before JSON.parse. */
+function parseJsonc(raw: string): unknown {
+  const stripped = raw
+    .split('\n')
+    .filter((line) => !line.trim().startsWith('//'))
+    .join('\n');
+  return JSON.parse(stripped);
+}
+
 function adminHasRawImg(): string[] {
   const hits: string[] = [];
   const walk = (dir: string) => {
@@ -50,7 +59,7 @@ function rubricScore(): { score: number; notes: string[] } {
     score -= 10;
     notes.push('layout missing openGraph/canonical');
   }
-  const ts = JSON.parse(read('tsconfig.json')) as { compilerOptions?: Record<string, unknown> };
+  const ts = parseJsonc(read('tsconfig.json')) as { compilerOptions?: Record<string, unknown> };
   const flags = [
     'noUncheckedIndexedAccess',
     'noUnusedLocals',
@@ -167,7 +176,7 @@ describe('Wave2 RED probes', () => {
   });
 
   it('S-tool tsconfig has 5 strict flags', () => {
-    const ts = JSON.parse(read('tsconfig.json')) as { compilerOptions?: Record<string, unknown> };
+    const ts = parseJsonc(read('tsconfig.json')) as { compilerOptions?: Record<string, unknown> };
     const flags = [
       'noUncheckedIndexedAccess',
       'noUnusedLocals',

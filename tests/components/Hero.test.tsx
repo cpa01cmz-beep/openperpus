@@ -17,7 +17,11 @@ vi.mock('next/dynamic', () => ({
         );
       }
       return (
-        <section data-testid="hero-carousel" aria-label="Sorotan perpustakaan">
+        <section
+          data-testid="hero-carousel"
+          aria-label="Sorotan perpustakaan"
+          aria-roledescription="carousel"
+        >
           <div data-testid="hero-banner">
             <h2>{banners[0].title}</h2>
             {banners[0].subtitle && <p>{banners[0].subtitle}</p>}
@@ -64,7 +68,11 @@ vi.mock('@/components/hero/variants/CenteredHero', () => ({
       );
     }
     return (
-      <section data-testid="hero-carousel" aria-label="Sorotan perpustakaan">
+      <section
+        data-testid="hero-carousel"
+        aria-label="Sorotan perpustakaan"
+        aria-roledescription="carousel"
+      >
         <div data-testid="hero-banner">
           <h2>{banners[0].title}</h2>
           {banners[0].subtitle && <p>{banners[0].subtitle}</p>}
