@@ -157,7 +157,9 @@ describe('S-a11y DataTable dynamic captions', () => {
     'src/app/admin/kategori/page.tsx': 'Daftar kategori',
     'src/app/admin/rak/page.tsx': 'Daftar rak',
     'src/app/admin/banner/page.tsx': 'Daftar banner',
-    'src/app/admin/konten/page.tsx': 'Daftar konten',
+    'src/app/admin/konten/PagesTab.tsx': 'Daftar konten',
+    'src/app/admin/konten/FaqsTab.tsx': 'Daftar konten',
+    'src/app/admin/konten/TestimonialsTab.tsx': 'Daftar konten',
   };
   it.each(Object.keys(files))('%s passes dynamic caption to DataTable', (f) => {
     const s = read(f);
