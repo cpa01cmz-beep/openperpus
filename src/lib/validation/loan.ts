@@ -11,6 +11,10 @@ function isUuid(v: unknown): boolean {
 
 const LOAN_STATUSES = ['borrowed', 'returned', 'overdue', 'lost'] as const;
 
+// ponytail: limit hardcode 2 — kalau admin perlu atur via UI, tambah kolom
+// library_settings.max_extensions (migrasi 0020) lalu baca dari settings.
+export const MAX_EXTEND_COUNT = 2;
+
 export function validateLoan(l: Record<string, unknown>, partial = false): string | null {
   if (!partial || l.book_id !== undefined) {
     if (!isUuid(l.book_id)) return 'book_id wajib UUID valid.';

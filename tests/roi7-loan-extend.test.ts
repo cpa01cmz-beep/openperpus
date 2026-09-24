@@ -25,8 +25,11 @@ function setGlobal(mock: MockSupabase) {
   (globalThis as unknown as { __mockSupabase: unknown }).__mockSupabase = mock;
 }
 
+type ExtendFlowStats = { rpc: number; updates: number };
+
 function setExtendFlowMock(opts: { loan: Record<string, unknown>; audit: unknown[] }) {
   const { loan, audit } = opts;
+  const stats: ExtendFlowStats = { rpc: 0, updates: 0 };
   const from = vi.fn((table: string) => {
     if (table === 'loans') {
       const chain: Record<string, unknown> = {};
@@ -37,6 +40,7 @@ function setExtendFlowMock(opts: { loan: Record<string, unknown>; audit: unknown
       chain.update = (p: Record<string, unknown>) => {
         isUpdate = true;
         payload = p;
+        stats.updates += 1;
         return chain;
       };
       chain.single = async () => {
@@ -46,12 +50,26 @@ function setExtendFlowMock(opts: { loan: Record<string, unknown>; audit: unknown
       return chain;
     }
     if (table === 'activity_logs') {
-      return {
-        insert: async (row: unknown) => {
-          audit.push(row);
-          return { error: null };
-        },
+      // Count-query support: select('id', {count:'exact', head:true}).eq()... thenable.
+      const filters: Record<string, unknown> = {};
+      const chain: Record<string, unknown> = {};
+      chain.select = () => chain;
+      chain.eq = (col: string, val: unknown) => {
+        filters[col] = val;
+        return chain;
       };
+      chain.insert = async (row: unknown) => {
+        audit.push(row);
+        return { error: null };
+      };
+      chain.then = (resolve: (v: unknown) => void) => {
+        const matched = audit.filter((r) => {
+          const row = r as Record<string, unknown>;
+          return Object.entries(filters).every(([k, v]) => row[k] === v);
+        });
+        resolve({ count: matched.length, error: null });
+      };
+      return chain;
     }
     return {
       select: () => ({ eq: () => ({ single: async () => ({ data: null, error: null }) }) }),
@@ -60,6 +78,7 @@ function setExtendFlowMock(opts: { loan: Record<string, unknown>; audit: unknown
 
   const rpc = vi.fn(async (fn: string, params: Record<string, unknown>) => {
     if (fn === 'extend_loan') {
+      stats.rpc += 1;
       const { p_loan_id, p_days } = params as { p_loan_id: string; p_days: number };
       if (p_loan_id === loan.id) {
         // Check for returned/lost status - should return 409
@@ -87,6 +106,7 @@ function setExtendFlowMock(opts: { loan: Record<string, unknown>; audit: unknown
     from,
     rpc,
   });
+  return stats;
 }
 
 describe('S-roi7 extend loan 1-klik', () => {
@@ -276,5 +296,83 @@ describe('S-roi7 extend loan 1-klik', () => {
     expect(src).toMatch(/\.rpc\(['"]extend_loan['"]/);
     expect(src).toMatch(/42883|PGRST202/);
     expect(src).toMatch(/fallback|optimistic-lock|catch/);
+  });
+
+  // --- US-1: batas maksimum perpanjangan (RED first) ---
+
+  it('US1-01 perpanjangan ke-3 melewati batas (max=2) -> 409 CONFLICT, due_at & denda tak berubah', async () => {
+    const { extendLoan } = (await import('@/lib/loans-return')) as unknown as {
+      extendLoan: (args: Record<string, unknown>) => Promise<Response>;
+    };
+    const { createClient } = await import('@/lib/supabase/server');
+    const due = new Date('2026-02-10T00:00:00.000Z');
+    const loan: Record<string, unknown> = {
+      id: 'L-BUDI',
+      status: 'borrowed',
+      due_at: due.toISOString(),
+      fine_amount: 5000,
+      book_id: BID,
+      member_id: MID,
+    };
+    // Given: pinjaman Budi sudah diperpanjang 2 kali (audit loans.extend).
+    const audit: unknown[] = Array.from({ length: 2 }, (_, i) => ({
+      user_id: 'U-ADMIN',
+      action: 'loans.extend',
+      entity_type: 'loans',
+      entity_id: 'L-BUDI',
+      metadata: { seq: i + 1 },
+    }));
+    const stats = setExtendFlowMock({ loan, audit });
+    const supabase = (createClient as unknown as () => unknown)();
+
+    const res = await extendLoan({ supabase, id: 'L-BUDI', userId: 'U-ADMIN', days: 7 });
+
+    expect(res.status, 'RED: extend ke-3 di atas batas max=2 harus 409').toBe(409);
+    const j = (await res.json()) as { error: { code: string; message: string } };
+    expect(j.error.code).toBe('CONFLICT');
+    expect(j.error.message).toMatch(/batas.*perpanjangan/i);
+    expect(j.error.message).toMatch(/tercapai|maksimum|maksimal/i);
+
+    expect(loan.due_at, 'RED: due_at tidak boleh berubah saat 409').toBe(due.toISOString());
+    expect(loan.fine_amount, 'RED: saldo denda tidak boleh berubah saat 409').toBe(5000);
+    expect(stats.updates, 'RED: tidak boleh ada update loans').toBe(0);
+    expect(stats.rpc, 'RED: tidak boleh ada pemanggilan RPC extend').toBe(0);
+    expect(
+      audit.filter((r) => (r as { action: string }).action === 'loans.extend'),
+      'RED: tidak boleh ada audit extend baru'
+    ).toHaveLength(2);
+  });
+
+  it('US1-02 perpanjangan pertama di bawah batas -> 200, due_at maju, hitungan perpanjangan jadi 1', async () => {
+    const { extendLoan } = (await import('@/lib/loans-return')) as unknown as {
+      extendLoan: (args: Record<string, unknown>) => Promise<Response>;
+    };
+    const { createClient } = await import('@/lib/supabase/server');
+    const due = new Date('2026-02-10T00:00:00.000Z');
+    const loan: Record<string, unknown> = {
+      id: 'L-SARI',
+      status: 'borrowed',
+      due_at: due.toISOString(),
+      fine_amount: 0,
+      book_id: BID,
+      member_id: MID,
+    };
+    // Given: pinjaman Sari belum pernah diperpanjang.
+    const audit: unknown[] = [];
+    setExtendFlowMock({ loan, audit });
+    const supabase = (createClient as unknown as () => unknown)();
+
+    const res = await extendLoan({ supabase, id: 'L-SARI', userId: 'U-ADMIN', days: 7 });
+
+    expect(res.status).toBe(200);
+    const j = (await res.json()) as { data: { due_at: string; extension_count?: number } };
+    expect(new Date(j.data.due_at).getTime() - due.getTime(), 'RED: due_at maju 7 hari').toBe(
+      7 * 86400000
+    );
+    expect(
+      audit.filter((r) => (r as { action: string }).action === 'loans.extend'),
+      'RED: hitungan perpanjangan menjadi 1'
+    ).toHaveLength(1);
+    expect(j.data.extension_count, 'RED: respons memuat extension_count = 1').toBe(1);
   });
 });

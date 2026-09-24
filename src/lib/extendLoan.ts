@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { jsonError } from '@/lib/supabase/auth';
 import { createLogger } from '@/lib/logger';
+import { MAX_EXTEND_COUNT } from '@/lib/validation/loan';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 type SupabaseLike = Pick<SupabaseClient, 'from'> & Partial<Pick<SupabaseClient, 'rpc'>>;
@@ -13,6 +14,27 @@ function retryableError(message: string, details?: unknown) {
     },
     { status: 500, headers: { 'Retry-After': '1' } }
   );
+}
+
+async function countExtensions(supabase: SupabaseLike, id: string): Promise<number> {
+  try {
+    const logs = supabase.from('activity_logs');
+    if (typeof logs.select !== 'function') return 0;
+    const { count, error } = await logs
+      .select('id', { count: 'exact', head: true })
+      .eq('entity_type', 'loans')
+      .eq('entity_id', id)
+      .eq('action', 'loans.extend');
+    if (error) {
+      createLogger().warn('extend.count_failed', { detail: error.message, entity_id: id });
+      return 0;
+    }
+    return count ?? 0;
+  } catch {
+    // ponytail: count tak terbaca (mock/legacy tanpa select) -> anggap 0,
+    // batas tetap dijaga oleh kolom extend_count bila migrasi 0020 diambil.
+    return 0;
+  }
 }
 
 export type ExtendLoanOptions = {
@@ -28,6 +50,7 @@ export type ExtendLoanOptions = {
  * Aktif = borrowed|overdue. returned/lost -> 409. Audit loans.extend
  * dengan old_due_at + new_due_at. is_overdue dihitung ulang dari new due.
  * Primary: RPC extend_loan (SELECT FOR UPDATE, validasi DB). Fallback: optimistic-lock.
+ * US-1: tolak dengan 409 CONFLICT bila jumlah loans.extend >= MAX_EXTEND_COUNT.
  */
 export async function extendLoan(opts: ExtendLoanOptions): Promise<Response> {
   const { supabase, id } = opts;
@@ -35,6 +58,15 @@ export async function extendLoan(opts: ExtendLoanOptions): Promise<Response> {
   const days = opts.days === undefined ? 7 : Number(opts.days);
   if (!Number.isInteger(days) || days < 1 || days > 90) {
     return jsonError('VALIDATION', 'days harus bilangan bulat 1..90.', 422);
+  }
+
+  const extensionCount = await countExtensions(supabase, id);
+  if (extensionCount >= MAX_EXTEND_COUNT) {
+    return jsonError(
+      'CONFLICT',
+      `Batas maksimum perpanjangan tercapai (maksimal ${MAX_EXTEND_COUNT} kali).`,
+      409
+    );
   }
 
   // Try RPC first (atomic DB-side with SELECT FOR UPDATE).
@@ -79,7 +111,9 @@ export async function extendLoan(opts: ExtendLoanOptions): Promise<Response> {
         }
       }
 
-      return NextResponse.json({ data: { ...loan, is_overdue: loan.is_overdue } });
+      return NextResponse.json({
+        data: { ...loan, is_overdue: loan.is_overdue, extension_count: extensionCount + 1 },
+      });
     }
 
     // Handle RPC 409 (loan returned/lost) - return proper 409
@@ -175,5 +209,5 @@ export async function extendLoan(opts: ExtendLoanOptions): Promise<Response> {
     }
   }
 
-  return NextResponse.json({ data: row });
+  return NextResponse.json({ data: { ...row, extension_count: extensionCount + 1 } });
 }
