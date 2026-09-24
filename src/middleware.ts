@@ -4,16 +4,34 @@ import { updateSession } from '@/lib/supabase/middleware';
 import { checkRateLimit, WRITE_API_LIMIT, WRITE_API_WINDOW_MS } from '@/lib/rate-limit';
 
 /**
- * CSRF guard untuk write /api/*: Origin/Referer harus sama-origin dengan Host.
+ * CSRF guard untuk write /api/*: Origin/Referer harus same-origin LENGKAP
+ * (skema + host + port) terhadap effective request origin — hostname saja
+ * tidak cukup: port beda (https://x:8443 vs :443) dan http vs https sama
+ * host tetap cross-origin dan wajib ditolak.
  * - Browser selalu kirim Origin (atau Referer) pada POST/PUT/PATCH/DELETE.
  * - Null (curl/server-to-server tanpa Origin+Referer) diizinkan agar cronjob
  *   dan non-browser tidak pecah — auth/rate-limit tetap menjadi pertahanan.
  * - Mismatch -> 403 CSRF_MISMATCH tanpa menyentuh Supabase/rate-limit.
  */
-function isSameOrigin(request: NextRequest): boolean {
-  const origin = request.headers.get('origin');
-  const referer = request.headers.get('referer');
-  if (!origin && !referer) return true;
+const DEFAULT_PORTS: Record<string, string> = { 'https:': '443', 'http:': '80' };
+
+/** Kunci origin ternormalisasi: "https://host:443" — port default skema dipaksa eksplisit. */
+function originKey(url: URL): string {
+  const port = url.port || DEFAULT_PORTS[url.protocol] || '';
+  return `${url.protocol}//${url.hostname.toLowerCase()}:${port}`;
+}
+
+/** Effective origin permintaan: x-forwarded-proto/host dulu (CF/proxy), lalu Host + nextUrl. */
+function requestOriginKey(request: NextRequest): string | null {
+  const forwardedProto = request.headers
+    .get('x-forwarded-proto')
+    ?.split(',')[0]
+    ?.trim()
+    .toLowerCase();
+  const scheme =
+    forwardedProto === 'http' || forwardedProto === 'https'
+      ? `${forwardedProto}:`
+      : request.nextUrl.protocol;
   const host =
     (
       request.headers.get('x-forwarded-host') ??
@@ -24,19 +42,31 @@ function isSameOrigin(request: NextRequest): boolean {
       .split(',')[0]
       ?.trim()
       .toLowerCase() ?? '';
-  const hostName = host.split(':')[0] ?? '';
+  if (!host) return null;
+  try {
+    return originKey(new URL(`${scheme}//${host}`));
+  } catch {
+    return null;
+  }
+}
+// ponytail: x-forwarded-port belum dibaca — tambahkan bila di belakang proxy yang me-rewrite port.
+
+function isSameOrigin(request: NextRequest): boolean {
+  const origin = request.headers.get('origin');
+  const referer = request.headers.get('referer');
+  if (!origin && !referer) return true;
+  const target = requestOriginKey(request);
+  if (!target) return false;
   for (const candidate of [origin, referer]) {
     if (!candidate) continue;
     try {
-      const url = new URL(candidate);
-      if (url.hostname.toLowerCase() === hostName) return true;
+      if (originKey(new URL(candidate)) === target) return true;
     } catch {
       return false;
     }
   }
   // Ada header browser tapi tak satu pun cocok -> cross-site.
-  if (origin || referer) return false;
-  return true;
+  return false;
 }
 /**
  * Root middleware (src/middleware.ts).

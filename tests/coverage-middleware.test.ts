@@ -107,6 +107,97 @@ describe('middleware CSRF guard', () => {
   });
 });
 
+describe('middleware CSRF full-origin guard (US-2)', () => {
+  function writeReq(
+    url: string,
+    headers: Record<string, string>
+  ): ReturnType<typeof middleware> extends Promise<infer R> ? R : never {
+    return middleware(new NextRequest(url, { method: 'POST', headers })) as never;
+  }
+
+  it('hostname sama tapi port beda -> 403 dan handler tidak pernah dijalankan', async () => {
+    // Aplikasi https://opac.perpus.go.id:443, browser asal https://opac.perpus.go.id:8443.
+    const res = await writeReq('https://opac.perpus.go.id/api/loans', {
+      origin: 'https://opac.perpus.go.id:8443',
+      host: 'opac.perpus.go.id',
+    });
+    expect(res.status).toBe(403);
+    const j = (await res.json()) as { error?: { code?: string } };
+    expect(j.error?.code).toBe('CSRF_MISMATCH');
+    // Middleware menolak sebelum handler -> tidak ada baris pinjaman yang dibuat.
+    expect(res.headers.get('x-middleware-next')).toBeNull();
+  });
+
+  it('https vs http pada host sama -> 403', async () => {
+    const res = await writeReq('https://opac.perpus.go.id/api/loans', {
+      origin: 'http://opac.perpus.go.id',
+      host: 'opac.perpus.go.id',
+    });
+    expect(res.status).toBe(403);
+    expect(res.headers.get('x-middleware-next')).toBeNull();
+  });
+
+  it('same-origin lengkap (skema+host+port) diteruskan ke handler API', async () => {
+    // Dev: Origin dan Host sama-sama http://localhost:3000.
+    const res = await writeReq('http://localhost:3000/api/loans', {
+      origin: 'http://localhost:3000',
+      host: 'localhost:3000',
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('x-middleware-next')).toBe('1');
+    // Pemeriksaan peran pustakawan tetap di handler (updateSession tidak dipanggil utk /api).
+    expect(session.updateCalls).toBe(0);
+  });
+
+  it('port default ternormalisasi: https:443 == https tanpa port -> allow', async () => {
+    const res = await writeReq('https://opac.perpus.go.id/api/loans', {
+      origin: 'https://opac.perpus.go.id:443',
+      host: 'opac.perpus.go.id:443',
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('x-middleware-next')).toBe('1');
+  });
+
+  it('port default http:80 == http tanpa port -> allow', async () => {
+    const res = await writeReq('http://opac.perpus.go.id/api/loans', {
+      origin: 'http://opac.perpus.go.id:80',
+      host: 'opac.perpus.go.id',
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('x-middleware-next')).toBe('1');
+  });
+
+  it('Origin null + Referer null (non-browser) tetap lolos — pass terdokumentasi', async () => {
+    const res = await writeReq('https://opac.perpus.go.id/api/loans', {
+      host: 'opac.perpus.go.id',
+      'user-agent': 'curl/8.5.0',
+    });
+    expect(res.status).toBe(200);
+    expect(res.headers.get('x-middleware-next')).toBe('1');
+  });
+
+  it('di belakang proxy: x-forwarded-host menentukan effective origin', async () => {
+    // CF Workers: Host = rute workers.dev, Origin = host publik via x-forwarded-host.
+    const ok = await writeReq('https://openperpus.workers.dev/api/loans', {
+      origin: 'https://opac.perpus.go.id',
+      host: 'openperpus.workers.dev',
+      'x-forwarded-host': 'opac.perpus.go.id',
+      'x-forwarded-proto': 'https',
+    });
+    expect(ok.status).toBe(200);
+    expect(ok.headers.get('x-middleware-next')).toBe('1');
+
+    const portClash = await writeReq('https://openperpus.workers.dev/api/loans', {
+      origin: 'https://opac.perpus.go.id:8443',
+      host: 'openperpus.workers.dev',
+      'x-forwarded-host': 'opac.perpus.go.id',
+      'x-forwarded-proto': 'https',
+    });
+    expect(portClash.status).toBe(403);
+    expect(portClash.headers.get('x-middleware-next')).toBeNull();
+  });
+});
+
 describe('middleware write rate limit', () => {
   it('61st write on same key -> 429 with Retry-After', async () => {
     const headers = { 'cf-connecting-ip': '203.0.113.7' };
