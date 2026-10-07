@@ -5,11 +5,6 @@ export default defineConfig({
   css: { postcss: { plugins: [] } },
   test: {
     globals: true,
-    environment: 'node',
-    include: ['tests/**/*.test.ts', 'tests/**/*.test.tsx'],
-    alias: {
-      '@': path.resolve(process.cwd(), 'src'),
-    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov'],
