@@ -1,0 +1,27 @@
+diff --git a/node_modules/@opennextjs/cloudflare/dist/cli/build/bundle-server.js b/node_modules/@opennextjs/cloudflare/dist/cli/build/bundle-server.js
+index b1f6f0d..48e75fc 100644
+--- a/node_modules/@opennextjs/cloudflare/dist/cli/build/bundle-server.js
++++ b/node_modules/@opennextjs/cloudflare/dist/cli/build/bundle-server.js
+@@ -71,6 +71,10 @@ export async function bundleServer(buildOpts, projectOpts) {
+         minifySyntax: projectOpts.minify && !debug,
+         legalComments: "none",
+         metafile: true,
++        // Repo patch (patches/@opennextjs+cloudflare+1.20.9.patch):
++        // esbuild default logLevel "warning" membanjiri log build dgn catatan Next.
++        // "error" tetap exit non-zero utk kegagalan nyata.
++        logLevel: "error",
+         // Next traces files using the default conditions from `nft` (`node`, `require`, `import` and `default`)
+         //
+         // Because we use the `node` platform for this build, the "module" condition is used when no conditions are defined.
+@@ -102,6 +106,11 @@ export async function bundleServer(buildOpts, projectOpts) {
+         ],
+         external: ["./middleware/handler.mjs"],
+         alias: {
++            // Repo patch (patches/@opennextjs+cloudflare+1.20.9.patch):
++            // Next 16 require "sharp" secara statik dari image optimizer.
++            // Workers tak bisa jalankan sharp native & app pakai custom image loader
++            // (tanpa optimizer) — alias ke shim agar bundling lolos.
++            "sharp": path.join(buildOpts.outputDir, "cloudflare-templates/shims/throw.js"),
+             // When @vercel/og is not used, alias the edge entry to a throwing shim so the
+             // dynamic `import("next/dist/compiled/@vercel/og/index.edge.js")` call site
+             // emitted by Next.js does not drag the library (~800 KiB) and its
