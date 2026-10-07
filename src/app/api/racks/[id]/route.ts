@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { requireStaff, jsonError } from '@/lib/supabase/auth';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
-type Ctx = { params: { id: string } };
+type Ctx = { params: Promise<{ id: string }> };
 
 /**
  * GET /api/racks/[id] — publik bila is_active (staf boleh semua).
@@ -35,7 +35,7 @@ async function writeLog(
 function revalidated(): string[] {
   const done: string[] = [];
   try {
-    revalidateTag('racks');
+    revalidateTag('racks', 'max');
     done.push('racks');
   } catch {
     /* abaikan */
@@ -50,9 +50,10 @@ function revalidated(): string[] {
 }
 
 export async function GET(_req: Request, { params }: Ctx) {
+  const { id } = await params;
   const log = createLogger(requestIdFromHeaders(_req.headers));
   const supabase = createClient();
-  const { data, error } = await supabase.from('racks').select('*').eq('id', params.id).single();
+  const { data, error } = await supabase.from('racks').select('*').eq('id', id).single();
   if (error || !data) {
     log.warn('racks.id.not_found', { detail: error?.message ?? 'not-found' });
     return jsonError('NOT_FOUND', 'Rak tidak ditemukan.', 404, { requestId: log.requestId });
@@ -67,6 +68,7 @@ export async function GET(_req: Request, { params }: Ctx) {
 }
 
 export async function PUT(req: Request, { params }: Ctx) {
+  const { id } = await params;
   const log = createLogger(requestIdFromHeaders(req.headers));
   const guard = await requireStaff(['admin', 'librarian']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
@@ -112,7 +114,7 @@ export async function PUT(req: Request, { params }: Ctx) {
   const { data, error } = await supabase
     .from('racks')
     .update(payload)
-    .eq('id', params.id)
+    .eq('id', id)
     .select()
     .single();
   if (error) {
@@ -124,11 +126,12 @@ export async function PUT(req: Request, { params }: Ctx) {
     return jsonError('SAVE_FAILED', 'Gagal mengupdate rak.', 500, { requestId: log.requestId });
   }
 
-  await writeLog(supabase, user?.id, 'racks.update', params.id, payload);
+  await writeLog(supabase, user?.id, 'racks.update', id, payload);
   return NextResponse.json({ data, revalidated: revalidated() });
 }
 
 export async function DELETE(_req: Request, { params }: Ctx) {
+  const { id } = await params;
   const log = createLogger(requestIdFromHeaders(_req.headers));
   const guard = await requireStaff(['admin']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
@@ -140,15 +143,15 @@ export async function DELETE(_req: Request, { params }: Ctx) {
   const { count } = await supabase
     .from('books')
     .select('id', { count: 'exact', head: true })
-    .eq('rack_id', params.id);
+    .eq('rack_id', id);
   if ((count ?? 0) > 0) return jsonError('CONFLICT', 'Rak dipakai buku, tidak bisa dihapus.', 409);
 
-  const { error } = await supabase.from('racks').delete().eq('id', params.id);
+  const { error } = await supabase.from('racks').delete().eq('id', id);
   if (error) {
     log.error('racks.id.delete_failed', { detail: error.message });
     return jsonError('DELETE_FAILED', 'Gagal menghapus rak.', 500, { requestId: log.requestId });
   }
 
-  await writeLog(supabase, user?.id, 'racks.delete', params.id);
+  await writeLog(supabase, user?.id, 'racks.delete', id);
   return NextResponse.json({ message: 'Rak dihapus.', revalidated: revalidated() });
 }

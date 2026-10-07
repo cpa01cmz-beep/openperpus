@@ -13,7 +13,7 @@ import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 function revalidateBanners(): string[] {
   const done: string[] = [];
   try {
-    revalidateTag('banners');
+    revalidateTag('banners', 'max');
     done.push('banners');
   } catch {}
   try {

@@ -1,12 +1,7 @@
 import { notFound } from 'next/navigation';
-import nextDynamic from 'next/dynamic';
+import BookForm from '@/components/admin/BookFormLazy';
 import { createClient } from '@/lib/supabase/server';
 import type { BookInitial, CategoryOption, RackOption } from '@/components/admin/BookForm';
-
-const BookForm = nextDynamic(() => import('@/components/admin/BookForm'), {
-  ssr: false,
-  loading: () => <p className="text-sm text-slate-500">Memuat formulir…</p>,
-});
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -43,9 +38,10 @@ async function fetchRacks() {
   }
 }
 
-export default async function EditBukuPage({ params }: { params: { id: string } }) {
+export default async function EditBukuPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   const supabase = createClient();
-  const { data } = await supabase.from('books').select('*').eq('id', params.id).single();
+  const { data } = await supabase.from('books').select('*').eq('id', id).single();
   if (!data) notFound();
 
   const [categories, racks] = await Promise.all([fetchCategories(), fetchRacks()]);

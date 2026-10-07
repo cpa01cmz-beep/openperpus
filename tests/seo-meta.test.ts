@@ -57,8 +57,9 @@ describe('S-seo-meta', () => {
         true
       );
       expect(
-        src.includes('params.slug'),
-        `S-seo-meta RED: ${p} canonical must use params.slug`
+        // Next 16: params di-await lalu di-destructure (slug) — bentuk lama params.slug juga diterima.
+        src.includes('params.slug') || src.includes('await params'),
+        `S-seo-meta RED: ${p} canonical must use route params`
       ).toBe(true);
     }
   });

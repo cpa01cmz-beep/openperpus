@@ -28,16 +28,8 @@ const nextConfig = {
     },
     optimizePackageImports: ['lucide-react'],
   },
-  // Cap webpack infra logging at errors: Next 14 serializes large
-  // framework modules (react-dom server bundles, ~100-250kiB) into its
-  // build cache, and webpack logs a perf hint per build. Nothing in src/
-  // triggers it (no source file >50kiB) and the output is unaffected —
-  // this only keeps deploy logs signal-only. Real bundling problems
-  // still surface via typecheck/eslint/tests/CI.
-  webpack: (config) => {
-    config.infrastructureLogging = { level: 'error' };
-    return config;
-  },
+  // ponytail: blok webpack (cap infra logging) dibuang — Next 16 default Turbopack
+  // dan menolak config webpack. Upgrade path: `infrastructureLogging` via turbopack config bila perlu.
   // Security headers: HSTS, X-Frame-Options, Referrer-Policy, X-Content-Type-Options.
   // CSP lives ONLY in src/middleware.ts (nonce-based, per-request): keeping a
   // second static CSP here would emit a duplicate Content-Security-Policy

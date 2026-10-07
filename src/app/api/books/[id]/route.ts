@@ -6,11 +6,12 @@ import { isUuid, createWriteLog } from '@/lib/api-utils';
 import { validateBook } from '@/lib/validation';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
-type Ctx = { params: { id: string } };
+type Ctx = { params: Promise<{ id: string }> };
 
 const writeLog = createWriteLog('books');
 
 export async function GET(_req: Request, { params }: Ctx) {
+  const { id } = await params;
   const log = createLogger(requestIdFromHeaders(_req.headers));
   const guard = await requireStaff();
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
@@ -19,7 +20,7 @@ export async function GET(_req: Request, { params }: Ctx) {
   const { data, error } = await supabase
     .from('books')
     .select('*, categories(id,name,slug), racks(code,name,location)')
-    .eq('id', params.id)
+    .eq('id', id)
     .single();
   if (error) {
     log.warn('books.id.not_found', { detail: error.message });
@@ -29,6 +30,7 @@ export async function GET(_req: Request, { params }: Ctx) {
 }
 
 export async function PUT(req: Request, { params }: Ctx) {
+  const { id } = await params;
   const log = createLogger(requestIdFromHeaders(req.headers));
   const guard = await requireStaff(['admin', 'librarian']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
@@ -95,7 +97,7 @@ export async function PUT(req: Request, { params }: Ctx) {
     const { data: cur } = await supabase
       .from('books')
       .select('stock_total,stock_available')
-      .eq('id', params.id)
+      .eq('id', id)
       .single();
     if (!cur) return jsonError('NOT_FOUND', 'Buku tidak ditemukan.', 404);
     const c = cur as { stock_total: number; stock_available: number };
@@ -109,7 +111,7 @@ export async function PUT(req: Request, { params }: Ctx) {
   const { data, error } = await supabase
     .from('books')
     .update(payload)
-    .eq('id', params.id)
+    .eq('id', id)
     .select()
     .single();
   if (error) {
@@ -118,12 +120,13 @@ export async function PUT(req: Request, { params }: Ctx) {
     });
     return jsonError('SAVE_FAILED', 'Gagal mengupdate buku.', 500, { requestId: log.requestId });
   }
-  await writeLog(supabase, user?.id, 'books.update', params.id, payload);
-  revalidateTag('books');
+  await writeLog(supabase, user?.id, 'books.update', id, payload);
+  revalidateTag('books', 'max');
   return NextResponse.json({ data });
 }
 
 export async function DELETE(_req: Request, { params }: Ctx) {
+  const { id } = await params;
   const log = createLogger(requestIdFromHeaders(_req.headers));
   const guard = await requireStaff(['admin']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
@@ -136,15 +139,15 @@ export async function DELETE(_req: Request, { params }: Ctx) {
   const { count } = await supabase
     .from('loans')
     .select('id', { count: 'exact', head: true })
-    .eq('book_id', params.id)
+    .eq('book_id', id)
     .in('status', ['borrowed', 'overdue']);
   if ((count ?? 0) > 0)
     return jsonError('CONFLICT', 'Buku masih dipinjam, tidak bisa dihapus.', 409);
 
-  const { error } = await supabase.from('books').delete().eq('id', params.id);
+  const { error } = await supabase.from('books').delete().eq('id', id);
   if (error)
     return jsonError('DELETE_FAILED', 'Gagal menghapus buku.', 500, { requestId: log.requestId });
-  await writeLog(supabase, user?.id, 'books.delete', params.id);
-  revalidateTag('books');
+  await writeLog(supabase, user?.id, 'books.delete', id);
+  revalidateTag('books', 'max');
   return NextResponse.json({ message: 'Buku dihapus.' });
 }

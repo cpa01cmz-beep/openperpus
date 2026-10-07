@@ -22,7 +22,7 @@ import { getSiteUrl } from '@/lib/site';
 
 export const revalidate = 60;
 
-type Props = { params: { slug: string } };
+type Props = { params: Promise<{ slug: string }> };
 
 export async function generateStaticParams() {
   // Window selaras sitemap (limit 500): detail di luar window tetap OK via ISR (revalidate 60).
@@ -31,12 +31,13 @@ export async function generateStaticParams() {
 }
 
 export async function generateMetadata({ params }: Props) {
-  const [book, settings] = await Promise.all([fetchBookBySlug(params.slug), fetchSettings()]);
+  const { slug } = await params;
+  const [book, settings] = await Promise.all([fetchBookBySlug(slug), fetchSettings()]);
   if (!book) return { title: 'Buku tidak ditemukan' };
   const siteName = settings.name ?? 'Perpustakaan';
   const title = `${book.title} — ${siteName}`;
   const description = book.description?.slice(0, 160) ?? `Detail buku ${book.title}.`;
-  const url = `${getSiteUrl()}/katalog/${params.slug}`;
+  const url = `${getSiteUrl()}/katalog/${slug}`;
   const ogImage = coverSrc(book.cover_url, 640) ?? '/og-default.jpg';
   return {
     title,
@@ -57,7 +58,8 @@ export async function generateMetadata({ params }: Props) {
 
 /** Detail buku: cover, metadata, deskripsi, ketersediaan, CTA reservasi/pinjam. */
 export default async function BookDetailPage({ params }: Props) {
-  const book = await fetchBookBySlug(params.slug);
+  const { slug } = await params;
+  const book = await fetchBookBySlug(slug);
   if (!book) notFound();
 
   const stock = stockState(book);
@@ -109,7 +111,7 @@ export default async function BookDetailPage({ params }: Props) {
         isbn: book.isbn,
         inLanguage: book.language ?? 'id',
         image: cover ?? undefined,
-        url: `${getSiteUrl()}/katalog/${params.slug}`,
+        url: `${getSiteUrl()}/katalog/${slug}`,
         offers: {
           '@type': 'Offer',
           availability:
@@ -139,7 +141,7 @@ export default async function BookDetailPage({ params }: Props) {
             '@type': 'ListItem',
             position: 3,
             name: book.title,
-            item: `${getSiteUrl()}/katalog/${params.slug}`,
+            item: `${getSiteUrl()}/katalog/${slug}`,
           },
         ],
       },

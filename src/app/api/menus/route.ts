@@ -54,7 +54,7 @@ async function writeLog(
 function revalidateMenus(): string[] {
   const done: string[] = [];
   try {
-    revalidateTag('menus');
+    revalidateTag('menus', 'max');
     done.push('menus');
   } catch {
     /* abaikan di runtime tanpa cache-tag */

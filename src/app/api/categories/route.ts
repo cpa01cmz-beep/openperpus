@@ -52,7 +52,7 @@ async function writeLog(
 function revalidateCategories() {
   const done: string[] = [];
   try {
-    revalidateTag('categories');
+    revalidateTag('categories', 'max');
     done.push('categories');
   } catch {
     /* abaikan di runtime tanpa cache-tag */

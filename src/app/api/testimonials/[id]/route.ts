@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { requireStaff, jsonError } from '@/lib/supabase/auth';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
-type Ctx = { params: { id: string } };
+type Ctx = { params: Promise<{ id: string }> };
 
 /**
  * GET /api/testimonials/[id] — publik bila is_active (staf boleh semua).
@@ -41,7 +41,7 @@ async function writeLog(
 function revalidateTestimonials(): string[] {
   const done: string[] = [];
   try {
-    revalidateTag('testimonials');
+    revalidateTag('testimonials', 'max');
     done.push('testimonials');
   } catch {
     /* abaikan */
@@ -56,12 +56,13 @@ function revalidateTestimonials(): string[] {
 }
 
 export async function GET(_req: Request, { params }: Ctx) {
+  const { id } = await params;
   const log = createLogger(requestIdFromHeaders(_req.headers));
   const supabase = createClient();
   const { data, error } = await supabase
     .from('testimonials')
     .select('*')
-    .eq('id', params.id)
+    .eq('id', id)
     .single();
   if (error || !data) {
     log.warn('testimonials.id.not_found', { detail: error?.message ?? 'not-found' });
@@ -78,6 +79,7 @@ export async function GET(_req: Request, { params }: Ctx) {
 }
 
 export async function PUT(req: Request, { params }: Ctx) {
+  const { id } = await params;
   const log = createLogger(requestIdFromHeaders(req.headers));
   const guard = await requireStaff(['admin', 'librarian']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
@@ -141,7 +143,7 @@ export async function PUT(req: Request, { params }: Ctx) {
   const { data, error } = await supabase
     .from('testimonials')
     .update(payload)
-    .eq('id', params.id)
+    .eq('id', id)
     .select()
     .single();
   if (error) {
@@ -151,11 +153,12 @@ export async function PUT(req: Request, { params }: Ctx) {
     });
   }
 
-  await writeLog(supabase, user?.id, 'testimonials.update', params.id, payload);
+  await writeLog(supabase, user?.id, 'testimonials.update', id, payload);
   return NextResponse.json({ data, revalidated: revalidateTestimonials() });
 }
 
 export async function DELETE(_req: Request, { params }: Ctx) {
+  const { id } = await params;
   const log = createLogger(requestIdFromHeaders(_req.headers));
   const guard = await requireStaff(['admin']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
@@ -164,7 +167,7 @@ export async function DELETE(_req: Request, { params }: Ctx) {
     user: { id: string };
   };
 
-  const { error } = await supabase.from('testimonials').delete().eq('id', params.id);
+  const { error } = await supabase.from('testimonials').delete().eq('id', id);
   if (error) {
     log.error('testimonials.id.delete_failed', { detail: error.message });
     return jsonError('DELETE_FAILED', 'Gagal menghapus testimoni.', 500, {
@@ -172,7 +175,7 @@ export async function DELETE(_req: Request, { params }: Ctx) {
     });
   }
 
-  await writeLog(supabase, user?.id, 'testimonials.delete', params.id);
+  await writeLog(supabase, user?.id, 'testimonials.delete', id);
   return NextResponse.json({
     message: 'Testimoni dihapus.',
     revalidated: revalidateTestimonials(),

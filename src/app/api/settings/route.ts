@@ -153,7 +153,7 @@ export async function PUT(req: Request) {
   }
   // Purge settings cache + homepage so the new active_theme renders immediately.
   try {
-    revalidateTag('settings');
+    revalidateTag('settings', 'max');
   } catch {
     /* abaikan */
   }

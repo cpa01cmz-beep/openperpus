@@ -28,7 +28,7 @@ describe('S-admin-perf', () => {
   it('(c) banner edit calls correct revalidate target', () => {
     const src = read('src/app/api/banners/route.ts');
     // Public hero caches under tag "banners" (src/lib/books.ts) with revalidate 60 on "/".
-    expect(src, 'RED: banners API never revalidates banners tag').toMatch(/revalidateTag\(["']banners["']\)/);
+    expect(src, 'RED: banners API never revalidates banners tag').toMatch(/revalidateTag\(["']banners["']\s*(?:,\s*["']max["'])?\)/);
     expect(src, 'RED: banners API never revalidates "/"').toMatch(/revalidatePath\(["']\/["']\)/);
   });
 });
