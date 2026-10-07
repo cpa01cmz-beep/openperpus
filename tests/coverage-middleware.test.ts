@@ -59,8 +59,15 @@ beforeEach(() => {
 });
 
 describe('middleware matcher config', () => {
-  it('covers /admin, /login, /api', () => {
-    expect(config.matcher).toEqual(['/admin/:path*', '/login', '/api/:path*']);
+  it('covers all HTML routes for CSP while still matching /admin, /login, /api', () => {
+    expect(config.matcher).toEqual(['/((?!_next/static|_next/image|favicon.ico).*)']);
+    const re = new RegExp(`^${config.matcher[0]}$`);
+    for (const covered of ['/admin/x', '/login', '/api/books', '/katalog']) {
+      expect(re.test(covered), `${covered} must be covered by matcher`).toBe(true);
+    }
+    for (const excluded of ['/_next/static/chunk.js', '/_next/image', '/favicon.ico']) {
+      expect(re.test(excluded), `${excluded} must be excluded`).toBe(false);
+    }
   });
 });
 

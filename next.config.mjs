@@ -38,35 +38,16 @@ const nextConfig = {
     config.infrastructureLogging = { level: 'error' };
     return config;
   },
-  // Security headers: CSP, HSTS, X-Frame-Options, Referrer-Policy, X-Content-Type-Options
-  // CSP keeps unsafe-inline (Next.js runtime requires it); eval dropped.
-  // TODO(Next 15): Replace 'unsafe-inline' with nonce-based CSP via middleware injection
-  // when migrating to Next.js 15 (middleware can inject nonces into HTML responses).
+  // Security headers: HSTS, X-Frame-Options, Referrer-Policy, X-Content-Type-Options.
+  // CSP lives ONLY in src/middleware.ts (nonce-based, per-request): keeping a
+  // second static CSP here would emit a duplicate Content-Security-Policy
+  // header per response. See buildContentSecurityPolicy() in the middleware.
   async headers() {
     const isProd = process.env.NODE_ENV === 'production';
     return [
       {
         source: '/:path*',
         headers: [
-          // CSP: restrict scripts/styles/fonts to self + Supabase CDN + inline for dev
-          {
-            key: 'Content-Security-Policy',
-            value: isProd
-              ? [
-                  "default-src 'self'",
-                  "script-src 'self' 'unsafe-inline' https://*.supabase.co",
-                  "style-src 'self' 'unsafe-inline' https://*.supabase.co",
-                  "img-src 'self' data: https: blob:",
-                  "font-src 'self' data: https://*.supabase.co",
-                  "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
-                  "object-src 'none'",
-                  "frame-ancestors 'none'",
-                  "base-uri 'self'",
-                  "form-action 'self'",
-                  'upgrade-insecure-requests',
-                ].join('; ')
-              : "default-src 'self' 'unsafe-inline' https: data: blob:; frame-ancestors 'none' object-src 'none'; upgrade-insecure-requests",
-          },
           // HSTS: enforce HTTPS for 1 year (prod only)
           ...(isProd
             ? [

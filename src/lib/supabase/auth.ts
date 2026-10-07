@@ -3,6 +3,28 @@ import { normalizeRole } from '@/lib/auth';
 
 export type StaffRole = 'admin' | 'librarian';
 
+/** Default guard: staf = admin|librarian — mirror public.is_staff() (0002_rls.sql). */
+const STAFF_ROLES: readonly StaffRole[] = ['admin', 'librarian'];
+
+/**
+ * Satu-sumber semantik role: apakah role termasuk allowedRoles di ruang
+ * normalizeRole (admin|pustakawan|anggota). Fail-closed: role null/tak
+ * dikenal ternormalisasi 'anggota' → tidak termasuk staf.
+ */
+function roleAllowed(role: string | null | undefined, allowedRoles: readonly StaffRole[]): boolean {
+  const allowed = allowedRoles.map(normalizeRole);
+  return allowed.includes(normalizeRole(role));
+}
+
+/**
+ * Predikat staf kanonis untuk handler campuran staf-atau-pemilik.
+ * Definisi yang SAMA dengan requireStaff() — cek role inline
+ * (role === 'admin' || role === 'librarian') dilarang di route handler.
+ */
+export function isStaffRole(role: string | null | undefined): boolean {
+  return roleAllowed(role, STAFF_ROLES);
+}
+
 /* SHIM: logika kanonis per-modul (tanpa perubahan perilaku).
  * jsonError -> http-error.ts, slugify -> slug.ts,
  * FINE_PER_DAY/calcFine/addDaysISO -> finecalc.ts, parsePaging -> paging.ts.
@@ -22,7 +44,7 @@ export { parsePaging } from '@/lib/paging';
  * Mengembalikan { supabase, user, profile } jika lolos,
  * atau { errorResponse } jika gagal (langsung return dari route).
  */
-export async function requireStaff(allowedRoles: StaffRole[] = ['admin', 'librarian']) {
+export async function requireStaff(allowedRoles: StaffRole[] = [...STAFF_ROLES]) {
   const { jsonError } = await import('@/lib/http-error');
   const supabase = createClient();
   const {
@@ -44,9 +66,7 @@ export async function requireStaff(allowedRoles: StaffRole[] = ['admin', 'librar
     return { errorResponse: jsonError('FORBIDDEN', 'Profil tidak ditemukan.', 403) };
   }
 
-  const allowed = allowedRoles.map(normalizeRole);
-  const role = normalizeRole((profile as { role: string }).role);
-  if (!allowed.includes(role)) {
+  if (!roleAllowed((profile as { role: string }).role, allowedRoles)) {
     return { errorResponse: jsonError('FORBIDDEN', 'Butuh peran admin/librarian.', 403) };
   }
 

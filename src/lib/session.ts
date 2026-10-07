@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server';
-import { jsonError } from '@/lib/supabase/auth';
+import { jsonError, isStaffRole } from '@/lib/supabase/auth';
 
 /**
  * Shared session retrieval for API routes.
@@ -32,7 +32,7 @@ export async function getSession(): Promise<
     .eq('id', user.id)
     .maybeSingle();
   const role = (profile as { role: string } | null)?.role ?? 'member';
-  const isStaff = role === 'admin' || role === 'librarian';
+  const isStaff = isStaffRole(role);
 
   const { data: member } = await supabase
     .from('members')
