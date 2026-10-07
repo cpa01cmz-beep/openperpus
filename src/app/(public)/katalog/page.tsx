@@ -9,20 +9,15 @@ export const revalidate = 60;
 export async function generateMetadata({
   searchParams,
 }: {
-  searchParams?: SearchParams;
+  searchParams?: Promise<SearchParams>;
 }): Promise<Metadata> {
   const s = await fetchSettings();
+  const sp = (await searchParams) ?? {};
   const siteUrl = getSiteUrl();
   const title = `Katalog Buku — ${s.name ?? 'Perpustakaan'}`;
   const description = `Telusuri koleksi ${s.name ?? 'perpustakaan'} berdasarkan judul, penulis, kategori, dan ketersediaan.`;
   const canonical = `${siteUrl}/katalog`;
-  const hasParams = Boolean(
-    searchParams?.q ||
-    searchParams?.page ||
-    searchParams?.sort ||
-    searchParams?.kategori ||
-    searchParams?.tersedia
-  );
+  const hasParams = Boolean(sp.q || sp.page || sp.sort || sp.kategori || sp.tersedia);
   return {
     title,
     description,
@@ -51,15 +46,16 @@ type SearchParams = {
 };
 
 /** Katalog: server-paginated via searchParams page/per_page (<=24 baris/halaman). */
-export default async function KatalogPage({ searchParams }: { searchParams?: SearchParams }) {
-  const page = Math.max(1, Number(searchParams?.page ?? 1) || 1);
-  const perPage = Math.min(48, Math.max(1, Number(searchParams?.per_page ?? 24) || 24));
-  const q = (searchParams?.q ?? '').trim();
-  const kategori = (searchParams?.kategori ?? '').trim() || undefined;
-  const sortRaw = (searchParams?.sort ?? 'terbaru').trim();
+export default async function KatalogPage({ searchParams }: { searchParams?: Promise<SearchParams> }) {
+  const sp = (await searchParams) ?? {};
+  const page = Math.max(1, Number(sp.page ?? 1) || 1);
+  const perPage = Math.min(48, Math.max(1, Number(sp.per_page ?? 24) || 24));
+  const q = (sp.q ?? '').trim();
+  const kategori = (sp.kategori ?? '').trim() || undefined;
+  const sortRaw = (sp.sort ?? 'terbaru').trim();
   const sort =
     sortRaw === 'judul' || sortRaw === 'rating' || sortRaw === 'stok' ? sortRaw : 'terbaru';
-  const tersedia = searchParams?.tersedia === '1';
+  const tersedia = sp.tersedia === '1';
 
   const [{ books, total }, categories] = await Promise.all([
     fetchBooksPaged({

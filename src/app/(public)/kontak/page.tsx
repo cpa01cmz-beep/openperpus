@@ -68,9 +68,10 @@ const SOCIAL_ICON: Record<string, typeof Facebook> = {
 export default async function KontakPage({
   searchParams,
 }: {
-  searchParams?: { buku?: string | string[] };
+  searchParams?: Promise<{ buku?: string | string[] }>;
 }) {
-  const rawBuku = Array.isArray(searchParams?.buku) ? searchParams.buku[0] : searchParams?.buku;
+  const sp = (await searchParams) ?? {};
+  const rawBuku = Array.isArray(sp.buku) ? sp.buku[0] : sp.buku;
   const buku = rawBuku ? sanitizeIlike(rawBuku) : '';
   const [settings, page, book] = await Promise.all([
     fetchSettings(),

@@ -22,8 +22,9 @@ type Log = {
 export default async function LogsPage({
   searchParams,
 }: {
-  searchParams?: { page?: string; action?: string; entity?: string };
+  searchParams?: Promise<{ page?: string; action?: string; entity?: string }>;
 }) {
+  const sp = (await searchParams) ?? {};
   const supabase = createClient();
   const {
     data: { user },
@@ -52,11 +53,11 @@ export default async function LogsPage({
     );
   }
 
-  const page = Math.max(1, Number(searchParams?.page ?? 1) || 1);
+  const page = Math.max(1, Number(sp.page ?? 1) || 1);
   const from = (page - 1) * PER_PAGE;
   const to = from + PER_PAGE - 1;
-  const actionFilter = (searchParams?.action ?? '').trim();
-  const entityFilter = (searchParams?.entity ?? '').trim();
+  const actionFilter = (sp.action ?? '').trim();
+  const entityFilter = (sp.entity ?? '').trim();
 
   let query = supabase
     .from('activity_logs')
