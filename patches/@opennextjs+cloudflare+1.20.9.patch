@@ -25,3 +25,16 @@ index b1f6f0d..48e75fc 100644
              // When @vercel/og is not used, alias the edge entry to a throwing shim so the
              // dynamic `import("next/dist/compiled/@vercel/og/index.edge.js")` call site
              // emitted by Next.js does not drag the library (~800 KiB) and its
+diff --git a/node_modules/@opennextjs/cloudflare/dist/cli/build/patches/plugins/load-manifest.js b/node_modules/@opennextjs/cloudflare/dist/cli/build/patches/plugins/load-manifest.js
+index b0616a9..78de2b8 100644
+--- a/node_modules/@opennextjs/cloudflare/dist/cli/build/patches/plugins/load-manifest.js
++++ b/node_modules/@opennextjs/cloudflare/dist/cli/build/patches/plugins/load-manifest.js
+@@ -31,7 +31,7 @@ async function getLoadManifestRule(buildOpts) {
+     const { outputDir } = buildOpts;
+     const baseDir = join(outputDir, "server-functions/default", getPackagePath(buildOpts));
+     const dotNextDir = join(baseDir, ".next");
+-    const manifests = await glob(join(dotNextDir, "**/{*-manifest,required-server-files,prefetch-hints}.json"), {
++    const manifests = await glob(join(dotNextDir, "**/{*-manifest,required-server-files,prefetch-hints,preview-props}.json"), {
+         windowsPathsNoEscape: true,
+     });
+     const returnManifests = (await Promise.all(manifests.map(async (manifest) => `
