@@ -42,10 +42,11 @@ describe('ops lint gate (T-O3)', () => {
     }
   });
 
-  it('RED: FlatCompat + next/core-web-vitals preserved', () => {
+  it('RED: next/core-web-vitals + next/typescript preserved (flat import sejak eslint-config-next@16)', () => {
     const config = readConfig();
-    expect(config).toContain('FlatCompat');
+    // eslint-config-next@16 hanya flat config → di-import langsung (tanpa FlatCompat).
     expect(config).toContain('next/core-web-vitals');
+    expect(config).toContain('next/typescript');
   });
 
   it('RED: no-explicit-any is error on src, warn on tests, never off covering src', () => {

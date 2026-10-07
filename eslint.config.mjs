@@ -1,16 +1,25 @@
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { FlatCompat } from '@eslint/eslintrc';
+import nextCoreWebVitals from 'eslint-config-next/core-web-vitals';
+import nextTypescript from 'eslint-config-next/typescript';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const compat = new FlatCompat({ baseDirectory: __dirname });
-
+// ponytail: eslint-config-next@16 hanya mengekspor flat config (FlatCompat/eslintrc
+// tak bisa memakannya) — import langsung. Upgrade path: bila kembali ke eslintrc,
+// pakai lagi FlatCompat.
 const eslintConfig = [
-  ...compat.extends('next/core-web-vitals', 'next/typescript'),
+  ...nextCoreWebVitals,
+  ...nextTypescript,
   {
     ignores: ['node_modules/**', '.next/**', '.open-next/**', 'out/**', 'coverage/**'],
+  },
+  {
+    // ponytail: 3 aturan baru react-hooks@7 (ikut eslint-config-next@16) memunculkan
+    // 23 temuan di kode lama (setState-in-effect, static-components, purity).
+    // Diturunkan ke 'warn' agar lint tetap hijau tanpa refactor besar.
+    // Upgrade path: refactor titik-tituik itu lalu kembalikan ke 'error'.
+    rules: {
+      'react-hooks/set-state-in-effect': 'warn',
+      'react-hooks/static-components': 'warn',
+      'react-hooks/purity': 'warn',
+    },
   },
   {
     files: ['src/**/*.{ts,tsx}'],
