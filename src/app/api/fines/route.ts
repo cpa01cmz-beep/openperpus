@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { jsonError, parsePaging, requireStaff } from '@/lib/supabase/auth';
+import { getSession } from '@/lib/session';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
 /**
@@ -24,32 +25,14 @@ function isUuid(v: unknown): boolean {
 
 export async function GET(req: Request) {
   const log = createLogger(requestIdFromHeaders(req.headers));
-  const supabase = createClient();
-  const {
-    data: { user },
-    error: userErr,
-  } = await supabase.auth.getUser();
-  if (userErr || !user) return jsonError('UNAUTHORIZED', 'Silakan login.', 401);
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .maybeSingle();
-  const role = (profile as { role: string } | null)?.role ?? 'member';
-  const isStaff = role === 'admin' || role === 'librarian';
-
-  const { data: member } = await supabase
-    .from('members')
-    .select('id')
-    .eq('user_id', user.id)
-    .maybeSingle();
-  const ownMemberId = (member as { id: string } | null)?.id ?? null;
+  const s = await getSession();
+  if ('errorResponse' in s) return s.errorResponse;
+  const { supabase, isStaff, memberId } = s.session;
 
   const { sp, page, perPage, from, to } = parsePaging(req.url, 20);
   const status = (sp.get('status') ?? '').trim();
   let memberFilter = (sp.get('member_id') ?? '').trim();
-  if (!isStaff) memberFilter = ownMemberId ?? '__none__';
+  if (!isStaff) memberFilter = memberId ?? '__none__';
 
   if (status && !(STATUSES as readonly string[]).includes(status)) {
     return jsonError('VALIDATION', 'status harus: unpaid|partial|paid|waived.', 422);

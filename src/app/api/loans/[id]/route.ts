@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { requireStaff, jsonError } from '@/lib/supabase/auth';
+import { getSession } from '@/lib/session';
 import { returnLoan, extendLoan } from '@/lib/loans-return';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
@@ -39,12 +40,9 @@ function revalidateLoans(): string[] {
 
 export async function GET(_req: Request, { params }: Ctx) {
   const log = createLogger(requestIdFromHeaders(_req.headers));
-  const supabase = createClient();
-  const {
-    data: { user },
-    error: userErr,
-  } = await supabase.auth.getUser();
-  if (userErr || !user) return jsonError('UNAUTHORIZED', 'Silakan login.', 401);
+  const s = await getSession();
+  if ('errorResponse' in s) return s.errorResponse;
+  const { supabase, userId, isStaff } = s.session;
 
   const { data: loan, error } = await supabase
     .from('loans')
@@ -56,16 +54,9 @@ export async function GET(_req: Request, { params }: Ctx) {
     return jsonError('NOT_FOUND', 'Peminjaman tidak ditemukan.', 404, { requestId: log.requestId });
   }
 
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .maybeSingle();
-  const role = (profile as { role: string } | null)?.role ?? 'member';
-  const isStaff = role === 'admin' || role === 'librarian';
   if (!isStaff) {
     const owner = (loan as { members: { user_id: string } | null }).members?.user_id;
-    if (owner !== user.id) return jsonError('FORBIDDEN', 'Bukan pinjaman milik Anda.', 403);
+    if (owner !== userId) return jsonError('FORBIDDEN', 'Bukan pinjaman milik Anda.', 403);
   }
 
   return NextResponse.json({ data: loan }, { headers: { 'Cache-Control': 'no-store' } });

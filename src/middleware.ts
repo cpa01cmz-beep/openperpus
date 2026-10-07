@@ -69,11 +69,71 @@ function isSameOrigin(request: NextRequest): boolean {
   return false;
 }
 /**
+ * CSP nonce-based (issue #24): satu header CSP per response, dibangun di
+ * middleware agar script-src TANPA 'unsafe-inline' maupun eval di prod.
+ * - Next 14.2 membaca nonce dari REQUEST header content-security-policy
+ *   (lihat app-render: getScriptNonceFromHeader) lalu menambahkan atribut
+ *   nonce pada script inline buatan Next (bootstrap, self.__next_f).
+ * - x-nonce ikut di-set sesuai pola docs Next.js untuk pembacaan via headers().
+ * - Dev memakai kebijakan lama next.config (looser) agar `npm run dev` tetap
+ *   usable; gate pada NODE_ENV.
+ * - Edge-safe (Web Crypto + btoa saja) — aman untuk Cloudflare Workers/OpenNext.
+ */
+const DEV_CSP =
+  "default-src 'self' 'unsafe-inline' https: data: blob:; frame-ancestors 'none' object-src 'none'; upgrade-insecure-requests";
+
+function buildProdCsp(scriptSrc: string): string {
+  return [
+    "default-src 'self'",
+    `script-src ${scriptSrc}`,
+    "style-src 'self' 'unsafe-inline' https://*.supabase.co",
+    "img-src 'self' data: https: blob:",
+    "font-src 'self' data: https://*.supabase.co",
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+    "object-src 'none'",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    'upgrade-insecure-requests',
+  ].join('; ');
+}
+
+/**
+ * /api/docs adalah HTML dari route handler yang tidak bisa menerima nonce
+ * (file src/app/api/** di luar cakupan perubahan ini). Pakai hash statis:
+ * - hash ""           -> <script id="api-reference" ...></script> (konten kosong)
+ * - hash bootstrap    -> window.__OPENAPI__ = ... (snapshot openapi.yaml;
+ *                        ponytail: recompute hash bila openapi.yaml diubah)
+ * font-src ditambah host webfonts Scalar (hanya untuk path ini) karena script
+ * Scalar kini memuat font-nya sendiri.
+ * ponytail: bila route /api/docs diberi nonce sendiri, pola ini bisa dilepas.
+ */
+const DOCS_CSP = buildProdCsp(
+  "'self' https://cdn.jsdelivr.net " +
+    "'sha256-47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=' " +
+    "'sha256-xqy0Wbkb40nzjBQyEJb6IesqywYECKZa7MtRb0r9zQw='"
+).replace(
+  "font-src 'self' data: https://*.supabase.co;",
+  "font-src 'self' data: https://*.supabase.co https://fonts.scalar.com;"
+);
+
+function generateNonce(): string {
+  return btoa(crypto.randomUUID());
+}
+
+/** CSP untuk satu request. Prod: nonce-based, script-src hanya 'self' + nonce + Supabase. */
+export function buildContentSecurityPolicy(nonce: string): string {
+  if (process.env.NODE_ENV === 'development') return DEV_CSP;
+  return buildProdCsp(`'self' 'nonce-${nonce}' https://*.supabase.co`);
+}
+
+/**
  * Root middleware (src/middleware.ts).
  * - Me-refresh sesi Supabase via updateSession() dari @/lib/supabase/middleware.
  * - Redirect /admin/* tanpa session -> /login?next=<path>.
  * - CSRF: Origin/Referer vs Host untuk write /api/* (403 bila mismatch).
  * - Rate-limit write API (POST/PUT/PATCH/DELETE /api/*): 429 + Retry-After bila abusif.
+ * - CSP nonce (issue #24): header CSP per response + forward nonce ke render.
  * - Edge-safe: hanya next/server + @supabase/ssr + Map/Date (tanpa API Node-only),
  *   aman untuk Cloudflare Workers via OpenNext.
  * - Single getUser per hit: user dipakai ulang dari updateSession,
@@ -110,6 +170,7 @@ export async function middleware(request: NextRequest) {
   const isAdmin = pathname === '/admin' || pathname.startsWith('/admin/');
   const isLogin = pathname === '/login' || pathname.startsWith('/login');
   const isApi = pathname === '/api' || pathname.startsWith('/api/');
+  const isDev = process.env.NODE_ENV === 'development';
 
   // Rate-limit + CSRF hanya untuk write API — read (GET/HEAD/OPTIONS) bebas.
   if (isApi) {
@@ -147,10 +208,26 @@ export async function middleware(request: NextRequest) {
         );
       }
     }
+    if (pathname === '/api/docs') {
+      const docsResponse = NextResponse.next();
+      docsResponse.headers.set('Content-Security-Policy', isDev ? DEV_CSP : DOCS_CSP);
+      return docsResponse;
+    }
     return NextResponse.next();
   }
 
-  if (!isAdmin && !isLogin) return NextResponse.next();
+  const nonce = generateNonce();
+  const csp = buildContentSecurityPolicy(nonce);
+  // Next 14.2 app-render mem-parse REQUEST content-security-policy untuk nonce;
+  // x-nonce mengikuti pola dokumentasi Next.js (dibaca via headers() bila perlu).
+  request.headers.set('content-security-policy', csp);
+  request.headers.set('x-nonce', nonce);
+
+  if (!isAdmin && !isLogin) {
+    const response = NextResponse.next({ request });
+    response.headers.set('Content-Security-Policy', csp);
+    return response;
+  }
 
   let sessionResponse: NextResponse;
   let user = null;
@@ -159,7 +236,8 @@ export async function middleware(request: NextRequest) {
     sessionResponse = session.response;
     user = session.user;
   } catch {
-    sessionResponse = NextResponse.next();
+    // { request } agar header CSP/nonce ikut diteruskan ke render.
+    sessionResponse = NextResponse.next({ request });
   }
 
   // 2. Cek sesi untuk kebutuhan redirect — pakai ulang user di atas,
@@ -184,9 +262,12 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  sessionResponse.headers.set('Content-Security-Policy', csp);
   return sessionResponse;
 }
 
 export const config = {
-  matcher: ['/admin/:path*', '/login', '/api/:path*'],
+  // Semua rute HTML butuh CSP (issue #24); kecualikan aset statis yang tidak
+  // pernah jadi dokumen HTML.
+  matcher: ['/((?!_next/static|_next/image|favicon.ico).*)'],
 };

@@ -86,7 +86,8 @@ describe('CSRF origin check (RED)', () => {
 
 describe('CSP + cache headers (RED)', () => {
   it('CSP tanpa unsafe-eval + object-src none + upgrade-insecure-requests', () => {
-    const code = src('next.config.mjs');
+    // CSP pindah dari next.config.mjs ke middleware (nonce, issue #24).
+    const code = src('next.config.mjs') + src('src/middleware.ts');
     expect(code).not.toMatch(/unsafe-eval/);
     expect(code).toMatch(/object-src 'none'/);
     expect(code).toMatch(/upgrade-insecure-requests/);
