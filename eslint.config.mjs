@@ -8,7 +8,15 @@ const eslintConfig = [
   ...nextCoreWebVitals,
   ...nextTypescript,
   {
-    ignores: ['node_modules/**', '.next/**', '.open-next/**', 'out/**', 'coverage/**'],
+    ignores: [
+      'node_modules/**',
+      '.next/**',
+      '.open-next/**',
+      // bundle wrangler dev (worker.js 9MB+) bikin eslint OOM kalau ikut ke-lint
+      '.wrangler/**',
+      'out/**',
+      'coverage/**',
+    ],
   },
   {
     // ponytail: 3 aturan baru react-hooks@7 (ikut eslint-config-next@16) memunculkan
