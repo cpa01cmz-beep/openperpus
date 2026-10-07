@@ -106,6 +106,10 @@ export function fontVariablesForTheme(themeId: string): string {
 
 export const OG_DEFAULT_IMAGE = '/og-default.jpg';
 
+// Nonce-CSP (issue #24) butuh nonce per-request di HTML; ISR/prerender memakai
+// HTML cache yang tidak bisa membawa nonce segar, jadi seluruh route di-SSR.
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   metadataBase: new URL(getSiteUrl()),
   title: {

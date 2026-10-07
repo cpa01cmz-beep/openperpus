@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { revalidatePath, revalidateTag } from 'next/cache';
-import { createClient } from '@/lib/supabase/server';
 import { jsonError } from '@/lib/supabase/auth';
+import { getSession } from '@/lib/session';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
 type Ctx = { params: { id: string } };
@@ -18,20 +18,9 @@ type Ctx = { params: { id: string } };
 
 export async function POST(req: Request, { params }: Ctx) {
   const log = createLogger(requestIdFromHeaders(req.headers));
-  const supabase = createClient();
-  const {
-    data: { user },
-    error: userErr,
-  } = await supabase.auth.getUser();
-  if (userErr || !user) return jsonError('UNAUTHORIZED', 'Silakan login.', 401);
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .maybeSingle();
-  const role = ((profile as { role: string } | null)?.role ?? 'member') as string;
-  const isStaff = role === 'admin' || role === 'librarian';
+  const s = await getSession();
+  if ('errorResponse' in s) return s.errorResponse;
+  const { supabase, userId, isStaff, memberId } = s.session;
 
   let body: Record<string, unknown> = {};
   try {
@@ -54,16 +43,8 @@ export async function POST(req: Request, { params }: Ctx) {
   };
 
   // US-03: pemilik boleh membayar MILIK SENDIRI; non-staf + bukan pemilik → 403/404.
-  if (!isStaff) {
-    const { data: member } = await supabase
-      .from('members')
-      .select('id')
-      .eq('user_id', user.id)
-      .maybeSingle();
-    const ownMemberId = (member as { id: string } | null)?.id ?? null;
-    if (!ownMemberId || f.member_id !== ownMemberId) {
-      return jsonError('FORBIDDEN', 'Denda tidak ditemukan.', 403);
-    }
+  if (!isStaff && (!memberId || f.member_id !== memberId)) {
+    return jsonError('FORBIDDEN', 'Denda tidak ditemukan.', 403);
   }
 
   // FINE-PAY-IDEMPOTENT: 409 bila sudah paid/waived + compare-and-set
@@ -103,7 +84,7 @@ export async function POST(req: Request, { params }: Ctx) {
         p_fine_id: params.id,
         p_amount: payAmount,
         p_method: method,
-        p_user_id: user.id,
+        p_user_id: userId,
       });
       const rc = (rpcErr as { code?: string; message?: string } | null) ?? null;
       const rpcMissing =
@@ -153,7 +134,7 @@ export async function POST(req: Request, { params }: Ctx) {
 
   try {
     await supabase.from('activity_logs').insert({
-      user_id: user?.id ?? null,
+      user_id: userId,
       action: 'fines.pay',
       entity_type: 'fines',
       entity_id: params.id,

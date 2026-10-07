@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { revalidatePath, revalidateTag } from 'next/cache';
-import { createClient } from '@/lib/supabase/server';
 import { jsonError } from '@/lib/supabase/auth';
+import { getSession } from '@/lib/session';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
 type Ctx = { params: { id: string } };
@@ -43,25 +43,9 @@ function revalidated(): string[] {
 }
 
 async function scoped(id: string) {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return { errorResponse: jsonError('UNAUTHORIZED', 'Silakan login.', 401) };
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .maybeSingle();
-  const role = (profile as { role: string } | null)?.role ?? 'member';
-  const isStaff = role === 'admin' || role === 'librarian';
-  const { data: member } = await supabase
-    .from('members')
-    .select('id')
-    .eq('user_id', user.id)
-    .maybeSingle();
-  const memberId = (member as { id: string } | null)?.id ?? null;
+  const s = await getSession();
+  if ('errorResponse' in s) return { errorResponse: s.errorResponse };
+  const { supabase, userId, role, isStaff, memberId } = s.session;
 
   const { data: cur } = await supabase
     .from('reservations')
@@ -73,7 +57,7 @@ async function scoped(id: string) {
   if (!isStaff && c.member_id !== memberId)
     return { errorResponse: jsonError('FORBIDDEN', 'Bukan reservasi milik Anda.', 403) };
 
-  return { supabase, userId: user.id, role, isStaff, memberId, cur };
+  return { supabase, userId, role, isStaff, memberId, cur };
 }
 
 export async function GET(_req: Request, { params }: Ctx) {

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
 import { jsonError } from '@/lib/supabase/auth';
+import { getSession } from '@/lib/session';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
 type Ctx = { params: { id: string } };
@@ -12,20 +12,9 @@ type Ctx = { params: { id: string } };
 
 export async function GET(_req: Request, { params }: Ctx) {
   const log = createLogger(requestIdFromHeaders(_req.headers));
-  const supabase = createClient();
-  const {
-    data: { user },
-    error: userErr,
-  } = await supabase.auth.getUser();
-  if (userErr || !user) return jsonError('UNAUTHORIZED', 'Silakan login.', 401);
-
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('role')
-    .eq('id', user.id)
-    .maybeSingle();
-  const role = (profile as { role: string } | null)?.role ?? 'member';
-  const isStaff = role === 'admin' || role === 'librarian';
+  const s = await getSession();
+  if ('errorResponse' in s) return s.errorResponse;
+  const { supabase, isStaff, memberId } = s.session;
 
   const { data, error } = await supabase
     .from('fines')
@@ -37,16 +26,8 @@ export async function GET(_req: Request, { params }: Ctx) {
     return jsonError('NOT_FOUND', 'Denda tidak ditemukan.', 404, { requestId: log.requestId });
   }
 
-  if (!isStaff) {
-    const { data: member } = await supabase
-      .from('members')
-      .select('id')
-      .eq('user_id', user.id)
-      .maybeSingle();
-    const ownId = (member as { id: string } | null)?.id ?? null;
-    if ((data as { member_id: string }).member_id !== ownId) {
-      return jsonError('FORBIDDEN', 'Bukan denda milik Anda.', 403);
-    }
+  if (!isStaff && (data as { member_id: string }).member_id !== memberId) {
+    return jsonError('FORBIDDEN', 'Bukan denda milik Anda.', 403);
   }
 
   return NextResponse.json({ data }, { headers: { 'Cache-Control': 'no-store' } });
