@@ -1,6 +1,15 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+@config "../../tailwind.config.ts";
+
+/* ponytail: v4 preflight drops v3's default border color (#e5e7eb) → uncolored
+   .border jatuh ke currentColor. Upgrade path: ganti token jadi --border per theme. */
+@layer base {
+  *,
+  ::before,
+  ::after {
+    border-color: #e5e7eb;
+  }
+}
 
 /* Brand tokens — minimal fallback; full values live in [data-theme] blocks
    + inline style from settings (layout.tsx). Do NOT restate emerald here. */
