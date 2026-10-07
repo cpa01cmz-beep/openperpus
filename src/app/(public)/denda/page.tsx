@@ -67,7 +67,7 @@ export default function DendaSayaPage() {
       const supabase = createClient();
       supabase.auth
         .getUser()
-        .then((res: { data?: { user?: { id: string } }; error?: Error | null }) => {
+        .then((res) => {
           const user = res.data?.user;
           if (user) {
             supabase
@@ -75,7 +75,7 @@ export default function DendaSayaPage() {
               .select('id')
               .eq('user_id', user.id)
               .maybeSingle()
-              .then((memRes: { data?: { id: string }; error?: Error | null }) => {
+              .then((memRes) => {
                 if (memRes.data) setMemberId(memRes.data.id);
               });
           }
