@@ -1,7 +1,7 @@
 /**
  * src/lib/validation/content.ts — content validation & HTML sanitization (Fix4b).
  * Extracted from content-validation.ts (barrel shim at index.ts).
- * Dependency-free except isomorphic-dompurify at runtime.
+ * Dependency-free except sanitize-html at runtime.
  */
 
 /** Batas panjang per entitas per field (karakter). */
@@ -32,10 +32,13 @@ export const CONTENT_LIMITS = {
   },
 } as const;
 
+import sanitizeHtml from 'sanitize-html';
+
 export type ContentEntity = keyof typeof CONTENT_LIMITS;
 
 /**
- * Sanitasi HTML via DOMPurify (allowlist ketat) + jaring regex sebagai fallback.
+ * Sanitasi HTML via sanitize-html (allowlist ketat, parser murni tanpa DOM)
+ * + jaring regex sebagai lapis akhir.
  * Tag inline jinak (b/i/u/p/br/ul/ol/li/a/strong/em) dipertahankan; elemen
  * berbahaya (script/style/iframe/object/embed/form/svg/math/dll), event-handler
  * inline, srcdoc/xlink:href/formaction, style-expression, dan URL
@@ -45,28 +48,12 @@ export type ContentEntity = keyof typeof CONTENT_LIMITS;
 export function sanitizeHtmlContent(input: unknown): string {
   if (typeof input !== 'string') return '';
   try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const DOMPurify = require('isomorphic-dompurify') as {
-      sanitize(s: string, o?: Record<string, unknown>): string;
-    };
-    const clean = DOMPurify.sanitize(input, {
-      ALLOWED_TAGS: ['b', 'i', 'u', 'p', 'br', 'ul', 'ol', 'li', 'a', 'strong', 'em'],
-      ALLOWED_ATTR: ['href', 'title', 'target', 'rel'],
-      FORBID_TAGS: [
-        'script',
-        'style',
-        'iframe',
-        'object',
-        'embed',
-        'form',
-        'input',
-        'button',
-        'link',
-        'meta',
-        'base',
-        'svg',
-        'math',
-      ],
+    const clean = sanitizeHtml(input, {
+      allowedTags: ['b', 'i', 'u', 'p', 'br', 'ul', 'ol', 'li', 'a', 'strong', 'em'],
+      allowedAttributes: { a: ['href', 'title', 'target', 'rel'] },
+      allowedSchemes: ['http', 'https', 'mailto'],
+      allowProtocolRelative: false,
+      disallowedTagsMode: 'discard',
     });
     return regexStrip(clean);
   } catch {
