@@ -1,6 +1,7 @@
 # ADR-001 — Stack: Next.js 14 + Supabase + Cloudflare Pages
 
 > Status: **DITERIMA** (tetap, jangan diubah worker tanpa ADR baru).
+> Bagian **Deploy diganti → Vercel** oleh [ADR-002](adr-002-vercel.md).
 
 ## Konteks
 
@@ -14,12 +15,12 @@ Greenfield CMS Perpustakaan: OPAC publik SEO + admin sirkulasi + konten dinamis.
 
 ## Opsi yang Dipertimbangkan
 
-| Opsi | Kelebihan | Kekurangan | Vonis |
-|---|---|---|---|
-| **A. Next.js + Supabase + Cloudflare (dipilih)** | 1 repo SSR/RSC SEO; RLS = otorisasi di DB (aman walau bug UI); Auth+Storage bawaan; edge murah & cepat di ID; openNext adaptor matang | Workers runtime batas Node API; keluar Cloudflare bila perlu workload berat | ✅ paling sederhana yang cukup |
-| B. Next.js + Prisma + VPS Postgres | kontrol penuh SQL/ORM | kelola VPS, backup, auth (NextAuth), storage (S3) sendiri — beban ops besar untuk tim kecil | ❌ over-ops |
-| C. Laravel + MySQL + shared hosting | CRUD admin cepat | SSR/SEO modern + realtime lemah; 2 paradigma bila ingin edge; DX Tailwind/React lebih lemah | ❌ mundur dari target UX premium |
-| D. Microservices (api-gateway + Kafka + K8s) | skala raksasa | biaya/kompleksitas 10x untuk <100k baris — klasik over-engineering | ❌ ditolak tegas |
+| Opsi                                             | Kelebihan                                                                                                                             | Kekurangan                                                                                  | Vonis                            |
+| ------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- | -------------------------------- |
+| **A. Next.js + Supabase + Cloudflare (dipilih)** | 1 repo SSR/RSC SEO; RLS = otorisasi di DB (aman walau bug UI); Auth+Storage bawaan; edge murah & cepat di ID; openNext adaptor matang | Workers runtime batas Node API; keluar Cloudflare bila perlu workload berat                 | ✅ paling sederhana yang cukup   |
+| B. Next.js + Prisma + VPS Postgres               | kontrol penuh SQL/ORM                                                                                                                 | kelola VPS, backup, auth (NextAuth), storage (S3) sendiri — beban ops besar untuk tim kecil | ❌ over-ops                      |
+| C. Laravel + MySQL + shared hosting              | CRUD admin cepat                                                                                                                      | SSR/SEO modern + realtime lemah; 2 paradigma bila ingin edge; DX Tailwind/React lebih lemah | ❌ mundur dari target UX premium |
+| D. Microservices (api-gateway + Kafka + K8s)     | skala raksasa                                                                                                                         | biaya/kompleksitas 10x untuk <100k baris — klasik over-engineering                          | ❌ ditolak tegas                 |
 
 Perbandingan ringkas: kompleksitas A<B<C<D; biaya A terendah (free-tier Supabase+CF); risiko A terendah (managed); kecepatan delivery A tercepat (1 deploy, RLS gantikan middleware auth custom).
 

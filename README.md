@@ -1,6 +1,6 @@
 # webperpus-oc — CMS Perpustakaan
 
-Next.js 14 + Supabase + Tailwind 3, deploy ke Cloudflare Workers via `@opennextjs/cloudflare`.
+Next.js 14 + Supabase + Tailwind 3, deploy ke Vercel (rollback: Cloudflare Workers via `@opennextjs/cloudflare`, lihat ADR-002).
 
 ## 1. Install
 
@@ -42,35 +42,40 @@ npm run dev
 # buka http://localhost:3000
 ```
 
-## 4. Deploy Cloudflare
+## 4. Deploy Vercel
+
+Deploy utama: **Vercel** (ADR-002 — Workers free plan kena error 1102 resource limit).
+
+1. Import repo di Vercel (Git integration → auto deploy per PR).
+2. Set env di dashboard (Settings → Environment Variables):
+
+   | Variable                        | Nilai                           |
+   | ------------------------------- | ------------------------------- |
+   | `NEXT_PUBLIC_SUPABASE_URL`      | Project URL Supabase            |
+   | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | anon public key                 |
+   | `SUPABASE_SERVICE_ROLE_KEY`     | service_role (server only)      |
+   | `NEXT_PUBLIC_SITE_URL`          | `https://openperpus.cmz.web.id` |
+
+3. Tambah custom domain `openperpus.cmz.web.id` + DNS record di zone Cloudflare.
+4. Supabase Dashboard → Authentication → URL Configuration: tambahkan domain Vercel ke
+   Redirect URLs.
+
+Build Vercel memakai `npm run build` (`next build`). Tanpa konfigurasi tambahan:
+`next.config.mjs` headers + `src/middleware.ts` (CSP nonce) jalan native di Vercel.
+
+### Rollback Cloudflare Workers
+
+File CF sengaja dibiarkan agar bisa rollback cepat:
 
 ```bash
-npx @opennextjs/cloudflare build
-wrangler deploy
+npm run deploy          # opennext build + wrangler deploy
+npm run cf:preview      # preview lokal Workers
 ```
 
-Atau sekaligus:
-
-```bash
-npm run deploy
-```
-
-Preview lokal Workers:
-
-```bash
-npm run cf:build
-npm run cf:preview
-```
+Secret tetap via `wrangler secret put` (jangan taruh di repo): `SUPABASE_SERVICE_ROLE_KEY`,
+`NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SUPABASE_URL`.
 
 Konfigurasi CF: `wrangler.toml` (`compatibility_date = "2025-01-01"`) + `open-next.config.ts` minimal.
-
-### Secret di Cloudflare (jangan taruh di repo)
-
-```bash
-wrangler secret put SUPABASE_SERVICE_ROLE_KEY
-wrangler secret put NEXT_PUBLIC_SUPABASE_ANON_KEY
-wrangler secret put NEXT_PUBLIC_SUPABASE_URL
-```
 
 ## Arsitektur
 
