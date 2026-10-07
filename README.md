@@ -1,6 +1,6 @@
 # webperpus-oc — CMS Perpustakaan
 
-Next.js 14 + Supabase + Tailwind 3, deploy ke Vercel (rollback: Cloudflare Workers via `@opennextjs/cloudflare`, lihat ADR-002).
+Next.js 14 + Supabase + Tailwind 3, deploy ke Vercel **atau** Cloudflare Workers (keduanya didukung, lihat ADR-002).
 
 ## 1. Install
 
@@ -61,19 +61,24 @@ Deploy utama: **Vercel** (ADR-002 — Workers free plan kena error 1102 resource
    Redirect URLs.
 
 Build Vercel memakai `vercel.json` (`buildCommand` → `npm run next:build`); `build` di
-`package.json` tetap opennext untuk check wajib "Workers Builds" + rollback CF.
+`package.json` tetap opennext untuk check wajib "Workers Builds" + build CF.
 `next.config.mjs` headers + `src/middleware.ts` (CSP nonce) jalan native di Vercel.
 
-### Rollback Cloudflare Workers
+### Alternatif deploy: Cloudflare Workers
 
-File CF sengaja dibiarkan agar bisa rollback cepat:
+Target kedua yang didukung penuh — bukan sekadar rollback. Integrasi Git CF (Workers
+Builds) menjalankan build di setiap push/PR; `main` di-deploy otomatis ke worker.
 
 ```bash
-npm run deploy          # opennext build + wrangler deploy
+npm run deploy          # opennext build + wrangler deploy manual
 npm run cf:preview      # preview lokal Workers
 ```
 
-Secret tetap via `wrangler secret put` (jangan taruh di repo): `SUPABASE_SERVICE_ROLE_KEY`,
+**Ganti target (flip):** cukup pindahkan DNS record `openperpus.cmz.web.id` antara
+record Vercel dan worker CF — domain & Supabase redirect URL tetap sama, tidak ada
+konfigurasi lain yang berubah.
+
+Secret CF tetap via `wrangler secret put` (jangan taruh di repo): `SUPABASE_SERVICE_ROLE_KEY`,
 `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `NEXT_PUBLIC_SUPABASE_URL`.
 
 Konfigurasi CF: `wrangler.toml` (`compatibility_date = "2025-01-01"`) + `open-next.config.ts` minimal.
