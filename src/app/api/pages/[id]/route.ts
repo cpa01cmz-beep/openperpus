@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { requireStaff, jsonError, slugify } from '@/lib/supabase/auth';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
-type Ctx = { params: { id: string } };
+type Ctx = { params: Promise<{ id: string }> };
 
 /**
  * GET /api/pages/[id] — publik bila is_active (staf boleh semua).
@@ -47,7 +47,7 @@ async function writeLog(
 function revalidatePages(slug?: string | null): string[] {
   const done: string[] = [];
   try {
-    revalidateTag('pages');
+    revalidateTag('pages', 'max');
     done.push('pages');
   } catch {
     /* abaikan */
@@ -70,9 +70,10 @@ function revalidatePages(slug?: string | null): string[] {
 }
 
 export async function GET(_req: Request, { params }: Ctx) {
+  const { id } = await params;
   const log = createLogger(requestIdFromHeaders(_req.headers));
   const supabase = createClient();
-  const { data, error } = await supabase.from('pages').select('*').eq('id', params.id).single();
+  const { data, error } = await supabase.from('pages').select('*').eq('id', id).single();
   if (error || !data) {
     log.warn('pages.id.not_found', { detail: error?.message ?? 'not-found' });
     return jsonError('NOT_FOUND', 'Halaman tidak ditemukan.', 404, { requestId: log.requestId });
@@ -88,6 +89,7 @@ export async function GET(_req: Request, { params }: Ctx) {
 }
 
 export async function PUT(req: Request, { params }: Ctx) {
+  const { id } = await params;
   const log = createLogger(requestIdFromHeaders(req.headers));
   const guard = await requireStaff(['admin', 'librarian']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
@@ -141,7 +143,7 @@ export async function PUT(req: Request, { params }: Ctx) {
   const { data, error } = await supabase
     .from('pages')
     .update(payload)
-    .eq('id', params.id)
+    .eq('id', id)
     .select()
     .single();
   if (error) {
@@ -155,7 +157,7 @@ export async function PUT(req: Request, { params }: Ctx) {
     return jsonError('SAVE_FAILED', 'Gagal mengupdate halaman.', 500, { requestId: log.requestId });
   }
 
-  await writeLog(supabase, user?.id, 'pages.update', params.id, payload);
+  await writeLog(supabase, user?.id, 'pages.update', id, payload);
   return NextResponse.json({
     data,
     revalidated: revalidatePages((data as { slug?: string })?.slug),
@@ -163,6 +165,7 @@ export async function PUT(req: Request, { params }: Ctx) {
 }
 
 export async function DELETE(_req: Request, { params }: Ctx) {
+  const { id } = await params;
   const log = createLogger(requestIdFromHeaders(_req.headers));
   const guard = await requireStaff(['admin']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
@@ -171,9 +174,9 @@ export async function DELETE(_req: Request, { params }: Ctx) {
     user: { id: string };
   };
 
-  const { data: cur } = await supabase.from('pages').select('slug').eq('id', params.id).single();
+  const { data: cur } = await supabase.from('pages').select('slug').eq('id', id).single();
 
-  const { error } = await supabase.from('pages').delete().eq('id', params.id);
+  const { error } = await supabase.from('pages').delete().eq('id', id);
   if (error) {
     log.error('pages.id.delete_failed', { detail: error.message });
     return jsonError('DELETE_FAILED', 'Gagal menghapus halaman.', 500, {
@@ -181,7 +184,7 @@ export async function DELETE(_req: Request, { params }: Ctx) {
     });
   }
 
-  await writeLog(supabase, user?.id, 'pages.delete', params.id);
+  await writeLog(supabase, user?.id, 'pages.delete', id);
   return NextResponse.json({
     message: 'Halaman dihapus.',
     revalidated: revalidatePages((cur as { slug?: string } | null)?.slug),

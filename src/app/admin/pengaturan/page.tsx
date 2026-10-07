@@ -1,12 +1,7 @@
-import nextDynamic from 'next/dynamic';
+import SettingsForm from '@/components/admin/SettingsFormLazy';
 import { createClient } from '@/lib/supabase/server';
 import ThemeSwitcher from '@/components/admin/ThemeSwitcher';
 import type { SettingsRow } from '@/components/admin/SettingsForm';
-
-const SettingsForm = nextDynamic(() => import('@/components/admin/SettingsForm'), {
-  ssr: false,
-  loading: () => <p className="text-sm text-slate-500">Memuat formulir…</p>,
-});
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;

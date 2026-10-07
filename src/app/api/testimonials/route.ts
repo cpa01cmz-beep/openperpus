@@ -136,7 +136,7 @@ async function writeLog(
 function revalidateTestimonials(): string[] {
   const done: string[] = [];
   try {
-    revalidateTag('testimonials');
+    revalidateTag('testimonials', 'max');
     done.push('testimonials');
   } catch {
     /* abaikan di runtime tanpa cache-tag */

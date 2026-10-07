@@ -9,16 +9,17 @@ import Breadcrumb from '@/components/public/Breadcrumb';
 
 export const revalidate = 60;
 
-type Props = { params: { slug: string } };
+type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props) {
-  const a = await fetchArticleBySlug(params.slug);
+  const { slug } = await params;
+  const a = await fetchArticleBySlug(slug);
   if (!a) return { title: 'Berita tidak ditemukan' };
   const s = await fetchSettings();
   const siteName = s.name ?? 'Perpustakaan';
   const title = `${a.title} — ${siteName}`;
   const description = a.excerpt ?? a.title;
-  const url = `${getSiteUrl()}/berita/${params.slug}`;
+  const url = `${getSiteUrl()}/berita/${slug}`;
   const image = coverSrc(a.cover_url, 640) ?? a.cover_url ?? '/og-default.jpg';
   return {
     title,
@@ -39,7 +40,8 @@ export async function generateMetadata({ params }: Props) {
 
 /** Detail berita: render konten markdown/plain dari tabel articles. */
 export default async function BeritaDetailPage({ params }: Props) {
-  const article = await fetchArticleBySlug(params.slug);
+  const { slug } = await params;
+  const article = await fetchArticleBySlug(slug);
   if (!article) notFound();
 
   const latest = (await fetchArticles(4)).filter((a) => a.slug !== article.slug).slice(0, 3);
@@ -65,8 +67,8 @@ export default async function BeritaDetailPage({ params }: Props) {
           url: siteUrl,
           ...(settings.logo_url ? { logo: settings.logo_url } : {}),
         },
-        mainEntityOfPage: `${siteUrl}/berita/${params.slug}`,
-        url: `${siteUrl}/berita/${params.slug}`,
+        mainEntityOfPage: `${siteUrl}/berita/${slug}`,
+        url: `${siteUrl}/berita/${slug}`,
       },
       {
         '@type': 'BreadcrumbList',
@@ -77,7 +79,7 @@ export default async function BeritaDetailPage({ params }: Props) {
             '@type': 'ListItem',
             position: 3,
             name: article.title,
-            item: `${siteUrl}/berita/${params.slug}`,
+            item: `${siteUrl}/berita/${slug}`,
           },
         ],
       },

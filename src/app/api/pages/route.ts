@@ -50,7 +50,7 @@ async function writeLog(
 function revalidatePages(slug?: string | null): string[] {
   const done: string[] = [];
   try {
-    revalidateTag('pages');
+    revalidateTag('pages', 'max');
     done.push('pages');
   } catch {
     /* abaikan di runtime tanpa cache-tag */

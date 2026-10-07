@@ -4,15 +4,16 @@ import { getSiteUrl } from '@/lib/site';
 
 export const revalidate = 60;
 
-type Props = { params: { slug: string } };
+type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props) {
-  const [book, settings] = await Promise.all([fetchBookBySlug(params.slug), fetchSettings()]);
+  const { slug } = await params;
+  const [book, settings] = await Promise.all([fetchBookBySlug(slug), fetchSettings()]);
   if (!book) return { title: 'Buku tidak ditemukan' };
   const siteName = settings.name ?? 'Perpustakaan';
   const title = `${book.title} — ${siteName}`;
   const description = book.description?.slice(0, 160) ?? `Detail buku ${book.title}.`;
-  const url = `${getSiteUrl()}/katalog/${params.slug}`;
+  const url = `${getSiteUrl()}/katalog/${slug}`;
   const image = book.cover_url ?? '/og-default.jpg';
   return {
     title,
@@ -37,7 +38,8 @@ export async function generateMetadata({ params }: Props) {
  * agar tidak ada duplikasi URL detail buku.
  */
 export default async function BukuAliasPage({ params }: Props) {
-  const book = await fetchBookBySlug(params.slug);
+  const { slug } = await params;
+  const book = await fetchBookBySlug(slug);
   if (!book) notFound();
-  permanentRedirect(`/katalog/${params.slug}`);
+  permanentRedirect(`/katalog/${slug}`);
 }

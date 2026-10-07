@@ -43,7 +43,7 @@ async function writeLog(
 function revalidateFaqs(): string[] {
   const done: string[] = [];
   try {
-    revalidateTag('faqs');
+    revalidateTag('faqs', 'max');
     done.push('faqs');
   } catch {
     /* abaikan di runtime tanpa cache-tag */

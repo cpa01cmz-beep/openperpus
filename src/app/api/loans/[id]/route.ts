@@ -6,7 +6,7 @@ import { getSession } from '@/lib/session';
 import { returnLoan, extendLoan } from '@/lib/loans-return';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
-type Ctx = { params: { id: string } };
+type Ctx = { params: Promise<{ id: string }> };
 
 /**
  * GET /api/loans/[id] — pustakawan+ (atau pemilik? kontrak: anggota otomatis miliknya).
@@ -18,13 +18,13 @@ type Ctx = { params: { id: string } };
 function revalidateLoans(): string[] {
   const done: string[] = [];
   try {
-    revalidateTag('loans');
+    revalidateTag('loans', 'max');
     done.push('loans');
   } catch {
     /* abaikan */
   }
   try {
-    revalidateTag('books');
+    revalidateTag('books', 'max');
     done.push('books');
   } catch {
     /* abaikan */
@@ -39,6 +39,7 @@ function revalidateLoans(): string[] {
 }
 
 export async function GET(_req: Request, { params }: Ctx) {
+  const { id } = await params;
   const log = createLogger(requestIdFromHeaders(_req.headers));
   const s = await getSession();
   if ('errorResponse' in s) return s.errorResponse;
@@ -47,7 +48,7 @@ export async function GET(_req: Request, { params }: Ctx) {
   const { data: loan, error } = await supabase
     .from('loans')
     .select('*, members(id,member_code,user_id), books(id,title,slug)')
-    .eq('id', params.id)
+    .eq('id', id)
     .single();
   if (error || !loan) {
     log.warn('loans.id.not_found', { detail: error?.message ?? 'not-found' });
@@ -63,6 +64,7 @@ export async function GET(_req: Request, { params }: Ctx) {
 }
 
 export async function PUT(req: Request, { params }: Ctx) {
+  const { id } = await params;
   const log = createLogger(requestIdFromHeaders(req.headers));
   const guard = await requireStaff(['admin', 'librarian']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
@@ -80,7 +82,7 @@ export async function PUT(req: Request, { params }: Ctx) {
   if (body.action === 'extend') {
     const res = await extendLoan({
       supabase,
-      id: params.id,
+      id: id,
       userId: user?.id ?? null,
       days: body.days as number | undefined,
     });
@@ -95,7 +97,7 @@ export async function PUT(req: Request, { params }: Ctx) {
 
   const res = await returnLoan({
     supabase,
-    id: params.id,
+    id: id,
     userId: user?.id ?? null,
     returnedAt: body.returned_at as string | undefined,
     notes: typeof body.notes === 'string' ? body.notes : undefined,
@@ -109,6 +111,7 @@ export async function PUT(req: Request, { params }: Ctx) {
 }
 
 export async function DELETE(_req: Request, { params }: Ctx) {
+  const { id } = await params;
   const log = createLogger(requestIdFromHeaders(_req.headers));
   const guard = await requireStaff(['admin']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
@@ -117,7 +120,7 @@ export async function DELETE(_req: Request, { params }: Ctx) {
     user: { id: string };
   };
 
-  const { data: loan } = await supabase.from('loans').select('status').eq('id', params.id).single();
+  const { data: loan } = await supabase.from('loans').select('status').eq('id', id).single();
   if (!loan) return jsonError('NOT_FOUND', 'Peminjaman tidak ditemukan.', 404);
   if (
     (loan as { status: string }).status === 'borrowed' ||
@@ -126,7 +129,7 @@ export async function DELETE(_req: Request, { params }: Ctx) {
     return jsonError('CONFLICT', 'Tidak bisa hapus peminjaman berjalan. Kembalikan dulu.', 409);
   }
 
-  const { error } = await supabase.from('loans').delete().eq('id', params.id);
+  const { error } = await supabase.from('loans').delete().eq('id', id);
   if (error) {
     log.error('loans.id.delete_failed', { detail: error.message });
     return jsonError('DELETE_FAILED', 'Gagal menghapus peminjaman.', 500, {
@@ -139,7 +142,7 @@ export async function DELETE(_req: Request, { params }: Ctx) {
       user_id: user?.id ?? null,
       action: 'loans.delete',
       entity_type: 'loans',
-      entity_id: params.id,
+      entity_id: id,
       metadata: {},
     });
   } catch {

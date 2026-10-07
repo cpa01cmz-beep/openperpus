@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { requireStaff, jsonError, slugify } from '@/lib/supabase/auth';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
-type Ctx = { params: { id: string } };
+type Ctx = { params: Promise<{ id: string }> };
 
 /**
  * GET /api/categories/[id] — publik bila is_active (staf boleh semua).
@@ -35,7 +35,7 @@ async function writeLog(
 function revalidated(): string[] {
   const done: string[] = [];
   try {
-    revalidateTag('categories');
+    revalidateTag('categories', 'max');
     done.push('categories');
   } catch {
     /* abaikan */
@@ -50,12 +50,13 @@ function revalidated(): string[] {
 }
 
 export async function GET(_req: Request, { params }: Ctx) {
+  const { id } = await params;
   const log = createLogger(requestIdFromHeaders(_req.headers));
   const supabase = createClient();
   const { data, error } = await supabase
     .from('categories')
     .select('*')
-    .eq('id', params.id)
+    .eq('id', id)
     .single();
   if (error || !data) {
     log.warn('categories.id.not_found', { detail: error?.message ?? 'not-found' });
@@ -72,6 +73,7 @@ export async function GET(_req: Request, { params }: Ctx) {
 }
 
 export async function PUT(req: Request, { params }: Ctx) {
+  const { id } = await params;
   const log = createLogger(requestIdFromHeaders(req.headers));
   const guard = await requireStaff(['admin', 'librarian']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
@@ -112,7 +114,7 @@ export async function PUT(req: Request, { params }: Ctx) {
   const { data, error } = await supabase
     .from('categories')
     .update(payload)
-    .eq('id', params.id)
+    .eq('id', id)
     .select()
     .single();
   if (error) {
@@ -128,11 +130,12 @@ export async function PUT(req: Request, { params }: Ctx) {
     });
   }
 
-  await writeLog(supabase, user?.id, 'categories.update', params.id, payload);
+  await writeLog(supabase, user?.id, 'categories.update', id, payload);
   return NextResponse.json({ data, revalidated: revalidated() });
 }
 
 export async function DELETE(_req: Request, { params }: Ctx) {
+  const { id } = await params;
   const log = createLogger(requestIdFromHeaders(_req.headers));
   const guard = await requireStaff(['admin']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
@@ -144,11 +147,11 @@ export async function DELETE(_req: Request, { params }: Ctx) {
   const { count } = await supabase
     .from('books')
     .select('id', { count: 'exact', head: true })
-    .eq('category_id', params.id);
+    .eq('category_id', id);
   if ((count ?? 0) > 0)
     return jsonError('CONFLICT', 'Kategori dipakai buku, tidak bisa dihapus.', 409);
 
-  const { error } = await supabase.from('categories').delete().eq('id', params.id);
+  const { error } = await supabase.from('categories').delete().eq('id', id);
   if (error) {
     log.error('categories.id.delete_failed', { detail: error.message });
     return jsonError('DELETE_FAILED', 'Gagal menghapus kategori.', 500, {
@@ -156,6 +159,6 @@ export async function DELETE(_req: Request, { params }: Ctx) {
     });
   }
 
-  await writeLog(supabase, user?.id, 'categories.delete', params.id);
+  await writeLog(supabase, user?.id, 'categories.delete', id);
   return NextResponse.json({ message: 'Kategori dihapus.', revalidated: revalidated() });
 }

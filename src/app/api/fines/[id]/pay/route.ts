@@ -4,7 +4,7 @@ import { jsonError } from '@/lib/supabase/auth';
 import { getSession } from '@/lib/session';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
-type Ctx = { params: { id: string } };
+type Ctx = { params: Promise<{ id: string }> };
 
 /**
  * POST /api/fines/[id]/pay {metode|method?, amount?|nominal?}
@@ -17,6 +17,7 @@ type Ctx = { params: { id: string } };
  */
 
 export async function POST(req: Request, { params }: Ctx) {
+  const { id } = await params;
   const log = createLogger(requestIdFromHeaders(req.headers));
   const s = await getSession();
   if ('errorResponse' in s) return s.errorResponse;
@@ -32,7 +33,7 @@ export async function POST(req: Request, { params }: Ctx) {
   const method =
     String(body.metode ?? body.method ?? body.payment_method ?? 'cash').trim() || 'cash';
 
-  const { data: fine } = await supabase.from('fines').select('*').eq('id', params.id).single();
+  const { data: fine } = await supabase.from('fines').select('*').eq('id', id).single();
   if (!fine) return jsonError('NOT_FOUND', 'Denda tidak ditemukan.', 404);
   const f = fine as {
     amount: number | string;
@@ -81,7 +82,7 @@ export async function POST(req: Request, { params }: Ctx) {
   if (typeof rpc === 'function') {
     try {
       const { data: rpcData, error: rpcErr } = await rpc('pay_own_fine', {
-        p_fine_id: params.id,
+        p_fine_id: id,
         p_amount: payAmount,
         p_method: method,
         p_user_id: userId,
@@ -119,7 +120,7 @@ export async function POST(req: Request, { params }: Ctx) {
           ? body.notes.trim()
           : `Dibayar via ${method}.`,
     })
-    .eq('id', params.id)
+    .eq('id', id)
     .eq('paid_amount', paid)
     .in('status', ['unpaid', 'partial'])
     .select()
@@ -137,7 +138,7 @@ export async function POST(req: Request, { params }: Ctx) {
       user_id: userId,
       action: 'fines.pay',
       entity_type: 'fines',
-      entity_id: params.id,
+      entity_id: id,
       metadata: {
         loan_id: f.loan_id,
         member_id: f.member_id,
@@ -152,7 +153,7 @@ export async function POST(req: Request, { params }: Ctx) {
 
   const revalidated: string[] = [];
   try {
-    revalidateTag('fines');
+    revalidateTag('fines', 'max');
     revalidated.push('fines');
   } catch {
     /* abaikan */

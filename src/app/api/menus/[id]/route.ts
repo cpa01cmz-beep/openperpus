@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { requireStaff, jsonError } from '@/lib/supabase/auth';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
-type Ctx = { params: { id: string } };
+type Ctx = { params: Promise<{ id: string }> };
 
 /**
  * GET /api/menus/[id] — publik bila is_active (staf boleh semua).
@@ -51,7 +51,7 @@ async function writeLog(
 function revalidateMenus(): string[] {
   const done: string[] = [];
   try {
-    revalidateTag('menus');
+    revalidateTag('menus', 'max');
     done.push('menus');
   } catch {
     /* abaikan */
@@ -66,9 +66,10 @@ function revalidateMenus(): string[] {
 }
 
 export async function GET(_req: Request, { params }: Ctx) {
+  const { id } = await params;
   const log = createLogger(requestIdFromHeaders(_req.headers));
   const supabase = createClient();
-  const { data, error } = await supabase.from('menus').select('*').eq('id', params.id).single();
+  const { data, error } = await supabase.from('menus').select('*').eq('id', id).single();
   if (error || !data) {
     log.warn('menus.id.not_found', { detail: error?.message ?? 'not-found' });
     return jsonError('NOT_FOUND', 'Menu tidak ditemukan.', 404, { requestId: log.requestId });
@@ -84,6 +85,7 @@ export async function GET(_req: Request, { params }: Ctx) {
 }
 
 export async function PUT(req: Request, { params }: Ctx) {
+  const { id } = await params;
   const log = createLogger(requestIdFromHeaders(req.headers));
   const guard = await requireStaff(['admin', 'librarian']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
@@ -129,7 +131,7 @@ export async function PUT(req: Request, { params }: Ctx) {
     if (parentRaw !== null && parentRaw !== '' && !isUuid(parentRaw)) {
       return jsonError('VALIDATION', 'parent_id harus UUID valid atau null.', 422);
     }
-    if (typeof parentRaw === 'string' && parentRaw === params.id) {
+    if (typeof parentRaw === 'string' && parentRaw === id) {
       return jsonError('VALIDATION', 'parent_id tidak boleh merujuk ke dirinya sendiri.', 422);
     }
     payload.parent_id = parentRaw === '' ? null : (parentRaw as string | null);
@@ -147,7 +149,7 @@ export async function PUT(req: Request, { params }: Ctx) {
   const { data, error } = await supabase
     .from('menus')
     .update(payload)
-    .eq('id', params.id)
+    .eq('id', id)
     .select()
     .single();
   if (error) {
@@ -155,11 +157,12 @@ export async function PUT(req: Request, { params }: Ctx) {
     return jsonError('SAVE_FAILED', 'Gagal mengupdate menu.', 500, { requestId: log.requestId });
   }
 
-  await writeLog(supabase, user?.id, 'menus.update', params.id, payload);
+  await writeLog(supabase, user?.id, 'menus.update', id, payload);
   return NextResponse.json({ data, revalidated: revalidateMenus() });
 }
 
 export async function DELETE(_req: Request, { params }: Ctx) {
+  const { id } = await params;
   const log = createLogger(requestIdFromHeaders(_req.headers));
   const guard = await requireStaff(['admin']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
@@ -171,16 +174,16 @@ export async function DELETE(_req: Request, { params }: Ctx) {
   const { count } = await supabase
     .from('menus')
     .select('id', { count: 'exact', head: true })
-    .eq('parent_id', params.id);
+    .eq('parent_id', id);
   if ((count ?? 0) > 0)
     return jsonError('CONFLICT', 'Menu masih punya sub-menu, pindahkan/hapus dulu anaknya.', 409);
 
-  const { error } = await supabase.from('menus').delete().eq('id', params.id);
+  const { error } = await supabase.from('menus').delete().eq('id', id);
   if (error) {
     log.error('menus.id.delete_failed', { detail: error.message });
     return jsonError('DELETE_FAILED', 'Gagal menghapus menu.', 500, { requestId: log.requestId });
   }
 
-  await writeLog(supabase, user?.id, 'menus.delete', params.id);
+  await writeLog(supabase, user?.id, 'menus.delete', id);
   return NextResponse.json({ message: 'Menu dihapus.', revalidated: revalidateMenus() });
 }

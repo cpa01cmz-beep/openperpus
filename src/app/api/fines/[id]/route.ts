@@ -3,7 +3,7 @@ import { jsonError } from '@/lib/supabase/auth';
 import { getSession } from '@/lib/session';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
-type Ctx = { params: { id: string } };
+type Ctx = { params: Promise<{ id: string }> };
 
 /**
  * GET /api/fines/[id] — pemilik (member_id miliknya) / pustakawan+
@@ -11,6 +11,7 @@ type Ctx = { params: { id: string } };
  */
 
 export async function GET(_req: Request, { params }: Ctx) {
+  const { id } = await params;
   const log = createLogger(requestIdFromHeaders(_req.headers));
   const s = await getSession();
   if ('errorResponse' in s) return s.errorResponse;
@@ -19,7 +20,7 @@ export async function GET(_req: Request, { params }: Ctx) {
   const { data, error } = await supabase
     .from('fines')
     .select('*, loans(id,book_id,due_at,status), members(id,member_code)')
-    .eq('id', params.id)
+    .eq('id', id)
     .single();
   if (error || !data) {
     log.warn('fines.id.not_found', { detail: error?.message ?? 'not-found' });

@@ -4,7 +4,7 @@ import { jsonError } from '@/lib/supabase/auth';
 import { getSession } from '@/lib/session';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
-type Ctx = { params: { id: string } };
+type Ctx = { params: Promise<{ id: string }> };
 
 /**
  * GET /api/reservations/[id] — pemilik / pustakawan+
@@ -28,7 +28,7 @@ function normStatus(v: unknown): string {
 function revalidated(): string[] {
   const done: string[] = [];
   try {
-    revalidateTag('reservations');
+    revalidateTag('reservations', 'max');
     done.push('reservations');
   } catch {
     /* abaikan */
@@ -61,8 +61,9 @@ async function scoped(id: string) {
 }
 
 export async function GET(_req: Request, { params }: Ctx) {
+  const { id } = await params;
   const log = createLogger(requestIdFromHeaders(_req.headers));
-  const sc = await scoped(params.id);
+  const sc = await scoped(id);
   if ('errorResponse' in sc && sc.errorResponse) {
     log.warn('reservations.id.denied', { status: sc.errorResponse.status });
     return sc.errorResponse;
@@ -153,16 +154,17 @@ async function updateById(req: Request, id: string) {
 }
 
 export async function PUT(req: Request, ctx: Ctx) {
-  return updateById(req, ctx.params.id);
+  return updateById(req, (await ctx.params).id);
 }
 
 export async function PATCH(req: Request, ctx: Ctx) {
-  return updateById(req, ctx.params.id);
+  return updateById(req, (await ctx.params).id);
 }
 
 export async function DELETE(_req: Request, { params }: Ctx) {
+  const { id } = await params;
   const log = createLogger(requestIdFromHeaders(_req.headers));
-  const sc = await scoped(params.id);
+  const sc = await scoped(id);
   if ('errorResponse' in sc) return sc.errorResponse;
   const { supabase, userId, isStaff } = sc;
   const c = sc.cur as { status: string };
@@ -172,7 +174,7 @@ export async function DELETE(_req: Request, { params }: Ctx) {
   }
   void isStaff;
 
-  const { error } = await supabase.from('reservations').delete().eq('id', params.id);
+  const { error } = await supabase.from('reservations').delete().eq('id', id);
   if (error) {
     log.error('reservations.id.delete_failed', {
       detail: (error as { message?: unknown })?.message ?? String(error),
@@ -187,7 +189,7 @@ export async function DELETE(_req: Request, { params }: Ctx) {
       user_id: userId,
       action: 'reservations.delete',
       entity_type: 'reservations',
-      entity_id: params.id,
+      entity_id: id,
       metadata: {},
     });
   } catch {

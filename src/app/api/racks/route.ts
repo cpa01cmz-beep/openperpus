@@ -52,7 +52,7 @@ async function writeLog(
 function revalidateRacks(): string[] {
   const done: string[] = [];
   try {
-    revalidateTag('racks');
+    revalidateTag('racks', 'max');
     done.push('racks');
   } catch {
     /* abaikan */

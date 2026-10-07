@@ -157,7 +157,7 @@ export async function POST(req: Request) {
     });
     return jsonError('SAVE_FAILED', 'Gagal menambah buku.', 500, { requestId: log.requestId });
   }
-  revalidateTag('books');
+  revalidateTag('books', 'max');
   return NextResponse.json({ data }, { status: 201 });
 }
 
@@ -251,7 +251,7 @@ export async function PUT(req: Request) {
       }
     }
   }
-  revalidateTag('books');
+  revalidateTag('books', 'max');
   return NextResponse.json({ data: { updated, skipped } });
 }
 
@@ -310,7 +310,7 @@ export async function DELETE(req: Request) {
     } catch {
       /* best-effort: jangan gagalkan request bila log gagal */
     }
-    revalidateTag('books');
+    revalidateTag('books', 'max');
   }
 
   return NextResponse.json({ data: { deleted: deletable, skipped } });

@@ -34,7 +34,7 @@ function normStatus(v: unknown): string | null {
 function revalidateReservations(): string[] {
   const done: string[] = [];
   try {
-    revalidateTag('reservations');
+    revalidateTag('reservations', 'max');
     done.push('reservations');
   } catch {
     /* abaikan */

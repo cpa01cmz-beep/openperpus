@@ -5,7 +5,7 @@ import { requireStaff, jsonError } from '@/lib/supabase/auth';
 import { returnLoan } from '@/lib/loans-return';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
-type Ctx = { params: { id: string } };
+type Ctx = { params: Promise<{ id: string }> };
 
 /**
  * POST /api/loans/[id]/return {tanggal_kembali?, returned_at?, kondisi?|notes?}
@@ -15,6 +15,7 @@ type Ctx = { params: { id: string } };
  */
 
 export async function POST(req: Request, { params }: Ctx) {
+  const { id } = await params;
   const log = createLogger(requestIdFromHeaders(req.headers));
   const guard = await requireStaff(['admin', 'librarian']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
@@ -32,7 +33,7 @@ export async function POST(req: Request, { params }: Ctx) {
 
   const res = await returnLoan({
     supabase,
-    id: params.id,
+    id: id,
     userId: user?.id ?? null,
     returnedAt: (body.tanggal_kembali ?? body.returned_at) as string | undefined,
     notes: typeof body.notes === 'string' ? body.notes : undefined,
@@ -46,19 +47,19 @@ export async function POST(req: Request, { params }: Ctx) {
 
   const revalidated: string[] = [];
   try {
-    revalidateTag('loans');
+    revalidateTag('loans', 'max');
     revalidated.push('loans');
   } catch {
     /* abaikan */
   }
   try {
-    revalidateTag('books');
+    revalidateTag('books', 'max');
     revalidated.push('books');
   } catch {
     /* abaikan */
   }
   try {
-    revalidateTag('fines');
+    revalidateTag('fines', 'max');
     revalidated.push('fines');
   } catch {
     /* abaikan */

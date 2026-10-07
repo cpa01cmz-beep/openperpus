@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import { requireStaff, jsonError } from '@/lib/supabase/auth';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
-type Ctx = { params: { id: string } };
+type Ctx = { params: Promise<{ id: string }> };
 
 /**
  * GET /api/faqs/[id] — publik bila is_active (staf boleh semua).
@@ -41,7 +41,7 @@ async function writeLog(
 function revalidateFaqs(): string[] {
   const done: string[] = [];
   try {
-    revalidateTag('faqs');
+    revalidateTag('faqs', 'max');
     done.push('faqs');
   } catch {
     /* abaikan */
@@ -56,9 +56,10 @@ function revalidateFaqs(): string[] {
 }
 
 export async function GET(_req: Request, { params }: Ctx) {
+  const { id } = await params;
   const log = createLogger(requestIdFromHeaders(_req.headers));
   const supabase = createClient();
-  const { data, error } = await supabase.from('faqs').select('*').eq('id', params.id).single();
+  const { data, error } = await supabase.from('faqs').select('*').eq('id', id).single();
   if (error || !data) {
     log.warn('faqs.id.not_found', { detail: error?.message ?? 'not-found' });
     return jsonError('NOT_FOUND', 'FAQ tidak ditemukan.', 404, { requestId: log.requestId });
@@ -74,6 +75,7 @@ export async function GET(_req: Request, { params }: Ctx) {
 }
 
 export async function PUT(req: Request, { params }: Ctx) {
+  const { id } = await params;
   const log = createLogger(requestIdFromHeaders(req.headers));
   const guard = await requireStaff(['admin', 'librarian']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
@@ -116,7 +118,7 @@ export async function PUT(req: Request, { params }: Ctx) {
   const { data, error } = await supabase
     .from('faqs')
     .update(payload)
-    .eq('id', params.id)
+    .eq('id', id)
     .select()
     .single();
   if (error) {
@@ -124,11 +126,12 @@ export async function PUT(req: Request, { params }: Ctx) {
     return jsonError('SAVE_FAILED', 'Gagal mengupdate FAQ.', 500, { requestId: log.requestId });
   }
 
-  await writeLog(supabase, user?.id, 'faqs.update', params.id, payload);
+  await writeLog(supabase, user?.id, 'faqs.update', id, payload);
   return NextResponse.json({ data, revalidated: revalidateFaqs() });
 }
 
 export async function DELETE(_req: Request, { params }: Ctx) {
+  const { id } = await params;
   const log = createLogger(requestIdFromHeaders(_req.headers));
   const guard = await requireStaff(['admin']);
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
@@ -137,12 +140,12 @@ export async function DELETE(_req: Request, { params }: Ctx) {
     user: { id: string };
   };
 
-  const { error } = await supabase.from('faqs').delete().eq('id', params.id);
+  const { error } = await supabase.from('faqs').delete().eq('id', id);
   if (error) {
     log.error('faqs.id.delete_failed', { detail: error.message });
     return jsonError('DELETE_FAILED', 'Gagal menghapus FAQ.', 500, { requestId: log.requestId });
   }
 
-  await writeLog(supabase, user?.id, 'faqs.delete', params.id);
+  await writeLog(supabase, user?.id, 'faqs.delete', id);
   return NextResponse.json({ message: 'FAQ dihapus.', revalidated: revalidateFaqs() });
 }

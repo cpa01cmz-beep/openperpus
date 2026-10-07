@@ -7,16 +7,17 @@ import { getSiteUrl } from '@/lib/site';
 
 export const revalidate = 60;
 
-type Props = { params: { slug: string } };
+type Props = { params: Promise<{ slug: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const [settings, page] = await Promise.all([fetchSettings(), fetchPage(params.slug)]);
+  const { slug } = await params;
+  const [settings, page] = await Promise.all([fetchSettings(), fetchPage(slug)]);
   const siteName = settings.name ?? 'Perpustakaan';
   const siteUrl = getSiteUrl();
   if (!page) return { title: `Halaman tidak ditemukan — ${siteName}` };
   const title = `${page.title} — ${siteName}`;
   const description = page.excerpt ?? `Halaman ${page.title} di ${siteName}.`;
-  const canonical = `${siteUrl}/halaman/${params.slug}`;
+  const canonical = `${siteUrl}/halaman/${slug}`;
   return {
     title,
     description,
@@ -41,7 +42,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 /** Halaman dinamis dari tabel pages (slug apa pun yang is_active). */
 export default async function HalamanDetailPage({ params }: Props) {
-  const page = await fetchPage(params.slug);
+  const { slug } = await params;
+  const page = await fetchPage(slug);
   if (!page) notFound();
 
   return (

@@ -1,11 +1,6 @@
-import nextDynamic from 'next/dynamic';
+import BookForm from '@/components/admin/BookFormLazy';
 import { createClient } from '@/lib/supabase/server';
 import type { CategoryOption, RackOption } from '@/components/admin/BookForm';
-
-const BookForm = nextDynamic(() => import('@/components/admin/BookForm'), {
-  ssr: false,
-  loading: () => <p className="text-sm text-slate-500">Memuat formulir…</p>,
-});
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
