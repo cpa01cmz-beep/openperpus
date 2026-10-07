@@ -24,8 +24,10 @@ Deploy Cloudflare Workers (via `@opennextjs/cloudflare`) produksi **gagal dengan
 
 ## Konsekuensi
 
-- **Positif:** error 1102 hilang; bundle server turun drastis (jsdom out); build lebih
-  sederhana (`npm run build` = `next build`, tanpa adaptor).
+- **Positif:** error 1102 hilang; bundle server turun drastis (jsdom out); build Vercel
+  sederhana via `vercel.json` (`next build`), tanpa adaptor — sementara `build` di
+  `package.json` tetap opennext agar check wajib "Workers Builds" (integrasi Git CF)
+  tetap hijau dan jalur rollback worker tetap hidup.
 - **Negatif / mitigasi:**
   - Batas CPU tak terbatas → ada biaya saat trafik naik. Mitigasi: Vercel cache + Supabase.
   - Domain `openperpus.cmz.web.id` butuh DNS record ke Vercel; Supabase Auth harus

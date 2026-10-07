@@ -60,7 +60,8 @@ Deploy utama: **Vercel** (ADR-002 — Workers free plan kena error 1102 resource
 4. Supabase Dashboard → Authentication → URL Configuration: tambahkan domain Vercel ke
    Redirect URLs.
 
-Build Vercel memakai `npm run build` (`next build`). Tanpa konfigurasi tambahan:
+Build Vercel memakai `vercel.json` (`buildCommand` → `npm run next:build`); `build` di
+`package.json` tetap opennext untuk check wajib "Workers Builds" + rollback CF.
 `next.config.mjs` headers + `src/middleware.ts` (CSP nonce) jalan native di Vercel.
 
 ### Rollback Cloudflare Workers
