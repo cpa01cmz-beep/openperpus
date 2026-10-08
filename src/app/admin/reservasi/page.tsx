@@ -169,8 +169,8 @@ export default function ReservasiPage() {
   return (
     <div className="grid gap-4">
       <div>
-        <h1 className="text-2xl font-bold">Reservasi</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="kartu-kop pb-3 font-heading text-2xl font-bold text-heading">Reservasi</h1>
+        <p className="text-sm text-ink/70">
           Setujui reservasi menjadi siap diambil, selesaikan bila buku dipinjam, atau batalkan.
         </p>
       </div>
@@ -178,16 +178,16 @@ export default function ReservasiPage() {
       {apiMissing && (
         <div
           role="alert"
-          className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+          className="rounded-[var(--radius-lg)] border border-accent bg-accent-soft px-4 py-3 text-sm text-ink"
         >
-          API <code className="font-mono">/api/reservations</code> belum tersedia di backend (404).
+          API <code className="font-data">/api/reservations</code> belum tersedia di backend (404).
           Daftar &amp; aksi approve/batal menunggu worker backend. Sudah dilaporkan ke mandor.
         </div>
       )}
       {error && (
         <div
           role="alert"
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          className="rounded-[var(--radius-lg)] border border-accent bg-accent-soft px-4 py-3 text-sm text-accent"
         >
           {error}
         </div>
@@ -196,7 +196,7 @@ export default function ReservasiPage() {
       {expired.length > 0 && (
         <div
           role="alert"
-          className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+          className="rounded-[var(--radius-lg)] border border-accent bg-accent-soft px-4 py-3 text-sm text-ink"
         >
           <p className="font-semibold">Kedaluwarsa {expired.length} baris</p>
           <ul className="mt-1 list-disc pl-5">
@@ -211,7 +211,7 @@ export default function ReservasiPage() {
             type="button"
             onClick={onSweep}
             disabled={sweeping}
-            className="mt-2 inline-flex min-h-[44px] items-center justify-center rounded-lg bg-amber-600 px-3 font-semibold text-white transition hover:bg-amber-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
+            className="mt-2 inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-lg)] bg-accent px-3 font-semibold text-surface transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
           >
             {sweeping ? 'Menandai…' : 'Tandai kedaluwarsa'}
           </button>
@@ -230,12 +230,12 @@ export default function ReservasiPage() {
 
       <div className="flex flex-wrap items-end gap-2 text-sm">
         <div className="grid gap-1">
-          <label htmlFor="filter-status" className="text-sm font-semibold text-slate-700">
+          <label htmlFor="filter-status" className="text-sm font-semibold text-ink">
             Filter status
           </label>
           <select
             id="filter-status"
-            className="h-11 min-h-[44px] rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
+            className="h-11 min-h-[44px] rounded-[var(--radius-sm)] border border-rule bg-surface px-3 text-sm text-ink transition hover:border-rule-strong focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             value={status}
             onChange={(e) => {
               setPage(1);
@@ -252,14 +252,14 @@ export default function ReservasiPage() {
         <button
           type="button"
           onClick={load}
-          className="inline-flex min-h-[44px] items-center justify-center rounded-md border border-slate-200 bg-white px-3 font-semibold text-slate-700 transition hover:border-brand hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          className="inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-sm)] border border-rule bg-surface px-3 font-semibold text-ink transition hover:border-brand hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
         >
           Muat ulang
         </button>
       </div>
 
       {loading ? (
-        <p className="text-sm text-slate-500" aria-live="polite">
+        <p className="text-sm text-ink/70" aria-live="polite">
           Memuat…
         </p>
       ) : (
@@ -270,9 +270,9 @@ export default function ReservasiPage() {
               header: 'Anggota / Buku',
               render: (r) => (
                 <span>
-                  <strong>{r.members?.member_code ?? '-'}</strong>
+                  <strong className="entri">{r.members?.member_code ?? '-'}</strong>
                   <br />
-                  <span className="text-slate-500">{r.books?.title ?? '-'}</span>
+                  <span className="text-ink/70">{r.books?.title ?? '-'}</span>
                 </span>
               ),
             },
@@ -280,10 +280,10 @@ export default function ReservasiPage() {
               key: 'reserved_at',
               header: 'Reservasi',
               render: (r) => (
-                <span>
+                <span className="entri whitespace-nowrap">
                   {new Date(r.reserved_at).toLocaleDateString('id-ID')}
                   <br />
-                  <span className="text-xs text-slate-500">
+                  <span className="text-xs text-ink/70">
                     {r.expires_at
                       ? `kadaluarsa ${new Date(r.expires_at).toLocaleDateString('id-ID')}`
                       : 'tanpa kadaluarsa'}
@@ -291,7 +291,20 @@ export default function ReservasiPage() {
                 </span>
               ),
             },
-            { key: 'status', header: 'Status' },
+            {
+              key: 'status',
+              header: 'Status',
+              render: (r) => (
+                <span
+                  className="stempel"
+                  data-state={
+                    r.status === 'completed' || r.status === 'cancelled' ? 'dipinjam' : undefined
+                  }
+                >
+                  {r.status}
+                </span>
+              ),
+            },
             {
               key: 'aksi',
               header: 'Aksi',
@@ -303,7 +316,7 @@ export default function ReservasiPage() {
                         type="button"
                         disabled={actingId === r.id}
                         onClick={() => onUpdate(r.id, 'ready')}
-                        className="inline-flex min-h-[44px] items-center rounded bg-brand px-3 text-xs font-semibold text-white transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
+                        className="inline-flex min-h-[44px] items-center rounded-[var(--radius-sm)] bg-brand px-3 text-xs font-semibold text-surface transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {actingId === r.id ? '…' : 'Setujui'}
                       </button>
@@ -314,7 +327,7 @@ export default function ReservasiPage() {
                           type="button"
                           disabled={actingId === r.id}
                           onClick={() => onCheckout(r)}
-                          className="inline-flex min-h-[44px] items-center rounded bg-brand px-3 text-xs font-semibold text-white transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
+                          className="inline-flex min-h-[44px] items-center rounded-[var(--radius-sm)] bg-brand px-3 text-xs font-semibold text-surface transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           {actingId === r.id ? '…' : 'Pinjamkan'}
                         </button>
@@ -322,7 +335,7 @@ export default function ReservasiPage() {
                           type="button"
                           disabled={actingId === r.id}
                           onClick={() => onUpdate(r.id, 'completed')}
-                          className="inline-flex min-h-[44px] items-center rounded bg-brand px-3 text-xs font-semibold text-white transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
+                          className="inline-flex min-h-[44px] items-center rounded-[var(--radius-sm)] bg-brand px-3 text-xs font-semibold text-surface transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           {actingId === r.id ? '…' : 'Selesaikan'}
                         </button>
@@ -332,13 +345,13 @@ export default function ReservasiPage() {
                       type="button"
                       disabled={actingId === r.id}
                       onClick={() => onUpdate(r.id, 'cancelled')}
-                      className="inline-flex min-h-[44px] items-center rounded border border-slate-200 bg-white px-3 text-xs font-semibold text-red-600 transition hover:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
+                      className="inline-flex min-h-[44px] items-center rounded-[var(--radius-sm)] border border-rule bg-surface px-3 text-xs font-semibold text-accent transition hover:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Batal
                     </button>
                   </span>
                 ) : (
-                  <span className="text-xs text-slate-400">-</span>
+                  <span className="text-xs text-ink/70">-</span>
                 ),
             },
           ]}

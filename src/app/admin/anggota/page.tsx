@@ -204,17 +204,17 @@ export default function AnggotaPage() {
   return (
     <div className="grid gap-4">
       <div>
-        <h1 className="text-2xl font-bold">Anggota</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="kartu-kop pb-3 font-heading text-2xl font-bold text-heading">Anggota</h1>
+        <p className="text-sm text-ink/70">
           members.user_id wajib merujuk profiles.id (auth user). Nama tampil dari
           profiles.full_name.
         </p>
       </div>
-      <form onSubmit={onAdd} className="grid gap-2 rounded-2xl border bg-white p-4">
+      <form onSubmit={onAdd} className="grid gap-2 kartu p-4">
         <div className="grid gap-1">
           <label
             htmlFor="anggota-profile-search"
-            className="mb-1.5 block text-sm font-semibold text-slate-700"
+            className="mb-1.5 block text-sm font-semibold text-ink"
           >
             Cari profil anggota
           </label>
@@ -224,7 +224,7 @@ export default function AnggotaPage() {
             aria-expanded={pickOpen}
             aria-controls={pickerListId}
             aria-autocomplete="list"
-            className="h-11 min-h-[44px] w-full rounded-md border border-slate-200 bg-white px-4 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
+            className="h-11 min-h-[44px] w-full rounded-[var(--radius-sm)] border border-rule bg-surface px-4 text-sm text-ink transition hover:border-rule-strong focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             placeholder="Ketik nama / kode anggota…"
             value={pickText}
             onChange={(e) => {
@@ -238,14 +238,14 @@ export default function AnggotaPage() {
               role="listbox"
               id={pickerListId}
               aria-label="Hasil pencarian profil"
-              className="grid max-h-56 gap-1 overflow-auto rounded-lg border bg-white p-1"
+              className="grid max-h-56 gap-1 overflow-auto rounded-[var(--radius-lg)] border bg-surface p-1"
             >
               {pickOptions.map((o) => (
                 <li
                   key={o.user_id}
                   role="option"
                   aria-selected={form.user_id === o.user_id}
-                  className="cursor-pointer rounded px-3 py-2 text-sm hover:bg-slate-100"
+                  className="cursor-pointer rounded-[var(--radius-sm)] px-3 py-2 text-sm hover:bg-brand-soft"
                   onMouseDown={(e) => {
                     e.preventDefault();
                     setForm({ ...form, user_id: o.user_id });
@@ -323,7 +323,7 @@ export default function AnggotaPage() {
         )}
       </div>
       {actionError && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-accent">
           {actionError}
         </p>
       )}
@@ -341,7 +341,7 @@ export default function AnggotaPage() {
             key: 'member_code',
             header: 'Kode',
             sortable: true,
-            render: (r) => <span className="font-medium">{r.member_code}</span>,
+            render: (r) => <span className="entri font-medium">{r.member_code}</span>,
           },
           {
             key: 'profiles',
@@ -349,8 +349,21 @@ export default function AnggotaPage() {
             sortable: true,
             render: (r) => r.profiles?.full_name ?? '-',
           },
-          { key: 'phone', header: 'Telepon' },
-          { key: 'status', header: 'Status', sortable: true },
+          {
+            key: 'phone',
+            header: 'Telepon',
+            render: (r) => <span className="entri">{r.phone ?? '-'}</span>,
+          },
+          {
+            key: 'status',
+            header: 'Status',
+            sortable: true,
+            render: (r) => (
+              <span className="stempel" data-state={r.status === 'active' ? undefined : 'dipinjam'}>
+                {r.status}
+              </span>
+            ),
+          },
           {
             key: 'aksi',
             header: 'Aksi',
@@ -359,7 +372,7 @@ export default function AnggotaPage() {
                 type="button"
                 onClick={() => onDelete(r.id, r.member_code)}
                 aria-label={`Hapus anggota ${r.member_code}`}
-                className="inline-flex min-h-[44px] items-center text-red-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                className="inline-flex min-h-[44px] items-center text-accent underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
                 Hapus
               </button>

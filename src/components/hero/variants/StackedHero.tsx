@@ -6,13 +6,22 @@ import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useHeroCarousel } from './useHeroCarousel';
 import { HeroFallback } from './HeroFallback';
 import type { HeroProps } from './heroProps';
+import PencarianLaci from '@/components/public/PencarianLaci';
 
-/** StackedHero: same carousel + fallback, image stacked above text panel. Uses var tokens. */
-export default function StackedHero({ banners, siteName, tagline }: HeroProps) {
+/** StackedHero: brutalist-manifesto — fotokopi toner: kop + pelat laci di atas,
+ *  gambar bertumpuk di bawah garis 2px, tanpa radius lembut, bayangan offset keras. */
+export default function StackedHero({ banners, siteName, tagline, categories }: HeroProps) {
   const total = banners.length;
   const { idx, setIdx, go, setPaused, transitioning, handleTabKeyDown } = useHeroCarousel(total);
 
-  if (total === 0) return <HeroFallback siteName={siteName} tagline={tagline} />;
+  if (total === 0) {
+    return (
+      <section aria-label="Sorotan perpustakaan" className="grid gap-4 sm:gap-6">
+        <PencarianLaci siteName={siteName} tagline={tagline} categories={categories} />
+        <HeroFallback siteName={siteName} tagline={tagline} />
+      </section>
+    );
+  }
 
   const active = banners[idx];
   if (!active) return null;
@@ -22,10 +31,14 @@ export default function StackedHero({ banners, siteName, tagline }: HeroProps) {
       aria-label="Sorotan perpustakaan"
       aria-roledescription="carousel"
       aria-busy={transitioning}
-      className="overflow-hidden rounded-none border-2 border-ink bg-brand-strong text-white shadow-[8px_8px_0_0_var(--ink)]"
+      className="overflow-hidden rounded-none border-2 border-ink bg-brand-strong text-[var(--surface)] shadow-[8px_8px_0_0_var(--ink)]"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
+      <div className="border-b-2 border-ink bg-[var(--surface)] p-4 text-[var(--ink)] sm:p-6 lg:p-8">
+        <PencarianLaci siteName={siteName} tagline={tagline} categories={categories} />
+      </div>
+
       <div className="relative aspect-[16/9] w-full sm:aspect-[21/8]">
         {banners.map((b, i) =>
           i > 1 && i !== idx ? null : (
@@ -59,7 +72,7 @@ export default function StackedHero({ banners, siteName, tagline }: HeroProps) {
               type="button"
               onClick={() => go(-1)}
               aria-label="Banner sebelumnya"
-              className="grid min-h-[44px] min-w-[44px] place-items-center rounded-none border-2 border-white bg-ink text-white transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className="grid min-h-[44px] min-w-[44px] place-items-center rounded-none border-2 border-[var(--surface)] bg-ink text-[var(--surface)] transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
@@ -67,7 +80,7 @@ export default function StackedHero({ banners, siteName, tagline }: HeroProps) {
               type="button"
               onClick={() => go(1)}
               aria-label="Banner berikutnya"
-              className="grid min-h-[44px] min-w-[44px] place-items-center rounded-none border-2 border-white bg-ink text-white transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className="grid min-h-[44px] min-w-[44px] place-items-center rounded-none border-2 border-[var(--surface)] bg-ink text-[var(--surface)] transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               <ChevronRight className="h-5 w-5" />
             </button>
@@ -76,10 +89,10 @@ export default function StackedHero({ banners, siteName, tagline }: HeroProps) {
       </div>
 
       <div className="border-t-2 border-ink p-5 sm:p-8">
-        <p className="font-body text-[11px] font-semibold uppercase tracking-[0.2em] text-accent">
+        <p className="entri font-body text-xs font-semibold uppercase tracking-[0.04em] text-accent">
           {siteName} · {idx + 1}/{total}
         </p>
-        <h1 className="mt-1 max-w-2xl font-heading text-2xl font-bold uppercase leading-tight tracking-tight sm:text-4xl">
+        <h1 className="mt-1 max-w-2xl font-heading text-2xl font-bold uppercase leading-tight tracking-[-0.02em] sm:text-4xl">
           {active.title}
         </h1>
         {active.subtitle ? (
@@ -90,7 +103,7 @@ export default function StackedHero({ banners, siteName, tagline }: HeroProps) {
         <div className="mt-4 flex flex-wrap items-center gap-3">
           <Link
             href={active.link ?? '/katalog'}
-            className="inline-flex items-center gap-2 rounded-none border-2 border-ink bg-accent px-5 py-2.5 font-body text-sm font-bold uppercase tracking-wide text-ink shadow-[4px_4px_0_0_var(--ink)] transition hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_var(--ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            className="inline-flex min-h-[44px] items-center gap-2 rounded-none border-2 border-ink bg-accent px-5 py-2.5 font-body text-sm font-bold uppercase tracking-wide text-ink shadow-[4px_4px_0_0_var(--ink)] transition hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-[2px_2px_0_0_var(--ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--surface)]"
           >
             {active.link ? 'Selengkapnya' : 'Jelajahi Katalog'}{' '}
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -113,7 +126,7 @@ export default function StackedHero({ banners, siteName, tagline }: HeroProps) {
                   <span
                     aria-hidden="true"
                     className={`h-2 rounded-none border border-ink transition-all ${
-                      i === idx ? 'w-8 bg-accent' : 'w-4 bg-white'
+                      i === idx ? 'w-8 bg-accent' : 'w-4 bg-[var(--surface)]'
                     }`}
                   />
                 </button>

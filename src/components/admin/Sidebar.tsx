@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { ArrowLeft } from 'lucide-react';
 
 const MENU = [
   { href: '/admin', label: 'Dashboard' },
@@ -34,9 +35,10 @@ export default function Sidebar({ libraryName = 'Perpustakaan' }: { libraryName?
     return () => window.removeEventListener('keydown', onKey);
   }, [open]);
 
+  // Tab laci: daftar indeks laci kartu katalog — tab aktif = aria-current="page".
   const nav = (
-    <nav className="flex flex-col gap-1 p-4">
-      <p className="px-2 pb-2 text-sm font-semibold uppercase tracking-wide opacity-70">
+    <nav aria-label="Menu admin" className="batang flex flex-col gap-1 p-4">
+      <p className="entri px-3 pb-3 text-xs uppercase tracking-[0.04em] text-ink/70">
         {libraryName}
       </p>
       {MENU.map((m) => {
@@ -47,9 +49,7 @@ export default function Sidebar({ libraryName = 'Perpustakaan' }: { libraryName?
             href={m.href}
             onClick={() => setOpen(false)}
             aria-current={active ? 'page' : undefined}
-            className={`flex min-h-[44px] items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-              active ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-100'
-            }`}
+            className="tab-laci min-h-[44px] w-full justify-start focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
             {m.label}
           </Link>
@@ -57,9 +57,10 @@ export default function Sidebar({ libraryName = 'Perpustakaan' }: { libraryName?
       })}
       <Link
         href="/"
-        className="mt-4 flex min-h-[44px] items-center rounded-lg px-3 py-2 text-sm text-slate-500 hover:bg-slate-100"
+        className="mt-4 flex min-h-[44px] items-center gap-2 rounded-[var(--radius-sm)] border border-[var(--rule)] px-3 text-sm text-ink/70 transition hover:bg-brand-soft hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
       >
-        ← Lihat Situs
+        <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+        Lihat Situs
       </Link>
     </nav>
   );
@@ -67,11 +68,11 @@ export default function Sidebar({ libraryName = 'Perpustakaan' }: { libraryName?
   return (
     <>
       {/* Topbar mobile */}
-      <div className="sticky top-0 z-30 flex items-center justify-between border-b bg-white px-4 py-3 lg:hidden">
-        <span className="font-semibold">{libraryName} · Admin</span>
+      <div className="sticky top-0 z-30 flex items-center justify-between border-b border-[var(--rule)] bg-[var(--surface)] px-4 py-3 lg:hidden">
+        <span className="font-heading font-bold text-heading">{libraryName} · Admin</span>
         <button
           onClick={() => setOpen((v) => !v)}
-          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border px-3 py-1.5 text-sm"
+          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-[var(--radius-sm)] border border-[var(--rule)] px-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           aria-label="Toggle menu"
           aria-expanded={open}
           aria-controls="admin-mobile-nav"
@@ -80,19 +81,21 @@ export default function Sidebar({ libraryName = 'Perpustakaan' }: { libraryName?
         </button>
       </div>
       {/* Desktop */}
-      <aside className="hidden min-h-screen w-60 shrink-0 border-r bg-white lg:block">{nav}</aside>
+      <aside className="hidden min-h-screen w-60 shrink-0 border-r border-[var(--rule)] bg-[var(--surface)] lg:block">
+        {nav}
+      </aside>
       {/* Mobile drawer */}
       {open && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <button
             type="button"
             aria-label="Tutup menu navigasi"
-            className="absolute inset-0 bg-black/40"
+            className="absolute inset-0 bg-ink/50"
             onClick={() => setOpen(false)}
           />
           <aside
             id="admin-mobile-nav"
-            className="absolute left-0 top-0 h-full w-64 bg-white shadow-xl"
+            className="absolute left-0 top-0 h-full w-64 border-r border-[var(--rule)] bg-[var(--surface)] shadow-[var(--shadow-lg)]"
           >
             {nav}
           </aside>

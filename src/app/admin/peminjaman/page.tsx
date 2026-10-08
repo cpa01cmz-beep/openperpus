@@ -11,7 +11,7 @@ import Pagination from '@/components/ui/Pagination';
 
 const LoanForm = nextDynamic(() => import('@/components/admin/LoanForm'), {
   ssr: false,
-  loading: () => <p className="text-sm text-slate-500">Memuat formulir…</p>,
+  loading: () => <p className="text-sm text-ink/70">Memuat formulir…</p>,
 });
 
 type Loan = {
@@ -249,12 +249,12 @@ export default function PeminjamanPage() {
         }
       >
         <div className="grid gap-1">
-          <label htmlFor="extend-days" className="text-sm font-semibold text-slate-700">
+          <label htmlFor="extend-days" className="text-sm font-semibold text-ink">
             Lama perpanjangan (hari)
           </label>
           <select
             id="extend-days"
-            className="h-11 min-h-[44px] rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900"
+            className="h-11 min-h-[44px] rounded-[var(--radius-sm)] border border-rule bg-surface px-3 text-sm text-ink"
             value={extendDays}
             onChange={(e) => setExtendDays(e.target.value)}
           >
@@ -269,16 +269,16 @@ export default function PeminjamanPage() {
       {notice && (
         <div
           role="status"
-          className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+          className="rounded-[var(--radius-lg)] border border-brand bg-brand-soft px-4 py-3 text-sm text-ink"
         >
           {notice}
         </div>
       )}
-      <h1 className="text-2xl font-bold">Peminjaman</h1>
+      <h1 className="kartu-kop pb-3 font-heading text-2xl font-bold text-heading">Peminjaman</h1>
       {denied && (
         <div
           role="alert"
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+          className="rounded-[var(--radius-lg)] border border-accent bg-accent-soft px-4 py-3 text-sm text-ink"
         >
           Akses ditolak (401/403). Silakan login sebagai petugas untuk menagih dan memproses
           pengembalian.
@@ -287,12 +287,12 @@ export default function PeminjamanPage() {
       <LoanForm members={members} books={books} />
       <div className="flex flex-wrap items-end gap-2 text-sm">
         <div className="grid gap-1">
-          <label htmlFor="peminjaman-status" className="text-sm font-semibold text-slate-700">
+          <label htmlFor="peminjaman-status" className="text-sm font-semibold text-ink">
             Filter status
           </label>
           <select
             id="peminjaman-status"
-            className="h-11 min-h-[44px] rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50"
+            className="h-11 min-h-[44px] rounded-[var(--radius-sm)] border border-rule bg-surface px-3 text-sm text-ink transition hover:border-rule-strong focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
             value={status}
             onChange={(e) => {
               setStatus(e.target.value);
@@ -311,7 +311,7 @@ export default function PeminjamanPage() {
           type="button"
           aria-pressed={overdueOnly}
           onClick={() => setOverdueOnly((v) => !v)}
-          className={`inline-flex min-h-[44px] items-center justify-center rounded-md border px-3 font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${overdueOnly ? 'border-red-300 bg-red-50 text-red-700' : 'border-slate-200 bg-white text-slate-700 hover:border-brand hover:text-brand'}`}
+          className={`inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-sm)] border px-3 font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${overdueOnly ? 'border-accent bg-accent-soft text-accent' : 'border-rule bg-surface text-ink hover:border-brand hover:text-brand'}`}
         >
           Terlambat saja
         </button>
@@ -320,7 +320,7 @@ export default function PeminjamanPage() {
           onClick={() => {
             void Promise.all([load(), loadOptions(true)]);
           }}
-          className="inline-flex min-h-[44px] items-center justify-center rounded-md border border-slate-200 bg-white px-3 font-semibold text-slate-700 transition hover:border-brand hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          className="inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-sm)] border border-rule bg-surface px-3 font-semibold text-ink transition hover:border-brand hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
         >
           Muat ulang
         </button>
@@ -352,9 +352,9 @@ export default function PeminjamanPage() {
             header: 'Peminjam/Buku',
             render: (r) => (
               <span>
-                <strong>{r.members?.member_code}</strong>
+                <strong className="entri">{r.members?.member_code}</strong>
                 <br />
-                <span className="text-slate-500">{r.books?.title}</span>
+                <span className="text-ink/70">{r.books?.title}</span>
               </span>
             ),
           },
@@ -363,17 +363,31 @@ export default function PeminjamanPage() {
             header: 'Pinjam → Tempo',
             sortable: true,
             render: (r) => (
-              <span>
+              <span className="entri whitespace-nowrap">
                 {new Date(r.borrowed_at).toLocaleDateString('id-ID')}
                 <br />→ {new Date(r.due_at).toLocaleDateString('id-ID')}
-                {r.is_overdue && (
-                  <span className="ml-1 rounded bg-red-100 px-1 text-xs text-red-700">telat</span>
-                )}
+                {r.is_overdue && <span className="stempel ml-1">telat</span>}
               </span>
             ),
           },
-          { key: 'status', header: 'Status', sortable: true, render: (r) => r.status },
-          { key: 'fine_amount', header: 'Denda', render: (r) => fmtRp(r.fine_amount) },
+          {
+            key: 'status',
+            header: 'Status',
+            sortable: true,
+            render: (r) => (
+              <span
+                className="stempel"
+                data-state={r.status === 'returned' ? 'dipinjam' : undefined}
+              >
+                {r.status}
+              </span>
+            ),
+          },
+          {
+            key: 'fine_amount',
+            header: 'Denda',
+            render: (r) => <span className="entri">{fmtRp(r.fine_amount)}</span>,
+          },
           {
             key: 'aksi',
             header: 'Aksi',
@@ -385,7 +399,7 @@ export default function PeminjamanPage() {
                     onClick={() => onReturn(r.id)}
                     disabled={denied}
                     aria-label={`Kembalikan pinjaman ${r.members?.member_code ?? r.id}`}
-                    className="inline-flex min-h-[44px] items-center rounded bg-brand px-3 text-xs font-semibold text-white transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex min-h-[44px] items-center rounded-[var(--radius-sm)] bg-brand px-3 text-xs font-semibold text-surface transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Kembalikan
                   </button>
@@ -394,7 +408,7 @@ export default function PeminjamanPage() {
                     onClick={() => onExtend(r.id)}
                     disabled={denied}
                     aria-label={`Perpanjang pinjaman ${r.members?.member_code ?? r.id}`}
-                    className="inline-flex min-h-[44px] items-center rounded border border-brand px-3 text-xs font-semibold text-brand transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex min-h-[44px] items-center rounded-[var(--radius-sm)] border border-brand px-3 text-xs font-semibold text-brand transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Perpanjang
                   </button>
@@ -410,7 +424,7 @@ export default function PeminjamanPage() {
                   )}
                 </span>
               ) : (
-                <span className="text-xs text-slate-400">-</span>
+                <span className="text-xs text-ink/70">-</span>
               ),
           },
         ]}

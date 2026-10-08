@@ -52,17 +52,17 @@ export default function DaftarPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-      <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h1 className="text-xl font-semibold text-slate-900">Daftar Anggota</h1>
-        <p className="mt-1 text-sm text-slate-500">
+    <main className="flex min-h-screen items-center justify-center px-4 py-10">
+      <div className="kartu w-full max-w-sm p-6">
+        <h1 className="font-heading text-xl font-semibold text-heading">Daftar Anggota</h1>
+        <p className="mt-1 text-sm text-ink/75">
           Isi formulir di bawah untuk mendaftar sebagai anggota perpustakaan.
         </p>
 
         {done ? (
           <p
             role="status"
-            className="mt-5 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-700"
+            className="mt-5 rounded-[var(--radius-md)] border border-rule bg-brand-soft px-3 py-2 text-sm text-heading"
           >
             Pendaftaran diterima, menunggu aktivasi pustakawan.
           </p>
@@ -118,7 +118,10 @@ export default function DaftarPage() {
             />
 
             {error && (
-              <p role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+              <p
+                role="alert"
+                className="rounded-[var(--radius-md)] border border-rule bg-accent-soft px-3 py-2 text-sm text-heading"
+              >
                 {error}
               </p>
             )}

@@ -84,85 +84,95 @@ export default async function LayananPage() {
         }}
       />
       <Breadcrumb items={[{ label: 'Beranda', href: '/' }, { label: 'Layanan' }]} />
-      <header>
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">
-          Apa yang kami bantu
+      {/* Kop kartu indeks: judul + entri ringkas */}
+      <header className="kartu px-5 pb-6 pt-7 sm:px-8 sm:pt-9">
+        <div className="kartu-kop pb-4">
+          <h1 className="font-heading text-3xl font-bold leading-[1.05] tracking-[-0.02em] text-heading sm:text-4xl">
+            Layanan {siteName}
+          </h1>
+        </div>
+        <p className="entri mt-3 text-xs uppercase tracking-[0.08em] text-ink/70 sm:text-sm">
+          {DEFAULT_SERVICES.length} entri tercatat
         </p>
-        <h1 className="mt-1 font-heading text-3xl font-bold text-heading sm:text-4xl">
-          Layanan {siteName}
-        </h1>
-        <p className="mt-2 max-w-2xl text-sm text-slate-500 sm:text-base">
+        <p className="mt-2 max-w-2xl text-sm text-ink/70 sm:text-base">
           {page?.excerpt ??
             'Seluruh layanan sirkulasi dan informasi — dirender dinamis dari sistem.'}
         </p>
       </header>
 
       {page?.content_md ? (
-        <section
-          aria-label="Deskripsi layanan"
-          className="rounded-lg border border-slate-100 bg-white p-6 shadow-sm sm:p-8"
-        >
-          <p className="whitespace-pre-line text-sm leading-relaxed text-slate-600 sm:text-base">
+        <section aria-label="Deskripsi layanan" className="kartu px-5 pb-8 pt-5 sm:px-8 sm:pt-6">
+          <p className="whitespace-pre-line text-sm leading-relaxed text-ink/80 sm:text-base">
             {page.content_md}
           </p>
         </section>
       ) : null}
 
+      {/* Kartu layanan: kop + entri deskripsi, ikon dari dunia */}
       <section aria-labelledby="daftar-layanan" className="grid gap-4 sm:grid-cols-2">
         <h2 id="daftar-layanan" className="sr-only">
           Daftar layanan
         </h2>
-        {DEFAULT_SERVICES.map((s) => (
+        {DEFAULT_SERVICES.map((s, n) => (
           <div
             key={s.title}
-            className="rounded-lg border border-slate-100 bg-white p-5 shadow-sm transition hover:shadow-md sm:p-6"
+            style={{ ['--i' as never]: n } as React.CSSProperties}
+            className="kartu riffle px-5 pb-7 pt-5 sm:px-6"
           >
-            <span
-              className="grid h-11 w-11 place-items-center rounded-lg bg-brand/10 text-brand"
-              aria-hidden="true"
-            >
-              <s.icon className="h-5 w-5" />
-            </span>
-            <h3 className="mt-3 font-heading text-lg font-bold text-brand-strong">{s.title}</h3>
-            <p className="mt-1.5 text-sm leading-relaxed text-slate-500">{s.desc}</p>
+            <div className="kartu-kop flex items-center gap-2.5 pb-3">
+              <span
+                aria-hidden="true"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-[var(--radius-sm)] bg-brand-soft text-brand"
+              >
+                <s.icon className="h-5 w-5" />
+              </span>
+              <h3 className="font-heading text-lg font-bold leading-snug text-heading">
+                {s.title}
+              </h3>
+            </div>
+            <p className="mt-3 text-sm leading-relaxed text-ink/80">{s.desc}</p>
           </div>
         ))}
       </section>
 
-      <section
-        aria-labelledby="alur"
-        className="rounded-lg bg-brand-strong p-6 text-white shadow sm:p-8"
-      >
-        <h2 id="alur" className="flex items-center gap-2 font-heading text-xl font-bold">
-          <BadgeCheck className="h-5 w-5 text-accent" aria-hidden="true" /> Cara meminjam
-        </h2>
+      {/* Kartu pengumuman alur meminjam */}
+      <section aria-labelledby="alur" className="kartu lubang relative px-5 pb-10 pt-6 sm:px-8">
+        <div className="kartu-kop flex items-center gap-2 pb-4">
+          <BadgeCheck className="h-5 w-5 text-brand" aria-hidden="true" />
+          <h2 id="alur" className="font-heading text-xl font-bold text-heading">
+            Cara meminjam
+          </h2>
+        </div>
         <ol className="mt-4 grid gap-3 text-sm sm:grid-cols-3">
           {[
             'Temukan buku di katalog dan catat lokasi raknya.',
             'Datang dengan kartu anggota pada jam operasional.',
             'Serahkan ke petugas sirkulasi untuk diproses.',
           ].map((step, i) => (
-            <li key={i} className="rounded-lg bg-white/10 p-4">
+            <li
+              key={i}
+              className="rounded-[var(--radius-sm)] border border-rule bg-[var(--surface)] px-4 py-4"
+            >
               <span
-                className="grid h-8 w-8 place-items-center rounded-full bg-accent font-heading text-sm font-bold text-brand-strong"
                 aria-hidden="true"
+                className="entri inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-[var(--radius-sm)] bg-brand px-2 text-sm text-surface"
               >
                 {i + 1}
               </span>
-              <p className="mt-2 text-brand-soft/90">{step}</p>
+              <p className="mt-2 text-ink/80">{step}</p>
             </li>
           ))}
         </ol>
         <div className="mt-5 flex flex-wrap gap-3">
           <Link
             href="/katalog"
-            className="inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-bold text-brand-strong shadow transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            className="inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-md)] bg-brand px-5 py-2.5 text-sm font-semibold text-surface shadow-[var(--shadow-sm)] transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
             Mulai dari katalog <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
           <Link
             href="/tentang"
-            className="inline-flex items-center rounded-lg border border-white/30 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            className="inline-flex min-h-[44px] items-center rounded-[var(--radius-md)] border border-rule bg-[var(--surface)] px-5 py-2.5 text-sm font-semibold text-brand transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
             Tentang kami
           </Link>

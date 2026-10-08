@@ -16,10 +16,12 @@ function safeNext(raw: string | null): string {
 
 export default function LoginPage() {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-      <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
-        <h1 className="text-xl font-semibold text-slate-900">Masuk Anggota / Pustakawan</h1>
-        <p className="mt-1 text-sm text-slate-500">
+    <main className="flex min-h-screen items-center justify-center px-4 py-10">
+      <div className="kartu w-full max-w-sm p-6">
+        <h1 className="font-heading text-xl font-semibold text-heading">
+          Masuk Anggota / Pustakawan
+        </h1>
+        <p className="mt-1 text-sm text-ink/75">
           Masuk sebagai anggota untuk melihat pinjaman &amp; denda Anda, atau sebagai pustakawan
           untuk mengelola perpustakaan.
         </p>
@@ -31,7 +33,7 @@ export default function LoginPage() {
         <Link href="/" className="mt-4 inline-block text-sm text-brand hover:underline">
           ← Kembali ke beranda
         </Link>
-        <p className="mt-2 text-sm text-slate-500">
+        <p className="mt-2 text-sm text-ink/75">
           Belum punya akun?{' '}
           <Link href="/daftar" className="text-brand hover:underline">
             Daftar sebagai anggota
@@ -106,7 +108,10 @@ function LoginForm() {
       />
 
       {error && (
-        <p role="alert" className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">
+        <p
+          role="alert"
+          className="rounded-[var(--radius-md)] border border-rule bg-accent-soft px-3 py-2 text-sm text-heading"
+        >
           {error}
         </p>
       )}

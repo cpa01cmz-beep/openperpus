@@ -13,8 +13,8 @@ export default function CatalogGrid({
 }: Props) {
   return (
     <div className={className}>
-      {books.map((b) => (
-        <BookCard key={b.id} book={b} />
+      {books.map((b, i) => (
+        <BookCard key={b.id} book={b} index={i} />
       ))}
     </div>
   );

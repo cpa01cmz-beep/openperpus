@@ -49,7 +49,7 @@ export default function ReserveButton({ bookId, slug, title, waHref, variant = '
     return (
       <p
         role="status"
-        className="inline-flex items-center gap-2 rounded-[var(--radius-md)] bg-brand-soft px-5 py-3 text-sm font-bold text-brand"
+        className="inline-flex items-start gap-2 rounded-[var(--radius-md)] border border-brand bg-brand-soft px-5 py-3 text-sm font-bold text-brand"
       >
         <BookmarkCheck className="h-4 w-4" aria-hidden="true" /> {msg}
       </p>
@@ -58,8 +58,8 @@ export default function ReserveButton({ bookId, slug, title, waHref, variant = '
 
   const btn =
     variant === 'queue'
-      ? 'bg-accent text-brand-strong hover:bg-accent focus-visible:ring-brand'
-      : 'border border-brand-soft bg-[var(--surface)] text-brand shadow-sm hover:bg-brand-soft focus-visible:ring-brand';
+      ? 'border border-accent bg-accent text-[var(--surface)] hover:opacity-90 focus-visible:ring-brand'
+      : 'border border-[var(--ink)] bg-brand text-[var(--surface)] shadow-[var(--shadow-md)] hover:bg-brand-strong focus-visible:ring-brand';
 
   return (
     <span className="inline-flex flex-wrap items-center gap-3">
@@ -68,7 +68,7 @@ export default function ReserveButton({ bookId, slug, title, waHref, variant = '
         onClick={reserve}
         disabled={state === 'loading'}
         aria-live="polite"
-        className={`inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--radius-md)] px-6 py-3 text-sm font-semibold shadow-sm transition focus-visible:outline-none focus-visible:ring-2 disabled:cursor-wait disabled:opacity-70 ${btn}`}
+        className={`inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--radius-md)] px-6 py-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus:ring-brand disabled:cursor-wait disabled:opacity-70 ${btn}`}
       >
         {state === 'loading' ? (
           <>
@@ -83,13 +83,13 @@ export default function ReserveButton({ bookId, slug, title, waHref, variant = '
       </button>
       {state === 'error' && (
         <span role="alert" className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="font-medium text-rose-700">{msg}</span>
+          <span className="entri font-medium text-accent">{msg}</span>
           {waHref ? (
             <a
               href={waHref}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-md)] bg-brand px-4 py-2 text-sm font-bold text-white shadow transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-md)] bg-brand-strong px-4 py-2 text-sm font-bold text-[var(--surface)] shadow-[var(--shadow-md)] transition hover:bg-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             >
               <MessageCircle className="h-4 w-4" aria-hidden="true" /> Reservasi via WA
             </a>

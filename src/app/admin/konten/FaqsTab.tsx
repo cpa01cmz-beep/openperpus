@@ -14,7 +14,7 @@ type Faq = {
 };
 
 const rawInput =
-  'h-11 min-h-[44px] w-full rounded-md border border-slate-200 bg-white px-4 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1';
+  'h-11 min-h-[44px] w-full rounded-[var(--radius-sm)] border border-rule bg-surface px-4 text-sm text-ink transition hover:border-rule-strong focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand';
 
 export function FaqsTab({
   faqs,
@@ -46,7 +46,7 @@ export function FaqsTab({
 
   return (
     <section className="grid gap-4" aria-label="FAQ">
-      <form onSubmit={handleAdd} className="grid max-w-2xl gap-2 rounded-2xl border bg-white p-4">
+      <form onSubmit={handleAdd} className="grid max-w-2xl gap-2 kartu p-4">
         <Input
           id="konten-faq-question"
           label="Pertanyaan"
@@ -58,7 +58,7 @@ export function FaqsTab({
         <div className="grid gap-1 text-sm">
           <label
             htmlFor="konten-faq-answer"
-            className="mb-1.5 block text-sm font-semibold text-slate-700"
+            className="mb-1.5 block text-sm font-semibold text-ink"
           >
             Jawaban
           </label>
@@ -99,7 +99,11 @@ export function FaqsTab({
           {
             key: 'is_active',
             header: 'Aktif',
-            render: (r) => (r.is_active ? 'Ya' : 'Tidak'),
+            render: (r) => (
+              <span className="stempel" data-state={r.is_active ? undefined : 'dipinjam'}>
+                {r.is_active ? 'Ya' : 'Tidak'}
+              </span>
+            ),
           },
           {
             key: 'aksi',
@@ -108,13 +112,13 @@ export function FaqsTab({
               <span className="flex gap-2">
                 <button
                   onClick={() => onToggleFaq(r.id, r.is_active)}
-                  className="inline-flex min-h-[44px] items-center text-blue-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  className="inline-flex min-h-[44px] items-center text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
                   {r.is_active ? 'Nonaktifkan' : 'Aktifkan'}
                 </button>
                 <button
                   onClick={() => onDeleteFaq(r.id)}
-                  className="inline-flex min-h-[44px] items-center text-red-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  className="inline-flex min-h-[44px] items-center text-accent underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
                   Hapus
                 </button>

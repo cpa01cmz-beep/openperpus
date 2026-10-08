@@ -65,40 +65,43 @@ export default async function TentangPage() {
         }}
       />
       <Breadcrumb items={[{ label: 'Beranda', href: '/' }, { label: 'Tentang' }]} />
-      <header>
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Profil</p>
-        <h1 className="mt-1 font-heading text-3xl font-bold text-heading sm:text-4xl">
-          Tentang {siteName}
-        </h1>
-        {settings.tagline && <p className="mt-2 text-slate-500">{settings.tagline}</p>}
+      {/* Kop kartu indeks: nama perpustakaan + baris entri tagline di bawah garis */}
+      <header className="kartu px-5 pb-6 pt-7 sm:px-8 sm:pt-9">
+        <div className="kartu-kop pb-4">
+          <h1 className="font-heading text-3xl font-bold leading-[1.05] tracking-[-0.02em] text-heading sm:text-4xl">
+            Tentang {siteName}
+          </h1>
+        </div>
+        {settings.tagline && (
+          <p className="entri mt-3 text-xs uppercase tracking-[0.08em] text-ink/70 sm:text-sm">
+            {settings.tagline}
+          </p>
+        )}
       </header>
 
-      <section
-        aria-labelledby="profil"
-        className="rounded-lg border border-slate-100 bg-white p-6 shadow-sm sm:p-8"
-      >
-        <h2
-          id="profil"
-          className="flex items-center gap-2 font-heading text-xl font-bold text-heading"
-        >
-          <BookOpenText className="h-5 w-5 text-brand" aria-hidden="true" /> Profil Singkat
-        </h2>
+      <section aria-labelledby="profil" className="kartu px-5 pb-8 pt-6 sm:px-8">
+        <div className="kartu-kop flex items-center gap-2 pb-4">
+          <BookOpenText className="h-5 w-5 text-brand" aria-hidden="true" />
+          <h2 id="profil" className="font-heading text-xl font-bold text-heading">
+            Profil Singkat
+          </h2>
+        </div>
         {page?.content_md ? (
-          <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-slate-600 sm:text-base">
+          <p className="mt-4 max-w-[70ch] whitespace-pre-line text-sm leading-relaxed text-ink/80 sm:text-base">
             {page.content_md}
           </p>
         ) : settings.about ? (
-          <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-slate-600 sm:text-base">
+          <p className="mt-4 max-w-[70ch] whitespace-pre-line text-sm leading-relaxed text-ink/80 sm:text-base">
             {settings.about}
           </p>
         ) : (
-          <p className="mt-3 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-500">
+          <p className="entri mt-4 max-w-[70ch] text-sm leading-relaxed text-ink/70">
             Profil {siteName} belum diisi admin. Halaman ini akan terisi otomatis setelah tabel{' '}
             <code>pages</code> (slug <code>tentang</code>) atau kolom <code>about</code> dilengkapi.
           </p>
         )}
         {settings.address && (
-          <p className="mt-4 flex items-start gap-2 text-sm text-slate-600">
+          <p className="entri mt-4 flex items-start gap-2 text-sm text-ink/80">
             <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand" aria-hidden="true" />
             {settings.address}
           </p>
@@ -106,39 +109,43 @@ export default async function TentangPage() {
       </section>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <section
-          aria-labelledby="visi"
-          className="rounded-lg bg-brand-strong p-6 text-white shadow sm:p-8"
-        >
-          <h2 id="visi" className="flex items-center gap-2 font-heading text-xl font-bold">
-            <Eye className="h-5 w-5 text-accent" aria-hidden="true" /> Visi
-          </h2>
-          <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-brand-soft/90 sm:text-base">
+        {/* Visi: kartu pengumuman + entri */}
+        <section aria-labelledby="visi" className="kartu lubang relative px-5 pb-10 pt-6 sm:px-7">
+          <div className="kartu-kop flex items-center gap-2 pb-4">
+            <Eye className="h-5 w-5 text-brand" aria-hidden="true" />
+            <h2 id="visi" className="font-heading text-xl font-bold text-heading">
+              Visi
+            </h2>
+          </div>
+          <p className="mt-4 max-w-[70ch] whitespace-pre-line text-sm leading-relaxed text-ink/80 sm:text-base">
             {settings.vision ?? 'Visi perpustakaan akan ditampilkan di sini setelah diisi admin.'}
           </p>
         </section>
-        <section
-          aria-labelledby="misi"
-          className="rounded-lg border border-accent-soft bg-accent-soft p-6 shadow-sm sm:p-8"
-        >
-          <h2
-            id="misi"
-            className="flex items-center gap-2 font-heading text-xl font-bold text-heading"
-          >
-            <ListChecks className="h-5 w-5 text-brand" aria-hidden="true" /> Misi
-          </h2>
+        {/* Misi: kartu laci + daftar entri bernomor */}
+        <section aria-labelledby="misi" className="kartu px-5 pb-8 pt-6 sm:px-7">
+          <div className="kartu-kop flex items-center gap-2 pb-4">
+            <ListChecks className="h-5 w-5 text-brand" aria-hidden="true" />
+            <h2 id="misi" className="font-heading text-xl font-bold text-heading">
+              Misi
+            </h2>
+          </div>
           {missionItems.length > 0 ? (
-            <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-slate-700 sm:text-base">
+            <ol className="mt-4 grid gap-1.5 text-sm leading-relaxed text-ink/80 sm:text-base">
               {missionItems.map((m, i) => (
-                <li key={i}>{m}</li>
+                <li key={i} className="flex gap-4">
+                  <span aria-hidden="true" className="shrink-0 opacity-60">
+                    {String(i + 1).padStart(2, '0')}.
+                  </span>
+                  <span>{m}</span>
+                </li>
               ))}
             </ol>
           ) : settings.mission ? (
-            <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-slate-700">
+            <p className="mt-4 max-w-[70ch] whitespace-pre-line text-sm leading-relaxed text-ink/80">
               {settings.mission}
             </p>
           ) : (
-            <p className="mt-3 text-sm text-slate-500">
+            <p className="entri mt-4 text-sm text-ink/70">
               Misi akan ditampilkan di sini setelah diisi admin.
             </p>
           )}

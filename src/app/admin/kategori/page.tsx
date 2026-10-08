@@ -109,15 +109,12 @@ export default function KategoriPage() {
   return (
     <div className="grid gap-4">
       <div>
-        <h1 className="text-2xl font-bold">Kategori</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="kartu-kop pb-3 font-heading text-2xl font-bold text-heading">Kategori</h1>
+        <p className="text-sm text-ink/70">
           Kelola kategori buku (name, slug otomatis, deskripsi, status aktif).
         </p>
       </div>
-      <form
-        onSubmit={onAdd}
-        className="flex flex-wrap items-end gap-2 rounded-2xl border bg-white p-4"
-      >
+      <form onSubmit={onAdd} className="flex flex-wrap items-end gap-2 kartu p-4">
         <div className="min-w-[180px] flex-1">
           <Input
             id="kategori-name"
@@ -154,7 +151,7 @@ export default function KategoriPage() {
         />
       </div>
       {actionError && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-accent">
           {actionError}
         </p>
       )}
@@ -166,7 +163,7 @@ export default function KategoriPage() {
             header: 'Nama',
             render: (r) => <span className="font-medium">{r.name}</span>,
           },
-          { key: 'slug', header: 'Slug' },
+          { key: 'slug', header: 'Slug', render: (r) => <span className="entri">{r.slug}</span> },
           { key: 'description', header: 'Deskripsi', render: (r) => r.description ?? '-' },
           {
             key: 'is_active',
@@ -177,7 +174,7 @@ export default function KategoriPage() {
                 onClick={() => onToggle(r)}
                 aria-label={`Ubah status kategori ${r.name}`}
                 aria-pressed={r.is_active}
-                className="inline-flex min-h-[44px] items-center rounded-full border px-3 text-xs hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                className="inline-flex min-h-[44px] items-center rounded-[var(--radius-sm)] border px-3 text-xs hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
                 {r.is_active ? 'Aktif' : 'Nonaktif'}
               </button>
@@ -191,7 +188,7 @@ export default function KategoriPage() {
                 type="button"
                 onClick={() => onDelete(r.id)}
                 aria-label={`Hapus kategori ${r.name}`}
-                className="inline-flex min-h-[44px] items-center text-red-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                className="inline-flex min-h-[44px] items-center text-accent underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
                 Hapus
               </button>

@@ -64,3 +64,13 @@ opencode.json.bak
 
 # test coverage output
 coverage/
+
+# design QA evidence (screenshots, regenerable; design.json + surfaces stay tracked)
+.impeccable/review/
+
+# playwright html report + test results
+playwright-report/
+test-results/
+
+# supabase CLI temp files
+supabase/.temp/

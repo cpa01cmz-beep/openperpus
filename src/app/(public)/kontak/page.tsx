@@ -108,12 +108,17 @@ export default async function KontakPage({
         }}
       />
       <Breadcrumb items={[{ label: 'Beranda', href: '/' }, { label: 'Kontak' }]} />
-      <header>
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Hubungi kami</p>
-        <h1 className="mt-1 font-heading text-3xl font-bold text-heading sm:text-4xl">
-          Kontak {siteName}
-        </h1>
-        <p className="mt-2 max-w-2xl text-sm text-slate-500 sm:text-base">
+      {/* Kop kartu indeks: judul + baris entri di bawah garis kembar */}
+      <header className="kartu px-5 pb-6 pt-7 sm:px-8 sm:pt-9">
+        <div className="kartu-kop pb-4">
+          <h1 className="font-heading text-3xl font-bold leading-[1.05] tracking-[-0.02em] text-heading sm:text-4xl">
+            Kontak {siteName}
+          </h1>
+        </div>
+        <p className="entri mt-3 text-xs uppercase tracking-[0.08em] text-ink/70 sm:text-sm">
+          Hubungi kami
+        </p>
+        <p className="mt-2 max-w-2xl text-sm text-ink/70 sm:text-base">
           {page?.excerpt ??
             'Alamat, telepon, jam layanan, dan kanal resmi kami — kunjungi atau hubungi langsung.'}
         </p>
@@ -124,16 +129,20 @@ export default async function KontakPage({
           <section
             aria-label="Konteks reservasi"
             role="status"
-            className="rounded-lg border border-brand/20 bg-brand-soft/40 p-5 shadow-sm sm:p-6"
+            className="kartu lubang relative px-5 pb-10 pt-5 sm:px-6 sm:pt-6"
           >
-            <h2 className="font-heading text-lg font-bold text-heading">Reservasi: {book.title}</h2>
-            <p className="mt-1 text-sm text-slate-600">
+            <div className="kartu-kop pb-3">
+              <h2 className="font-heading text-lg font-bold text-heading">
+                Reservasi: {book.title}
+              </h2>
+            </div>
+            <p className="mt-3 text-sm text-ink/70">
               Sebutkan judul ini saat menghubungi petugas sirkulasi.
             </p>
             <div className="mt-3 flex flex-wrap gap-3">
               <Link
                 href={`/katalog/${book.slug}`}
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-brand px-5 py-2.5 text-sm font-bold text-white shadow transition hover:bg-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-md)] bg-brand px-5 py-2.5 text-sm font-semibold text-surface shadow-[var(--shadow-sm)] transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
                 Lihat buku <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Link>
@@ -142,13 +151,13 @@ export default async function KontakPage({
                   href={waHref}
                   target="_blank"
                   rel="noreferrer"
-                  className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-brand px-5 py-2.5 text-sm font-bold text-white shadow transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-md)] border border-brand/40 bg-[var(--surface)] px-5 py-2.5 text-sm font-semibold text-brand transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
                   <MessageCircle className="h-4 w-4" aria-hidden="true" />
                   Reservasi via WA
                 </a>
               ) : (
-                <p className="w-full text-sm text-slate-600">
+                <p className="w-full text-sm text-ink/70">
                   Nomor WA petugas belum tersedia hubungi via telepon/email di bawah.
                 </p>
               )}
@@ -158,16 +167,18 @@ export default async function KontakPage({
           <section
             aria-label="Konteks reservasi"
             role="status"
-            className="rounded-lg border border-amber-200 bg-amber-50 p-5 shadow-sm sm:p-6"
+            className="kartu bg-accent-soft px-5 pb-7 pt-5 sm:px-6 sm:pt-6"
           >
-            <h2 className="font-heading text-lg font-bold text-heading">Buku tidak ditemukan</h2>
-            <p className="mt-1 text-sm text-slate-600">
+            <div className="kartu-kop border-[var(--rule-strong)] pb-3">
+              <h2 className="font-heading text-lg font-bold text-heading">Buku tidak ditemukan</h2>
+            </div>
+            <p className="mt-3 text-sm text-ink/70">
               Judul yang Anda maksud tidak tersedia. Jelajahi katalog untuk memilih buku lain.
             </p>
             <div className="mt-3 flex flex-wrap gap-3">
               <Link
                 href="/katalog"
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-bold text-brand-strong shadow transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-md)] bg-accent px-5 py-2.5 text-sm font-semibold text-surface shadow-[var(--shadow-sm)] transition hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
                 Jelajahi katalog <ArrowRight className="h-4 w-4" aria-hidden="true" />
               </Link>
@@ -178,9 +189,9 @@ export default async function KontakPage({
       {page?.content_md && (
         <section
           aria-label="Informasi kontak tambahan"
-          className="rounded-lg border border-slate-100 bg-white p-6 shadow-sm sm:p-8"
+          className="kartu px-5 pb-8 pt-5 sm:px-8 sm:pt-6"
         >
-          <p className="whitespace-pre-line text-sm leading-relaxed text-slate-600 sm:text-base">
+          <p className="whitespace-pre-line text-sm leading-relaxed text-ink/80 sm:text-base">
             {page.content_md}
           </p>
         </section>
@@ -188,17 +199,16 @@ export default async function KontakPage({
 
       <div className="grid gap-4 sm:grid-cols-2">
         {/* alamat & kontak */}
-        <section
-          aria-labelledby="kontak-info"
-          className="rounded-lg border border-slate-100 bg-white p-6 shadow-sm sm:p-8"
-        >
-          <h2 id="kontak-info" className="font-heading text-xl font-bold text-heading">
-            Alamat & Kontak
-          </h2>
+        <section aria-labelledby="kontak-info" className="kartu px-5 pb-8 pt-6 sm:px-7">
+          <div className="kartu-kop pb-3">
+            <h2 id="kontak-info" className="font-heading text-xl font-bold text-heading">
+              Alamat & Kontak
+            </h2>
+          </div>
           {hasContact ? (
-            <ul className="mt-4 space-y-3 text-sm sm:text-base">
+            <ul className="mt-4 grid gap-2 text-sm sm:text-base">
               {settings.address && (
-                <li className="flex items-start gap-2.5 text-slate-600">
+                <li className="flex items-start gap-2.5 py-1 text-ink/80">
                   <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-brand" aria-hidden="true" />
                   <span>{settings.address}</span>
                 </li>
@@ -207,9 +217,9 @@ export default async function KontakPage({
                 <li>
                   <a
                     href={`tel:${settings.phone}`}
-                    className="inline-flex items-center gap-2.5 rounded-xl font-semibold text-slate-700 transition hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                    className="inline-flex min-h-[44px] items-center gap-2.5 rounded-[var(--radius-sm)] font-semibold text-brand transition hover:text-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                   >
-                    <Phone className="h-5 w-5 shrink-0 text-brand" aria-hidden="true" />
+                    <Phone className="h-5 w-5 shrink-0" aria-hidden="true" />
                     {settings.phone}
                   </a>
                 </li>
@@ -218,23 +228,23 @@ export default async function KontakPage({
                 <li>
                   <a
                     href={`mailto:${settings.email}`}
-                    className="inline-flex items-center gap-2.5 rounded-xl font-semibold text-slate-700 transition hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                    className="inline-flex min-h-[44px] items-center gap-2.5 rounded-[var(--radius-sm)] font-semibold text-brand transition hover:text-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                   >
-                    <Mail className="h-5 w-5 shrink-0 text-brand" aria-hidden="true" />
+                    <Mail className="h-5 w-5 shrink-0" aria-hidden="true" />
                     {settings.email}
                   </a>
                 </li>
               )}
             </ul>
           ) : (
-            <p className="mt-4 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-500">
+            <p className="entri mt-4 text-sm uppercase tracking-[0.08em] text-ink/70">
               Informasi kontak belum diisi admin. Silakan kembali lagi nanti.
             </p>
           )}
 
           {socialEntries.length > 0 && (
-            <div className="mt-5 border-t border-slate-100 pt-5">
-              <h3 className="text-xs font-bold uppercase tracking-[0.2em] text-slate-400">
+            <div className="mt-5 border-t border-rule pt-5">
+              <h3 className="entri text-xs uppercase tracking-[0.04em] text-ink/70">
                 Media sosial
               </h3>
               <ul className="mt-3 flex flex-wrap gap-2">
@@ -247,7 +257,7 @@ export default async function KontakPage({
                         target="_blank"
                         rel="noreferrer"
                         aria-label={`${siteName} di ${key}`}
-                        className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium capitalize text-slate-700 shadow-sm transition hover:border-brand hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                        className="inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-sm)] border border-rule bg-[var(--surface)] px-4 py-2 text-sm font-medium capitalize text-ink shadow-[var(--shadow-sm)] transition hover:border-brand hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                       >
                         <Icon className="h-4 w-4 text-brand" aria-hidden="true" />
                         {key}
@@ -261,64 +271,66 @@ export default async function KontakPage({
         </section>
 
         {/* jam operasional */}
-        <section
-          aria-labelledby="kontak-jam"
-          className="rounded-lg border border-slate-100 bg-white p-6 shadow-sm sm:p-8"
-        >
-          <h2
-            id="kontak-jam"
-            className="flex items-center gap-2 font-heading text-xl font-bold text-heading"
-          >
-            <Clock className="h-5 w-5 text-brand" aria-hidden="true" />
-            Jam Operasional
-          </h2>
+        <section aria-labelledby="kontak-jam" className="kartu px-5 pb-8 pt-6 sm:px-7">
+          <div className="kartu-kop pb-3">
+            <h2
+              id="kontak-jam"
+              className="flex items-center gap-2 font-heading text-xl font-bold text-heading"
+            >
+              <Clock className="h-5 w-5 text-brand" aria-hidden="true" />
+              Jam Operasional
+            </h2>
+          </div>
           {hours.length > 0 ? (
-            <ul className="mt-4 space-y-2.5">
+            <ul className="batang mt-4">
               {hours.map((h, i) => {
                 const { hari, jam } = hourLabel(h as Record<string, string | undefined>);
                 return (
                   <li
                     key={i}
-                    className="flex items-center justify-between gap-3 rounded-lg bg-slate-50 px-4 py-3 text-sm sm:text-base"
+                    className="entri flex items-center justify-between gap-3 py-3 pl-7 pr-4 text-sm sm:text-base"
                   >
-                    <span className="font-medium text-slate-600">{hari}</span>
-                    <span className="font-bold text-brand-strong">{jam}</span>
+                    <span className="font-medium text-ink/80">{hari}</span>
+                    <span className="font-semibold text-brand">{jam}</span>
                   </li>
                 );
               })}
             </ul>
           ) : (
-            <p className="mt-4 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-500">
+            <p className="entri mt-4 text-sm uppercase tracking-[0.08em] text-ink/70">
               Jadwal layanan menyusul — akan tampil otomatis setelah diisi admin.
             </p>
           )}
-          <p className="mt-4 text-xs leading-relaxed text-slate-400">
+          <p className="mt-4 text-xs leading-relaxed text-ink/70">
             Layanan tutup pada hari libur nasional kecuali diumumkan lain melalui pengumuman di
             beranda.
           </p>
         </section>
       </div>
 
+      {/* Kartu pengumuman penutup: baris entri + dua kontrol */}
       <section
         aria-labelledby="kontak-cta"
-        className="rounded-lg bg-brand-strong p-6 text-white shadow sm:p-8"
+        className="kartu lubang relative px-5 pb-10 pt-6 sm:px-8"
       >
-        <h2 id="kontak-cta" className="font-heading text-xl font-bold">
-          Sebelum berkunjung
-        </h2>
-        <p className="mt-2 text-sm text-brand-soft/90 sm:text-base">
+        <div className="kartu-kop pb-3">
+          <h2 id="kontak-cta" className="font-heading text-xl font-bold text-heading">
+            Sebelum berkunjung
+          </h2>
+        </div>
+        <p className="mt-3 max-w-[70ch] text-sm text-ink/80 sm:text-base">
           Cek ketersediaan koleksi di katalog atau baca jawaban atas pertanyaan umum.
         </p>
         <div className="mt-4 flex flex-wrap gap-3">
           <Link
             href="/katalog"
-            className="inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-bold text-brand-strong shadow transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            className="inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-md)] bg-brand px-5 py-2.5 text-sm font-semibold text-surface shadow-[var(--shadow-sm)] transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
             Jelajahi katalog <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
           <Link
             href="/faq"
-            className="inline-flex items-center rounded-lg border border-white/30 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            className="inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-md)] border border-rule bg-[var(--surface)] px-5 py-2.5 text-sm font-semibold text-brand transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
             Lihat FAQ
           </Link>

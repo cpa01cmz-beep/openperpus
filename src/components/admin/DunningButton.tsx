@@ -70,7 +70,7 @@ export default function DunningButton({ loanId, memberCode, title, dueAt, fine, 
         onClick={() => {
           void logClick();
         }}
-        className={`inline-flex min-h-[44px] items-center rounded px-3 text-xs font-semibold text-white transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${disabled ? 'pointer-events-none bg-slate-300' : 'bg-emerald-700 hover:bg-emerald-800'}`}
+        className={`inline-flex min-h-[44px] items-center rounded-[var(--radius-sm)] px-3 text-xs font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${disabled ? 'pointer-events-none bg-ink/20 text-ink/70' : 'bg-brand text-surface hover:bg-brand-strong'}`}
       >
         Tagih WA
       </a>
@@ -80,17 +80,17 @@ export default function DunningButton({ loanId, memberCode, title, dueAt, fine, 
         onClick={() => {
           void onCopy();
         }}
-        className="inline-flex min-h-[44px] items-center rounded border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:border-brand hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
+        className="inline-flex min-h-[44px] items-center rounded-[var(--radius-sm)] border border-rule bg-surface px-3 text-xs font-semibold text-ink transition hover:border-brand hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
       >
         Salin rincian
       </button>
       {copied && (
-        <span role="status" className="text-xs text-emerald-700">
+        <span role="status" className="text-xs text-brand">
           Tersalin
         </span>
       )}
       {copyError && (
-        <span role="alert" className="text-xs text-red-700">
+        <span role="alert" className="text-xs text-accent">
           {copyError}
         </span>
       )}

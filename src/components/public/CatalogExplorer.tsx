@@ -74,17 +74,17 @@ export default function CatalogExplorer({
       {books.length > 0 ? (
         <CatalogGrid books={books} />
       ) : (
-        <div className="grid place-items-center rounded-[var(--radius-lg)] border border-dashed border-[var(--ink)]/10 bg-[var(--surface)] px-6 py-14 text-center">
-          <BookX className="h-10 w-10 text-[var(--ink)]/25" aria-hidden="true" />
+        <div className="grid place-items-center rounded-[var(--radius-md)] border border-dashed border-[var(--ink)] bg-[var(--surface)] px-6 py-14 text-center">
+          <BookX className="h-10 w-10 text-[var(--ink)]/30" aria-hidden="true" />
           <h2 className="mt-3 font-heading text-lg font-bold text-[var(--ink)]">
             Tidak ada buku yang cocok
           </h2>
-          <p className="mt-1 max-w-sm text-sm text-[var(--ink)]/60">
+          <p className="mt-1 max-w-sm text-sm text-[var(--ink)]/70">
             Coba kata kunci lain, ubah kategori, atau matikan filter “hanya yang tersedia”.
           </p>
           <a
             href={resetHref}
-            className="mt-4 inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-lg)] bg-brand px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            className="mt-4 inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-md)] bg-brand text-surface px-5 py-2.5 text-sm font-semibold shadow-[var(--shadow-sm)] transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
             Atur ulang filter
           </a>

@@ -37,10 +37,12 @@ export default async function LogsPage({
   if (role !== 'admin') {
     return (
       <div className="grid gap-4">
-        <h1 className="text-2xl font-bold">Log Aktivitas</h1>
+        <h1 className="kartu-kop pb-3 font-heading text-2xl font-bold text-heading">
+          Log Aktivitas
+        </h1>
         <div
           role="alert"
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-6 text-center text-sm text-red-700"
+          className="rounded-[var(--radius-lg)] border border-accent bg-accent-soft px-4 py-6 text-center text-sm text-accent"
         >
           Akses ditolak — halaman ini khusus <strong>admin</strong>. Peran Anda:{' '}
           {role ?? 'tidak diketahui'}.
@@ -138,9 +140,11 @@ export default async function LogsPage({
   return (
     <div className="grid gap-4">
       <div>
-        <h1 className="text-2xl font-bold">Log Aktivitas</h1>
-        <p className="text-sm text-slate-500">
-          Jejak audit read-only (tabel <code className="font-mono">activity_logs</code>), khusus
+        <h1 className="kartu-kop pb-3 font-heading text-2xl font-bold text-heading">
+          Log Aktivitas
+        </h1>
+        <p className="text-sm text-ink/70">
+          Jejak audit read-only (tabel <code className="font-data">activity_logs</code>), khusus
           admin. Total {count ?? 0} baris.
         </p>
       </div>
@@ -148,7 +152,7 @@ export default async function LogsPage({
       {error && (
         <div
           role="alert"
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          className="rounded-[var(--radius-lg)] border border-accent bg-accent-soft px-4 py-3 text-sm text-accent"
         >
           Gagal memuat log: {error.message}
         </div>
@@ -156,14 +160,14 @@ export default async function LogsPage({
 
       <form method="get" className="flex flex-wrap items-end gap-2 text-sm">
         <div className="grid gap-1">
-          <label htmlFor="log-action" className="text-sm font-semibold text-slate-700">
+          <label htmlFor="log-action" className="text-sm font-semibold text-ink">
             Aksi
           </label>
           <select
             id="log-action"
             name="action"
             defaultValue={actionFilter}
-            className="h-11 min-h-[44px] rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
+            className="h-11 min-h-[44px] rounded-[var(--radius-sm)] border border-rule bg-surface px-3 text-sm text-ink transition hover:border-rule-strong focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
             {ACTIONS.map((a) => (
               <option key={a || 'all-a'} value={a}>
@@ -173,14 +177,14 @@ export default async function LogsPage({
           </select>
         </div>
         <div className="grid gap-1">
-          <label htmlFor="log-entity" className="text-sm font-semibold text-slate-700">
+          <label htmlFor="log-entity" className="text-sm font-semibold text-ink">
             Entitas
           </label>
           <select
             id="log-entity"
             name="entity"
             defaultValue={entityFilter}
-            className="h-11 min-h-[44px] rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
+            className="h-11 min-h-[44px] rounded-[var(--radius-sm)] border border-rule bg-surface px-3 text-sm text-ink transition hover:border-rule-strong focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
             {ENTITIES.map((e) => (
               <option key={e || 'all-e'} value={e}>
@@ -195,7 +199,7 @@ export default async function LogsPage({
         {(actionFilter || entityFilter) && (
           <Link
             href="/admin/logs"
-            className="inline-flex min-h-[44px] items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:border-brand hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            className="inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-sm)] border border-rule bg-surface px-3 text-sm font-semibold text-ink transition hover:border-brand hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
             Reset
           </Link>

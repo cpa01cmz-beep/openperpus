@@ -1,0 +1,331 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-09T02:15:00.000Z",
+  "title": "Design System: OpenPerpus",
+  "extensions": {
+    "colorMeta": {
+      "brand": {
+        "role": "primary",
+        "displayName": "Ledger Pine",
+        "canonical": "#1B5E4B",
+        "tonalRamp": [
+          "#0E3D30",
+          "#14483A",
+          "#1B5E4B",
+          "#2A7A63",
+          "#4E9B84",
+          "#8BC0AE",
+          "#C4DED4",
+          "#E6EFE9"
+        ]
+      },
+      "brand-soft": {
+        "role": "primary",
+        "displayName": "Manila Wash",
+        "canonical": "#DCE6DE",
+        "tonalRamp": [
+          "#8FA795",
+          "#A9BDB0",
+          "#C4D3C8",
+          "#DCE6DE",
+          "#E8EFEA",
+          "#EFF4F0",
+          "#F5F8F5",
+          "#FAFCFA"
+        ]
+      },
+      "brand-strong": {
+        "role": "primary",
+        "displayName": "Pine Deep",
+        "canonical": "#0E3D30",
+        "tonalRamp": [
+          "#061A16",
+          "#0A2A22",
+          "#0E3D30",
+          "#145243",
+          "#1B6A55",
+          "#2A8A6F",
+          "#4FA88E",
+          "#82C4B1"
+        ]
+      },
+      "accent": {
+        "role": "secondary",
+        "displayName": "Stamp Oxblood",
+        "canonical": "#A63D2E",
+        "tonalRamp": [
+          "#4A1A14",
+          "#6E2419",
+          "#8C2F21",
+          "#A63D2E",
+          "#BC5544",
+          "#CE7766",
+          "#E0A093",
+          "#F0CDC5"
+        ]
+      },
+      "accent-soft": {
+        "role": "secondary",
+        "displayName": "Oxblood Wash",
+        "canonical": "#F2E4DE",
+        "tonalRamp": [
+          "#C79C90",
+          "#DDB6AB",
+          "#E9CDC4",
+          "#F2E4DE",
+          "#F6ECE8",
+          "#F9F2EF",
+          "#FBF6F4",
+          "#FDFBFA"
+        ]
+      },
+      "surface": {
+        "role": "neutral",
+        "displayName": "Sage Paper",
+        "canonical": "#EBEDE6",
+        "tonalRamp": [
+          "#8A8D80",
+          "#A5A99B",
+          "#C5C8BC",
+          "#EBEDE6",
+          "#F0F1EC",
+          "#F4F5F1",
+          "#F8F9F6",
+          "#FBFCFA"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Ledger Ink",
+        "canonical": "#1C1A17",
+        "tonalRamp": [
+          "#0A0908",
+          "#121110",
+          "#1C1A17",
+          "#33312C",
+          "#4F4C45",
+          "#6E6A61",
+          "#8F8B80",
+          "#B4B0A6"
+        ]
+      },
+      "heading": {
+        "role": "neutral",
+        "displayName": "Heading Pine",
+        "canonical": "#0E3D30",
+        "tonalRamp": [
+          "#061A16",
+          "#0A2A22",
+          "#0E3D30",
+          "#145243",
+          "#1B6A55",
+          "#2A8A6F",
+          "#4FA88E",
+          "#82C4B1"
+        ]
+      },
+      "rule": {
+        "role": "neutral",
+        "displayName": "Ink Rule (16%)",
+        "canonical": "color-mix(in srgb, #1C1A17 16%, transparent)",
+        "tonalRamp": [
+          "color-mix(in srgb, #1C1A17 40%, transparent)",
+          "color-mix(in srgb, #1C1A17 32%, transparent)",
+          "color-mix(in srgb, #1C1A17 24%, transparent)",
+          "color-mix(in srgb, #1C1A17 16%, transparent)",
+          "color-mix(in srgb, #1C1A17 12%, transparent)",
+          "color-mix(in srgb, #1C1A17 8%, transparent)",
+          "color-mix(in srgb, #1C1A17 5%, transparent)",
+          "color-mix(in srgb, #1C1A17 3%, transparent)"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Caslon Display",
+        "purpose": "Judul hero dan judul halaman — wajah buku/kartu perpustakaan."
+      },
+      "body": {
+        "displayName": "Franklin Body",
+        "purpose": "Seluruh prosa: sambutan, deskripsi, artikel, formulir."
+      },
+      "label": {
+        "displayName": "Franklin Label",
+        "purpose": "Tombol, tab, kop pelat — kapital ber-tracking 0.04em."
+      },
+      "data": {
+        "displayName": "Courier Data",
+        "purpose": "Nomor panggil, tanggal, ISBN, statistik, label stempel. Berlaku di kelima tema."
+      }
+    },
+    "themeFonts": [
+      { "theme": "emerald", "heading": "Libre Caslon Display", "body": "Libre Franklin" },
+      { "theme": "midnight", "heading": "Bodoni Moda", "body": "Archivo" },
+      { "theme": "paper", "heading": "Literata", "body": "Public Sans" },
+      { "theme": "brutalist", "heading": "Archivo Black", "body": "Barlow" },
+      { "theme": "ocean", "heading": "Bitter", "body": "Karla" }
+    ],
+    "shadows": [
+      {
+        "name": "paper-rest",
+        "value": "0 1px 1px 0 rgb(28 26 23 / 0.07)",
+        "purpose": "Kartu dan permukaan datar (emerald)."
+      },
+      {
+        "name": "paper-lift",
+        "value": "0 2px 4px -1px rgb(28 26 23 / 0.10), 0 8px 16px -8px rgb(28 26 23 / 0.14)",
+        "purpose": "Pelat pencarian, kartu aktif."
+      },
+      {
+        "name": "paper-high",
+        "value": "0 4px 8px -2px rgb(28 26 23 / 0.12), 0 16px 32px -12px rgb(28 26 23 / 0.18)",
+        "purpose": "Hero, dialog."
+      },
+      {
+        "name": "toner-offset",
+        "value": "2px 2px 0 0 #111110",
+        "purpose": "Satu-satunya bayangan tema brutalist — cetakan fotokopi, tanpa blur."
+      },
+      {
+        "name": "night-deep",
+        "value": "0 8px 20px -8px rgb(0 0 0 / 0.5), 0 24px 60px -16px rgb(0 0 0 / 0.75)",
+        "purpose": "Tema midnight — laci di ruang gelap."
+      }
+    ],
+    "motion": [
+      {
+        "name": "riffle",
+        "value": "380ms cubic-bezier(0.16, 1, 0.3, 1) both, delay calc(var(--i) * 55ms)",
+        "purpose": "Momen tanda tangan: kartu berpatahan naik dari batangnya. Mati saat prefers-reduced-motion."
+      },
+      {
+        "name": "stamp-press",
+        "value": "140ms cubic-bezier(0.16, 1, 0.3, 1)",
+        "purpose": "Stempel menekan (rotate -1.5deg, scale 1.08) saat kartu di-hover/fokus."
+      },
+      {
+        "name": "state-swap",
+        "value": "140ms ease-out",
+        "purpose": "Tukar warna tab dan tombol tanpa gerak tambahan."
+      }
+    ],
+    "breakpoints": [
+      { "name": "sm", "value": "640px" },
+      { "name": "md", "value": "768px" },
+      { "name": "lg", "value": "1024px" },
+      { "name": "xl", "value": "1280px" },
+      { "name": "2xl", "value": "1536px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Aksi utama di atas latar kartu; label Courier kapital.",
+      "html": "<button class=\"ds-btn-primary\">CARI</button>",
+      "css": ".ds-btn-primary{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:10px 20px;background:var(--brand,#1B5E4B);color:var(--surface,#EBEDE6);font-family:var(--font-data,'Courier Prime'),ui-monospace,monospace;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;border:1px solid transparent;border-radius:var(--radius-md,.25rem);cursor:pointer;transition:background 140ms ease-out,opacity 140ms ease-out}.ds-btn-primary:hover{background:var(--brand-strong,#0E3D30)}.ds-btn-primary:focus-visible{outline:none;box-shadow:0 0 0 2px var(--brand,#1B5E4B)}.ds-btn-primary:disabled{opacity:.5;cursor:not-allowed}"
+    },
+    {
+      "name": "Accent Button",
+      "kind": "button",
+      "refersTo": "button-accent",
+      "description": "Aksi yang menuntut perhatian — tinta stempel.",
+      "html": "<button class=\"ds-btn-accent\">RESERVASI</button>",
+      "css": ".ds-btn-accent{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:10px 20px;background:var(--accent,#A63D2E);color:var(--surface,#EBEDE6);font-family:var(--font-data,'Courier Prime'),ui-monospace,monospace;font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;border:none;border-radius:var(--radius-md,.25rem);cursor:pointer;transition:opacity 140ms ease-out}.ds-btn-accent:hover{opacity:.9}.ds-btn-accent:focus-visible{outline:none;box-shadow:0 0 0 2px var(--brand,#1B5E4B)}"
+    },
+    {
+      "name": "Kartu (catalog card)",
+      "kind": "card",
+      "refersTo": "card-kartu",
+      "description": "Atom dunia: kartu potong dengan kop bergaris ganda dan lubang bor.",
+      "html": "<article class=\"ds-kartu\"><header class=\"ds-kartu-kop\"><span class=\"ds-kartu-cat\">SAINS</span><span class=\"ds-kartu-no\">020 ABA</span></header><h3 class=\"ds-kartu-title\">Sapiens: Riwayat Singkat Umat Manusia</h3><p class=\"ds-kartu-author\">Yuval Noah Harari · 2014</p><span class=\"ds-stempel\">TERSEDIA · 7</span></article>",
+      "css": ".ds-kartu{position:relative;display:flex;flex-direction:column;gap:6px;padding:16px;background:var(--surface,#EBEDE6);color:var(--ink,#1C1A17);border:1px solid color-mix(in srgb,var(--ink,#1C1A17) 16%,transparent);border-radius:var(--radius-md,.25rem);box-shadow:0 1px 1px 0 rgb(28 26 23/.07)}.ds-kartu:hover .ds-stempel{transform:rotate(-1.5deg) scale(1.08)}.ds-kartu-kop{display:flex;justify-content:space-between;gap:8px;padding-bottom:8px;border-bottom:1px solid color-mix(in srgb,var(--ink,#1C1A17) 16%,transparent);box-shadow:0 1px 0 0 color-mix(in srgb,var(--ink,#1C1A17) 16%,transparent);font-family:var(--font-data,'Courier Prime'),ui-monospace,monospace;font-size:12px;letter-spacing:.04em;text-transform:uppercase}.ds-kartu-cat{color:var(--brand,#1B5E4B)}.ds-kartu-no{color:color-mix(in srgb,var(--ink,#1C1A17) 55%,transparent)}.ds-kartu-title{margin:0;font-family:var(--font-heading,Georgia,serif);font-size:16px;line-height:1.3}.ds-kartu-author{margin:0;font-family:var(--font-data,'Courier Prime'),ui-monospace,monospace;font-size:12px;color:color-mix(in srgb,var(--ink,#1C1A17) 75%,transparent)}.ds-kartu::after{content:'';position:absolute;left:50%;bottom:8px;width:8px;height:8px;margin-left:-4px;border:1px solid color-mix(in srgb,var(--ink,#1C1A17) 32%,transparent);border-radius:9999px;background:var(--surface,#EBEDE6)}"
+    },
+    {
+      "name": "Status Stamp",
+      "kind": "chip",
+      "refersTo": "stamp-status",
+      "description": "Satu-satunya status ketersediaan: cap karet, miring, bukan pill.",
+      "html": "<span class=\"ds-stempel\">TERSEDIA · 7</span>",
+      "css": ".ds-stempel{display:inline-flex;align-items:center;gap:4px;padding:3px 7px;background:transparent;color:var(--accent,#A63D2E);border:1.5px solid currentColor;border-radius:2px;font-family:var(--font-data,'Courier Prime'),ui-monospace,monospace;font-size:11px;line-height:1.1;letter-spacing:.1em;text-transform:uppercase;opacity:.92;transform:rotate(-4deg);transform-origin:center;transition:transform 140ms cubic-bezier(.16,1,.3,1)}.ds-stempel[data-state=\"dipinjam\"]{color:var(--ink,#1C1A17);opacity:.55}"
+    },
+    {
+      "name": "Guide Tab",
+      "kind": "nav",
+      "refersTo": "nav-tab",
+      "description": "Tab pembatas laci: navigasi, filter, dan pembatas kategori.",
+      "html": "<nav class=\"ds-tabs\"><a class=\"ds-tab\" href=\"#\">SEMUA</a><a class=\"ds-tab\" href=\"#\" aria-current=\"page\">KATALOG</a><a class=\"ds-tab\" href=\"#\">BERITA</a></nav>",
+      "css": ".ds-tabs{display:flex;flex-wrap:wrap;gap:4px;align-items:stretch}.ds-tab{display:inline-flex;align-items:center;min-height:44px;padding:10px 16px;background:var(--surface,#EBEDE6);color:var(--ink,#1C1A17);border:1px solid color-mix(in srgb,var(--ink,#1C1A17) 16%,transparent);border-bottom:0;border-radius:var(--radius-sm,.125rem) var(--radius-sm,.125rem) 0 0;font-family:var(--font-data,'Courier Prime'),ui-monospace,monospace;font-size:12px;letter-spacing:.08em;text-transform:uppercase;text-decoration:none;transition:background 140ms ease-out,color 140ms ease-out}.ds-tab:hover{background:var(--brand-soft,#DCE6DE)}.ds-tab[aria-current=\"page\"]{background:var(--brand,#1B5E4B);border-color:var(--brand,#1B5E4B);color:var(--surface,#EBEDE6)}.ds-tab:focus-visible{outline:none;box-shadow:0 0 0 2px var(--brand,#1B5E4B)}"
+    },
+    {
+      "name": "Search Field (drawer plate)",
+      "kind": "input",
+      "refersTo": "input-field",
+      "description": "Aksi utama produk — kolom pencarian di pelat label laci.",
+      "html": "<div class=\"ds-plate\"><label class=\"ds-plate-plat\" for=\"q\">KATALOG</label><input id=\"q\" class=\"ds-input\" type=\"search\" placeholder=\"Judul, pengarang, atau kata kunci…\"></div>",
+      "css": ".ds-plate{position:relative;display:flex;flex-direction:column;padding:12px;background:var(--surface,#EBEDE6);border:1px solid color-mix(in srgb,var(--ink,#1C1A17) 16%,transparent);border-radius:var(--radius-md,.25rem);box-shadow:0 2px 4px -1px rgb(28 26 23/.10),0 8px 16px -8px rgb(28 26 23/.14)}.ds-plate-plat{align-self:flex-start;margin-bottom:8px;padding:4px 10px;background:var(--brand,#1B5E4B);color:var(--surface,#EBEDE6);font-family:var(--font-data,'Courier Prime'),ui-monospace,monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase}.ds-input{min-height:44px;padding:12px;background:var(--surface,#EBEDE6);color:var(--ink,#1C1A17);border:1px solid color-mix(in srgb,var(--ink,#1C1A17) 16%,transparent);border-radius:var(--radius-sm,.125rem);font-family:var(--font-data,'Courier Prime'),ui-monospace,monospace;font-size:14px;font-variant-numeric:tabular-nums}.ds-input::placeholder{color:color-mix(in srgb,var(--ink,#1C1A17) 72%,var(--surface,#EBEDE6))}.ds-input:focus{outline:none;border-color:var(--ink,#1C1A17);box-shadow:0 0 0 2px color-mix(in srgb,var(--brand,#1B5E4B) 35%,transparent)}"
+    },
+    {
+      "name": "Ledger Row",
+      "kind": "custom",
+      "refersTo": "spacing.section",
+      "description": "Baris data berbatang — statistik dan daftar entri bertik.",
+      "html": "<div class=\"ds-ledger\"><div class=\"ds-ledger-row\"><span>Buku</span><b>1.284</b></div><div class=\"ds-ledger-row\"><span>Anggota</span><b>5.912</b></div></div>",
+      "css": ".ds-ledger{display:grid;background:var(--surface,#EBEDE6);border:1px solid var(--ink,#1C1A17);border-radius:var(--radius-md,.25rem);box-shadow:0 1px 1px 0 rgb(28 26 23/.07);padding:0 16px}.ds-ledger-row{display:flex;align-items:baseline;justify-content:space-between;gap:12px;padding:12px 0;border-top:1px solid var(--ink,#1C1A17);font-family:var(--font-data,'Courier Prime'),ui-monospace,monospace;font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:color-mix(in srgb,var(--ink,#1C1A17) 70%,transparent)}.ds-ledger-row:first-child{border-top:0}.ds-ledger-row b{font-size:16px;color:var(--ink,#1C1A17);font-variant-numeric:tabular-nums}"
+    }
+  ],
+  "narrative": {
+    "northStar": "Kartu Katalog",
+    "overview": "Sistem ini memperlakukan situs perpustakaan sebagai laci kartu katalog yang berfungsi: setiap kontainer adalah kartu potong, setiap daftar adalah tumpukan kartu yang ditusuk satu batang, dan setiap status dicap dengan stempel karet. Tata bahasanya tunggal dan mengikat kelima tema; yang berubah antar tema hanya materialnya — kayu jati dan manila di siang hari, kuningan dan lampu baca di malam hari, kartu bond polos, fotokopi toner di kertas koran, dan arsip maritim yang ter-bleach asin.\n\nKepadatannya tinggi dan informasional: angka diset bertik dengan angka tabular, baris entri memakai huruf mesin tik, dan hierarki dibangun dari garis rule serta ukuran — bukan dari bayangan tebal atau warna-warni. Dunia ini menolak default kategori: hero di atas gradasi dengan deret kartu rounded seragam, eyebrow di atas judul, kartu di dalam kartu, glassmorphism, dan bayangan offset keras di luar material Fotokopi.",
+    "keyCharacteristics": [
+      "Satu atom: kartu potong dengan kop bergaris ganda, lubang bor, dan baris entri bertik.",
+      "Satu rangka: daftar ditusuk batang vertikal (batang), bukan grid kartu identik.",
+      "Satu bahasa status: stempel karet miring ±4°, bukan pill badge.",
+      "Satu warna rule per tema, diturunkan dari --ink — tidak pernah abu-abu hardcode.",
+      "Lima material, satu tata bahasa; tema berbeda terasa beda material, bukan beda produk."
+    ],
+    "rules": [
+      {
+        "name": "The One Rule Rule",
+        "body": "Tidak ada warna abu-abu hardcode di mana pun. Setiap garis berasal dari --rule; setiap teks sekunder dari --ink dengan alpha. Menambahkan slate-* atau border-gray-* adalah pelanggaran sistem, bukan pengecualian.",
+        "section": "colors"
+      },
+      {
+        "name": "The Stamp Rule",
+        "body": "accent dipakai untuk status dan aksi yang menuntut perhatian; menempatkannya sebagai latar besar atau teks paragraf melanggar perannya.",
+        "section": "colors"
+      },
+      {
+        "name": "The Typewriter Rule",
+        "body": "Yang berupa data ditulis Courier dengan tabular-nums. Yang berupa kalimat ditulis Franklin. Memakai Courier untuk paragraf, atau Franklin untuk nomor panggil, mengacaukan dua suara ini.",
+        "section": "typography"
+      },
+      {
+        "name": "The Fold Rule",
+        "body": "Di 390px, pelat pencarian, kop, judul, dan aksi hero semuanya berada di atas garis lipatan (diukur < innerHeight). Konten baru boleh turun ke bawah lipatan setelah keempatnya aman.",
+        "section": "layout"
+      },
+      {
+        "name": "The Declare-Once Rule",
+        "body": "Elevation dinyatakan sekali: border atau bayangan. Border 1px di bawah bayangan diffus lebar adalah ghost card dan dilarang.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do turunkan semua garis dari --rule / --border yang dihasilkan color-mix dari --ink, sehingga mengikuti tema otomatis.",
+      "Do pasangkan bg-brand/bg-accent/bg-ink dengan text-surface — pasangan itu sudah diuji ≥4.5:1 di kelima tema oleh tests/theme-contrast.test.ts.",
+      "Do setiap data (nomor panggil, tanggal, ISBN, statistik) memakai .entri + tabular-nums.",
+      "Do pertahankan min-h-[44px]/min-w-[44px] pada setiap kontrol sentuh, focus-visible:ring pada setiap kontrol, dan satu <h1> per halaman dengan urutan heading tanpa lompatan.",
+      "Do pakai .riffle (stagger dari --i) untuk masuknya daftar kartu — satu momen tanda tangan, bukan efek tersebar."
+    ],
+    "donts": [
+      "Don't menulis bg-white, text-white, text-slate-*, border-slate-*, atau hex hardcode di komponen.",
+      "Don't memakai rounded-lg/rounded-xl polos — selalu rounded-[var(--radius-*)].",
+      "Don't menaruh kicker/eyebrow di atas judul, nomor seksi (01/02), atau emoji sebagai ikon.",
+      "Don't menaruh kartu di dalam kartu, gradien pada teks, glass/backdrop-blur sebagai dekorasi, atau border-left tebal berwarna.",
+      "Don't memakai bayangan offset keras 4px 4px 0 di luar material tema brutalist.",
+      "Don't memotong nama perpustakaan dengan elipsis; biarkan wrap maksimal dua baris."
+    ]
+  }
+}

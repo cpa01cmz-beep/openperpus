@@ -33,20 +33,23 @@ export default function OnboardingBanner() {
     <div
       role="region"
       aria-label="Panduan pengguna baru"
-      className="border-b border-brand-soft bg-brand-soft/60"
+      className="border-b border-[var(--ink)] bg-brand-soft"
     >
       <div className="mx-auto flex w-full max-w-container items-center gap-3 px-4 py-2.5 sm:px-6 lg:px-8">
         <BookOpen className="h-4 w-4 shrink-0 text-brand" aria-hidden="true" />
-        <p className="min-w-0 flex-1 text-sm text-[var(--ink)]/80 line-clamp-2 sm:whitespace-normal">
+        <p className="min-w-0 flex-1 text-sm text-[var(--ink)] line-clamp-2 sm:whitespace-normal">
           Baru di sini?{' '}
           <Link
             href="/katalog"
-            className="font-semibold text-brand underline-offset-2 hover:underline"
+            className="rounded-[var(--radius-sm)] font-semibold text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
             Jelajahi katalog
           </Link>{' '}
           lalu reservasi 1-klik — atau{' '}
-          <Link href="/faq" className="font-semibold text-brand underline-offset-2 hover:underline">
+          <Link
+            href="/faq"
+            className="rounded-[var(--radius-sm)] font-semibold text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          >
             baca FAQ
           </Link>
           .
@@ -55,7 +58,7 @@ export default function OnboardingBanner() {
           type="button"
           onClick={dismiss}
           aria-label="Tutup panduan"
-          className="grid h-8 w-8 min-h-[44px] min-w-[44px] shrink-0 place-items-center rounded-full text-[var(--ink)]/60 transition hover:bg-brand-soft hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          className="grid h-8 w-8 min-h-[44px] min-w-[44px] shrink-0 place-items-center rounded-[var(--radius-sm)] text-[var(--ink)]/70 transition hover:bg-[var(--surface)] hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
         >
           <X className="h-4 w-4" aria-hidden="true" />
         </button>

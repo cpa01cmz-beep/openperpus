@@ -75,14 +75,18 @@ export default function EditBannerPage({ params }: { params: { id: string } }) {
     }
   }
 
-  const input = 'w-full rounded-lg border px-3 py-2 text-sm';
-  if (loading) return <p className="text-sm text-slate-500">Memuat banner…</p>;
+  const input = 'w-full rounded-[var(--radius-lg)] border px-3 py-2 text-sm';
+  if (loading) return <p className="text-sm text-ink/70">Memuat banner…</p>;
 
   return (
     <div className="grid gap-4">
-      <h1 className="text-2xl font-bold">Edit Banner</h1>
-      <form onSubmit={onSubmit} className="grid max-w-2xl gap-2 rounded-2xl border bg-white p-4">
-        {err && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{err}</p>}
+      <h1 className="kartu-kop pb-3 font-heading text-2xl font-bold text-heading">Edit Banner</h1>
+      <form onSubmit={onSubmit} className="grid max-w-2xl gap-2 kartu p-4">
+        {err && (
+          <p className="rounded-[var(--radius-lg)] bg-accent-soft px-3 py-2 text-sm text-accent">
+            {err}
+          </p>
+        )}
         <input
           className={input}
           placeholder="Judul*"
@@ -128,7 +132,7 @@ export default function EditBannerPage({ params }: { params: { id: string } }) {
         </label>
         <button
           disabled={saving}
-          className="w-fit rounded-lg bg-slate-900 px-4 py-2 text-sm text-white disabled:opacity-50"
+          className="w-fit rounded-[var(--radius-lg)] bg-brand px-4 py-2 text-sm text-surface disabled:opacity-50"
         >
           {saving ? 'Menyimpan…' : 'Simpan Perubahan'}
         </button>

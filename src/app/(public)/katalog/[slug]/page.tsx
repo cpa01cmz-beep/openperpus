@@ -1,17 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
-import {
-  ArrowLeft,
-  ArrowRight,
-  BookOpen,
-  Building2,
-  Calendar,
-  Hash,
-  Languages,
-  MapPin,
-  Star,
-} from 'lucide-react';
+import { ArrowLeft, ArrowRight, BookOpen, Star } from 'lucide-react';
 import BookCard from '@/components/public/BookCard';
 import Breadcrumb from '@/components/public/Breadcrumb';
 import ReserveButton from '@/components/public/ReserveButton';
@@ -81,25 +71,21 @@ export default async function BookDetailPage({ params }: Props) {
     : [];
 
   const tone =
-    stock.tone === 'emerald'
-      ? 'bg-brand-soft text-brand border-brand-soft'
-      : stock.tone === 'amber'
-        ? 'bg-accent-soft text-accent border-accent-soft'
-        : 'bg-rose-100 text-rose-800 border-rose-200';
+    stock.tone === 'emerald' ? 'tersedia' : stock.tone === 'amber' ? 'antre' : 'dipinjam';
 
-  const meta: { icon: typeof Hash; label: string; value: string }[] = [
-    { icon: BookOpen, label: 'Penulis', value: book.author ?? '—' },
-    { icon: Building2, label: 'Penerbit', value: book.publisher ?? '—' },
-    { icon: Calendar, label: 'Tahun', value: book.year ? String(book.year) : '—' },
-    { icon: Hash, label: 'ISBN', value: book.isbn ?? '—' },
-    { icon: BookOpen, label: 'Halaman', value: book.pages ? `${book.pages} hlm` : '—' },
-    { icon: Languages, label: 'Bahasa', value: book.language ?? 'Indonesia' },
+  const meta: { label: string; value: string }[] = [
+    { label: 'Penulis', value: book.author ?? '—' },
+    { label: 'Penerbit', value: book.publisher ?? '—' },
+    { label: 'Tahun', value: book.year ? String(book.year) : '—' },
+    { label: 'ISBN', value: book.isbn ?? '—' },
+    { label: 'Halaman', value: book.pages ? `${book.pages} hlm` : '—' },
+    { label: 'Bahasa', value: book.language ?? 'Indonesia' },
     {
-      icon: MapPin,
       label: 'Lokasi rak',
       value: book.racks ? `${book.racks.code} · ${book.racks.name}` : 'Tanya petugas',
     },
   ];
+  if (book.categories?.name) meta.push({ label: 'Kategori', value: book.categories.name });
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -149,7 +135,7 @@ export default async function BookDetailPage({ params }: Props) {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
@@ -163,167 +149,168 @@ export default async function BookDetailPage({ params }: Props) {
       />
       <Link
         href="/katalog"
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--ink)]/60 transition hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded"
+        className="inline-flex min-h-[44px] items-center gap-1.5 self-start text-sm font-medium text-ink/70 transition hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Kembali ke katalog
       </Link>
 
-      <article className="grid gap-6 sm:grid-cols-[240px_1fr] sm:gap-8 lg:grid-cols-[280px_1fr]">
-        {/* cover */}
-        <div className="overflow-hidden rounded-[var(--radius-lg)] border border-[var(--ink)]/10 bg-[var(--surface)] shadow-[var(--shadow-sm)]">
-          <div className="relative aspect-[3/4] w-full bg-brand-soft">
-            {book.cover_url ? (
-              <Image
-                src={cover}
-                alt={`Sampul ${book.title}`}
-                width={560}
-                height={747}
-                sizes="(max-width: 640px) 100vw, 280px"
-                priority
-                fetchPriority="high"
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <div
-                className="grid h-full w-full place-items-center bg-gradient-to-br from-brand to-brand p-6 text-center"
-                aria-hidden="true"
-              >
-                <div>
-                  <BookOpen className="mx-auto h-10 w-10 text-accent" />
-                  <p className="mt-2 font-heading text-lg font-bold text-white">{book.title}</p>
-                </div>
+      {/* Verso kartu katalog: kop ber-garis, baris entri bibliografi, cap ketersediaan */}
+      <article className="kartu lubang relative px-4 pb-10 pt-5 sm:px-6 sm:pt-6">
+        <div className="grid gap-5 sm:grid-cols-[240px_1fr] sm:gap-7 lg:grid-cols-[280px_1fr]">
+          {/* sampul + pelat nomor panggil */}
+          <div>
+            <div className="pelat mb-3 flex flex-wrap items-center justify-between gap-2 px-3 py-2.5">
+              <span className="entri text-xs uppercase tracking-[0.04em] opacity-70">
+                Nomor panggil
+              </span>
+              <span className="pelat-plat">{book.racks ? book.racks.code : '—'}</span>
+            </div>
+            <div className="overflow-hidden rounded-[var(--radius-md)] border border-[var(--rule)] bg-[var(--surface)]">
+              <div className="relative aspect-[3/4] w-full bg-brand-soft">
+                {book.cover_url ? (
+                  <Image
+                    src={cover}
+                    alt={`Sampul ${book.title}`}
+                    width={560}
+                    height={747}
+                    sizes="(max-width: 640px) 100vw, 280px"
+                    priority
+                    fetchPriority="high"
+                    className="h-full w-full object-cover"
+                  />
+                ) : (
+                  <div
+                    className="grid h-full w-full place-items-center p-6 text-center"
+                    aria-hidden="true"
+                  >
+                    <div>
+                      <BookOpen className="mx-auto h-10 w-10 text-brand" />
+                      <p className="mt-2 font-heading text-lg font-bold text-heading">
+                        {book.title}
+                      </p>
+                    </div>
+                  </div>
+                )}
               </div>
-            )}
+              <div className="kartu-kop flex items-center justify-between gap-2 p-4">
+                <span className="entri flex items-center gap-1.5 text-sm font-semibold text-[var(--ink)]">
+                  <Star
+                    className={`h-4 w-4 ${rating > 0 ? 'fill-accent text-accent' : 'text-ink/30'}`}
+                    aria-hidden="true"
+                  />
+                  {rating > 0 ? `${rating.toFixed(1)} / 5` : 'Belum dinilai'}
+                </span>
+                <span className="stempel" data-state={tone}>
+                  {stock.label}
+                </span>
+              </div>
+            </div>
           </div>
-          <div className="flex items-center justify-between gap-2 p-4">
-            <span className="flex items-center gap-1 text-sm font-semibold text-[var(--ink)]">
-              <Star
-                className={`h-4 w-4 ${rating > 0 ? 'fill-accent text-accent' : 'text-[var(--ink)]/30'}`}
-                aria-hidden="true"
-              />
-              {rating > 0 ? `${rating.toFixed(1)} / 5` : 'Belum dinilai'}
-            </span>
-            <span className={`rounded-full border px-3 py-1 text-xs font-bold ${tone}`}>
-              {stock.label}
-            </span>
-          </div>
-        </div>
 
-        {/* info */}
-        <div>
-          {book.categories?.name && (
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand">
-              {book.categories.name}
-            </p>
-          )}
-          <h1 className="mt-1 font-heading text-3xl font-bold leading-tight text-heading sm:text-4xl">
-            {book.title}
-          </h1>
+          {/* kop judul + entri bibliografi + ketersediaan + CTA */}
+          <div className="min-w-0">
+            <div className="kartu-kop pb-4">
+              <h1 className="font-heading text-3xl font-bold leading-[1.06] tracking-[-0.02em] text-heading sm:text-4xl">
+                {book.title}
+              </h1>
+            </div>
 
-          <dl className="mt-5 grid grid-cols-1 gap-2.5 rounded-[var(--radius-lg)] border border-[var(--ink)]/10 bg-[var(--surface)] p-4 shadow-[var(--shadow-sm)] sm:grid-cols-2">
-            {meta.map((m) => (
-              <div
-                key={m.label}
-                className="flex items-start gap-2.5 rounded-[var(--radius-md)] bg-[var(--brand-soft)]/60 px-3 py-2.5"
-              >
-                <m.icon className="mt-0.5 h-4 w-4 shrink-0 text-brand" aria-hidden="true" />
-                <div className="min-w-0">
-                  <dt className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ink)]/50">
+            <dl className="entri mt-4 grid gap-1.5 text-sm">
+              {meta.map((m) => (
+                <div key={m.label} className="flex gap-4">
+                  <dt className="w-28 shrink-0 text-xs uppercase tracking-[0.08em] text-ink/70">
                     {m.label}
                   </dt>
-                  <dd className="truncate text-sm font-medium text-[var(--ink)]" title={m.value}>
+                  <dd className="min-w-0 flex-1 break-words text-[var(--ink)]" title={m.value}>
                     {m.value}
                   </dd>
                 </div>
-              </div>
-            ))}
-            <div className="flex items-start gap-2.5 rounded-[var(--radius-md)] bg-[var(--brand-soft)]/60 px-3 py-2.5">
-              <BookOpen className="mt-0.5 h-4 w-4 shrink-0 text-brand" aria-hidden="true" />
-              <div>
-                <dt className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ink)]/50">
+              ))}
+              <div className="flex gap-4">
+                <dt className="w-28 shrink-0 text-xs uppercase tracking-[0.08em] text-ink/70">
                   Stok
                 </dt>
-                <dd className="text-sm font-medium text-[var(--ink)]">
+                <dd className="min-w-0 flex-1 text-[var(--ink)]">
                   {book.stock_available} tersedia / {book.stock_total} eksemplar
                 </dd>
               </div>
-            </div>
-          </dl>
+            </dl>
 
-          {/* CTA: 1-klik reservasi anggota (POST /api/reservations) + WA fallback */}
-          <div className="mt-5 flex flex-wrap gap-3" aria-live="polite">
-            <p className="w-full text-sm font-semibold text-[var(--ink)]" role="status">
+            {/* CTA: 1-klik reservasi anggota (POST /api/reservations) + WA fallback */}
+            <div className="mt-5 flex flex-wrap gap-3" aria-live="polite">
+              <p className="w-full text-sm font-semibold text-[var(--ink)]" role="status">
+                {available ? (
+                  <>
+                    {book.stock_available} tersedia / {book.stock_total} eksemplar — siap dipinjam
+                  </>
+                ) : (
+                  <>Stok habis — semua {book.stock_total} eksemplar sedang dipinjam</>
+                )}
+              </p>
               {available ? (
                 <>
-                  {book.stock_available} tersedia / {book.stock_total} eksemplar — siap dipinjam
+                  <ReserveButton
+                    bookId={book.id}
+                    slug={book.slug}
+                    title={book.title}
+                    waHref={waHref}
+                  />
+                  <WishlistButton slug={book.slug} title={book.title} />
+                  <Link
+                    href={`/kontak?buku=${book.slug}`}
+                    className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--radius-md)] border border-brand/40 bg-[var(--surface)] px-6 py-3 text-sm font-semibold text-brand transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  >
+                    Pinjam Buku <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                  </Link>
                 </>
               ) : (
-                <>Stok habis — semua {book.stock_total} eksemplar sedang dipinjam</>
+                <>
+                  <button
+                    type="button"
+                    disabled
+                    aria-disabled="true"
+                    title="Stok habis — tombol pinjam nonaktif"
+                    className="inline-flex min-h-[44px] cursor-not-allowed items-center justify-center rounded-[var(--radius-md)] border border-rule bg-[var(--surface)] px-6 py-3 text-sm font-bold text-ink/50"
+                  >
+                    Stok Habis
+                  </button>
+                  <ReserveButton
+                    bookId={book.id}
+                    slug={book.slug}
+                    title={book.title}
+                    waHref={waHref}
+                    variant="queue"
+                  />
+                </>
               )}
+              {waHref && (
+                <a
+                  href={waHref}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--radius-md)] border border-brand/40 bg-[var(--surface)] px-5 py-3 text-sm font-semibold text-brand transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                >
+                  Tanya via WA
+                </a>
+              )}
+            </div>
+            <p className="mt-3 max-w-[70ch] text-xs text-ink/70">
+              {available
+                ? 'Peminjaman & reservasi diproses petugas sirkulasi. Bawa kartu anggota saat pengambilan.'
+                : 'Semua eksemplar sedang dipinjam. Masuk antrean agar dihubungi saat buku kembali.'}
             </p>
-            {available ? (
-              <>
-                <ReserveButton
-                  bookId={book.id}
-                  slug={book.slug}
-                  title={book.title}
-                  waHref={waHref}
-                />
-                <WishlistButton slug={book.slug} title={book.title} />
-                <Link
-                  href={`/kontak?buku=${book.slug}`}
-                  className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--radius-md)] border border-brand/40 bg-[var(--surface)] px-6 py-3 text-sm font-semibold text-brand-strong shadow-sm transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                >
-                  Pinjam Buku <ArrowRight className="h-4 w-4" aria-hidden="true" />
-                </Link>
-              </>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  disabled
-                  aria-disabled="true"
-                  title="Stok habis — tombol pinjam nonaktif"
-                  className="inline-flex min-h-[44px] cursor-not-allowed items-center justify-center rounded-[var(--radius-md)] bg-[var(--ink)]/10 px-6 py-3 text-sm font-bold text-[var(--ink)]/50"
-                >
-                  Stok Habis
-                </button>
-                <ReserveButton
-                  bookId={book.id}
-                  slug={book.slug}
-                  title={book.title}
-                  waHref={waHref}
-                  variant="queue"
-                />
-              </>
-            )}
-            {waHref && (
-              <a
-                href={waHref}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--radius-md)] border border-brand/40 bg-[var(--surface)] px-5 py-3 text-sm font-semibold text-brand-strong shadow-sm transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-              >
-                Tanya via WA
-              </a>
+
+            {book.description && (
+              <section aria-labelledby="deskripsi" className="mt-6">
+                <h2 id="deskripsi" className="font-heading text-xl font-bold text-heading">
+                  Deskripsi
+                </h2>
+                <p className="mt-2 max-w-[70ch] whitespace-pre-line text-sm leading-relaxed text-ink/80 sm:text-base">
+                  {book.description}
+                </p>
+              </section>
             )}
           </div>
-          <p className="mt-3 text-xs text-[var(--ink)]/60">
-            {available
-              ? 'Peminjaman & reservasi diproses petugas sirkulasi. Bawa kartu anggota saat pengambilan.'
-              : 'Semua eksemplar sedang dipinjam. Masuk antrean agar dihubungi saat buku kembali.'}
-          </p>
-
-          {book.description && (
-            <section aria-labelledby="deskripsi" className="mt-6">
-              <h2 id="deskripsi" className="font-heading text-xl font-bold text-heading">
-                Deskripsi
-              </h2>
-              <p className="mt-2 whitespace-pre-line text-sm leading-relaxed text-[var(--ink)]/80 sm:text-base">
-                {book.description}
-              </p>
-            </section>
-          )}
         </div>
       </article>
 
@@ -333,25 +320,36 @@ export default async function BookDetailPage({ params }: Props) {
             Buku Terkait
           </h2>
           <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4">
-            {related.map((b) => (
-              <BookCard key={b.id} book={b} />
+            {related.map((b, n) => (
+              <div
+                key={b.id}
+                className="riffle [&>*]:h-full"
+                style={{ ['--i' as never]: n } as React.CSSProperties}
+              >
+                <BookCard book={b} />
+              </div>
             ))}
           </div>
         </section>
       ) : (
         <section
           aria-labelledby="terkait-kosong"
-          className="grid place-items-center rounded-[var(--radius-lg)] border border-dashed border-[var(--ink)]/10 bg-[var(--surface)] px-6 py-10 text-center"
+          className="kartu px-5 pb-7 pt-5 text-left sm:px-6"
         >
-          <h2 id="terkait-kosong" className="font-heading text-lg font-bold text-heading">
+          <div className="kartu-kop pb-3">
+            <h2 id="terkait-kosong" className="font-heading text-lg font-bold text-heading">
+              Buku Terkait
+            </h2>
+          </div>
+          <p className="entri mt-3 text-sm uppercase tracking-[0.08em] text-ink/70">
             Belum ada buku terkait
-          </h2>
-          <p className="mt-1 max-w-sm text-sm text-[var(--ink)]/60">
+          </p>
+          <p className="mt-2 max-w-sm text-sm text-ink/70">
             Jelajahi seluruh koleksi untuk menemukan bacaan lain yang tersedia.
           </p>
           <Link
             href="/katalog"
-            className="mt-4 inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--radius-lg)] bg-brand px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            className="mt-4 inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--radius-md)] bg-brand px-5 py-2.5 text-sm font-semibold text-surface shadow-[var(--shadow-sm)] transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
             Jelajahi katalog <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>

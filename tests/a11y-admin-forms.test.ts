@@ -85,9 +85,13 @@ describe('S-a11y BookCard badges', () => {
     expect(s.includes('ui/Badge'), 'BookCard must reuse ui/Badge').toBe(true);
     expect(s.includes('<Badge'), 'BookCard must render <Badge').toBe(true);
   });
-  it('amber tone meets AA (amber-800 on amber-100)', () => {
+  it('amber tone meets AA (stempel: tinta accent di atas accent-soft)', () => {
     const badge = read('src/components/ui/Badge.tsx');
-    expect(badge.includes('border-amber-200 bg-amber-100 text-amber-800')).toBe(true);
+    // Pasangan token ini ≥4.5:1 di kelima tema (tests/theme-contrast PAIRS).
+    expect(
+      badge.includes("amber: 'bg-accent-soft text-accent'"),
+      'Badge amber tone must be accent ink on accent-soft (AA)'
+    ).toBe(true);
     const s = src();
     // no low-contrast accent-soft text-accent combo for stock
     expect(s.includes('text-accent border-accent-soft')).toBe(false);
@@ -128,8 +132,8 @@ describe('S-a11y Modal focus management', () => {
     expect(s.includes('e.target === e.currentTarget'), 'Modal must keep overlay close').toBe(true);
     expect(s.includes('closeRef'), 'Modal must keep autofocus ref').toBe(true);
     expect(
-      s.includes('rounded-sm p-2'),
-      'Modal close-button size/padding must stay (Mobile owns)'
+      s.includes('rounded-[var(--radius-sm)] p-2'),
+      'Modal close-button size/padding must stay (token radius, Mobile owns)'
     ).toBe(true);
   });
 });

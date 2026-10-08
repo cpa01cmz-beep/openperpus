@@ -65,21 +65,19 @@ export default function DendaSayaPage() {
   useEffect(() => {
     import('@/lib/supabase/client').then(({ createClient }) => {
       const supabase = createClient();
-      supabase.auth
-        .getUser()
-        .then((res) => {
-          const user = res.data?.user;
-          if (user) {
-            supabase
-              .from('members')
-              .select('id')
-              .eq('user_id', user.id)
-              .maybeSingle()
-              .then((memRes) => {
-                if (memRes.data) setMemberId(memRes.data.id);
-              });
-          }
-        });
+      supabase.auth.getUser().then((res) => {
+        const user = res.data?.user;
+        if (user) {
+          supabase
+            .from('members')
+            .select('id')
+            .eq('user_id', user.id)
+            .maybeSingle()
+            .then((memRes) => {
+              if (memRes.data) setMemberId(memRes.data.id);
+            });
+        }
+      });
     });
   }, []);
 
@@ -232,7 +230,7 @@ export default function DendaSayaPage() {
             <button
               type="button"
               onClick={() => setPendingPay(null)}
-              className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-md)] border border-rule bg-[var(--surface)] px-4 py-2 text-sm font-semibold text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             >
               Batal
             </button>
@@ -240,7 +238,7 @@ export default function DendaSayaPage() {
               type="button"
               disabled={payingId !== null}
               onClick={() => void confirmPay()}
-              className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-md)] bg-brand px-4 py-2 text-sm font-semibold text-surface shadow-[var(--shadow-sm)] transition hover:bg-brand-strong disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             >
               {payingId ? 'Memproses…' : 'Ya, bayar'}
             </button>
@@ -271,28 +269,28 @@ export default function DendaSayaPage() {
                 setCopied(false);
                 setDownloadError('');
               }}
-              className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-md)] border border-rule bg-[var(--surface)] px-4 py-2 text-sm font-semibold text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             >
               Tutup
             </button>
             <button
               type="button"
               onClick={() => printReceipt()}
-              className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-md)] border border-rule bg-[var(--surface)] px-4 py-2 text-sm font-semibold text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             >
               Cetak
             </button>
             <button
               type="button"
               onClick={() => downloadReceipt()}
-              className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-md)] border border-rule bg-[var(--surface)] px-4 py-2 text-sm font-semibold text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             >
               Unduh
             </button>
             <button
               type="button"
               onClick={() => void copyReceipt()}
-              className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-md)] bg-brand px-4 py-2 text-sm font-semibold text-surface shadow-[var(--shadow-sm)] transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             >
               {copied ? 'Tersalin!' : 'Salin bukti'}
             </button>
@@ -326,12 +324,12 @@ export default function DendaSayaPage() {
                 </p>
               )}
               {copied && (
-                <p role="alert" className="text-sm text-green-700">
+                <p role="alert" className="entri text-sm text-brand">
                   Bukti berhasil disalin.
                 </p>
               )}
               {downloadError && (
-                <p role="alert" className="text-sm text-red-700">
+                <p role="alert" className="entri text-sm text-accent">
                   Gagal mengunduh bukti.
                 </p>
               )}
@@ -351,54 +349,68 @@ export default function DendaSayaPage() {
       </Modal>
       <div>
         <Breadcrumb items={[{ label: 'Beranda', href: '/' }, { label: 'Denda Saya' }]} />
-        <h1 className="mt-3 text-2xl font-bold">Denda Saya</h1>
-        <p className="text-sm text-slate-500">
-          Denda terbentuk otomatis saat pengembalian terlambat (Rp
-          {finePerDay.toLocaleString('id-ID')}/hari, tarif denda_per_hari). Bayar langsung tanpa
-          payment gateway.
-        </p>
+        {/* Kop kartu indeks: judul + baris entri tarif/halaman */}
+        <div className="kartu mt-3 px-5 pb-6 pt-7 sm:px-8 sm:pt-8">
+          <div className="kartu-kop pb-4">
+            <h1 className="font-heading text-2xl font-bold leading-[1.06] tracking-[-0.02em] text-heading sm:text-3xl">
+              Denda Saya
+            </h1>
+          </div>
+          <p className="entri mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs uppercase tracking-[0.08em] text-ink/70">
+            <span className="flex gap-2">
+              <span>Tarif</span>
+              <span className="font-semibold text-ink">
+                Rp{finePerDay.toLocaleString('id-ID')}/hari
+              </span>
+            </span>
+          </p>
+          <p className="mt-2 text-sm text-ink/70">
+            Denda terbentuk otomatis saat pengembalian terlambat (Rp
+            {finePerDay.toLocaleString('id-ID')}/hari, tarif denda_per_hari). Bayar langsung tanpa
+            payment gateway.
+          </p>
+        </div>
       </div>
 
       {needLogin && (
-        <div
-          role="alert"
-          className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800"
-        >
+        <div role="alert" className="kartu bg-accent-soft px-4 py-3 text-sm text-ink">
           Silakan{' '}
-          <a className="font-semibold underline" href="/login?next=/denda">
+          <a className="font-semibold text-brand underline" href="/login?next=/denda">
             login
           </a>{' '}
           sebagai anggota untuk melihat denda Anda.
         </div>
       )}
       {error && (
-        <div
-          role="alert"
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-        >
+        <div role="alert" className="kartu bg-accent-soft px-4 py-3 text-sm text-ink">
           {error}
         </div>
       )}
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="rounded-xl border bg-white p-4">
-          <p className="text-sm text-slate-500">Total terbuka</p>
-          <p className="text-xl font-bold">{fmtRp(openTotal)}</p>
+        <div className="kartu px-4 py-4">
+          <p className="entri text-xs uppercase tracking-[0.08em] text-ink/70">Total terbuka</p>
+          <p className="entri mt-1 text-xl font-bold text-ink">{fmtRp(openTotal)}</p>
         </div>
-        <div className="rounded-xl border bg-white p-4">
-          <p className="text-sm text-slate-500">Baris</p>
-          <p className="text-xl font-bold">{rows.length}</p>
-          <p className="text-xs text-slate-500">
+        <div className="kartu px-4 py-4">
+          <p className="entri text-xs uppercase tracking-[0.08em] text-ink/70">Baris</p>
+          <p className="entri mt-1 text-xl font-bold text-ink">{rows.length}</p>
+          <p className="entri mt-1 text-xs text-ink/70">
             Halaman {page} / {totalPages}
           </p>
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-2 text-sm">
-        <label htmlFor="denda-status">Filter:</label>
+      <div className="kartu mt-1 flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 text-sm">
+        <label
+          htmlFor="denda-status"
+          className="entri text-xs uppercase tracking-[0.08em] text-ink/70"
+        >
+          Filter:
+        </label>
         <select
           id="denda-status"
-          className="min-h-[44px] rounded-lg border px-3 py-1.5"
+          className="entri min-h-[44px] rounded-[var(--radius-sm)] border border-rule bg-[var(--surface)] px-3 py-1.5 text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           value={status}
           onChange={(e) => {
             setPage(1);
@@ -411,10 +423,15 @@ export default function DendaSayaPage() {
             </option>
           ))}
         </select>
-        <label htmlFor="denda-method">Metode bayar:</label>
+        <label
+          htmlFor="denda-method"
+          className="entri text-xs uppercase tracking-[0.08em] text-ink/70"
+        >
+          Metode bayar:
+        </label>
         <select
           id="denda-method"
-          className="min-h-[44px] rounded-lg border px-3 py-1.5"
+          className="entri min-h-[44px] rounded-[var(--radius-sm)] border border-rule bg-[var(--surface)] px-3 py-1.5 text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           value={method}
           onChange={(e) => setMethod(e.target.value as (typeof METHOD_OPTS)[number])}
         >
@@ -424,24 +441,28 @@ export default function DendaSayaPage() {
             </option>
           ))}
         </select>
-        <button onClick={load} className="min-h-[44px] rounded-lg border px-4 py-1.5">
+        <button
+          onClick={load}
+          className="inline-flex min-h-[44px] items-center rounded-[var(--radius-sm)] border border-rule bg-[var(--surface)] px-4 py-1.5 font-semibold text-ink transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+        >
           Muat ulang
         </button>
       </div>
 
       {loading ? (
-        <p className="text-sm text-slate-500" aria-live="polite">
+        <p className="entri text-sm text-ink/70" aria-live="polite">
           Memuat…
         </p>
       ) : rows.length === 0 ? (
-        <div className="grid gap-2">
-          <p className="text-sm text-slate-500">
-            Belum ada denda. Kabar baik — jaga riwayat pinjaman agar tetap bersih.
+        <div className="kartu px-6 py-12 text-left">
+          <p className="entri text-sm uppercase tracking-[0.08em] text-ink/70">Belum ada denda</p>
+          <p className="mt-2 text-sm text-ink/70">
+            Kabar baik — jaga riwayat pinjaman agar tetap bersih.
           </p>
           <p>
             <Link
               href="/katalog"
-              className="font-semibold text-brand underline-offset-2 hover:underline"
+              className="mt-4 inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-md)] bg-brand px-5 py-2.5 text-sm font-semibold text-surface shadow-[var(--shadow-sm)] transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             >
               Jelajahi katalog
             </Link>
@@ -453,17 +474,24 @@ export default function DendaSayaPage() {
             const sisa = num(r.amount) - num(r.paid_amount);
             const open = r.status === 'unpaid' || r.status === 'partial';
             return (
-              <li key={r.id} className="rounded-xl border bg-white p-4">
-                <div className="flex flex-wrap items-center justify-between gap-2">
+              <li key={r.id} className="kartu px-5 pb-7 pt-4">
+                <div className="kartu-kop flex flex-wrap items-center justify-between gap-2 pb-2">
+                  <p className="entri text-xs uppercase tracking-[0.05em] text-ink/70">
+                    Tagihan / Dibayar
+                  </p>
+                  <span className="stempel" data-state={open ? undefined : 'dipinjam'}>
+                    {r.status}
+                  </span>
+                </div>
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <p className="text-sm text-slate-500">Tagihan / Dibayar</p>
-                    <p className="font-semibold">
+                    <p className="entri font-semibold text-ink">
                       {fmtRp(r.amount)}{' '}
-                      <span className="text-xs font-normal text-slate-500">
+                      <span className="text-xs font-normal opacity-70">
                         dibayar {fmtRp(r.paid_amount)}
                       </span>
                     </p>
-                    <p className="mt-1 text-sm">
+                    <p className="mt-1 text-sm text-ink/70">
                       Status: <span className="font-semibold">{r.status}</span>
                       {' · '}Terbit: {new Date(r.issued_at).toLocaleDateString('id-ID')}
                       {r.paid_at && (
@@ -483,12 +511,12 @@ export default function DendaSayaPage() {
                     <button
                       disabled={payingId === r.id}
                       onClick={() => onPay(r)}
-                      className="inline-flex min-h-[44px] items-center justify-center rounded bg-slate-900 px-4 py-1.5 text-sm text-white disabled:opacity-50"
+                      className="inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-md)] bg-brand px-4 py-2 text-sm font-semibold text-surface shadow-[var(--shadow-sm)] transition hover:bg-brand-strong disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                     >
                       {payingId === r.id ? '…' : 'Bayar'}
                     </button>
                   ) : (
-                    <span className="text-xs text-slate-400">Lunas/dibebaskan</span>
+                    <span className="entri text-xs text-ink/70">Lunas/dibebaskan</span>
                   )}
                 </div>
               </li>
@@ -497,11 +525,11 @@ export default function DendaSayaPage() {
         </ul>
       )}
 
-      <div className="flex items-center gap-2 text-sm">
+      <div className="entri flex items-center gap-2 text-sm text-ink">
         <button
           disabled={page <= 1}
           onClick={() => setPage((p) => p - 1)}
-          className="rounded border px-3 py-1 disabled:opacity-50"
+          className="inline-flex min-h-[44px] items-center rounded-[var(--radius-sm)] border border-rule bg-[var(--surface)] px-3 py-1 transition hover:bg-brand-soft disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
         >
           ‹ Prev
         </button>
@@ -511,7 +539,7 @@ export default function DendaSayaPage() {
         <button
           disabled={page >= totalPages}
           onClick={() => setPage((p) => p + 1)}
-          className="rounded border px-3 py-1 disabled:opacity-50"
+          className="inline-flex min-h-[44px] items-center rounded-[var(--radius-sm)] border border-rule bg-[var(--surface)] px-3 py-1 transition hover:bg-brand-soft disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
         >
           Next ›
         </button>

@@ -123,9 +123,19 @@ describe('A11Y contrast audit note (midnight/ocean)', () => {
   it('contrast audit note for midnight/ocean travels with the code', () => {
     const layout = read('src/app/layout.tsx');
     expect(
-      /A11Y-CONTRAST-AUDIT/.test(layout),
-      'layout must carry an A11Y-CONTRAST-AUDIT note for midnight/ocean'
+      /kontras/i.test(layout),
+      'layout must carry the token-contrast responsibility note'
     ).toBe(true);
+    const contrast = read('tests/theme-contrast.test.ts');
+    expect(
+      contrast.includes('toBeGreaterThanOrEqual(4.5)'),
+      'tests/theme-contrast.test.ts must assert >= 4.5:1'
+    ).toBe(true);
+    for (const id of ['emerald', 'midnight', 'paper', 'brutalist', 'ocean']) {
+      expect(contrast.includes(`'${id}'`), `tests/theme-contrast.test.ts must cover ${id}`).toBe(
+        true
+      );
+    }
   });
 });
 

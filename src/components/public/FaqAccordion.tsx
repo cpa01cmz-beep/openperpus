@@ -53,9 +53,16 @@ export default function FaqAccordion({ faqs }: { faqs: FaqItem[] }) {
     [open]
   );
 
+  const chipClass = (active: boolean) =>
+    `tab-laci shrink-0 min-h-[44px] rounded-[var(--radius-sm)] focus-visible:outline-none focus-visible:ring-2 focus:ring-brand ${
+      active
+        ? 'border-brand bg-brand text-surface shadow-[var(--shadow-sm)]'
+        : 'border-[var(--ink)] bg-[var(--surface)] text-[var(--ink)] hover:bg-brand-soft'
+    }`;
+
   return (
     <div className="space-y-4">
-      {/* cari */}
+      {/* cari — pelat laci */}
       <div className="relative">
         <label htmlFor="cari-faq" className="sr-only">
           Cari pertanyaan
@@ -71,36 +78,32 @@ export default function FaqAccordion({ faqs }: { faqs: FaqItem[] }) {
           onChange={(e) => setQ(e.target.value)}
           placeholder="Cari pertanyaan, mis. “denda”, “anggota”…"
           autoComplete="off"
-          className="min-h-[44px] w-full rounded-[var(--radius-lg)] border border-[var(--ink)]/10 bg-[var(--surface)] py-3 pl-10 pr-12 text-sm text-[var(--ink)] shadow-sm transition placeholder:text-[var(--ink)]/40 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
+          className="entri min-h-[44px] w-full rounded-[var(--radius-md)] border border-[var(--ink)] bg-[var(--surface)] py-3 pl-10 pr-12 text-sm text-[var(--ink)] shadow-[var(--shadow-sm)] transition placeholder:text-[var(--ink)]/40 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30"
         />
         {q && (
           <button
             type="button"
             onClick={() => setQ('')}
             aria-label="Hapus pencarian"
-            className="absolute right-1 top-1/2 grid min-h-[44px] min-w-[44px] -translate-y-1/2 place-items-center rounded-full text-[var(--ink)]/40 transition hover:bg-[var(--ink)]/10 hover:text-[var(--ink)]/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            className="absolute right-1 top-1/2 grid min-h-[44px] min-w-[44px] -translate-y-1/2 place-items-center rounded-[var(--radius-sm)] text-[var(--ink)]/40 transition hover:bg-brand-soft hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
             <X className="h-4 w-4" />
           </button>
         )}
       </div>
 
-      {/* filter kategori */}
+      {/* filter kategori — tab pembatas laci */}
       {categories.length > 0 && (
         <div
           role="group"
           aria-label="Filter kategori pertanyaan"
-          className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0"
+          className="-mx-4 flex gap-0 overflow-x-auto border-b border-[var(--ink)] px-4 pb-0 sm:mx-0 sm:flex-wrap sm:px-0"
         >
           <button
             type="button"
             onClick={() => setCat(null)}
             aria-pressed={cat === null}
-            className={`shrink-0 min-h-[44px] rounded-full border px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
-              cat === null
-                ? 'border-brand bg-brand text-white shadow'
-                : 'border-[var(--ink)]/10 bg-[var(--surface)] text-[var(--ink)]/70 hover:border-brand hover:text-brand'
-            }`}
+            className={chipClass(cat === null)}
           >
             Semua
           </button>
@@ -112,11 +115,7 @@ export default function FaqAccordion({ faqs }: { faqs: FaqItem[] }) {
                 type="button"
                 onClick={() => setCat(active ? null : c)}
                 aria-pressed={active}
-                className={`shrink-0 min-h-[44px] rounded-full border px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
-                  active
-                    ? 'border-brand bg-brand text-white shadow'
-                    : 'border-[var(--ink)]/10 bg-[var(--surface)] text-[var(--ink)]/70 hover:border-brand hover:text-brand'
-                }`}
+                className={chipClass(active)}
               >
                 {c}
               </button>
@@ -125,12 +124,12 @@ export default function FaqAccordion({ faqs }: { faqs: FaqItem[] }) {
         </div>
       )}
 
-      <p role="status" aria-live="polite" className="text-xs text-[var(--ink)]/60">
+      <p role="status" aria-live="polite" className="entri text-xs text-[var(--ink)]/70">
         Menampilkan {filtered.length} dari {faqs.length} pertanyaan
         {q.trim() && (
           <>
             {' '}
-            untuk “<span className="font-semibold text-[var(--ink)]/80">{q.trim()}</span>”
+            untuk “<span className="font-semibold text-[var(--ink)]">{q.trim()}</span>”
           </>
         )}
       </p>
@@ -140,7 +139,7 @@ export default function FaqAccordion({ faqs }: { faqs: FaqItem[] }) {
           <button
             type="button"
             onClick={reset}
-            className="inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-lg)] bg-brand px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            className="inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-md)] bg-brand text-surface px-5 py-2.5 text-sm font-semibold shadow-[var(--shadow-sm)] transition hover:bg-brand-strong focus:ring-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
             Atur ulang filter
           </button>
@@ -165,23 +164,23 @@ export default function FaqAccordion({ faqs }: { faqs: FaqItem[] }) {
                     setOpen(null);
                   }
                 }}
-                className="group rounded-[var(--radius-lg)] border border-[var(--ink)]/10 bg-[var(--surface)] shadow-sm transition open:shadow-md"
+                className="kartu group rounded-[var(--radius-md)] border border-[var(--ink)] bg-[var(--surface)] transition open:shadow-[var(--shadow-md)]"
               >
                 <summary
                   aria-expanded={expanded}
                   aria-controls={panelId}
-                  className="flex cursor-pointer list-none items-start justify-between gap-3 rounded-[var(--radius-lg)] p-4 font-heading text-base font-bold text-heading transition hover:bg-brand-soft/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand sm:p-5 [&::-webkit-details-marker]:hidden"
+                  className="kartu-kop flex cursor-pointer list-none items-start justify-between gap-3 rounded-[var(--radius-md)] bg-[var(--surface)] p-4 font-heading text-base font-bold text-[var(--ink)] transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand sm:p-5 [&::-webkit-details-marker]:hidden"
                 >
                   <span>
                     {f.category && (
-                      <span className="mb-1 block font-sans text-[11px] font-semibold uppercase tracking-wide text-brand">
+                      <span className="entri mb-1 block text-xs uppercase tracking-[0.05em] text-brand">
                         {f.category}
                       </span>
                     )}
                     {f.question}
                   </span>
                   <span
-                    className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand/10 text-brand transition group-open:rotate-180"
+                    className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-[var(--radius-sm)] border border-[var(--ink)] bg-brand-soft text-brand transition group-open:rotate-180"
                     aria-hidden="true"
                   >
                     <ChevronDown className="h-4 w-4" />
@@ -192,7 +191,7 @@ export default function FaqAccordion({ faqs }: { faqs: FaqItem[] }) {
                   role="region"
                   aria-live="polite"
                   aria-labelledby={`faq-summary-${f.id}`}
-                  className="whitespace-pre-line px-4 pb-4 text-sm leading-relaxed text-[var(--ink)]/70 sm:px-5 sm:pb-5 sm:text-base"
+                  className="whitespace-pre-line px-4 pb-5 text-sm leading-relaxed text-[var(--ink)]/75 sm:px-5 sm:text-base"
                 >
                   {f.answer}
                 </div>
@@ -201,12 +200,12 @@ export default function FaqAccordion({ faqs }: { faqs: FaqItem[] }) {
           })}
         </div>
       ) : (
-        <div className="grid place-items-center rounded-[var(--radius-lg)] border border-dashed border-[var(--ink)]/10 bg-[var(--surface)] px-6 py-14 text-center">
-          <SearchX className="h-10 w-10 text-[var(--ink)]/25" aria-hidden="true" />
+        <div className="grid place-items-center rounded-[var(--radius-md)] border border-dashed border-[var(--ink)] bg-[var(--surface)] px-6 py-14 text-center">
+          <SearchX className="h-10 w-10 text-[var(--ink)]/30" aria-hidden="true" />
           <h2 className="mt-3 font-heading text-lg font-bold text-[var(--ink)]">
             {faqs.length === 0 ? 'Belum ada pertanyaan' : 'Tidak ada jawaban yang cocok'}
           </h2>
-          <p className="mt-1 max-w-sm text-sm text-[var(--ink)]/60">
+          <p className="mt-1 max-w-sm text-sm text-[var(--ink)]/70">
             {faqs.length === 0
               ? 'Daftar pertanyaan akan muncul di sini setelah diisi pustakawan.'
               : 'Coba kata kunci lain atau ubah kategori yang dipilih.'}

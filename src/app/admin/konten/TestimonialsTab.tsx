@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, type FormEvent } from 'react';
+import { Star } from 'lucide-react';
 import DataTable from '@/components/admin/DataTable';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
@@ -15,7 +16,7 @@ type Testimonial = {
 };
 
 const rawInput =
-  'h-11 min-h-[44px] w-full rounded-md border border-slate-200 bg-white px-4 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1';
+  'h-11 min-h-[44px] w-full rounded-[var(--radius-sm)] border border-rule bg-surface px-4 text-sm text-ink transition hover:border-rule-strong focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand';
 
 export function TestimonialsTab({
   testimonials,
@@ -46,7 +47,7 @@ export function TestimonialsTab({
 
   return (
     <section className="grid gap-4" aria-label="Testimoni">
-      <form onSubmit={handleAdd} className="grid max-w-2xl gap-2 rounded-2xl border bg-white p-4">
+      <form onSubmit={handleAdd} className="grid max-w-2xl gap-2 kartu p-4">
         <div className="flex flex-wrap items-end gap-2">
           <div className="min-w-[160px] flex-1">
             <Input
@@ -70,7 +71,7 @@ export function TestimonialsTab({
           <div className="grid gap-1">
             <label
               htmlFor="konten-testi-rating"
-              className="mb-1.5 block text-sm font-semibold text-slate-700"
+              className="mb-1.5 block text-sm font-semibold text-ink"
             >
               Rating
             </label>
@@ -91,7 +92,7 @@ export function TestimonialsTab({
         <div className="grid gap-1 text-sm">
           <label
             htmlFor="konten-testi-content"
-            className="mb-1.5 block text-sm font-semibold text-slate-700"
+            className="mb-1.5 block text-sm font-semibold text-ink"
           >
             Isi testimoni
           </label>
@@ -117,11 +118,24 @@ export function TestimonialsTab({
             header: 'Nama',
             render: (r) => <span className="font-medium">{r.name}</span>,
           },
-          { key: 'rating', header: 'Rating', render: (r) => `★ ${r.rating}` },
+          {
+            key: 'rating',
+            header: 'Rating',
+            render: (r) => (
+              <span className="entri inline-flex items-center gap-1">
+                <Star className="h-3.5 w-3.5 fill-accent text-accent" aria-hidden="true" />
+                {r.rating}
+              </span>
+            ),
+          },
           {
             key: 'is_active',
             header: 'Aktif',
-            render: (r) => (r.is_active ? 'Ya' : 'Tidak'),
+            render: (r) => (
+              <span className="stempel" data-state={r.is_active ? undefined : 'dipinjam'}>
+                {r.is_active ? 'Ya' : 'Tidak'}
+              </span>
+            ),
           },
           {
             key: 'aksi',
@@ -130,13 +144,13 @@ export function TestimonialsTab({
               <span className="flex gap-2">
                 <button
                   onClick={() => onToggleTestimonial(r.id, r.is_active)}
-                  className="inline-flex min-h-[44px] items-center text-blue-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  className="inline-flex min-h-[44px] items-center text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
                   {r.is_active ? 'Nonaktifkan' : 'Aktifkan'}
                 </button>
                 <button
                   onClick={() => onDeleteTestimonial(r.id)}
-                  className="inline-flex min-h-[44px] items-center text-red-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  className="inline-flex min-h-[44px] items-center text-accent underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
                   Hapus
                 </button>

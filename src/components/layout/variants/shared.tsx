@@ -34,6 +34,18 @@ export const SOCIAL_ICON: Record<string, typeof Facebook> = {
   whatsapp: MessageCircle,
 };
 
+/** Aksi utama dicap di rail: huruf data ter-tracking. Warna + radius per material. */
+export const CATALOG_CTA =
+  'inline-flex min-h-[44px] items-center justify-center border border-[var(--ink)] px-4 font-data text-xs font-semibold uppercase tracking-[0.04em] text-[var(--surface)] transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent';
+
+/** Tab pembatas laci — garis basisnya datang dari border-b rail, bukan dari tab. */
+export const TAB_LACI =
+  'tab-laci focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent';
+
+/** Panel mobile: daftar vertikal dengan batang rod menembus tiap baris. */
+export const PANEL_LIST = 'batang mx-auto w-full max-w-[var(--container)] px-4 py-1 sm:px-6';
+export const PANEL_ROW = 'flex py-1 pl-6';
+
 export function hourLabel(h: Record<string, string | undefined>) {
   const hari = h.hari ?? h.day ?? '-';
   const buka = h.buka ?? h.open ?? '';
@@ -52,7 +64,9 @@ export function LogoMark({
   size?: 'sm' | 'md';
 }) {
   const box =
-    size === 'sm' ? 'h-7 w-7 rounded-[var(--radius-sm)]' : 'h-9 w-9 rounded-[var(--radius-md)]';
+    size === 'sm'
+      ? 'h-7 w-7 shrink-0 rounded-[var(--radius-sm)]'
+      : 'h-9 w-9 shrink-0 rounded-[var(--radius-md)]';
   if (logoSrc) {
     return (
       <Image

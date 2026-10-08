@@ -114,15 +114,12 @@ export default function RakPage() {
   return (
     <div className="grid gap-4">
       <div>
-        <h1 className="text-2xl font-bold">Rak</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="kartu-kop pb-3 font-heading text-2xl font-bold text-heading">Rak</h1>
+        <p className="text-sm text-ink/70">
           Kelola rak penyimpanan buku (kode, nama, lokasi, status aktif).
         </p>
       </div>
-      <form
-        onSubmit={onAdd}
-        className="flex flex-wrap items-end gap-2 rounded-2xl border bg-white p-4"
-      >
+      <form onSubmit={onAdd} className="flex flex-wrap items-end gap-2 kartu p-4">
         <div className="min-w-[140px] flex-1">
           <Input
             id="rak-code"
@@ -168,7 +165,7 @@ export default function RakPage() {
         />
       </div>
       {actionError && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-accent">
           {actionError}
         </p>
       )}
@@ -178,14 +175,16 @@ export default function RakPage() {
           {
             key: 'code',
             header: 'Kode',
-            render: (r) => <span className="font-medium">{r.code}</span>,
+            render: (r) => <span className="entri font-medium">{r.code}</span>,
           },
           { key: 'name', header: 'Nama' },
           { key: 'location', header: 'Lokasi', render: (r) => r.location ?? '-' },
           {
             key: 'capacity',
             header: 'Kapasitas',
-            render: (r) => (r.capacity === null ? '-' : String(r.capacity)),
+            render: (r) => (
+              <span className="entri">{r.capacity === null ? '-' : String(r.capacity)}</span>
+            ),
           },
           {
             key: 'is_active',
@@ -196,7 +195,7 @@ export default function RakPage() {
                 onClick={() => onToggle(r)}
                 aria-label={`Ubah status rak ${r.code}`}
                 aria-pressed={r.is_active}
-                className="inline-flex min-h-[44px] items-center rounded-full border px-3 text-xs hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                className="inline-flex min-h-[44px] items-center rounded-[var(--radius-sm)] border px-3 text-xs hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
                 {r.is_active ? 'Aktif' : 'Nonaktif'}
               </button>
@@ -210,7 +209,7 @@ export default function RakPage() {
                 type="button"
                 onClick={() => onDelete(r.id)}
                 aria-label={`Hapus rak ${r.code}`}
-                className="inline-flex min-h-[44px] items-center text-red-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                className="inline-flex min-h-[44px] items-center text-accent underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
                 Hapus
               </button>

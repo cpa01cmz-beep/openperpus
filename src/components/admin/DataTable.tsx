@@ -1,6 +1,7 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
+import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 
 export type Column<T> = {
   key: string;
@@ -50,26 +51,29 @@ export default function DataTable<T>({
     return (
       <div
         role="status"
-        className="rounded-xl border bg-white p-8 text-center text-sm text-slate-500"
+        className="kartu p-8 text-center text-sm text-ink/70 rounded-[var(--radius-lg)]"
       >
         {emptyText}
       </div>
     );
   }
   return (
-    <div className="overflow-x-auto rounded-xl border bg-white">
+    <div className="kartu overflow-x-auto rounded-[var(--radius-lg)] border border-rule bg-[var(--surface)]">
       <table className="w-full min-w-[640px] text-left text-sm">
         <caption className="sr-only">{caption}</caption>
         <thead className="sticky top-0 z-20">
-          <tr className="border-b bg-slate-50 text-slate-500">
+          <tr className="kartu-kop bg-[var(--surface)] text-ink/70">
             {showBulk && (
-              <th scope="col" className="sticky left-0 z-10 bg-slate-50 px-4 py-3 font-medium">
+              <th
+                scope="col"
+                className="sticky left-0 z-10 bg-[var(--surface)] py-3 pl-7 pr-4 font-medium"
+              >
                 <input
                   type="checkbox"
                   aria-label="Pilih semua baris"
                   checked={allChecked}
                   onChange={() => onToggleAll?.()}
-                  className="h-5 w-5 accent-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  className="h-5 w-5 accent-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 />
               </th>
             )}
@@ -84,7 +88,9 @@ export default function DataTable<T>({
                       : 'descending'
                     : undefined
                 }
-                className={`px-4 py-3 font-medium ${ci === 0 && !showBulk ? 'sticky left-0 z-10 bg-slate-50' : ''}`}
+                className={`py-3 pr-4 font-data text-xs font-medium uppercase tracking-[0.08em] ${
+                  ci === 0 && !showBulk ? 'sticky left-0 z-10 bg-[var(--surface)] pl-7' : 'pl-4'
+                }`}
               >
                 {c.sortable && onSort ? (
                   <button
@@ -94,8 +100,16 @@ export default function DataTable<T>({
                     className="inline-flex min-h-[44px] items-center gap-1 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                   >
                     {c.header}
-                    <span aria-hidden="true">
-                      {sortKey === c.key ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}
+                    <span aria-hidden="true" className="opacity-70">
+                      {sortKey === c.key ? (
+                        sortDir === 'asc' ? (
+                          <ArrowUp className="h-3.5 w-3.5" />
+                        ) : (
+                          <ArrowDown className="h-3.5 w-3.5" />
+                        )
+                      ) : (
+                        <ArrowUpDown className="h-3.5 w-3.5" />
+                      )}
                     </span>
                   </button>
                 ) : (
@@ -105,26 +119,31 @@ export default function DataTable<T>({
             ))}
           </tr>
         </thead>
-        <tbody>
+        {/* Batang: rod vertikal menembus tiap baris — sel pertama ber-gutter pl-7. */}
+        <tbody className="batang relative">
           {rows.map((row, i) => {
             const rk = getRowKey(row, i);
             return (
-              <tr key={rk} className="border-b last:border-0 hover:bg-slate-50/60">
+              <tr
+                key={rk}
+                className="riffle hover:bg-brand-soft/50"
+                style={{ ['--i' as never]: i } as CSSProperties}
+              >
                 {showBulk && (
-                  <td className="sticky left-0 z-10 bg-white px-4 py-3 align-top">
+                  <td className="sticky left-0 z-10 bg-[var(--surface)] py-3 pl-7 pr-4 align-top">
                     <input
                       type="checkbox"
                       aria-label={bulkLabel ? bulkLabel(rk) : `Pilih baris ${rk}`}
                       checked={selectedKeys?.has(rk) ?? false}
                       onChange={() => onToggleRow?.(rk)}
-                      className="h-5 w-5 accent-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                      className="h-5 w-5 accent-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                     />
                   </td>
                 )}
                 {columns.map((c, ci) => (
                   <td
                     key={c.key}
-                    className={`px-4 py-3 align-top ${ci === 0 && !showBulk ? 'sticky left-0 z-10 bg-white' : ''}`}
+                    className={`py-3 align-top ${ci === 0 && !showBulk ? 'sticky left-0 z-10 bg-[var(--surface)] pl-7 pr-4' : 'px-4'}`}
                   >
                     {c.render
                       ? c.render(row)

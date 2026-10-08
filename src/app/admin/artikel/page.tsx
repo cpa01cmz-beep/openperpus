@@ -76,11 +76,11 @@ export default function ArtikelPage() {
   }
 
   const rawInput =
-    'h-11 min-h-[44px] w-full rounded-md border border-slate-200 bg-white px-4 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1';
+    'h-11 min-h-[44px] w-full rounded-[var(--radius-sm)] border border-rule bg-surface px-4 text-sm text-ink transition hover:border-rule-strong focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand';
   return (
     <div className="grid gap-4">
-      <h1 className="text-2xl font-bold">Artikel</h1>
-      <form onSubmit={onAdd} className="grid max-w-2xl gap-2 rounded-2xl border bg-white p-4">
+      <h1 className="kartu-kop pb-3 font-heading text-2xl font-bold text-heading">Artikel</h1>
+      <form onSubmit={onAdd} className="grid max-w-2xl gap-2 kartu p-4">
         <Input
           id="artikel-title"
           label="Judul"
@@ -117,10 +117,7 @@ export default function ArtikelPage() {
           onChange={(e) => setForm({ ...form, excerpt: e.target.value })}
         />
         <div className="grid gap-1 text-sm">
-          <label
-            htmlFor="artikel-content"
-            className="mb-1.5 block text-sm font-semibold text-slate-700"
-          >
+          <label htmlFor="artikel-content" className="mb-1.5 block text-sm font-semibold text-ink">
             Konten markdown
           </label>
           <textarea
@@ -135,10 +132,7 @@ export default function ArtikelPage() {
         </div>
         <div className="flex flex-wrap items-end gap-2">
           <div className="grid gap-1">
-            <label
-              htmlFor="artikel-status"
-              className="mb-1.5 block text-sm font-semibold text-slate-700"
-            >
+            <label htmlFor="artikel-status" className="mb-1.5 block text-sm font-semibold text-ink">
               Status
             </label>
             <select
@@ -162,8 +156,19 @@ export default function ArtikelPage() {
             header: 'Judul',
             render: (r) => <span className="font-medium">{r.title}</span>,
           },
-          { key: 'slug', header: 'Slug' },
-          { key: 'status', header: 'Status' },
+          { key: 'slug', header: 'Slug', render: (r) => <span className="entri">{r.slug}</span> },
+          {
+            key: 'status',
+            header: 'Status',
+            render: (r) => (
+              <span
+                className="stempel"
+                data-state={r.status === 'published' ? undefined : 'dipinjam'}
+              >
+                {r.status}
+              </span>
+            ),
+          },
           {
             key: 'aksi',
             header: 'Aksi',
@@ -171,7 +176,7 @@ export default function ArtikelPage() {
               <span className="flex flex-wrap items-center gap-2">
                 <Link
                   href={`/admin/artikel/edit/${r.id}`}
-                  className="inline-flex min-h-[44px] items-center text-blue-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  className="inline-flex min-h-[44px] items-center text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
                   Edit
                 </Link>
@@ -179,7 +184,7 @@ export default function ArtikelPage() {
                   type="button"
                   onClick={() => onDelete(r.id)}
                   aria-label={`Hapus artikel ${r.title}`}
-                  className="inline-flex min-h-[44px] items-center text-red-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  className="inline-flex min-h-[44px] items-center text-accent underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
                   Hapus
                 </button>

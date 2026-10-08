@@ -1,4 +1,6 @@
-/** Theme token registry skeleton (Wave 2). Emerald identity tokenized 1:1, no hue shift. */
+/** Theme token registry — dunia "Kartu Katalog" (roll 6325fdd6, pick dikunci user).
+ *  Satu tata bahasa visual, lima material. Emerald = laci jati + kartu manila.
+ *  Id tema, jumlah, dan 8 token hex adalah kontrak (tests/theme-registry). */
 
 /** Eight hex color tokens every theme must provide. */
 export type ThemeTokens = {
@@ -18,13 +20,13 @@ export type HomepageSection = {
   enabled: boolean;
 };
 
-/** Font stacks per theme. */
+/** Font stacks per theme (heading = kop, body = prosa; data selalu Courier Prime). */
 export type ThemeFonts = {
   heading: string;
   body: string;
 };
 
-/** Radius scale per theme (CSS radius values). */
+/** Radius scale per theme — potongan kartu, sengaja kecil (dunia memilih lurus). */
 export type ThemeRadius = {
   sm: string;
   md: string;
@@ -66,33 +68,34 @@ export type ThemeDef = {
   layout: ThemeLayout;
 };
 
-/** Registry map keyed by theme id. T9 merges midnight/paper/brutalist/ocean here. */
+/** Registry map keyed by theme id. */
 export const THEMES: Record<string, ThemeDef> = {
   emerald: {
     id: 'emerald',
     name: 'Emerald',
-    description: 'Default emerald identity — tokenized from current brand.',
+    description:
+      'Laci jati dan kartu manila di ruang baca siang — hijau ledger, stempel merah bata, kartu potong tajam.',
     tokens: {
-      brand: '#047857',
-      'brand-soft': '#ecfdf5',
-      'brand-strong': '#065f46',
-      accent: '#f59e0b',
-      'accent-soft': '#fef3c7',
-      surface: '#ffffff',
-      ink: '#0f172a',
-      heading: '#065f46',
+      brand: '#1B5E4B',
+      'brand-soft': '#DCE6DE',
+      'brand-strong': '#0E3D30',
+      accent: '#A63D2E',
+      'accent-soft': '#F2E4DE',
+      surface: '#EBEDE6',
+      ink: '#1C1A17',
+      heading: '#0E3D30',
     },
     fonts: {
-      heading: "var(--font-playfair), 'Playfair Display', Georgia, serif",
-      body: "var(--font-inter), 'Inter', ui-sans-serif, system-ui, sans-serif",
+      heading: "var(--font-libre-caslon), 'Libre Caslon Display', Georgia, serif",
+      body: "var(--font-libre-franklin), 'Libre Franklin', ui-sans-serif, system-ui, sans-serif",
     },
-    radius: { sm: '0.375rem', md: '0.5rem', lg: '1rem' },
+    radius: { sm: '0.125rem', md: '0.25rem', lg: '0.5rem' },
     shadow: {
-      sm: '0 1px 2px 0 rgb(15 23 42 / 0.06)',
-      md: '0 4px 12px -2px rgb(4 120 87 / 0.14), 0 2px 4px -2px rgb(15 23 42 / 0.08)',
-      lg: '0 12px 32px -8px rgb(4 120 87 / 0.20), 0 4px 12px -4px rgb(15 23 42 / 0.10)',
+      sm: '0 1px 1px 0 rgb(28 26 23 / 0.07)',
+      md: '0 2px 4px -1px rgb(28 26 23 / 0.10), 0 8px 16px -8px rgb(28 26 23 / 0.14)',
+      lg: '0 4px 8px -2px rgb(28 26 23 / 0.12), 0 16px 32px -12px rgb(28 26 23 / 0.18)',
     },
-    spacing: { container: '72rem', section: '4rem', card: '1.5rem' },
+    spacing: { container: '72rem', section: '4.5rem', card: '1.5rem' },
     layout: {
       headerVariant: 'emerald-classic',
       heroVariant: 'emerald-centered',
@@ -100,9 +103,9 @@ export const THEMES: Record<string, ThemeDef> = {
       homepageSections: [
         { id: 'hero', enabled: true },
         { id: 'announcement', enabled: true },
-        { id: 'stats', enabled: true },
-        { id: 'welcome', enabled: true },
         { id: 'featured', enabled: true },
+        { id: 'welcome', enabled: true },
+        { id: 'stats', enabled: true },
         { id: 'news', enabled: true },
         { id: 'testimonials', enabled: true },
       ],
@@ -112,28 +115,28 @@ export const THEMES: Record<string, ThemeDef> = {
     id: 'midnight',
     name: 'Midnight Premium',
     description:
-      'Midnight premium: deep navy luxury surface with rich gold accent for expensive after-hours reading.',
+      'Laci malam dibaca di bawah lampu baca — kartu gelap hangat, pelat kuningan, tinta stempel vermilion.',
     tokens: {
-      brand: '#6BA3D6',
-      'brand-soft': '#3D5A80',
-      'brand-strong': '#98C4E8',
-      accent: '#D4AF37',
-      'accent-soft': '#3D3518',
-      surface: '#0B1220',
-      ink: '#E9EEF6',
-      heading: '#E9EEF6',
+      brand: '#C9A25A',
+      'brand-soft': '#2E2718',
+      'brand-strong': '#E8D3A1',
+      accent: '#E4573D',
+      'accent-soft': '#2A1510',
+      surface: '#14110D',
+      ink: '#EFE6D5',
+      heading: '#F7F1E3',
     },
     fonts: {
-      heading: "var(--font-cormorant), 'Cormorant Garamond', Georgia, serif",
-      body: "var(--font-inter), 'Inter', ui-sans-serif, system-ui, sans-serif",
+      heading: "var(--font-bodoni), 'Bodoni Moda', 'Times New Roman', serif",
+      body: "var(--font-archivo), 'Archivo', ui-sans-serif, system-ui, sans-serif",
     },
-    radius: { sm: '0.25rem', md: '0.375rem', lg: '0.625rem' },
+    radius: { sm: '0.25rem', md: '0.5rem', lg: '0.75rem' },
     shadow: {
-      sm: '0 1px 2px 0 rgb(0 0 0 / 0.4)',
-      md: '0 8px 24px -4px rgb(0 0 0 / 0.55)',
-      lg: '0 24px 64px -12px rgb(0 0 0 / 0.7)',
+      sm: '0 1px 2px 0 rgb(0 0 0 / 0.45)',
+      md: '0 2px 6px -2px rgb(0 0 0 / 0.4), 0 8px 24px -6px rgb(0 0 0 / 0.6)',
+      lg: '0 8px 20px -8px rgb(0 0 0 / 0.5), 0 24px 60px -16px rgb(0 0 0 / 0.75)',
     },
-    spacing: { container: '76rem', section: '5.5rem', card: '2rem' },
+    spacing: { container: '76rem', section: '5.25rem', card: '1.75rem' },
     layout: {
       headerVariant: 'midnight-slim',
       heroVariant: 'midnight-showcase',
@@ -141,11 +144,11 @@ export const THEMES: Record<string, ThemeDef> = {
       homepageSections: [
         { id: 'hero', enabled: true },
         { id: 'featured', enabled: true },
-        { id: 'stats', enabled: true },
         { id: 'announcement', enabled: true },
         { id: 'welcome', enabled: true },
-        { id: 'testimonials', enabled: true },
+        { id: 'stats', enabled: true },
         { id: 'news', enabled: true },
+        { id: 'testimonials', enabled: true },
       ],
     },
   },
@@ -153,40 +156,40 @@ export const THEMES: Record<string, ThemeDef> = {
     id: 'paper',
     name: 'Paper Minimal',
     description:
-      'Warm monochrome editorial light — flat paper surfaces, muted sage/stone accents, no gradients.',
+      'Kartu bond polos di laci besi abu-abu — grafit, tanpa gradien, tinta stempel tanah liat.',
     tokens: {
-      brand: '#6F7D6C',
-      'brand-soft': '#E8ECE5',
-      'brand-strong': '#4A5548',
-      accent: '#A98A6B',
-      'accent-soft': '#E5DBCC',
-      surface: '#FAF7F2',
-      ink: '#2B2622',
-      heading: '#4A5548',
+      brand: '#4A5348',
+      'brand-soft': '#EBEDE7',
+      'brand-strong': '#2C312B',
+      accent: '#8E4B33',
+      'accent-soft': '#F0E5DC',
+      surface: '#FBFBFA',
+      ink: '#23221F',
+      heading: '#2C312B',
     },
     fonts: {
-      heading: "var(--font-source-serif), 'Source Serif 4', Georgia, serif",
-      body: "var(--font-source-sans), 'Source Sans 3', ui-sans-serif, system-ui, sans-serif",
+      heading: "var(--font-literata), 'Literata', Georgia, serif",
+      body: "var(--font-public-sans), 'Public Sans', ui-sans-serif, system-ui, sans-serif",
     },
-    radius: { sm: '0.125rem', md: '0.25rem', lg: '0.375rem' },
+    radius: { sm: '0', md: '0.125rem', lg: '0.25rem' },
     shadow: {
-      sm: '0 1px 1px 0 rgb(43 38 34 / 0.05)',
-      md: '0 2px 6px -1px rgb(43 38 34 / 0.07)',
-      lg: '0 6px 16px -4px rgb(43 38 34 / 0.08)',
+      sm: '0 1px 1px 0 rgb(35 34 31 / 0.05)',
+      md: '0 2px 6px -2px rgb(35 34 31 / 0.07)',
+      lg: '0 6px 16px -6px rgb(35 34 31 / 0.08)',
     },
-    spacing: { container: '68rem', section: '6rem', card: '2.25rem' },
+    spacing: { container: '68rem', section: '5.5rem', card: '2rem' },
     layout: {
       headerVariant: 'paper-minimal',
       heroVariant: 'paper-editorial',
       footerVariant: 'paper-colophon',
       homepageSections: [
-        { id: 'announcement', enabled: true },
         { id: 'hero', enabled: true },
+        { id: 'announcement', enabled: true },
         { id: 'welcome', enabled: true },
-        { id: 'stats', enabled: true },
         { id: 'featured', enabled: true },
-        { id: 'testimonials', enabled: true },
+        { id: 'stats', enabled: true },
         { id: 'news', enabled: true },
+        { id: 'testimonials', enabled: true },
       ],
     },
   },
@@ -194,20 +197,20 @@ export const THEMES: Record<string, ThemeDef> = {
     id: 'brutalist',
     name: 'Brutalist',
     description:
-      'Raw mechanical utilitarian theme — near-black ink on off-white paper, safety-orange brand with signal-yellow accent, flat rigid tokens, declassified-blueprint feel.',
+      'Fotokopi kartu katalog — toner hitam di atas kertas koran, oranye keselamatan untuk aksi, garis tanpa bayangan.',
     tokens: {
-      brand: '#D93600',
-      'brand-soft': '#FFD9C2',
-      'brand-strong': '#8F2A00',
-      accent: '#E6AC00',
-      'accent-soft': '#FFF0B3',
-      surface: '#F2EEE3',
+      brand: '#111110',
+      'brand-soft': '#E7E3D8',
+      'brand-strong': '#000000',
+      accent: '#B83000',
+      'accent-soft': '#FFD9C2',
+      surface: '#E9E9E3',
       ink: '#111110',
-      heading: '#111110',
+      heading: '#000000',
     },
     fonts: {
-      heading: "var(--font-archivo), 'Archivo Black', 'Arial Black', sans-serif",
-      body: "var(--font-space), 'Space Grotesk', ui-monospace, monospace",
+      heading: "var(--font-archivo-black), 'Archivo Black', 'Arial Black', sans-serif",
+      body: "var(--font-barlow), 'Barlow', ui-sans-serif, system-ui, sans-serif",
     },
     radius: { sm: '0', md: '0', lg: '0' },
     shadow: {
@@ -215,15 +218,15 @@ export const THEMES: Record<string, ThemeDef> = {
       md: '4px 4px 0 0 #111110',
       lg: '8px 8px 0 0 #111110',
     },
-    spacing: { container: '80rem', section: '2.5rem', card: '1rem' },
+    spacing: { container: '80rem', section: '3rem', card: '1.25rem' },
     layout: {
       headerVariant: 'brutalist-bar',
       heroVariant: 'brutalist-manifesto',
       footerVariant: 'brutalist-index',
       homepageSections: [
         { id: 'announcement', enabled: true },
-        { id: 'stats', enabled: true },
         { id: 'hero', enabled: true },
+        { id: 'stats', enabled: true },
         { id: 'featured', enabled: true },
         { id: 'welcome', enabled: true },
         { id: 'news', enabled: true },
@@ -235,37 +238,37 @@ export const THEMES: Record<string, ThemeDef> = {
     id: 'ocean',
     name: 'Ocean Editorial',
     description:
-      'Ocean editorial: deep teal authority with sunset coral warmth on light airy paper.',
+      'Arsip maritim: kartu ter-bleach asin di laci baja, tinta teal dalam, tinta stempel karat.',
     tokens: {
-      brand: '#0E6E6B',
-      'brand-soft': '#D2E9E6',
-      'brand-strong': '#084443',
-      accent: '#FF6B4A',
-      'accent-soft': '#FFD8CC',
-      surface: '#F4F7F6',
-      ink: '#102E2E',
-      heading: '#084443',
+      brand: '#0B5E63',
+      'brand-soft': '#DCEBE8',
+      'brand-strong': '#073E42',
+      accent: '#A9401F',
+      'accent-soft': '#F6DFD5',
+      surface: '#ECEFED',
+      ink: '#12302F',
+      heading: '#073E42',
     },
     fonts: {
-      heading: "var(--font-fraunces), 'Fraunces', Georgia, serif",
-      body: "var(--font-inter), 'Inter', ui-sans-serif, system-ui, sans-serif",
+      heading: "var(--font-bitter), 'Bitter', Georgia, serif",
+      body: "var(--font-karla), 'Karla', ui-sans-serif, system-ui, sans-serif",
     },
-    radius: { sm: '0.75rem', md: '1.25rem', lg: '2rem' },
+    radius: { sm: '0.5rem', md: '0.75rem', lg: '1.25rem' },
     shadow: {
-      sm: '0 1px 2px 0 rgb(14 110 107 / 0.1)',
-      md: '0 6px 20px -4px rgb(14 110 107 / 0.22)',
-      lg: '0 20px 48px -12px rgb(14 110 107 / 0.32)',
+      sm: '0 1px 2px 0 rgb(11 94 99 / 0.12)',
+      md: '0 2px 4px -2px rgb(18 48 47 / 0.10), 0 4px 12px -4px rgb(11 94 99 / 0.20)',
+      lg: '0 6px 14px -6px rgb(18 48 47 / 0.14), 0 20px 44px -14px rgb(11 94 99 / 0.30)',
     },
-    spacing: { container: '74rem', section: '4.75rem', card: '1.75rem' },
+    spacing: { container: '74rem', section: '4.5rem', card: '1.625rem' },
     layout: {
       headerVariant: 'ocean-wave',
       heroVariant: 'ocean-tide',
       footerVariant: 'ocean-harbor',
       homepageSections: [
         { id: 'hero', enabled: true },
+        { id: 'announcement', enabled: true },
         { id: 'welcome', enabled: true },
         { id: 'featured', enabled: true },
-        { id: 'announcement', enabled: true },
         { id: 'news', enabled: true },
         { id: 'stats', enabled: true },
         { id: 'testimonials', enabled: true },

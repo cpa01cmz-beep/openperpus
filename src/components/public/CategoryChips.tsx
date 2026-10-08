@@ -8,23 +8,26 @@ type Props = {
   onChange: (id: string | null) => void;
 };
 
-/** Chips kategori — scroll horizontal di mobile, wrap di desktop. */
+/** Tab pembatas kategori — scroll horizontal di mobile, wrap di desktop. */
 export default function CategoryChips({ categories, activeId, onChange }: Props) {
+  const chipClass = (active: boolean) =>
+    `tab-laci shrink-0 min-h-[44px] rounded-[var(--radius-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
+      active
+        ? 'border-brand bg-brand text-surface shadow-[var(--shadow-sm)]'
+        : 'border-[var(--ink)] bg-[var(--surface)] text-[var(--ink)] hover:bg-brand-soft hover:text-brand'
+    }`;
+
   return (
     <div
       role="group"
       aria-label="Filter kategori"
-      className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:flex-wrap sm:px-0"
+      className="-mx-4 flex gap-0 overflow-x-auto border-b border-[var(--ink)] px-4 pb-0 sm:mx-0 sm:flex-wrap sm:px-0"
     >
       <button
         type="button"
         onClick={() => onChange(null)}
         aria-pressed={activeId === null}
-        className={`shrink-0 min-h-[44px] rounded-full border px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
-          activeId === null
-            ? 'border-brand bg-brand text-white shadow'
-            : 'border-slate-200 bg-white text-slate-600 hover:border-brand hover:text-brand'
-        }`}
+        className={chipClass(activeId === null)}
       >
         Semua
       </button>
@@ -36,11 +39,7 @@ export default function CategoryChips({ categories, activeId, onChange }: Props)
             type="button"
             onClick={() => onChange(active ? null : c.id)}
             aria-pressed={active}
-            className={`shrink-0 min-h-[44px] rounded-full border px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
-              active
-                ? 'border-brand bg-brand text-white shadow'
-                : 'border-slate-200 bg-white text-slate-600 hover:border-brand hover:text-brand'
-            }`}
+            className={chipClass(active)}
           >
             {c.name}
           </button>

@@ -122,9 +122,9 @@ export default function SettingsForm({ initial }: { initial: SettingsRow }) {
   }
 
   const input =
-    'h-11 min-h-[44px] w-full rounded-md border border-slate-200 bg-white px-4 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1';
+    'h-11 min-h-[44px] w-full rounded-[var(--radius-sm)] border border-rule bg-surface px-4 text-sm text-ink transition hover:border-rule-strong focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand';
   const area =
-    'min-h-[44px] w-full rounded-md border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1';
+    'min-h-[44px] w-full rounded-[var(--radius-sm)] border border-rule bg-surface px-4 py-2 text-sm text-ink transition hover:border-rule-strong focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand';
   const label = 'grid gap-1 text-sm font-medium';
   return (
     <form onSubmit={onSubmit} className="grid max-w-4xl gap-5">
@@ -132,19 +132,24 @@ export default function SettingsForm({ initial }: { initial: SettingsRow }) {
         <p
           id="settings-form-status"
           role="alert"
-          className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700"
+          className="rounded-[var(--radius-sm)] border border-accent bg-accent-soft px-3 py-2 text-sm text-ink"
         >
           {err}
         </p>
       )}
       {msg && (
-        <p role="status" className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
+        <p
+          role="status"
+          className="rounded-[var(--radius-sm)] border border-rule bg-brand-soft px-3 py-2 text-sm text-ink"
+        >
           {msg}
         </p>
       )}
 
-      <section className="grid gap-4 rounded-2xl border bg-white p-6">
-        <h2 className="font-semibold">Identitas</h2>
+      <section className="kartu lubang grid gap-4 p-6">
+        <div className="kartu-kop -mx-6 -mt-6 px-6 pt-6 pb-3">
+          <h2 className="font-heading text-lg font-bold text-heading">Identitas</h2>
+        </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className={label} htmlFor="settings-name">
             Nama perpustakaan*
@@ -201,7 +206,7 @@ export default function SettingsForm({ initial }: { initial: SettingsRow }) {
             width={64}
             height={64}
             sizes="64px"
-            className="h-16 w-auto rounded border bg-slate-50 p-1"
+            className="h-16 w-auto rounded-[var(--radius-sm)] border border-rule bg-brand-soft/50 p-1"
           />
         )}
         <div className="grid gap-4 sm:grid-cols-3">
@@ -246,7 +251,7 @@ export default function SettingsForm({ initial }: { initial: SettingsRow }) {
             id="settings-operational-hours"
             aria-invalid={err ? true : undefined}
             aria-describedby="settings-form-status"
-            className={`${area} font-mono`}
+            className={`${area} font-data`}
             rows={4}
             value={form.operational_hours}
             onChange={(e) => set('operational_hours', e.target.value)}
@@ -258,7 +263,7 @@ export default function SettingsForm({ initial }: { initial: SettingsRow }) {
             id="settings-socials"
             aria-invalid={err ? true : undefined}
             aria-describedby="settings-form-status"
-            className={`${area} font-mono`}
+            className={`${area} font-data`}
             rows={4}
             value={form.socials}
             onChange={(e) => set('socials', e.target.value)}
@@ -266,8 +271,10 @@ export default function SettingsForm({ initial }: { initial: SettingsRow }) {
         </label>
       </section>
 
-      <section className="grid gap-4 rounded-2xl border bg-white p-6">
-        <h2 className="font-semibold">Konten & SEO</h2>
+      <section className="kartu lubang grid gap-4 p-6">
+        <div className="kartu-kop -mx-6 -mt-6 px-6 pt-6 pb-3">
+          <h2 className="font-heading text-lg font-bold text-heading">Konten & SEO</h2>
+        </div>
         <label className={label} htmlFor="settings-welcome-text">
           Sambutan (welcome_text)
           <textarea
@@ -345,8 +352,10 @@ export default function SettingsForm({ initial }: { initial: SettingsRow }) {
         </div>
       </section>
 
-      <section className="grid gap-4 rounded-2xl border bg-white p-6">
-        <h2 className="font-semibold">Pengumuman</h2>
+      <section className="kartu lubang grid gap-4 p-6">
+        <div className="kartu-kop -mx-6 -mt-6 px-6 pt-6 pb-3">
+          <h2 className="font-heading text-lg font-bold text-heading">Pengumuman</h2>
+        </div>
         <label className={label} htmlFor="settings-announcement">
           Pengumuman (announcement)
           <textarea
@@ -376,7 +385,7 @@ export default function SettingsForm({ initial }: { initial: SettingsRow }) {
         <button
           type="submit"
           disabled={loading}
-          className="inline-flex min-h-[44px] w-fit items-center justify-center rounded-md bg-brand px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex min-h-[44px] w-fit items-center justify-center rounded-[var(--radius-sm)] bg-brand px-5 py-2.5 text-sm font-semibold text-surface shadow-[var(--shadow-sm)] transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
         >
           {loading ? 'Menyimpan…' : 'Simpan Pengaturan'}
         </button>

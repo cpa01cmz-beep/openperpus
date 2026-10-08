@@ -42,7 +42,7 @@ export default async function TambahBukuPage() {
 
   return (
     <div className="grid gap-4">
-      <h1 className="text-2xl font-bold">Tambah Buku</h1>
+      <h1 className="kartu-kop pb-3 font-heading text-2xl font-bold text-heading">Tambah Buku</h1>
       <BookForm
         mode="create"
         categories={categories as CategoryOption[]}

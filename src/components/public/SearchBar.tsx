@@ -82,7 +82,7 @@ export default function SearchBar({ value, onChange, placeholder, id = 'cari-buk
         onKeyDown={handleKeyDown}
         placeholder={placeholder ?? 'Cari judul, penulis, penerbit, ISBN…'}
         autoComplete="off"
-        className="min-h-[44px] w-full rounded-[var(--radius-lg)] border border-[var(--ink)]/10 bg-[var(--surface)] py-3 pl-10 pr-12 text-sm text-[var(--ink)] shadow-sm transition placeholder:text-[var(--ink)]/40 focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
+        className="entri min-h-[44px] w-full rounded-[var(--radius-md)] border border-[var(--ink)] bg-[var(--surface)] py-3 pl-10 pr-12 text-sm text-[var(--ink)] transition focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30"
         aria-busy={isSearching}
       />
       {localValue && (
@@ -95,7 +95,7 @@ export default function SearchBar({ value, onChange, placeholder, id = 'cari-buk
             setIsSearching(false);
           }}
           aria-label="Hapus pencarian"
-          className="absolute right-1 top-1/2 grid min-h-[44px] min-w-[44px] -translate-y-1/2 place-items-center rounded-full text-[var(--ink)]/40 transition hover:bg-[var(--ink)]/10 hover:text-[var(--ink)]/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          className="absolute right-1 top-1/2 grid min-h-[44px] min-w-[44px] -translate-y-1/2 place-items-center rounded-[var(--radius-sm)] text-[var(--ink)]/50 transition hover:bg-brand-soft hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
         >
           <X className="h-4 w-4" />
         </button>

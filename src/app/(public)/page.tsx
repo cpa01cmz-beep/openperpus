@@ -1,8 +1,7 @@
 import type { Metadata } from 'next';
 import dynamic from 'next/dynamic';
-import Image from 'next/image';
 import Link from 'next/link';
-import { ArrowRight, Megaphone, Quote } from 'lucide-react';
+import { ArrowRight, Megaphone } from 'lucide-react';
 import { getSiteUrl } from '@/lib/site';
 import { HeroFallback } from '@/components/hero/variants/HeroFallback';
 import StatsBar from '@/components/public/StatsBar';
@@ -13,6 +12,7 @@ import {
   fetchArticles,
   fetchBanners,
   fetchBooks,
+  fetchCategories,
   fetchSettings,
   fetchStats,
   fetchTestimonials,
@@ -49,9 +49,49 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
+/** Kop seksi: judul + garis ganda tercetak di bawahnya (label laci, bukan eyebrow). */
+function KopSeksi({ id, judul, aksi }: { id: string; judul: string; aksi?: React.ReactNode }) {
+  return (
+    <div className="kartu-kop flex flex-wrap items-end justify-between gap-x-4 gap-y-2 pb-3">
+      <h2 id={id} className="font-heading text-2xl font-bold text-heading sm:text-3xl">
+        {judul}
+      </h2>
+      {aksi}
+    </div>
+  );
+}
+
+function TautanSeksi({ href, label }: { href: string; label: string }) {
+  return (
+    <Link
+      href={href}
+      className="inline-flex min-h-[44px] shrink-0 items-center gap-1.5 self-end rounded-[var(--radius-md)] border border-rule bg-surface px-4 text-sm font-semibold text-brand transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+    >
+      {label} <ArrowRight className="h-4 w-4" aria-hidden="true" />
+    </Link>
+  );
+}
+
+function Kosong({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="kartu px-6 py-10 text-center">
+      <p className="entri text-sm text-ink/75">{children}</p>
+    </div>
+  );
+}
+
+const tanggal = (iso: string | null) =>
+  iso
+    ? new Date(iso).toLocaleDateString('id-ID', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+      })
+    : '';
+
 /** Landing publik: sections dirender sesuai theme layout.homepageSections (ordered, on/off). */
 export default async function PublicHomePage() {
-  const [settings, banners, featured, fallbackBooks, articles, testimonials, stats] =
+  const [settings, banners, featured, fallbackBooks, articles, testimonials, stats, categories] =
     await Promise.all([
       fetchSettings(),
       fetchBanners(),
@@ -60,6 +100,7 @@ export default async function PublicHomePage() {
       fetchArticles(3),
       fetchTestimonials(3),
       fetchStats(),
+      fetchCategories(),
     ]);
 
   const siteName = settings.name ?? 'Perpustakaan Digital';
@@ -87,14 +128,15 @@ export default async function PublicHomePage() {
         banners={banners}
         siteName={siteName}
         tagline={settings.tagline}
+        categories={categories}
       />
     ),
     announcement: settings.announcement ? (
       <p
         role="status"
-        className="flex items-start gap-2 rounded-lg border border-accent-soft bg-accent-soft px-4 py-3 text-sm text-heading shadow-sm"
+        className="kartu riffle flex items-start gap-3 bg-accent-soft px-5 py-4 text-sm leading-relaxed text-heading"
       >
-        <Megaphone className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+        <Megaphone className="mt-0.5 h-4 w-4 shrink-0 text-accent" aria-hidden="true" />
         <span>{settings.announcement}</span>
       </p>
     ) : null,
@@ -107,127 +149,75 @@ export default async function PublicHomePage() {
       />
     ),
     welcome: settings.welcome_text ? (
-      <section
-        aria-labelledby="sambutan"
-        className="overflow-hidden rounded-lg border border-brand-strong/10 bg-gradient-to-br from-brand-soft to-white p-6 shadow-sm sm:p-8"
-      >
-        <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-brand">
-          <Quote className="h-4 w-4" aria-hidden="true" /> Sambutan
-        </p>
-        <h2 id="sambutan" className="mt-2 font-heading text-2xl font-bold text-heading sm:text-3xl">
-          Selamat datang di {siteName}
-        </h2>
-        <p className="mt-3 max-w-3xl whitespace-pre-line text-sm leading-relaxed text-slate-600 sm:text-base">
+      <section aria-labelledby="sambutan" className="kartu px-5 py-6 sm:px-8 sm:py-8">
+        <KopSeksi id="sambutan" judul={`Selamat datang di ${siteName}`} />
+        <p className="mt-5 max-w-[68ch] whitespace-pre-line text-sm leading-relaxed text-ink sm:text-base">
           {settings.welcome_text}
         </p>
       </section>
     ) : null,
     featured: (
       <section aria-labelledby="unggulan">
-        <div className="mb-4 flex items-end justify-between gap-3">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">
-              Pilihan pustakawan
-            </p>
-            <h2
-              id="unggulan"
-              className="mt-1 font-heading text-2xl font-bold text-heading sm:text-3xl"
-            >
-              Buku Unggulan
-            </h2>
-          </div>
-          <Link
-            href="/katalog"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-brand-soft bg-white px-4 py-2 text-sm font-semibold text-brand shadow-sm transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-          >
-            Lihat semua <ArrowRight className="h-4 w-4" aria-hidden="true" />
-          </Link>
-        </div>
+        <KopSeksi
+          id="unggulan"
+          judul="Buku Unggulan"
+          aksi={<TautanSeksi href="/katalog" label="Lihat semua" />}
+        />
         {fallbackFeatured.length > 0 ? (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4 xl:grid-cols-5">
+          <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-4 xl:grid-cols-5">
             {fallbackFeatured.slice(0, 8).map((b) => (
-              <BookCard key={b.id} book={b} />
+              <div key={b.id} className="riffle" style={{ '--i': 0 } as React.CSSProperties}>
+                <BookCard book={b} />
+              </div>
             ))}
           </div>
         ) : (
-          <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-6 py-12 text-center text-sm text-slate-500">
-            Koleksi unggulan belum tersedia. Silakan jelajahi{' '}
-            <Link href="/katalog" className="font-semibold text-brand underline">
-              katalog
-            </Link>
-            .
+          <div className="mt-5">
+            <Kosong>Koleksi unggulan belum tersedia. Silakan jelajahi katalog.</Kosong>
           </div>
         )}
       </section>
     ),
     news: (
       <section aria-labelledby="berita">
-        <div className="mb-4 flex items-end justify-between gap-3">
-          <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">
-              Kabar terbaru
-            </p>
-            <h2
-              id="berita"
-              className="mt-1 font-heading text-2xl font-bold text-heading sm:text-3xl"
-            >
-              Berita & Artikel
-            </h2>
-          </div>
-          <Link
-            href="/berita"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-brand-soft bg-white px-4 py-2 text-sm font-semibold text-brand shadow-sm transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-          >
-            Semua berita <ArrowRight className="h-4 w-4" aria-hidden="true" />
-          </Link>
-        </div>
+        <KopSeksi
+          id="berita"
+          judul="Berita & Artikel"
+          aksi={<TautanSeksi href="/berita" label="Semua berita" />}
+        />
         {articles.length > 0 ? (
-          <div className="grid gap-4 sm:grid-cols-3">
+          <ul className="batang mt-2">
             {articles.map((a) => (
-              <Link
-                key={a.id}
-                href={`/berita/${a.slug}`}
-                className="group overflow-hidden rounded-lg border border-slate-100 bg-white shadow-sm transition hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-              >
-                <div className="aspect-[16/9] w-full overflow-hidden bg-brand-soft">
-                  {a.cover_url ? (
-                    <Image
-                      src={coverSrc(a.cover_url, 640) ?? a.cover_url}
-                      alt={a.title}
-                      width={640}
-                      height={360}
-                      sizes="(max-width:640px) 100vw, 33vw"
-                      loading="lazy"
-                      className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
-                    />
-                  ) : (
-                    <div
-                      className="grid h-full w-full place-items-center bg-gradient-to-br from-brand-strong to-brand p-4 text-center font-heading text-sm font-bold text-white"
-                      aria-hidden="true"
-                    >
-                      {a.title}
-                    </div>
-                  )}
-                </div>
-                <div className="p-4">
-                  {a.category && (
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-brand">
+              <li key={a.id}>
+                <Link
+                  href={`/berita/${a.slug}`}
+                  className="group flex flex-col gap-1 py-4 pl-8 pr-1 sm:flex-row sm:items-baseline sm:gap-5"
+                >
+                  <span className="entri shrink-0 text-xs text-ink/75">
+                    {tanggal(a.published_at)}
+                  </span>
+                  {a.category ? (
+                    <span className="entri shrink-0 text-xs uppercase tracking-wider text-brand">
                       {a.category}
-                    </p>
-                  )}
-                  <h3 className="mt-1 line-clamp-2 font-heading text-base font-bold text-slate-900 group-hover:text-brand">
-                    {a.title}
-                  </h3>
-                  {a.excerpt && (
-                    <p className="mt-1 line-clamp-2 text-sm text-slate-500">{a.excerpt}</p>
-                  )}
-                </div>
-              </Link>
+                    </span>
+                  ) : null}
+                  <span className="min-w-0">
+                    <span className="block font-heading text-base font-semibold text-heading transition group-hover:text-brand">
+                      {a.title}
+                    </span>
+                    {a.excerpt ? (
+                      <span className="mt-1 line-clamp-2 block max-w-[68ch] text-sm text-ink/75">
+                        {a.excerpt}
+                      </span>
+                    ) : null}
+                  </span>
+                </Link>
+              </li>
             ))}
-          </div>
+          </ul>
         ) : (
-          <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-6 py-12 text-center text-sm text-slate-500">
-            Belum ada berita yang dipublikasikan.
+          <div className="mt-5">
+            <Kosong>Belum ada berita yang dipublikasikan.</Kosong>
           </div>
         )}
       </section>
@@ -235,14 +225,8 @@ export default async function PublicHomePage() {
     testimonials:
       testimonials.length > 0 ? (
         <section aria-labelledby="testimoni">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Kata pembaca</p>
-          <h2
-            id="testimoni"
-            className="mt-1 font-heading text-2xl font-bold text-heading sm:text-3xl"
-          >
-            Testimoni Pengunjung
-          </h2>
-          <div className="mt-4 grid gap-4 sm:grid-cols-3">
+          <KopSeksi id="testimoni" judul="Testimoni Pengunjung" />
+          <div className="mt-5 grid gap-4 sm:grid-cols-3">
             {testimonials.map((t) => (
               <TestimonialCard key={t.id} item={t} />
             ))}
@@ -252,7 +236,7 @@ export default async function PublicHomePage() {
   };
 
   return (
-    <div className="space-y-10 sm:space-y-12">
+    <div className="space-y-[var(--spacing-section)]">
       {lcpImage ? (
         <link
           rel="preload"

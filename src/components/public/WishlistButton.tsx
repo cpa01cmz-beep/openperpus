@@ -30,6 +30,7 @@ export default function WishlistButton({ slug, title, onChange }: Props) {
       aria-label={saved ? 'Hapus dari wishlist' : 'Simpan ke wishlist'}
       title={title ?? slug}
       onClick={onToggle}
+      className="entri rounded-[var(--radius-sm)] border-[var(--ink)] uppercase tracking-[0.08em]"
     >
       {saved ? (
         <>

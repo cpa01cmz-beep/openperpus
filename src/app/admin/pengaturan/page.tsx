@@ -16,8 +16,10 @@ export default async function PengaturanPage() {
   return (
     <div className="grid gap-6">
       <div>
-        <h1 className="text-2xl font-bold">Pengaturan Identitas</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="kartu-kop pb-3 font-heading text-2xl font-bold text-heading">
+          Pengaturan Identitas
+        </h1>
+        <p className="text-sm text-ink/70">
           Semua identitas situs bisa diatur di sini (nama, logo, kontak, SEO, tema, pengumuman).
         </p>
       </div>

@@ -1,25 +1,25 @@
 import type { CSSProperties } from 'react';
 import type { Metadata, Viewport } from 'next';
 import {
+  Archivo,
   Archivo_Black,
-  Cormorant_Garamond,
-  Fraunces,
-  Inter,
-  Playfair_Display,
-  Source_Sans_3,
-  Source_Serif_4,
-  Space_Grotesk,
+  Barlow,
+  Bitter,
+  Bodoni_Moda,
+  Courier_Prime,
+  Karla,
+  Libre_Caslon_Display,
+  Libre_Franklin,
+  Literata,
+  Public_Sans,
 } from 'next/font/google';
 import './globals.css';
 import { getSiteUrl } from '@/lib/site';
 import { getLibrarySettings } from '@/lib/settings';
 import { getTheme } from '@/lib/themes';
 
-/* A11Y-CONTRAST-AUDIT (note only — design tokens untouched):
- * midnight (ink #E9EEF6 on surface #0B1220 ≈ 15.2:1) and ocean
- * (ink #102E2E on surface #F4F7F6 ≈ 13.9:1) body pairs clear WCAG AA
- * (4.5:1) by inspection; brand-on-surface pairs must be re-checked with a
- * color-contrast tool before use for small text. */
+/* Kontras pasangan token dijaga oleh scripts/check-contrast.mjs (self-check),
+ * bukan catatan manual: tiap pasang teks/latar 5 tema diukur di situ. */
 
 function supabaseOrigin(): string | null {
   const raw = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
@@ -30,77 +30,100 @@ function supabaseOrigin(): string | null {
   }
 }
 
-const inter = Inter({
+const libreCaslon = Libre_Caslon_Display({
   subsets: ['latin'],
-  variable: '--font-inter',
+  variable: '--font-libre-caslon',
+  weight: '400',
   display: 'swap',
 });
 
-const playfair = Playfair_Display({
+const libreFranklin = Libre_Franklin({
   subsets: ['latin'],
-  variable: '--font-playfair',
+  variable: '--font-libre-franklin',
   display: 'swap',
 });
 
-const cormorant = Cormorant_Garamond({
+const bodoni = Bodoni_Moda({
   subsets: ['latin'],
-  variable: '--font-cormorant',
-  display: 'swap',
-  weight: ['400', '500', '600', '700'],
-});
-
-const fraunces = Fraunces({
-  subsets: ['latin'],
-  variable: '--font-fraunces',
+  variable: '--font-bodoni',
   display: 'swap',
 });
 
-const archivo = Archivo_Black({
+const archivo = Archivo({
   subsets: ['latin'],
   variable: '--font-archivo',
   display: 'swap',
+});
+
+const literata = Literata({
+  subsets: ['latin'],
+  variable: '--font-literata',
+  display: 'swap',
+});
+
+const publicSans = Public_Sans({
+  subsets: ['latin'],
+  variable: '--font-public-sans',
+  display: 'swap',
+});
+
+const archivoBlack = Archivo_Black({
+  subsets: ['latin'],
+  variable: '--font-archivo-black',
   weight: '400',
-});
-
-const space = Space_Grotesk({
-  subsets: ['latin'],
-  variable: '--font-space',
   display: 'swap',
 });
 
-const sourceSerif = Source_Serif_4({
+const barlow = Barlow({
   subsets: ['latin'],
-  variable: '--font-source-serif',
+  variable: '--font-barlow',
+  weight: ['400', '500', '600', '700'],
   display: 'swap',
 });
 
-const sourceSans = Source_Sans_3({
+const bitter = Bitter({
   subsets: ['latin'],
-  variable: '--font-source-sans',
+  variable: '--font-bitter',
+  display: 'swap',
+});
+
+const karla = Karla({
+  subsets: ['latin'],
+  variable: '--font-karla',
+  display: 'swap',
+});
+
+/** Courier Prime selalu ikut: baris entri kartu katalog bertik di kelima tema. */
+const courier = Courier_Prime({
+  subsets: ['latin'],
+  variable: '--font-courier',
+  weight: ['400', '700'],
   display: 'swap',
 });
 
 /**
- * T-FONT-SPLIT (S4 perf): attach only the 2 font families the active theme
- * needs instead of all 8 vars. All 8 next/font/google declarations above stay
- * available; this gates which `.variable` classes reach `<html>` per render.
- * Map: emerald Playfair+Inter, midnight Cormorant+Inter, paper
- * SourceSerif+SourceSans, brutalist Archivo+Space, ocean Fraunces+Inter.
+ * T-FONT-SPLIT (S4 perf): attach only the 3 font families the active theme
+ * needs (kop, body, data) instead of all 11 vars. This gates which
+ * `.variable` classes reach `<html>` per render.
+ * Map: emerald Caslon+Franklin, midnight Bodoni+Archivo, paper
+ * Literata+PublicSans, brutalist ArchivoBlack+Barlow, ocean Bitter+Karla,
+ * semuanya + Courier Prime untuk `.entri`.
  */
 export function fontVariablesForTheme(themeId: string): string {
+  const data = ` ${courier.variable}`;
   switch (themeId) {
     case 'emerald':
-      return `${inter.variable} ${playfair.variable}`;
+      return `${libreCaslon.variable} ${libreFranklin.variable}${data}`;
     case 'midnight':
-      return `${inter.variable} ${cormorant.variable}`;
+      return `${bodoni.variable} ${archivo.variable}${data}`;
     case 'paper':
-      return `${sourceSerif.variable} ${sourceSans.variable}`;
+      return `${literata.variable} ${publicSans.variable}${data}`;
     case 'brutalist':
-      return `${archivo.variable} ${space.variable}`;
+      return `${archivoBlack.variable} ${barlow.variable}${data}`;
     case 'ocean':
-      return `${fraunces.variable} ${inter.variable}`;
+      return `${bitter.variable} ${karla.variable}${data}`;
     default:
-      return `${inter.variable} ${playfair.variable}`;
+      return `${libreCaslon.variable} ${libreFranklin.variable}${data}`;
   }
 }
 

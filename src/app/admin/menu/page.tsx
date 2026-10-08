@@ -114,15 +114,12 @@ export default function MenuPage() {
   return (
     <div className="grid gap-4">
       <div>
-        <h1 className="text-2xl font-bold">Menu</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="kartu-kop pb-3 font-heading text-2xl font-bold text-heading">Menu</h1>
+        <p className="text-sm text-ink/70">
           Kelola menu navigasi situs (label, URL, posisi, status aktif).
         </p>
       </div>
-      <form
-        onSubmit={onAdd}
-        className="flex flex-wrap items-end gap-2 rounded-2xl border bg-white p-4"
-      >
+      <form onSubmit={onAdd} className="flex flex-wrap items-end gap-2 kartu p-4">
         <div className="min-w-[180px] flex-1">
           <Input
             id="menu-label"
@@ -142,17 +139,14 @@ export default function MenuPage() {
           />
         </div>
         <div className="grid gap-1">
-          <label
-            htmlFor="menu-position"
-            className="mb-1.5 block text-sm font-semibold text-slate-700"
-          >
+          <label htmlFor="menu-position" className="mb-1.5 block text-sm font-semibold text-ink">
             Posisi
           </label>
           <select
             id="menu-position"
             value={form.position}
             onChange={(e) => setForm({ ...form, position: e.target.value })}
-            className="h-11 min-h-[44px] rounded-md border border-slate-200 bg-white px-4 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
+            className="h-11 min-h-[44px] rounded-[var(--radius-sm)] border border-rule bg-surface px-4 text-sm text-ink transition hover:border-rule-strong focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
             <option value="header">header</option>
             <option value="footer">footer</option>
@@ -163,7 +157,7 @@ export default function MenuPage() {
           + Tambah
         </Button>
         {formError && (
-          <p role="alert" className="w-full text-sm text-red-600">
+          <p role="alert" className="w-full text-sm text-accent">
             {formError}
           </p>
         )}
@@ -181,7 +175,7 @@ export default function MenuPage() {
         />
       </div>
       {actionError && (
-        <p role="alert" className="text-sm text-red-600">
+        <p role="alert" className="text-sm text-accent">
           {actionError}
         </p>
       )}
@@ -193,8 +187,12 @@ export default function MenuPage() {
             header: 'Label',
             render: (r) => <span className="font-medium">{r.label}</span>,
           },
-          { key: 'url', header: 'URL' },
-          { key: 'position', header: 'Posisi' },
+          { key: 'url', header: 'URL', render: (r) => <span className="entri">{r.url}</span> },
+          {
+            key: 'position',
+            header: 'Posisi',
+            render: (r) => <span className="entri">{r.position}</span>,
+          },
           {
             key: 'is_active',
             header: 'Status',
@@ -204,7 +202,7 @@ export default function MenuPage() {
                 onClick={() => onToggle(r)}
                 aria-label={`Ubah status menu ${r.label}`}
                 aria-pressed={r.is_active}
-                className="inline-flex min-h-[44px] items-center rounded-full border px-3 text-xs hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                className="inline-flex min-h-[44px] items-center rounded-[var(--radius-sm)] border px-3 text-xs hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
                 {r.is_active ? 'Aktif' : 'Nonaktif'}
               </button>
@@ -218,7 +216,7 @@ export default function MenuPage() {
                 type="button"
                 onClick={() => onDelete(r.id)}
                 aria-label={`Hapus menu ${r.label}`}
-                className="inline-flex min-h-[44px] items-center text-red-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                className="inline-flex min-h-[44px] items-center text-accent underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
                 Hapus
               </button>

@@ -6,5 +6,5 @@ import nextDynamic from 'next/dynamic';
 // mempertahankan lazy-load tanpa SSR. Upgrade path: bila BookForm sudah SSR-safe, hapus wrapper.
 export default nextDynamic(() => import('./BookForm'), {
   ssr: false,
-  loading: () => <p className="text-sm text-slate-500">Memuat formulir…</p>,
+  loading: () => <p className="text-sm text-ink/70">Memuat formulir…</p>,
 });

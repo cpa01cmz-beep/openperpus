@@ -112,8 +112,8 @@ export default function KontenPage() {
   return (
     <div className="grid gap-4">
       <div>
-        <h1 className="text-2xl font-bold">Konten</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="kartu-kop pb-3 font-heading text-2xl font-bold text-heading">Konten</h1>
+        <p className="text-sm text-ink/70">
           Kelola halaman dinamis, FAQ, dan testimoni. Untuk artikel & banner gunakan menu Artikel /
           Banner.
         </p>
@@ -122,12 +122,12 @@ export default function KontenPage() {
       {missingPaths.length > 0 && (
         <div
           role="alert"
-          className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+          className="rounded-[var(--radius-lg)] border border-accent bg-accent-soft px-4 py-3 text-sm text-ink"
         >
           API{' '}
           {missingPaths.map((p, i) => (
             <span key={p}>
-              <code className="font-mono">{p}</code>
+              <code className="font-data">{p}</code>
               {i < missingPaths.length - 1 ? ', ' : ' '}
             </span>
           ))}
@@ -137,32 +137,37 @@ export default function KontenPage() {
       {error && (
         <div
           role="alert"
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          className="rounded-[var(--radius-lg)] border border-accent bg-accent-soft px-4 py-3 text-sm text-accent"
         >
           {error}
         </div>
       )}
 
-      <div role="tablist" aria-label="Jenis konten" className="flex flex-wrap gap-2">
+      {/* Tab pembatas laci: strip tab di atas garis rule */}
+      <div
+        role="tablist"
+        aria-label="Jenis konten"
+        className="flex flex-wrap items-end gap-1.5 border-b border-rule"
+      >
         {tabs.map((t) => (
-          <Button
+          <button
             key={t.key}
+            type="button"
             role="tab"
             aria-selected={tab === t.key}
             onClick={() => setTab(t.key)}
-            variant={tab === t.key ? 'primary' : 'outline'}
-            size="sm"
+            className="tab-laci -mb-px focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
             {t.label}
-          </Button>
+          </button>
         ))}
-        <Button onClick={load} variant="outline" size="sm" className="ml-auto">
+        <Button onClick={load} variant="outline" size="sm" className="mb-1 ml-auto">
           Muat ulang
         </Button>
       </div>
 
       {loading ? (
-        <p className="text-sm text-slate-500" aria-live="polite">
+        <p className="text-sm text-ink/70" aria-live="polite">
           Memuat…
         </p>
       ) : (

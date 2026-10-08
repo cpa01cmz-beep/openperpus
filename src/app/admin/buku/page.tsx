@@ -137,10 +137,10 @@ export default function BukuPage() {
   return (
     <div className="grid gap-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">Buku</h1>
+        <h1 className="kartu-kop pb-3 font-heading text-2xl font-bold text-heading">Buku</h1>
         <Link
           href="/admin/buku/tambah"
-          className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md bg-brand px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+          className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--radius-sm)] bg-brand px-5 py-2.5 text-sm font-semibold text-surface shadow-[var(--shadow-sm)] transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
         >
           + Tambah Buku
         </Link>
@@ -185,7 +185,7 @@ export default function BukuPage() {
         )}
       </div>
       {loading ? (
-        <p className="text-sm text-slate-500">Memuat…</p>
+        <p className="text-sm text-ink/70">Memuat…</p>
       ) : (
         <DataTable<BukuRow>
           columns={[
@@ -199,7 +199,7 @@ export default function BukuPage() {
                     aria-label={`Pilih ${r.title}`}
                     checked={selected.has(r.id)}
                     onChange={() => toggleSelect(r.id)}
-                    className="h-5 w-5 accent-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                    className="h-5 w-5 accent-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                   />
                 </span>
               ),
@@ -214,7 +214,9 @@ export default function BukuPage() {
             {
               key: 'stock_available',
               header: 'Stok',
-              render: (r) => `${r.stock_available}/${r.stock_total}`,
+              render: (r) => (
+                <span className="entri">{`${r.stock_available}/${r.stock_total}`}</span>
+              ),
             },
             {
               key: 'aksi',
@@ -223,7 +225,7 @@ export default function BukuPage() {
                 <span className="flex flex-wrap items-center gap-2">
                   <Link
                     href={`/admin/buku/edit/${r.id}`}
-                    className="inline-flex min-h-[44px] items-center text-blue-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                    className="inline-flex min-h-[44px] items-center text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                   >
                     Edit
                   </Link>
@@ -231,7 +233,7 @@ export default function BukuPage() {
                     type="button"
                     onClick={() => onDelete(r.id)}
                     aria-label={`Hapus buku ${r.title}`}
-                    className="inline-flex min-h-[44px] items-center text-red-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                    className="inline-flex min-h-[44px] items-center text-accent underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                   >
                     Hapus
                   </button>

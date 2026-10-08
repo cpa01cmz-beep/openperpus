@@ -32,8 +32,10 @@ describe('T-HEROES legacy deprecation + fallback tokens', () => {
     expect(fallbackSrc).not.toMatch(/rounded-xl/);
   });
 
-  it('HeroFallback uses brand tokens, no un-tokenized gradient', () => {
-    expect(fallbackSrc).toMatch(/from-brand-strong|var\(--brand\)/);
+  it('HeroFallback uses brand tokens, no decorative gradient', () => {
+    expect(fallbackSrc).toMatch(/bg-\[var\(--brand-strong\)\]|var\(--brand\)/);
+    expect(fallbackSrc).not.toMatch(/gradient/);
+    expect(fallbackSrc).not.toMatch(/text-white/);
     expect(fallbackSrc).not.toMatch(/from-\[#/);
     expect(fallbackSrc).not.toMatch(/to-\[#/);
     expect(fallbackSrc).not.toMatch(/from-slate-/);

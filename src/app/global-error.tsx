@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { House, RotateCcw, TriangleAlert, WifiOff, Loader2 } from 'lucide-react';
 import { captureException } from '@/lib/observability';
+import { DEFAULT_THEME } from '@/lib/themes';
 
 const BASE_RETRY_DELAY = 1000;
 const MAX_RETRIES = 3;
@@ -63,35 +64,33 @@ export default function GlobalErrorPage({ error, reset }: GlobalErrorPageProps) 
   };
 
   return (
-    <html lang="id">
+    <html lang="id" data-theme={DEFAULT_THEME}>
       <body>
         <section
           aria-labelledby="err-title"
           role="alert"
           className="mx-auto flex w-full max-w-xl flex-col items-center gap-4 py-16 text-center sm:py-24"
         >
-          <span className="grid h-16 w-16 place-items-center rounded-3xl bg-amber-400 text-emerald-950 shadow-lg">
+          <span className="grid h-16 w-16 place-items-center rounded-[var(--radius-md)] border border-rule bg-accent-soft text-accent shadow-[var(--shadow-sm)]">
             <TriangleAlert className="h-8 w-8" aria-hidden="true" />
           </span>
-          <p className="rounded-full border border-rose-200 bg-rose-100 px-3 py-1 text-xs font-bold uppercase tracking-widest text-rose-800">
-            Terjadi kendala sistem
-          </p>
-          <h1 id="err-title" className="font-serif text-3xl font-bold text-slate-900 sm:text-4xl">
+          <p className="stempel">Terjadi kendala sistem</p>
+          <h1 id="err-title" className="font-heading text-3xl font-bold text-heading sm:text-4xl">
             Maaf, ada gangguan di server.
           </h1>
-          <p className="max-w-md text-sm leading-relaxed text-slate-500 sm:text-base">
+          <p className="max-w-[68ch] text-sm leading-relaxed text-ink/75 sm:text-base">
             {isOnline
               ? 'Silakan coba muat ulang halaman. Jika masih bermasalah, kembali lagi beberapa saat.'
               : 'Sepertinya Anda sedang offline. Periksa koneksi internet dan coba lagi.'}
           </p>
           {!isOnline && (
-            <p className="flex items-center justify-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            <p className="flex items-center justify-center gap-2 rounded-[var(--radius-md)] border border-rule bg-accent-soft px-3 py-2 text-sm text-heading">
               <WifiOff className="h-4 w-4" aria-hidden="true" />
               Mode offline — beberapa fitur mungkin tidak tersedia.
             </p>
           )}
           {(error.digest || error.requestId) && (
-            <p className="rounded-lg bg-slate-100 px-3 py-1.5 font-mono text-[11px] text-slate-500">
+            <p className="entri rounded-[var(--radius-sm)] border border-rule bg-surface px-3 py-1.5 text-xs text-ink/75">
               Kode: {error.digest ?? error.requestId}
             </p>
           )}
@@ -100,7 +99,7 @@ export default function GlobalErrorPage({ error, reset }: GlobalErrorPageProps) 
               type="button"
               onClick={handleRetry}
               disabled={isRetrying || retryCount >= MAX_RETRIES}
-              className="inline-flex h-11 items-center gap-2 rounded-xl bg-emerald-700 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex h-11 items-center gap-2 rounded-[var(--radius-md)] bg-brand px-5 text-sm font-semibold text-surface transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isRetrying ? (
                 <>
@@ -121,7 +120,7 @@ export default function GlobalErrorPage({ error, reset }: GlobalErrorPageProps) 
             </button>
             <Link
               href="/"
-              className="inline-flex h-11 items-center gap-2 rounded-xl border border-emerald-700/30 bg-white px-5 text-sm font-semibold text-emerald-800 transition hover:border-emerald-700 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
+              className="inline-flex h-11 items-center gap-2 rounded-[var(--radius-md)] border border-rule bg-surface px-5 text-sm font-semibold text-brand transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
             >
               <House className="h-4 w-4" aria-hidden="true" />
               Kembali ke Beranda

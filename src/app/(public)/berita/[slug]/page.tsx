@@ -101,12 +101,12 @@ export default async function BeritaDetailPage({ params }: Props) {
       />
       <Link
         href="/berita"
-        className="inline-flex items-center gap-1.5 rounded text-sm font-medium text-slate-500 transition hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+        className="inline-flex min-h-[44px] items-center gap-1.5 self-start text-sm font-medium text-ink/70 transition hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Semua berita
       </Link>
 
-      <article className="overflow-hidden rounded-lg border border-slate-100 bg-white shadow-sm">
+      <article className="kartu overflow-hidden">
         {cover && (
           <Image
             src={cover}
@@ -119,11 +119,16 @@ export default async function BeritaDetailPage({ params }: Props) {
             className="aspect-[16/9] w-full object-cover"
           />
         )}
-        <div className="p-5 sm:p-8">
-          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold uppercase tracking-wide text-brand">
+        <div className="px-5 pb-8 pt-5 sm:px-8 sm:pt-6">
+          <div className="kartu-kop pb-3">
+            <h1 className="font-heading text-2xl font-bold leading-tight tracking-[-0.02em] text-heading sm:text-4xl">
+              {article.title}
+            </h1>
+          </div>
+          <p className="entri mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs uppercase tracking-[0.05em] text-brand">
             <span>{article.category ?? 'Berita'}</span>
             {article.published_at && (
-              <span className="inline-flex items-center gap-1 font-normal normal-case tracking-normal text-slate-400">
+              <span className="inline-flex items-center gap-1 font-normal normal-case tracking-normal">
                 <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
                 <time dateTime={article.published_at}>
                   {new Date(article.published_at).toLocaleDateString('id-ID', {
@@ -134,44 +139,38 @@ export default async function BeritaDetailPage({ params }: Props) {
                 </time>
               </span>
             )}
-            <span className="inline-flex items-center gap-1 font-normal normal-case tracking-normal text-slate-400">
+            <span className="inline-flex items-center gap-1 font-normal normal-case tracking-normal">
               <Eye className="h-3.5 w-3.5" aria-hidden="true" /> {article.views} dibaca
             </span>
           </p>
-          <h1 className="mt-2 font-heading text-2xl font-bold leading-tight text-heading sm:text-4xl">
-            {article.title}
-          </h1>
           {article.excerpt && (
-            <p className="mt-3 border-l-4 border-accent bg-accent-soft px-4 py-3 text-sm italic leading-relaxed text-slate-600 sm:text-base">
+            <p className="mt-4 max-w-[70ch] bg-accent-soft px-4 py-3 text-sm italic leading-relaxed text-ink sm:text-base">
               {article.excerpt}
             </p>
           )}
-          <div className="prose-sm mt-5 max-w-none whitespace-pre-line text-sm leading-relaxed text-slate-700 sm:prose sm:text-base">
+          <div className="mt-5 max-w-[70ch] whitespace-pre-line text-sm leading-relaxed text-ink/80 sm:text-base">
             {article.content_md ?? 'Konten menyusul.'}
           </div>
         </div>
       </article>
 
       {latest.length > 0 && (
-        <section
-          aria-labelledby="lainnya"
-          className="rounded-lg border border-slate-100 bg-white p-5 shadow-sm sm:p-6"
-        >
-          <h2 id="lainnya" className="font-heading text-lg font-bold text-heading">
-            Berita lainnya
-          </h2>
-          <ul className="mt-3 space-y-2">
+        <section aria-labelledby="lainnya" className="kartu px-5 pb-7 pt-5 sm:px-6">
+          <div className="kartu-kop pb-3">
+            <h2 id="lainnya" className="font-heading text-lg font-bold text-heading">
+              Berita lainnya
+            </h2>
+          </div>
+          <ul className="batang mt-3">
             {latest.map((a) => (
               <li key={a.id}>
                 <Link
                   href={`/berita/${a.slug}`}
-                  className="block rounded-xl px-3 py-2.5 transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  className="block px-6 py-2.5 transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
-                  <span className="block truncate text-sm font-semibold text-slate-800">
-                    {a.title}
-                  </span>
+                  <span className="block truncate text-sm font-semibold text-ink">{a.title}</span>
                   {a.published_at && (
-                    <time dateTime={a.published_at} className="text-xs text-slate-400">
+                    <time dateTime={a.published_at} className="entri text-xs text-ink/70">
                       {new Date(a.published_at).toLocaleDateString('id-ID', {
                         day: 'numeric',
                         month: 'short',

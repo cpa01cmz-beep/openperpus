@@ -70,18 +70,24 @@ export default function LoanForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="grid max-w-xl gap-4 rounded-2xl border bg-white p-6">
+    <form onSubmit={onSubmit} className="kartu lubang grid max-w-xl gap-4 p-6">
       {err && (
-        <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+        <p
+          role="alert"
+          className="rounded-[var(--radius-sm)] border border-accent bg-accent-soft px-3 py-2 text-sm text-ink"
+        >
           {err}
         </p>
       )}
       {msg && (
-        <p role="status" className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
+        <p
+          role="status"
+          className="rounded-[var(--radius-sm)] border border-rule bg-brand-soft px-3 py-2 text-sm text-ink"
+        >
           {msg}
         </p>
       )}
-      <label className="grid gap-1 text-sm font-medium">
+      <label className="grid gap-1 text-sm font-medium text-ink">
         Anggota*
         <SearchCombobox
           kind="members"
@@ -99,7 +105,7 @@ export default function LoanForm({
           }}
         />
       </label>
-      <label className="grid gap-1 text-sm font-medium">
+      <label className="grid gap-1 text-sm font-medium text-ink">
         Buku*
         <SearchCombobox
           kind="books"
@@ -116,16 +122,17 @@ export default function LoanForm({
           }}
         />
       </label>
-      <p className="text-xs text-slate-500">
-        Jatuh tempo otomatis: <strong>{duePreview}</strong> (+14 hari dari hari ini).
+      <p className="text-xs text-ink/70">
+        Jatuh tempo otomatis: <strong className="entri">{duePreview}</strong> (+14 hari dari hari
+        ini).
       </p>
       <div className="grid gap-1 text-sm">
-        <label htmlFor="loan-notes" className="text-sm font-semibold text-slate-700">
+        <label htmlFor="loan-notes" className="text-sm font-semibold text-ink">
           Catatan
         </label>
         <textarea
           id="loan-notes"
-          className="min-h-[44px] w-full rounded-md border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
+          className="min-h-[44px] w-full rounded-[var(--radius-sm)] border border-rule bg-surface px-4 py-2 text-sm text-ink transition hover:border-rule-strong focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           rows={2}
           value={notes}
           onChange={(e) => setNotes(e.target.value)}

@@ -28,7 +28,7 @@ type Props = {
   serverTotal: number;
 };
 
-/** Client interactivity island: SearchBar + Chips + sort + filter + status. */
+/** Client interactivity island: pelat SearchBar + tab kategori + kontrol laci. */
 export default function CatalogControls({
   q,
   onQChange,
@@ -51,7 +51,7 @@ export default function CatalogControls({
       <div className="flex flex-wrap items-center gap-2 sm:gap-3">
         <label
           htmlFor="sort"
-          className="flex items-center gap-1.5 text-xs font-medium text-[var(--ink)]/60"
+          className="entri flex items-center gap-1.5 text-xs uppercase tracking-[0.08em] text-[var(--ink)]/70"
         >
           <ArrowUpDown className="h-3.5 w-3.5" aria-hidden="true" /> Urutkan
         </label>
@@ -59,7 +59,7 @@ export default function CatalogControls({
           id="sort"
           value={sort}
           onChange={(e) => onSortChange(e.target.value as CatalogSortKey)}
-          className="min-h-[44px] rounded-[var(--radius-md)] border border-[var(--ink)]/10 bg-[var(--surface)] px-3 py-2 text-sm text-[var(--ink)] shadow-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
+          className="entri min-h-[44px] rounded-[var(--radius-md)] border border-[var(--ink)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--ink)] shadow-[var(--shadow-sm)] focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/30"
         >
           {CATALOG_SORTS.map((s) => (
             <option key={s.key} value={s.key}>
@@ -68,23 +68,23 @@ export default function CatalogControls({
           ))}
         </select>
 
-        <label className="ml-auto inline-flex min-h-[44px] cursor-pointer items-center gap-2 text-sm text-[var(--ink)]/70">
+        <label className="entri ml-auto inline-flex min-h-[44px] cursor-pointer items-center gap-2 text-sm text-[var(--ink)]">
           <input
             type="checkbox"
             checked={onlyAvailable}
             onChange={(e) => onAvailableChange(e.target.checked)}
-            className="h-5 w-5 shrink-0 rounded accent-brand"
+            className="h-5 w-5 shrink-0 rounded-[var(--radius-sm)] accent-brand"
           />
           Hanya yang tersedia
         </label>
       </div>
 
-      <p role="status" aria-live="polite" className="text-xs text-[var(--ink)]/60">
+      <p role="status" aria-live="polite" className="entri text-xs text-[var(--ink)]/70">
         Menampilkan {resultCount} dari {serverTotal} buku
         {q.trim() && (
           <>
             {' '}
-            untuk “<span className="font-semibold text-[var(--ink)]/80">{q.trim()}</span>”
+            untuk “<span className="font-semibold text-[var(--ink)]">{q.trim()}</span>”
           </>
         )}
       </p>

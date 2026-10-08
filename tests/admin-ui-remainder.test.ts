@@ -39,9 +39,14 @@ describe('admin UI remainder — DataTable sort/bulk reusable', () => {
     expect(src.includes('onToggleAll')).toBe(true);
     expect(src.includes('caption')).toBe(true);
   });
-  it('overflow wrapper tidak berubah', () => {
+  it('overflow wrapper pakai token (scroll + border + radius)', () => {
     const src = read('src/components/admin/DataTable.tsx');
-    expect(src.includes('overflow-x-auto rounded-xl border bg-white')).toBe(true);
+    expect(
+      src.includes(
+        'overflow-x-auto rounded-[var(--radius-lg)] border border-rule bg-[var(--surface)]'
+      ),
+      'DataTable wrapper must keep overflow-x-auto + border + token radius/surface'
+    ).toBe(true);
   });
   it('dipakai di 2 lists (peminjaman + anggota)', () => {
     for (const f of ['src/app/admin/peminjaman/page.tsx', 'src/app/admin/anggota/page.tsx']) {

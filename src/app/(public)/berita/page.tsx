@@ -57,25 +57,26 @@ export default async function BeritaPage() {
         }}
       />
       <Breadcrumb items={[{ label: 'Beranda', href: '/' }, { label: 'Berita' }]} />
-      <header>
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">
-          Kabar perpustakaan
-        </p>
-        <h1 className="mt-1 font-heading text-3xl font-bold text-heading sm:text-4xl">
-          Berita & Artikel
-        </h1>
-        <p className="mt-2 max-w-2xl text-sm text-slate-500 sm:text-base">
+      {/* Kop kartu arsip: judul + garis ganda, keterangan di bawah garis */}
+      <header className="kartu px-5 pb-6 pt-7 sm:px-8 sm:pt-9">
+        <div className="kartu-kop pb-4">
+          <h1 className="font-heading text-3xl font-bold leading-[1.05] tracking-[-0.02em] text-heading sm:text-4xl">
+            Berita & Artikel
+          </h1>
+        </div>
+        <p className="mt-3 text-sm text-ink/70 sm:text-base">
           Kegiatan, pengumuman, dan bacaan literasi terbaru.
         </p>
       </header>
 
       {articles.length > 0 ? (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {articles.map((a) => (
+          {articles.map((a, n) => (
             <Link
               key={a.id}
               href={`/berita/${a.slug}`}
-              className="group overflow-hidden rounded-lg border border-slate-100 bg-white shadow-sm transition hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              style={{ ['--i' as never]: n } as React.CSSProperties}
+              className="kartu riffle group overflow-hidden transition hover:shadow-[var(--shadow-md)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             >
               <div className="aspect-[16/9] w-full overflow-hidden bg-brand-soft">
                 {a.cover_url ? (
@@ -86,24 +87,26 @@ export default async function BeritaPage() {
                     height={360}
                     sizes="(max-width:640px) 100vw, 33vw"
                     loading="lazy"
-                    className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.03]"
+                    className="h-full w-full object-cover transition duration-300"
                   />
                 ) : (
-                  <div
-                    className="grid h-full w-full place-items-center bg-gradient-to-br from-brand to-brand p-4 text-center"
-                    aria-hidden="true"
-                  >
-                    <Newspaper className="h-8 w-8 text-accent" />
+                  <div className="grid h-full w-full place-items-center p-4" aria-hidden="true">
+                    <Newspaper className="h-8 w-8 text-brand" />
                   </div>
                 )}
               </div>
-              <div className="p-4 sm:p-5">
-                <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-brand">
+              <div className="px-4 pb-8 pt-4 sm:px-5 sm:pb-9">
+                <div className="kartu-kop pb-2">
+                  <h2 className="line-clamp-2 font-heading text-lg font-bold leading-snug text-heading transition group-hover:text-brand">
+                    {a.title}
+                  </h2>
+                </div>
+                <p className="entri mt-2 flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.05em] text-brand">
                   {a.category ?? 'Berita'}
                   {a.published_at && (
                     <time
                       dateTime={a.published_at}
-                      className="font-normal normal-case tracking-normal text-slate-400"
+                      className="font-normal normal-case tracking-normal"
                     >
                       {new Date(a.published_at).toLocaleDateString('id-ID', {
                         day: 'numeric',
@@ -113,12 +116,7 @@ export default async function BeritaPage() {
                     </time>
                   )}
                 </p>
-                <h2 className="mt-1 line-clamp-2 font-heading text-lg font-bold leading-snug text-heading group-hover:text-brand">
-                  {a.title}
-                </h2>
-                {a.excerpt && (
-                  <p className="mt-1.5 line-clamp-2 text-sm text-slate-500">{a.excerpt}</p>
-                )}
+                {a.excerpt && <p className="mt-2 line-clamp-2 text-sm text-ink/70">{a.excerpt}</p>}
                 <span className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-brand">
                   Baca selengkapnya{' '}
                   <ArrowRight
@@ -131,10 +129,9 @@ export default async function BeritaPage() {
           ))}
         </div>
       ) : (
-        <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-6 py-14 text-center">
-          <Newspaper className="mx-auto h-10 w-10 text-slate-300" aria-hidden="true" />
-          <h2 className="mt-3 font-heading text-lg font-bold text-slate-800">Belum ada berita</h2>
-          <p className="mx-auto mt-1 max-w-sm text-sm text-slate-500">
+        <div className="kartu px-6 py-12 text-center">
+          <h2 className="entri text-sm uppercase tracking-[0.05em] text-ink">Belum ada berita</h2>
+          <p className="mx-auto mt-2 max-w-sm text-sm text-ink/70">
             Berita yang dipublikasikan pustakawan akan muncul di sini.
           </p>
         </div>

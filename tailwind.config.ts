@@ -6,35 +6,34 @@ const config: Config = {
     extend: {
       colors: {
         brand: {
-          DEFAULT: 'var(--brand, #047857)',
-          soft: 'var(--brand-soft, #ecfdf5)',
-          strong: 'var(--brand-strong, #065f46)',
+          DEFAULT: 'var(--brand, #1b5e4b)',
+          soft: 'var(--brand-soft, #dce6de)',
+          strong: 'var(--brand-strong, #0e3d30)',
         },
         accent: {
-          DEFAULT: 'var(--accent, #f59e0b)',
-          soft: 'var(--accent-soft, #fffbeb)',
+          DEFAULT: 'var(--accent, #a63d2e)',
+          soft: 'var(--accent-soft, #f2e4de)',
         },
         heading: {
-          DEFAULT: 'var(--heading, #065f46)',
+          DEFAULT: 'var(--heading, #0e3d30)',
         },
         surface: {
-          DEFAULT: 'var(--surface, #ffffff)',
+          DEFAULT: 'var(--surface, #ebede6)',
         },
         ink: {
-          DEFAULT: 'var(--ink, #0f172a)',
+          DEFAULT: 'var(--ink, #1c1a17)',
+        },
+        rule: {
+          DEFAULT: 'var(--rule)',
+          strong: 'var(--rule-strong)',
         },
       },
       fontFamily: {
-        sans: ['var(--font-inter)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        serif: ['var(--font-playfair)', 'Georgia', 'serif'],
-        heading: ['var(--font-heading)', 'var(--font-playfair)', 'Georgia', 'serif'],
-        body: ['var(--font-body)', 'var(--font-inter)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-        cormorant: ['var(--font-cormorant)', 'Georgia', 'serif'],
-        fraunces: ['var(--font-fraunces)', 'Georgia', 'serif'],
-        archivo: ['var(--font-archivo)', "'Archivo Black'", "'Arial Black'", 'sans-serif'],
-        space: ['var(--font-space)', "'Space Grotesk'", 'ui-monospace', 'monospace'],
-        'source-serif': ['var(--font-source-serif)', "'Source Serif 4'", 'Georgia', 'serif'],
-        'source-sans': ['var(--font-source-sans)', "'Source Sans 3'", 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        sans: ['var(--font-body)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        serif: ['var(--font-heading)', 'Georgia', 'serif'],
+        heading: ['var(--font-heading)', 'Georgia', 'serif'],
+        body: ['var(--font-body)', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        data: ['var(--font-data)', 'ui-monospace', 'monospace'],
       },
       borderRadius: {
         sm: 'var(--radius-sm)',

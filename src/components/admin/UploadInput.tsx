@@ -102,14 +102,14 @@ export default function UploadInput({
 
   return (
     <div className="grid gap-2">
-      <label className="grid gap-1 text-sm">
+      <label className="grid gap-1 text-sm font-medium text-ink">
         {label}
         <input
           type="file"
           accept={accept ?? 'image/jpeg,image/png,image/webp,image/gif,application/pdf'}
           onChange={onFile}
           disabled={uploading}
-          className="w-full rounded-lg border px-3 py-2 text-sm"
+          className="h-11 w-full rounded-[var(--radius-sm)] border border-rule bg-surface px-3 py-2 text-sm"
         />
       </label>
       {/* Manual URL paste fallback — keeps old behavior when storage unavailable */}
@@ -118,7 +118,7 @@ export default function UploadInput({
         value={value}
         onChange={onPasteUrl}
         placeholder="https://… (atau pilih file di atas)"
-        className="w-full rounded-lg border px-3 py-2 text-sm"
+        className="entri h-11 w-full rounded-[var(--radius-sm)] border border-rule bg-surface px-3 py-2 text-sm"
       />
       {value && isAllowedImageUrl(value) && isImageUrl(value) && (
         <Image
@@ -127,11 +127,15 @@ export default function UploadInput({
           width={80}
           height={80}
           sizes="80px"
-          className="h-20 w-20 rounded-lg border object-cover"
+          className="h-20 w-20 rounded-[var(--radius-sm)] border border-rule object-cover"
         />
       )}
-      {uploading && <p className="text-xs text-slate-500">Mengunggah…</p>}
-      {err && <p className="text-xs text-red-600">{err}</p>}
+      {uploading && <p className="text-xs text-ink/70">Mengunggah…</p>}
+      {err && (
+        <p role="alert" className="text-xs text-accent">
+          {err}
+        </p>
+      )}
     </div>
   );
 }

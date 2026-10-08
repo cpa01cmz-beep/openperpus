@@ -48,7 +48,7 @@ export default async function EditBukuPage({ params }: { params: Promise<{ id: s
 
   return (
     <div className="grid gap-4">
-      <h1 className="text-2xl font-bold">Edit Buku</h1>
+      <h1 className="kartu-kop pb-3 font-heading text-2xl font-bold text-heading">Edit Buku</h1>
       <BookForm
         mode="edit"
         initial={data as BookInitial}

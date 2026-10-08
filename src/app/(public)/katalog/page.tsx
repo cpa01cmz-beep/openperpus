@@ -46,7 +46,11 @@ type SearchParams = {
 };
 
 /** Katalog: server-paginated via searchParams page/per_page (<=24 baris/halaman). */
-export default async function KatalogPage({ searchParams }: { searchParams?: Promise<SearchParams> }) {
+export default async function KatalogPage({
+  searchParams,
+}: {
+  searchParams?: Promise<SearchParams>;
+}) {
   const sp = (await searchParams) ?? {};
   const page = Math.max(1, Number(sp.page ?? 1) || 1);
   const perPage = Math.min(48, Math.max(1, Number(sp.per_page ?? 24) || 24));
@@ -68,6 +72,7 @@ export default async function KatalogPage({ searchParams }: { searchParams?: Pro
     }),
     fetchCategories(),
   ]);
+  const totalPages = Math.max(1, Math.ceil(total / perPage));
 
   return (
     <div className="space-y-5">
@@ -106,16 +111,33 @@ export default async function KatalogPage({ searchParams }: { searchParams?: Pro
         }}
       />
       <Breadcrumb items={[{ label: 'Beranda', href: '/' }, { label: 'Katalog' }]} />
-      <header>
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-amber-600">OPAC</p>
-        <h1 className="mt-1 font-serif text-3xl font-bold text-emerald-950 sm:text-4xl">
-          Katalog Buku
-        </h1>
-        <p className="mt-2 max-w-2xl text-sm text-[var(--ink)]/60 sm:text-base">
+      {/* Kop laci: judul kartu indeks + baris entri hitungan hasil/halaman */}
+      <header className="kartu px-5 pb-6 pt-7 sm:px-8 sm:pt-9">
+        <div className="kartu-kop pb-4">
+          <h1 className="font-heading text-3xl font-bold leading-[1.05] tracking-[-0.02em] text-heading sm:text-4xl">
+            Katalog Buku
+          </h1>
+        </div>
+        <p className="entri mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs uppercase tracking-[0.08em] text-ink/70 sm:text-sm">
+          <span className="flex gap-2">
+            <span>Hasil</span>
+            <span className="font-semibold text-ink">{total}</span>
+          </span>
+          <span className="flex gap-2">
+            <span>Halaman</span>
+            <span className="font-semibold text-ink">
+              {page} / {totalPages}
+            </span>
+          </span>
+        </p>
+        <p className="mt-2 max-w-2xl text-sm text-ink/70 sm:text-base">
           Cari {total > 0 ? `${total} koleksi` : 'koleksi'} berdasarkan judul, penulis, penerbit,
           atau ISBN. Data stok diperbarui otomatis dari sistem sirkulasi.
         </p>
       </header>
+
+      {/* urutan judul: h1 (halaman) → h2 (wilayah hasil) → h3 (kartu buku) */}
+      <h2 className="sr-only">Hasil katalog</h2>
 
       <CatalogExplorer
         books={books}

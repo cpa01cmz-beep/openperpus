@@ -3,12 +3,12 @@ import { ChevronRight } from 'lucide-react';
 
 export type Crumb = { label: string; href?: string };
 
-/** Breadcrumb publik — server-safe, item terakhir pakai aria-current="page". */
+/** Breadcrumb publik — baris entri laci, server-safe, aria-current di item terakhir. */
 export default function Breadcrumb({ items }: { items: Crumb[] }) {
   if (!items.length) return null;
   return (
     <nav aria-label="Breadcrumb">
-      <ol className="flex flex-wrap items-center gap-1 text-sm text-[var(--ink)]/60">
+      <ol className="entri flex flex-wrap items-center gap-1 text-xs uppercase tracking-[0.08em] text-[var(--ink)]/60">
         {items.map((c, i) => {
           const last = i === items.length - 1;
           return (
@@ -21,7 +21,7 @@ export default function Breadcrumb({ items }: { items: Crumb[] }) {
               ) : (
                 <Link
                   href={c.href}
-                  className="rounded transition hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  className="inline-flex min-h-[44px] items-center rounded-[var(--radius-sm)] px-1 transition hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
                   {c.label}
                 </Link>

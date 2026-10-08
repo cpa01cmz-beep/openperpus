@@ -150,21 +150,23 @@ export default function ReservasiSayaPage() {
   return (
     <div className="grid gap-5">
       <Breadcrumb items={[{ label: 'Beranda', href: '/' }, { label: 'Reservasi Saya' }]} />
-      <div>
-        <h1 className="text-2xl font-bold">Reservasi &amp; Pinjaman Saya</h1>
-        <p className="text-sm text-slate-500">
+      {/* Kop kartu indeks: judul + baris entri ringkas */}
+      <div className="kartu px-5 pb-6 pt-7 sm:px-8 sm:pt-8">
+        <div className="kartu-kop pb-4">
+          <h1 className="font-heading text-2xl font-bold leading-[1.06] tracking-[-0.02em] text-heading sm:text-3xl">
+            Reservasi &amp; Pinjaman Saya
+          </h1>
+        </div>
+        <p className="mt-2 text-sm text-ink/70">
           Pantau status reservasi dan pinjaman aktif Anda tanpa chat WA. Batalkan reservasi menunggu
           dalam 1-klik.
         </p>
       </div>
 
       {needLogin && (
-        <div
-          role="alert"
-          className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800"
-        >
+        <div role="alert" className="kartu bg-accent-soft px-4 py-3 text-sm text-ink">
           Silakan{' '}
-          <a className="font-semibold underline" href="/login?next=/reservasi-saya">
+          <a className="font-semibold text-brand underline" href="/login?next=/reservasi-saya">
             login
           </a>{' '}
           sebagai anggota untuk melihat reservasi Anda.
@@ -172,17 +174,14 @@ export default function ReservasiSayaPage() {
       )}
 
       {offline && (
-        <div
-          role="alert"
-          className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-700"
-        >
+        <div role="alert" className="kartu bg-accent-soft px-4 py-3 text-sm text-ink">
           {usedCache
             ? 'Anda offline — menampilkan data terakhir yang tersimpan.'
             : 'Anda offline — tidak ada data tersimpan.'}{' '}
           <button
             type="button"
             onClick={() => void load()}
-            className="ml-1 font-semibold text-brand underline-offset-2 hover:underline"
+            className="ml-1 font-semibold text-brand underline underline-offset-2 hover:text-brand-strong"
           >
             Muat ulang
           </button>
@@ -190,16 +189,13 @@ export default function ReservasiSayaPage() {
       )}
 
       {error && (
-        <div
-          role="alert"
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
-        >
+        <div role="alert" className="kartu bg-accent-soft px-4 py-3 text-sm text-ink">
           {error}
         </div>
       )}
 
       {notice && (
-        <p role="status" className="text-sm font-medium text-emerald-700">
+        <p role="status" className="entri text-sm font-medium text-brand">
           {notice}
         </p>
       )}
@@ -209,7 +205,7 @@ export default function ReservasiSayaPage() {
           <button
             type="button"
             onClick={() => void load()}
-            className="rounded-lg border px-3 py-1.5 text-sm"
+            className="inline-flex min-h-[44px] items-center rounded-[var(--radius-md)] border border-rule bg-[var(--surface)] px-4 py-1.5 text-sm font-semibold text-ink transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
             Muat ulang
           </button>
@@ -217,25 +213,28 @@ export default function ReservasiSayaPage() {
       )}
 
       {loading ? (
-        <p className="text-sm text-slate-500" aria-live="polite">
+        <p className="entri text-sm text-ink/70" aria-live="polite">
           Memuat…
         </p>
       ) : needLogin ? null : (
         <>
           <section aria-labelledby="roi4-reservations-h" className="grid gap-3">
-            <h2 id="roi4-reservations-h" className="text-lg font-bold">
+            <h2 id="roi4-reservations-h" className="font-heading text-lg font-bold text-heading">
               Reservasi saya ({reservations.length})
             </h2>
             {reservations.length === 0 ? (
-              <div className="grid gap-2">
-                <p className="text-sm text-slate-500">
+              <div className="kartu px-5 py-7">
+                <p className="entri text-sm uppercase tracking-[0.08em] text-ink/70">
+                  Belum ada entri
+                </p>
+                <p className="mt-2 text-sm text-ink/70">
                   Belum ada reservasi. Temukan buku favorit Anda di katalog lalu reservasi dalam
                   1-klik.
                 </p>
                 <p>
                   <Link
                     href="/katalog"
-                    className="font-semibold text-brand underline-offset-2 hover:underline"
+                    className="mt-3 inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-md)] bg-brand px-5 py-2.5 text-sm font-semibold text-surface shadow-[var(--shadow-sm)] transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                   >
                     Jelajahi katalog
                   </Link>
@@ -256,19 +255,22 @@ export default function ReservasiSayaPage() {
           </section>
 
           <section aria-labelledby="roi4-loans-h" className="grid gap-3">
-            <h2 id="roi4-loans-h" className="text-lg font-bold">
+            <h2 id="roi4-loans-h" className="font-heading text-lg font-bold text-heading">
               Pinjaman aktif ({loans.length})
             </h2>
             {loans.length === 0 ? (
-              <div className="grid gap-2">
-                <p className="text-sm text-slate-500">
+              <div className="kartu px-5 py-7">
+                <p className="entri text-sm uppercase tracking-[0.08em] text-ink/70">
+                  Belum ada entri
+                </p>
+                <p className="mt-2 text-sm text-ink/70">
                   Tidak ada pinjaman aktif. Lihat koleksi yang tersedia dan pinjam lewat petugas
                   sirkulasi.
                 </p>
                 <p>
                   <Link
                     href="/katalog"
-                    className="font-semibold text-brand underline-offset-2 hover:underline"
+                    className="mt-3 inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-md)] bg-brand px-5 py-2.5 text-sm font-semibold text-surface shadow-[var(--shadow-sm)] transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                   >
                     Jelajahi katalog
                   </Link>
@@ -284,23 +286,28 @@ export default function ReservasiSayaPage() {
           </section>
           {/* S-roi11 Wishlist Simpanku (localStorage, klien saja) */}
           <section aria-labelledby="roi11-wishlist-h" className="grid gap-3">
-            <h2 id="roi11-wishlist-h" className="text-lg font-bold">
+            <h2 id="roi11-wishlist-h" className="font-heading text-lg font-bold text-heading">
               Wishlist Simpanku ({wishlist.length})
             </h2>
             {wishlist.length === 0 ? (
-              <p className="text-sm text-slate-500">
-                Belum ada buku tersimpan. Tandai buku favorit dengan tombol Simpanku di katalog.
-              </p>
+              <div className="kartu px-5 py-7">
+                <p className="entri text-sm uppercase tracking-[0.08em] text-ink/70">
+                  Belum ada entri
+                </p>
+                <p className="mt-2 text-sm text-ink/70">
+                  Belum ada buku tersimpan. Tandai buku favorit dengan tombol Simpanku di katalog.
+                </p>
+              </div>
             ) : (
               <ul className="grid gap-2">
                 {wishlist.map((slug) => (
                   <li
                     key={slug}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5"
+                    className="kartu flex flex-wrap items-center justify-between gap-2 px-4 py-2.5"
                   >
                     <Link
                       href={`/katalog/${slug}`}
-                      className="min-h-[44px] content-center font-semibold text-brand underline-offset-2 hover:underline"
+                      className="entri min-h-[44px] content-center font-semibold text-brand underline-offset-2 hover:text-brand-strong"
                     >
                       {slug}
                     </Link>

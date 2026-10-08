@@ -97,8 +97,8 @@ export default function BannerPage() {
 
   return (
     <div className="grid gap-4">
-      <h1 className="text-2xl font-bold">Banner</h1>
-      <form onSubmit={onAdd} className="grid max-w-2xl gap-2 rounded-2xl border bg-white p-4">
+      <h1 className="kartu-kop pb-3 font-heading text-2xl font-bold text-heading">Banner</h1>
+      <form onSubmit={onAdd} className="grid max-w-2xl gap-2 kartu p-4">
         <Input
           id="banner-title"
           label="Judul"
@@ -150,7 +150,7 @@ export default function BannerPage() {
         role="group"
         aria-label="Urutkan banner"
       >
-        <span className="text-slate-500" id="banner-sort-label">
+        <span className="text-ink/70" id="banner-sort-label">
           Urut:
         </span>
         <Button
@@ -186,8 +186,20 @@ export default function BannerPage() {
             header: 'Judul',
             render: (r) => <span className="font-medium">{r.title}</span>,
           },
-          { key: 'sort_order', header: 'Urutan' },
-          { key: 'is_active', header: 'Aktif', render: (r) => (r.is_active ? 'Ya' : 'Tidak') },
+          {
+            key: 'sort_order',
+            header: 'Urutan',
+            render: (r) => <span className="entri">{r.sort_order}</span>,
+          },
+          {
+            key: 'is_active',
+            header: 'Aktif',
+            render: (r) => (
+              <span className="stempel" data-state={r.is_active ? undefined : 'dipinjam'}>
+                {r.is_active ? 'Ya' : 'Tidak'}
+              </span>
+            ),
+          },
           {
             key: 'aksi',
             header: 'Aksi',
@@ -195,7 +207,7 @@ export default function BannerPage() {
               <span className="flex flex-wrap items-center gap-2">
                 <Link
                   href={`/admin/banner/edit/${r.id}`}
-                  className="inline-flex min-h-[44px] items-center text-blue-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  className="inline-flex min-h-[44px] items-center text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
                   Edit
                 </Link>
@@ -203,7 +215,7 @@ export default function BannerPage() {
                   type="button"
                   onClick={() => onToggle(r)}
                   aria-label={`${r.is_active ? 'Nonaktifkan' : 'Aktifkan'} banner ${r.title}`}
-                  className="inline-flex min-h-[44px] items-center text-blue-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  className="inline-flex min-h-[44px] items-center text-brand underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
                   {r.is_active ? 'Nonaktifkan' : 'Aktifkan'}
                 </button>
@@ -211,7 +223,7 @@ export default function BannerPage() {
                   type="button"
                   onClick={() => onDelete(r.id)}
                   aria-label={`Hapus banner ${r.title}`}
-                  className="inline-flex min-h-[44px] items-center text-red-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  className="inline-flex min-h-[44px] items-center text-accent underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
                   Hapus
                 </button>

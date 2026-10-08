@@ -136,8 +136,8 @@ export default function DendaPage() {
   return (
     <div className="grid gap-4">
       <div>
-        <h1 className="text-2xl font-bold">Denda</h1>
-        <p className="text-sm text-slate-500">
+        <h1 className="kartu-kop pb-3 font-heading text-2xl font-bold text-heading">Denda</h1>
+        <p className="text-sm text-ink/70">
           Denda terbentuk otomatis saat pengembalian terlambat (Rp
           {finePerDay.toLocaleString('id-ID')}/hari, tarif denda_per_hari).
         </p>
@@ -146,16 +146,16 @@ export default function DendaPage() {
       {apiMissing && (
         <div
           role="alert"
-          className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+          className="rounded-[var(--radius-lg)] border border-accent bg-accent-soft px-4 py-3 text-sm text-ink"
         >
-          API <code className="font-mono">/api/fines</code> belum tersedia di backend (404). Daftar
+          API <code className="font-data">/api/fines</code> belum tersedia di backend (404). Daftar
           & tombol bayar menunggu worker backend. Sudah dilaporkan ke mandor.
         </div>
       )}
       {error && (
         <div
           role="alert"
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          className="rounded-[var(--radius-lg)] border border-accent bg-accent-soft px-4 py-3 text-sm text-accent"
         >
           {error}
         </div>
@@ -177,12 +177,12 @@ export default function DendaPage() {
 
       <div className="flex flex-wrap items-end gap-2 text-sm">
         <div className="grid gap-1">
-          <label htmlFor="filter-status" className="text-sm font-semibold text-slate-700">
+          <label htmlFor="filter-status" className="text-sm font-semibold text-ink">
             Filter status
           </label>
           <select
             id="filter-status"
-            className="h-11 min-h-[44px] rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
+            className="h-11 min-h-[44px] rounded-[var(--radius-sm)] border border-rule bg-surface px-3 text-sm text-ink transition hover:border-rule-strong focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             value={status}
             onChange={(e) => {
               setPage(1);
@@ -197,12 +197,12 @@ export default function DendaPage() {
           </select>
         </div>
         <div className="grid gap-1">
-          <label htmlFor="pay-method" className="text-sm font-semibold text-slate-700">
+          <label htmlFor="pay-method" className="text-sm font-semibold text-ink">
             Metode bayar
           </label>
           <select
             id="pay-method"
-            className="h-11 min-h-[44px] rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
+            className="h-11 min-h-[44px] rounded-[var(--radius-sm)] border border-rule bg-surface px-3 text-sm text-ink transition hover:border-rule-strong focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             value={method}
             onChange={(e) => setMethod(e.target.value)}
           >
@@ -216,7 +216,7 @@ export default function DendaPage() {
         <button
           type="button"
           onClick={load}
-          className="inline-flex min-h-[44px] items-center justify-center rounded-md border border-slate-200 bg-white px-3 font-semibold text-slate-700 transition hover:border-brand hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          className="inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-sm)] border border-rule bg-surface px-3 font-semibold text-ink transition hover:border-brand hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
         >
           Muat ulang
         </button>
@@ -235,7 +235,7 @@ export default function DendaPage() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-slate-500" aria-live="polite">
+        <p className="text-sm text-ink/70" aria-live="polite">
           Memuat…
         </p>
       ) : (
@@ -244,24 +244,38 @@ export default function DendaPage() {
             {
               key: 'anggota',
               header: 'Anggota',
-              render: (r) => <span className="font-medium">{r.members?.member_code ?? '-'}</span>,
+              render: (r) => (
+                <span className="entri font-medium">{r.members?.member_code ?? '-'}</span>
+              ),
             },
             {
               key: 'amount',
               header: 'Tagihan / Dibayar',
               render: (r) => (
-                <span>
+                <span className="entri whitespace-nowrap">
                   {fmtRp(r.amount)}
                   <br />
-                  <span className="text-xs text-slate-500">dibayar {fmtRp(r.paid_amount)}</span>
+                  <span className="text-xs text-ink/70">dibayar {fmtRp(r.paid_amount)}</span>
                 </span>
               ),
             },
-            { key: 'status', header: 'Status' },
+            {
+              key: 'status',
+              header: 'Status',
+              render: (r) => (
+                <span className="stempel" data-state={r.status === 'paid' ? 'dipinjam' : undefined}>
+                  {r.status}
+                </span>
+              ),
+            },
             {
               key: 'issued_at',
               header: 'Terbit',
-              render: (r) => new Date(r.issued_at).toLocaleDateString('id-ID'),
+              render: (r) => (
+                <span className="entri whitespace-nowrap">
+                  {new Date(r.issued_at).toLocaleDateString('id-ID')}
+                </span>
+              ),
             },
             {
               key: 'aksi',
@@ -273,12 +287,12 @@ export default function DendaPage() {
                     disabled={payingId === r.id}
                     onClick={() => onPay(r)}
                     aria-label={`Bayar denda anggota ${r.members?.member_code ?? r.id}`}
-                    className="inline-flex min-h-[44px] items-center rounded bg-brand px-3 text-xs font-semibold text-white transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex min-h-[44px] items-center rounded-[var(--radius-sm)] bg-brand px-3 text-xs font-semibold text-surface transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {payingId === r.id ? '…' : 'Bayar'}
                   </button>
                 ) : (
-                  <span className="text-xs text-slate-400">-</span>
+                  <span className="text-xs text-ink/70">-</span>
                 ),
             },
           ]}

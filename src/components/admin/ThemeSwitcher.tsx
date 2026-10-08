@@ -45,15 +45,29 @@ export default function ThemeSwitcher({ current }: { current: string }) {
   }
 
   return (
-    <section className="grid max-w-4xl gap-4 rounded-2xl border bg-white p-6">
-      <div>
-        <h2 className="font-semibold">Tema Tampilan</h2>
-        <p className="text-sm text-slate-500">
+    <section className="kartu grid max-w-4xl gap-4 p-6">
+      <div className="kartu-kop -mx-6 -mt-6 px-6 pt-5 pb-4">
+        <h2 className="font-heading text-lg font-bold text-heading">Tema Tampilan</h2>
+        <p className="mt-1 text-sm text-ink/70">
           Pilih salah satu dari 5 tema. Perubahan tersimpan otomatis.
         </p>
       </div>
-      {err && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{err}</p>}
-      {msg && <p className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">{msg}</p>}
+      {err && (
+        <p
+          role="alert"
+          className="rounded-[var(--radius-sm)] border border-accent bg-accent-soft px-3 py-2 text-sm text-ink"
+        >
+          {err}
+        </p>
+      )}
+      {msg && (
+        <p
+          role="status"
+          className="rounded-[var(--radius-sm)] border border-rule bg-brand-soft px-3 py-2 text-sm text-ink"
+        >
+          {msg}
+        </p>
+      )}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {themes.map((t) => {
           const isActive = t.id === active;
@@ -64,70 +78,68 @@ export default function ThemeSwitcher({ current }: { current: string }) {
               type="button"
               disabled={savingId !== null}
               onClick={() => onSelect(t.id)}
-              className={`grid gap-2 rounded-xl border p-4 text-left transition disabled:opacity-50 ${
-                isActive ? 'border-slate-900 ring-2 ring-slate-900' : 'hover:border-slate-400'
+              className={`grid gap-2 rounded-[var(--radius-md)] border p-4 text-left transition disabled:opacity-50 ${
+                isActive
+                  ? 'border-brand ring-2 ring-brand'
+                  : 'border-rule hover:border-rule-strong hover:bg-brand-soft/40'
               }`}
             >
               <span className="flex items-center justify-between gap-2">
-                <span className="font-semibold text-sm">{t.name}</span>
-                {isActive && (
-                  <span className="rounded-full bg-slate-900 px-2 py-0.5 text-xs font-medium text-white">
-                    Aktif
-                  </span>
-                )}
+                <span className="font-heading font-bold">{t.name}</span>
+                {isActive && <span className="pelat-plat">Aktif</span>}
               </span>
-              <span className="text-xs text-slate-500">{t.description}</span>
-              <span className="mt-1 flex gap-1.5">
+              <span className="text-xs text-ink/70">{t.description}</span>
+              <span className="mt-1 flex flex-wrap gap-1.5">
                 <span
                   role="img"
                   aria-label={`Warna brand: ${t.tokens.brand}`}
-                  className="h-6 w-6 rounded-full border"
+                  className="entri h-6 w-6 border border-[var(--rule-strong)] rounded-[var(--radius-sm)]"
                   style={{ backgroundColor: t.tokens.brand }}
                 />
                 <span
                   role="img"
                   aria-label={`Warna accent: ${t.tokens.accent}`}
-                  className="h-6 w-6 rounded-full border"
+                  className="h-6 w-6 border border-[var(--rule-strong)] rounded-[var(--radius-sm)]"
                   style={{ backgroundColor: t.tokens.accent }}
                 />
                 <span
                   role="img"
                   aria-label={`Warna surface: ${t.tokens.surface}`}
-                  className="h-6 w-6 rounded-full border"
+                  className="h-6 w-6 border border-[var(--rule-strong)] rounded-[var(--radius-sm)]"
                   style={{ backgroundColor: t.tokens.surface }}
                 />
                 <span
                   role="img"
                   aria-label={`Warna ink: ${t.tokens.ink}`}
-                  className="h-6 w-6 rounded-full border"
+                  className="h-6 w-6 border border-[var(--rule-strong)] rounded-[var(--radius-sm)]"
                   style={{ backgroundColor: t.tokens.ink }}
                 />
               </span>
               <span className="flex items-center gap-2">
                 <span
                   title={t.fonts.heading}
-                  className="text-base font-bold leading-none text-slate-900"
+                  className="text-base font-bold leading-none text-heading"
                   style={{ fontFamily: t.fonts.heading }}
                 >
                   Aa
                 </span>
                 <span
                   title={`radius ${t.radius.lg}`}
-                  className="h-5 w-5 border border-slate-400"
+                  className="h-5 w-5 border border-[var(--rule-strong)]"
                   style={{ borderRadius: t.radius.lg, backgroundColor: t.tokens.surface }}
                 />
-                <span className="flex items-center gap-1">
+                <span className="flex gap-1">
                   {t.layout.homepageSections.map((s) => (
                     <span
                       key={s.id}
                       title={s.id}
-                      className={`h-1.5 w-3 rounded-full ${s.enabled ? '' : 'opacity-30'}`}
+                      className={`h-1.5 w-3 ${s.enabled ? '' : 'opacity-30'}`}
                       style={{ backgroundColor: t.tokens.brand }}
                     />
                   ))}
                 </span>
               </span>
-              <span className="text-xs font-medium text-slate-600">
+              <span className={`text-xs font-semibold ${isActive ? 'text-brand' : 'text-ink/70'}`}>
                 {isSaving ? 'Menyimpan…' : isActive ? 'Tema saat ini' : 'Aktifkan tema ini'}
               </span>
             </button>

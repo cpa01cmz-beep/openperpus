@@ -449,6 +449,6 @@ describe('metadata routes', () => {
     expect(m.name).toBe('Perpustakaan');
     expect(m.start_url).toBe('/');
     expect(m.icons.length).toBeGreaterThanOrEqual(2);
-    expect(m.theme_color).toBe('#047857');
+    expect(m.theme_color).toBe('#1B5E4B');
   });
 });
