@@ -13,7 +13,7 @@ import {
   Youtube,
 } from 'lucide-react';
 import { fetchBookBySlug, fetchPage, fetchSettings } from '@/lib/books';
-import { getOgImage, getSiteName } from '@/lib/settings';
+import { getOgImage, getSiteName, getSocials } from '@/lib/settings';
 import { getSiteUrl } from '@/lib/site';
 import { sanitizeIlike } from '@/lib/search';
 import Breadcrumb from '@/components/public/Breadcrumb';
@@ -89,7 +89,7 @@ export default async function KontakPage({
       : null;
 
   const hours = Array.isArray(settings.operational_hours) ? settings.operational_hours : [];
-  const socialEntries = Object.entries(settings.socials ?? {}).filter(([, v]) =>
+  const socialEntries = Object.entries(getSocials(settings)).filter(([, v]) =>
     Boolean(v?.trim?.())
   );
   const hasContact = Boolean(settings.address || settings.phone || settings.email);
