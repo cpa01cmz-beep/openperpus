@@ -21,7 +21,8 @@ import { resetMockDb, installMockSupabase, setAuthUser, setProfileRole, setTable
 import { GET as loansGET } from '@/app/api/loans/route';
 import { GET as loanByIdGET } from '@/app/api/loans/[id]/route';
 
-const CTX = { params: Promise.resolve({ id: 'L-1' }) };
+const LOAN_ID = '11111111-1111-4111-8111-111111111111';
+const CTX = { params: Promise.resolve({ id: LOAN_ID }) };
 
 beforeEach(() => {
   resetMockDb();
@@ -52,11 +53,11 @@ describe('issue #53 — route representative tolak anon/member, loloskan admin',
     setProfileRole('member');
     setTable('members', { single: { data: { id: 'm-1' }, error: null } });
     setTable('loans', {
-      single: { data: { id: 'L-1', members: { user_id: 'user-1' } }, error: null },
+      single: { data: { id: LOAN_ID, members: { user_id: 'user-1' } }, error: null },
     });
     expect((await loanByIdGET(req('/api/x'), CTX)).status).toBe(200);
     setTable('loans', {
-      single: { data: { id: 'L-1', members: { user_id: 'user-lain' } }, error: null },
+      single: { data: { id: LOAN_ID, members: { user_id: 'user-lain' } }, error: null },
     });
     const res = await loanByIdGET(req('/api/x'), CTX);
     expect(res.status).toBe(403);
@@ -68,6 +69,10 @@ describe('issue #53 — route representative tolak anon/member, loloskan admin',
   ])('$name → 200 admin', async ({ run }) => {
     setAuthUser({ id: 'user-1' });
     setProfileRole('admin');
+    setTable('profiles', { single: { data: { role: 'admin' }, error: null } });
+    setTable('loans', {
+      single: { data: { id: LOAN_ID, members: { user_id: 'user-1' } }, error: null },
+    });
     const res = await run();
     expect(res.status).toBe(200);
   });
