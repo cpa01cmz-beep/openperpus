@@ -26,6 +26,7 @@ export type LibrarySettings = {
   seo_desc: string | null;
   announcement: string | null;
   active_theme: string;
+  theme_overrides: unknown | null;
   fine_per_day: number | null;
 };
 
@@ -173,6 +174,7 @@ export const FALLBACK_SETTINGS: LibrarySettings = {
   seo_desc: null,
   announcement: null,
   active_theme: 'emerald',
+  theme_overrides: null,
   fine_per_day: null,
 };
 

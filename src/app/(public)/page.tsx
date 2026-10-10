@@ -8,7 +8,7 @@ import { HeroFallback } from '@/components/hero/variants/HeroFallback';
 import StatsBar from '@/components/public/StatsBar';
 import BookCard from '@/components/public/BookCard';
 import TestimonialCard from '@/components/public/TestimonialCard';
-import { getTheme } from '@/lib/themes';
+import { getEffectiveThemeFromSettings } from '@/lib/theme-overrides';
 import { getOgImage, getSiteName } from '@/lib/settings';
 import {
   fetchArticles,
@@ -69,10 +69,10 @@ export default async function PublicHomePage() {
   const fallbackFeatured = featured.length > 0 ? featured : fallbackBooks;
   const lcpImage = banners[0]?.image_url ?? null;
 
-  const theme = getTheme(settings.active_theme ?? 'emerald');
+  const effective = getEffectiveThemeFromSettings(settings);
   const orderedSections =
-    theme.layout.homepageSections.length > 0
-      ? theme.layout.homepageSections
+    effective.layout.homepageSections.length > 0
+      ? effective.layout.homepageSections
       : [
           { id: 'hero', enabled: true },
           { id: 'announcement', enabled: true },
@@ -86,7 +86,7 @@ export default async function PublicHomePage() {
   const sectionMap: Record<string, React.ReactNode> = {
     hero: (
       <HeroSwitch
-        variant={theme.layout.heroVariant}
+        variant={effective.layout.heroVariant}
         banners={banners}
         siteName={siteName}
         tagline={settings.tagline}

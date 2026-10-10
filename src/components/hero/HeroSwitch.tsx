@@ -55,6 +55,113 @@ const variantPreloadPaths: Record<VariantKey, string> = {
   doodle: '/_next/static/chunks/components/hero/variants/SketchHero.js',
 };
 
+/** Hero block family (additive, does not affect variant resolution). */
+export type HeroBlockFamily = 'formal' | 'hard' | 'hand' | 'universal';
+
+/** Hero block metadata (additive, does not affect variant resolution). */
+export type HeroBlockMeta = {
+  id: string;
+  kind: 'hero';
+  family: HeroBlockFamily;
+  supports: string[];
+  version: 1;
+};
+
+/** Hero block metadata keyed by variant key (13 keys, mirrors variantComponents). */
+export const HERO_BLOCK_META: Record<VariantKey, HeroBlockMeta> = {
+  'emerald-centered': {
+    id: 'emerald-centered',
+    kind: 'hero',
+    family: 'formal',
+    supports: ['emerald', 'ocean', 'midnight', 'paper'],
+    version: 1,
+  },
+  centered: {
+    id: 'centered',
+    kind: 'hero',
+    family: 'universal',
+    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch'],
+    version: 1,
+  },
+  'midnight-showcase': {
+    id: 'midnight-showcase',
+    kind: 'hero',
+    family: 'formal',
+    supports: ['emerald', 'ocean', 'midnight', 'paper'],
+    version: 1,
+  },
+  classic: {
+    id: 'classic',
+    kind: 'hero',
+    family: 'universal',
+    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch'],
+    version: 1,
+  },
+  'paper-editorial': {
+    id: 'paper-editorial',
+    kind: 'hero',
+    family: 'formal',
+    supports: ['emerald', 'ocean', 'midnight', 'paper'],
+    version: 1,
+  },
+  editorial: {
+    id: 'editorial',
+    kind: 'hero',
+    family: 'universal',
+    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch'],
+    version: 1,
+  },
+  'brutalist-manifesto': {
+    id: 'brutalist-manifesto',
+    kind: 'hero',
+    family: 'hard',
+    supports: ['brutalist'],
+    version: 1,
+  },
+  stacked: {
+    id: 'stacked',
+    kind: 'hero',
+    family: 'universal',
+    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch'],
+    version: 1,
+  },
+  'ocean-tide': {
+    id: 'ocean-tide',
+    kind: 'hero',
+    family: 'formal',
+    supports: ['emerald', 'ocean', 'midnight', 'paper'],
+    version: 1,
+  },
+  split: {
+    id: 'split',
+    kind: 'hero',
+    family: 'universal',
+    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch'],
+    version: 1,
+  },
+  'sketch-doodle': {
+    id: 'sketch-doodle',
+    kind: 'hero',
+    family: 'hand',
+    supports: ['sketch'],
+    version: 1,
+  },
+  sketch: {
+    id: 'sketch',
+    kind: 'hero',
+    family: 'hand',
+    supports: ['sketch'],
+    version: 1,
+  },
+  doodle: {
+    id: 'doodle',
+    kind: 'hero',
+    family: 'hand',
+    supports: ['sketch'],
+    version: 1,
+  },
+};
+
 type Props = HeroProps & {
   variant?: string;
 };

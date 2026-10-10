@@ -31,6 +31,8 @@ components:
                   CONFLICT,
                   UNAUTHORIZED,
                   FORBIDDEN,
+                  THEME_FORBIDDEN,
+                  HINT_USE_THEME_ENDPOINT,
                   INTERNAL,
                   SAVE_FAILED,
                   FETCH_FAILED,
@@ -1146,12 +1148,69 @@ paths:
         '200':
           description: ok
     put:
-      summary: Update settings (staff)
+      summary: Update settings (staff; theme keys rejected with HINT_USE_THEME_ENDPOINT)
       security:
         - BearerAuth: []
       responses:
         '200':
           description: ok
+        '422':
+          description: Validation or HINT_USE_THEME_ENDPOINT (use PUT /api/settings/theme for theme keys)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/settings/theme:
+    put:
+      summary: Update theme (admin-only, layout-only)
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                active_theme:
+                  type: string
+                  enum: [emerald, midnight, paper, brutalist, ocean, sketch]
+                  description: Base theme id (admin-only)
+                theme_overrides:
+                  type: object
+                  description: Layout-only overrides ({layout:{headerVariant,heroVariant,footerVariant,homepageSections}}); tokens/fonts/radius/shadow/spacing rejected 422
+                  properties:
+                    layout:
+                      type: object
+                      properties:
+                        headerVariant:
+                          type: string
+                        heroVariant:
+                          type: string
+                        footerVariant:
+                          type: string
+                        homepageSections:
+                          type: array
+                          items:
+                            type: object
+                reset:
+                  type: boolean
+                  description: When true clears theme_overrides
+      responses:
+        '200':
+          description: ok
+        '403':
+          description: THEME_FORBIDDEN (librarian) or FORBIDDEN (non-staff)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Validation or HINT_USE_THEME_ENDPOINT (theme keys sent to PUT /api/settings)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/testimonials:
     get:
       summary: List testimonials (public; ?all=1 and inactive ?id= need staff)

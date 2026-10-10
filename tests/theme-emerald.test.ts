@@ -4,15 +4,18 @@ import path from 'node:path';
 import { getTheme } from '@/lib/themes';
 
 const root = process.cwd();
-const heroSrc = fs.readFileSync(path.join(root, 'src/components/hero/variants/CenteredHero.tsx'), 'utf8');
+const heroSrc = fs.readFileSync(
+  path.join(root, 'src/components/hero/variants/CenteredHero.tsx'),
+  'utf8'
+);
 const footerSrc = fs.readFileSync(
   path.join(root, 'src/components/layout/variants/footers/ClassicFooter.tsx'),
-  'utf8',
+  'utf8'
 );
 const cssSrc = fs.readFileSync(path.join(root, 'src/app/globals.css'), 'utf8');
 
 function emeraldBlock(): string {
-  const start = cssSrc.indexOf('[data-theme="emerald"]');
+  const start = cssSrc.search(/\[data-theme=["']emerald["']\]/);
   if (start === -1) return '';
   const next = cssSrc.indexOf('[data-theme=', start + 1);
   return cssSrc.slice(start, next === -1 ? undefined : next);

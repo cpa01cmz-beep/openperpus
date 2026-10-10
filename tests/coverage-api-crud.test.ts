@@ -8,6 +8,9 @@ vi.mock('next/cache', () => ({
   revalidateTag: vi.fn(),
   unstable_cache: (fn: unknown) => fn,
 }));
+// theme-overrides.ts mengimpor 'server-only' (modul server). Mock di env unit
+// agar impor route /api/settings/theme dapat dimuat tanpa Next.js runtime.
+vi.mock('server-only', () => ({}));
 
 import {
   resetMockDb,
@@ -78,6 +81,7 @@ import {
   resetTestimonialRateLimit,
 } from '@/app/api/testimonials/route';
 import { GET as SET_GET, PUT as SET_PUT } from '@/app/api/settings/route';
+import { PUT as THEME_PUT } from '@/app/api/settings/theme/route';
 import { POST as REG_POST } from '@/app/api/register/route';
 import { GET as HEALTH_GET } from '@/app/api/health/route';
 import { GET as READYZ_GET } from '@/app/api/readyz/route';
@@ -950,16 +954,26 @@ describe('/api/settings', () => {
       (await SET_PUT(jsonReq('PUT', '/api/settings', { name: 'Perpus', active_theme: 'neon' })))
         .status
     ).toBe(422);
+    // Fase 1 layout-only: tema dikunci di endpoint umum — gunakan PUT /api/settings/theme.
+    const hinted = await SET_PUT(
+      jsonReq('PUT', '/api/settings', { name: 'Perpus', active_theme: 'midnight' })
+    );
+    expect(hinted.status).toBe(422);
+    expect(await errCode(hinted)).toBe('HINT_USE_THEME_ENDPOINT');
     const ok = await SET_PUT(
       jsonReq('PUT', '/api/settings', {
         nama_perpus: 'Perpus Baru',
         telepon: '021',
         fine_per_day: '1500',
-        active_theme: 'midnight',
         unknown_key: 'ignored',
       })
     );
     expect(ok.status).toBe(200);
+    // Endpoint baru khusus tema (admin-only, layout-only).
+    const themeOk = await THEME_PUT(
+      jsonReq('PUT', '/api/settings/theme', { active_theme: 'midnight' })
+    );
+    expect(themeOk.status).toBe(200);
     setTable('library_settings', { update: { data: null, error: { message: 'db' } } });
     expect((await SET_PUT(jsonReq('PUT', '/api/settings', { name: 'Perpus' }))).status).toBe(500);
     setAuthUser(null);

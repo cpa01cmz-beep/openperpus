@@ -53,6 +53,12 @@ export type ThemeLayout = {
   homepageSections: HomepageSection[];
 };
 
+/** Theme family grouping for block compatibility (additive, no token change). */
+export type ThemeFamily = 'formal' | 'hard' | 'hand';
+
+/** Decorative ornament per theme, decoupled from color tokens. */
+export type ThemeOrnament = 'none' | 'ruled-paper';
+
 /** Single theme definition: identity + tokens + layout system. */
 export type ThemeDef = {
   id: string;
@@ -64,6 +70,8 @@ export type ThemeDef = {
   shadow: ThemeShadow;
   spacing: ThemeSpacing;
   layout: ThemeLayout;
+  ornament: ThemeOrnament;
+  version: 1;
 };
 
 /** Registry map keyed by theme id. T9 merges midnight/paper/brutalist/ocean here. */
@@ -93,6 +101,8 @@ export const THEMES: Record<string, ThemeDef> = {
       lg: '0 12px 32px -8px rgb(4 120 87 / 0.20), 0 4px 12px -4px rgb(15 23 42 / 0.10)',
     },
     spacing: { container: '72rem', section: '4rem', card: '1.5rem' },
+    ornament: 'none',
+    version: 1,
     layout: {
       headerVariant: 'emerald-classic',
       heroVariant: 'emerald-centered',
@@ -134,6 +144,8 @@ export const THEMES: Record<string, ThemeDef> = {
       lg: '0 24px 64px -12px rgb(0 0 0 / 0.7)',
     },
     spacing: { container: '76rem', section: '5.5rem', card: '2rem' },
+    ornament: 'none',
+    version: 1,
     layout: {
       headerVariant: 'midnight-slim',
       heroVariant: 'midnight-showcase',
@@ -175,6 +187,8 @@ export const THEMES: Record<string, ThemeDef> = {
       lg: '0 6px 16px -4px rgb(43 38 34 / 0.08)',
     },
     spacing: { container: '68rem', section: '6rem', card: '2.25rem' },
+    ornament: 'none',
+    version: 1,
     layout: {
       headerVariant: 'paper-minimal',
       heroVariant: 'paper-editorial',
@@ -216,6 +230,8 @@ export const THEMES: Record<string, ThemeDef> = {
       lg: '8px 8px 0 0 #111110',
     },
     spacing: { container: '80rem', section: '2.5rem', card: '1rem' },
+    ornament: 'none',
+    version: 1,
     layout: {
       headerVariant: 'brutalist-bar',
       heroVariant: 'brutalist-manifesto',
@@ -257,6 +273,8 @@ export const THEMES: Record<string, ThemeDef> = {
       lg: '0 20px 48px -12px rgb(14 110 107 / 0.32)',
     },
     spacing: { container: '74rem', section: '4.75rem', card: '1.75rem' },
+    ornament: 'none',
+    version: 1,
     layout: {
       headerVariant: 'ocean-wave',
       heroVariant: 'ocean-tide',
@@ -298,6 +316,8 @@ export const THEMES: Record<string, ThemeDef> = {
       lg: '5px 6px 0 0 #2A2620',
     },
     spacing: { container: '70rem', section: '5rem', card: '1.75rem' },
+    ornament: 'ruled-paper',
+    version: 1,
     layout: {
       headerVariant: 'sketch-notebook',
       heroVariant: 'sketch-doodle',
@@ -329,3 +349,28 @@ export function getTheme(id: string): ThemeDef {
   if (!id) return THEMES[DEFAULT_THEME] as ThemeDef;
   return (THEMES[id] ?? THEMES[DEFAULT_THEME]) as ThemeDef;
 }
+
+/** Family map: emerald/ocean/midnight/paper formal, brutalist hard, sketch hand. */
+export const THEME_FAMILIES: Record<string, ThemeFamily> = {
+  emerald: 'formal',
+  ocean: 'formal',
+  midnight: 'formal',
+  paper: 'formal',
+  brutalist: 'hard',
+  sketch: 'hand',
+};
+
+/** Homepage section id union (ordered layout keys). */
+export type SectionId =
+  'hero' | 'announcement' | 'stats' | 'welcome' | 'featured' | 'news' | 'testimonials';
+
+/** Ordered section id list. */
+export const SECTION_IDS: readonly SectionId[] = [
+  'hero',
+  'announcement',
+  'stats',
+  'welcome',
+  'featured',
+  'news',
+  'testimonials',
+];

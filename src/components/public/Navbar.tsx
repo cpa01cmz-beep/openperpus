@@ -1,4 +1,4 @@
-import { getTheme } from '@/lib/themes';
+import { getEffectiveTheme } from '@/lib/theme-overrides';
 import { resolveHeaderVariant } from '@/components/layout/variants/registry';
 import type { LibrarySettings, NavItem } from '@/lib/types';
 
@@ -16,7 +16,10 @@ type Props = {
 
 /** Thin switcher: resolves theme → headerVariant → registry component. No if-hell. */
 export default function Navbar({ siteName, tagline, logoUrl, themeId, settings, menus }: Props) {
-  const theme = getTheme(themeId ?? settings?.active_theme ?? 'emerald');
+  const theme = getEffectiveTheme(
+    themeId ?? settings?.active_theme ?? 'emerald',
+    (settings as { theme_overrides?: unknown } | undefined)?.theme_overrides ?? null
+  );
   const Header = resolveHeaderVariant(theme.layout.headerVariant);
   return (
     <Header

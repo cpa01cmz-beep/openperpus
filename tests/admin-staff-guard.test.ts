@@ -16,6 +16,10 @@ vi.mock('next/cache', () => ({
   revalidateTag: vi.fn(),
 }));
 
+// theme-overrides.ts mengimpor 'server-only' (modul server). Mock di env unit
+// agar impor route /api/settings/theme dapat dimuat tanpa Next.js runtime.
+vi.mock('server-only', () => ({}));
+
 import {
   GET as articlesGET,
   POST as articlesPOST,
@@ -88,6 +92,7 @@ import {
 } from '@/app/api/racks/route';
 import { PUT as rackByIdPUT, DELETE as rackByIdDELETE } from '@/app/api/racks/[id]/route';
 import { PUT as settingsPUT } from '@/app/api/settings/route';
+import { PUT as settingsThemePUT } from '@/app/api/settings/theme/route';
 import {
   GET as testimonialsGET,
   PUT as testimonialsPUT,
@@ -196,6 +201,7 @@ const adminOnly: Case[] = [
   { name: 'PUT /api/services', run: () => servicesPUT(req()) },
   { name: 'DELETE /api/services', run: () => servicesDELETE(req()) },
   { name: 'PUT /api/settings', run: () => settingsPUT(req()) },
+  { name: 'PUT /api/settings/theme', run: () => settingsThemePUT(req()) },
   { name: 'PUT /api/testimonials', run: () => testimonialsPUT(req()) },
   { name: 'DELETE /api/testimonials', run: () => testimonialsDELETE(req()) },
   { name: 'PUT /api/books/[id]', run: () => bookByIdPUT(req(), CTX) },
@@ -285,12 +291,13 @@ function scanAdminOnlyHandlers(): string[] {
 }
 
 describe('issue #25 — unified staff authorization (Gherkin: non-staff → 403 everywhere)', () => {
-  it('matrix covers exactly the 59 admin-only handlers found in src/app/api', () => {
+  it('matrix covers exactly the 60 admin-only handlers found in src/app/api', () => {
     const scanned = scanAdminOnlyHandlers();
     const covered = adminOnly.map((c) => c.name).sort();
     // Wave2: +5 handler services (POST/PUT/DELETE koleksi + PUT/DELETE [id]);
     // GET koleksi/[id] publik-dengan-elevasi, benar tak masuk matrix.
-    expect(covered.length, 'matrix must declare 59 admin-only endpoint+method pairs').toBe(59);
+    // Fase 1 tema: +1 PUT /api/settings/theme (admin-only, layout-only).
+    expect(covered.length, 'matrix must declare 60 admin-only endpoint+method pairs').toBe(60);
     expect(covered, 'matrix missing admin-only handlers present in src/app/api').toEqual(scanned);
   });
 

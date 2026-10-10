@@ -6,7 +6,7 @@ import { fetchSettings } from '@/lib/books';
 import { getOgImage, getSiteName } from '@/lib/settings';
 import { fetchHeaderMenus, fetchFooterMenus } from '@/lib/menus';
 import { getSiteUrl } from '@/lib/site';
-import { DEFAULT_THEME } from '@/lib/themes';
+import { getEffectiveThemeFromSettings } from '@/lib/theme-overrides';
 
 export const revalidate = 60;
 
@@ -41,7 +41,8 @@ export default async function PublicLayout({ children }: { children: React.React
     fetchFooterMenus(),
   ]);
   const siteName = getSiteName(settings);
-  const themeId = settings.active_theme || DEFAULT_THEME;
+  const effective = getEffectiveThemeFromSettings(settings);
+  const themeId = effective.id;
   const siteUrl = getSiteUrl();
   const jsonLd = {
     '@context': 'https://schema.org',

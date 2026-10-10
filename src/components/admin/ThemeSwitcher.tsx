@@ -22,7 +22,7 @@ export default function ThemeSwitcher({ current }: { current: string }) {
     if (id === active) return;
     setSavingId(id);
     try {
-      const res = await fetch('/api/settings', {
+      const res = await fetch('/api/settings/theme', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ active_theme: id }),

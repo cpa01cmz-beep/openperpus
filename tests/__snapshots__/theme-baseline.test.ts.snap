@@ -1,0 +1,445 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`theme baseline: snapshot stabilitas > brutalist: JSON.stringify(getTheme) stabil (reread equal + snapshot) 1`] = `
+{
+  "description": "Raw mechanical utilitarian theme — near-black ink on off-white paper, safety-orange brand with signal-yellow accent, flat rigid tokens, declassified-blueprint feel.",
+  "fonts": {
+    "body": "var(--font-space), 'Space Grotesk', ui-monospace, monospace",
+    "heading": "var(--font-archivo), 'Archivo Black', 'Arial Black', sans-serif",
+  },
+  "id": "brutalist",
+  "layout": {
+    "footerVariant": "brutalist-index",
+    "headerVariant": "brutalist-bar",
+    "heroVariant": "brutalist-manifesto",
+    "homepageSections": [
+      {
+        "enabled": true,
+        "id": "announcement",
+      },
+      {
+        "enabled": true,
+        "id": "stats",
+      },
+      {
+        "enabled": true,
+        "id": "hero",
+      },
+      {
+        "enabled": true,
+        "id": "featured",
+      },
+      {
+        "enabled": true,
+        "id": "welcome",
+      },
+      {
+        "enabled": true,
+        "id": "news",
+      },
+      {
+        "enabled": true,
+        "id": "testimonials",
+      },
+    ],
+  },
+  "name": "Brutalist",
+  "ornament": "none",
+  "radius": {
+    "lg": "0",
+    "md": "0",
+    "sm": "0",
+  },
+  "shadow": {
+    "lg": "8px 8px 0 0 #111110",
+    "md": "4px 4px 0 0 #111110",
+    "sm": "2px 2px 0 0 #111110",
+  },
+  "spacing": {
+    "card": "1rem",
+    "container": "80rem",
+    "section": "2.5rem",
+  },
+  "tokens": {
+    "accent": "#E6AC00",
+    "accent-soft": "#FFF0B3",
+    "brand": "#D93600",
+    "brand-soft": "#FFD9C2",
+    "brand-strong": "#8F2A00",
+    "heading": "#111110",
+    "ink": "#111110",
+    "surface": "#F2EEE3",
+  },
+  "version": 1,
+}
+`;
+
+exports[`theme baseline: snapshot stabilitas > emerald: JSON.stringify(getTheme) stabil (reread equal + snapshot) 1`] = `
+{
+  "description": "Default emerald identity — tokenized from current brand.",
+  "fonts": {
+    "body": "var(--font-inter), 'Inter', ui-sans-serif, system-ui, sans-serif",
+    "heading": "var(--font-playfair), 'Playfair Display', Georgia, serif",
+  },
+  "id": "emerald",
+  "layout": {
+    "footerVariant": "emerald-standard",
+    "headerVariant": "emerald-classic",
+    "heroVariant": "emerald-centered",
+    "homepageSections": [
+      {
+        "enabled": true,
+        "id": "hero",
+      },
+      {
+        "enabled": true,
+        "id": "announcement",
+      },
+      {
+        "enabled": true,
+        "id": "stats",
+      },
+      {
+        "enabled": true,
+        "id": "welcome",
+      },
+      {
+        "enabled": true,
+        "id": "featured",
+      },
+      {
+        "enabled": true,
+        "id": "news",
+      },
+      {
+        "enabled": true,
+        "id": "testimonials",
+      },
+    ],
+  },
+  "name": "Emerald",
+  "ornament": "none",
+  "radius": {
+    "lg": "1rem",
+    "md": "0.5rem",
+    "sm": "0.375rem",
+  },
+  "shadow": {
+    "lg": "0 12px 32px -8px rgb(4 120 87 / 0.20), 0 4px 12px -4px rgb(15 23 42 / 0.10)",
+    "md": "0 4px 12px -2px rgb(4 120 87 / 0.14), 0 2px 4px -2px rgb(15 23 42 / 0.08)",
+    "sm": "0 1px 2px 0 rgb(15 23 42 / 0.06)",
+  },
+  "spacing": {
+    "card": "1.5rem",
+    "container": "72rem",
+    "section": "4rem",
+  },
+  "tokens": {
+    "accent": "#f59e0b",
+    "accent-soft": "#fef3c7",
+    "brand": "#047857",
+    "brand-soft": "#ecfdf5",
+    "brand-strong": "#065f46",
+    "heading": "#065f46",
+    "ink": "#0f172a",
+    "surface": "#ffffff",
+  },
+  "version": 1,
+}
+`;
+
+exports[`theme baseline: snapshot stabilitas > midnight: JSON.stringify(getTheme) stabil (reread equal + snapshot) 1`] = `
+{
+  "description": "Midnight premium: deep navy luxury surface with rich gold accent for expensive after-hours reading.",
+  "fonts": {
+    "body": "var(--font-inter), 'Inter', ui-sans-serif, system-ui, sans-serif",
+    "heading": "var(--font-cormorant), 'Cormorant Garamond', Georgia, serif",
+  },
+  "id": "midnight",
+  "layout": {
+    "footerVariant": "midnight-extended",
+    "headerVariant": "midnight-slim",
+    "heroVariant": "midnight-showcase",
+    "homepageSections": [
+      {
+        "enabled": true,
+        "id": "hero",
+      },
+      {
+        "enabled": true,
+        "id": "featured",
+      },
+      {
+        "enabled": true,
+        "id": "stats",
+      },
+      {
+        "enabled": true,
+        "id": "announcement",
+      },
+      {
+        "enabled": true,
+        "id": "welcome",
+      },
+      {
+        "enabled": true,
+        "id": "testimonials",
+      },
+      {
+        "enabled": true,
+        "id": "news",
+      },
+    ],
+  },
+  "name": "Midnight Premium",
+  "ornament": "none",
+  "radius": {
+    "lg": "0.625rem",
+    "md": "0.375rem",
+    "sm": "0.25rem",
+  },
+  "shadow": {
+    "lg": "0 24px 64px -12px rgb(0 0 0 / 0.7)",
+    "md": "0 8px 24px -4px rgb(0 0 0 / 0.55)",
+    "sm": "0 1px 2px 0 rgb(0 0 0 / 0.4)",
+  },
+  "spacing": {
+    "card": "2rem",
+    "container": "76rem",
+    "section": "5.5rem",
+  },
+  "tokens": {
+    "accent": "#D4AF37",
+    "accent-soft": "#3D3518",
+    "brand": "#6BA3D6",
+    "brand-soft": "#3D5A80",
+    "brand-strong": "#98C4E8",
+    "heading": "#E9EEF6",
+    "ink": "#E9EEF6",
+    "surface": "#0B1220",
+  },
+  "version": 1,
+}
+`;
+
+exports[`theme baseline: snapshot stabilitas > ocean: JSON.stringify(getTheme) stabil (reread equal + snapshot) 1`] = `
+{
+  "description": "Ocean editorial: deep teal authority with sunset coral warmth on light airy paper.",
+  "fonts": {
+    "body": "var(--font-inter), 'Inter', ui-sans-serif, system-ui, sans-serif",
+    "heading": "var(--font-fraunces), 'Fraunces', Georgia, serif",
+  },
+  "id": "ocean",
+  "layout": {
+    "footerVariant": "ocean-harbor",
+    "headerVariant": "ocean-wave",
+    "heroVariant": "ocean-tide",
+    "homepageSections": [
+      {
+        "enabled": true,
+        "id": "hero",
+      },
+      {
+        "enabled": true,
+        "id": "welcome",
+      },
+      {
+        "enabled": true,
+        "id": "featured",
+      },
+      {
+        "enabled": true,
+        "id": "announcement",
+      },
+      {
+        "enabled": true,
+        "id": "news",
+      },
+      {
+        "enabled": true,
+        "id": "stats",
+      },
+      {
+        "enabled": true,
+        "id": "testimonials",
+      },
+    ],
+  },
+  "name": "Ocean Editorial",
+  "ornament": "none",
+  "radius": {
+    "lg": "2rem",
+    "md": "1.25rem",
+    "sm": "0.75rem",
+  },
+  "shadow": {
+    "lg": "0 20px 48px -12px rgb(14 110 107 / 0.32)",
+    "md": "0 6px 20px -4px rgb(14 110 107 / 0.22)",
+    "sm": "0 1px 2px 0 rgb(14 110 107 / 0.1)",
+  },
+  "spacing": {
+    "card": "1.75rem",
+    "container": "74rem",
+    "section": "4.75rem",
+  },
+  "tokens": {
+    "accent": "#FF6B4A",
+    "accent-soft": "#FFD8CC",
+    "brand": "#0E6E6B",
+    "brand-soft": "#D2E9E6",
+    "brand-strong": "#084443",
+    "heading": "#084443",
+    "ink": "#102E2E",
+    "surface": "#F4F7F6",
+  },
+  "version": 1,
+}
+`;
+
+exports[`theme baseline: snapshot stabilitas > paper: JSON.stringify(getTheme) stabil (reread equal + snapshot) 1`] = `
+{
+  "description": "Warm monochrome editorial light — flat paper surfaces, muted sage/stone accents, no gradients.",
+  "fonts": {
+    "body": "var(--font-source-sans), 'Source Sans 3', ui-sans-serif, system-ui, sans-serif",
+    "heading": "var(--font-source-serif), 'Source Serif 4', Georgia, serif",
+  },
+  "id": "paper",
+  "layout": {
+    "footerVariant": "paper-colophon",
+    "headerVariant": "paper-minimal",
+    "heroVariant": "paper-editorial",
+    "homepageSections": [
+      {
+        "enabled": true,
+        "id": "announcement",
+      },
+      {
+        "enabled": true,
+        "id": "hero",
+      },
+      {
+        "enabled": true,
+        "id": "welcome",
+      },
+      {
+        "enabled": true,
+        "id": "stats",
+      },
+      {
+        "enabled": true,
+        "id": "featured",
+      },
+      {
+        "enabled": true,
+        "id": "testimonials",
+      },
+      {
+        "enabled": true,
+        "id": "news",
+      },
+    ],
+  },
+  "name": "Paper Minimal",
+  "ornament": "none",
+  "radius": {
+    "lg": "0.375rem",
+    "md": "0.25rem",
+    "sm": "0.125rem",
+  },
+  "shadow": {
+    "lg": "0 6px 16px -4px rgb(43 38 34 / 0.08)",
+    "md": "0 2px 6px -1px rgb(43 38 34 / 0.07)",
+    "sm": "0 1px 1px 0 rgb(43 38 34 / 0.05)",
+  },
+  "spacing": {
+    "card": "2.25rem",
+    "container": "68rem",
+    "section": "6rem",
+  },
+  "tokens": {
+    "accent": "#A98A6B",
+    "accent-soft": "#E5DBCC",
+    "brand": "#6F7D6C",
+    "brand-soft": "#E8ECE5",
+    "brand-strong": "#4A5548",
+    "heading": "#4A5548",
+    "ink": "#2B2622",
+    "surface": "#FAF7F2",
+  },
+  "version": 1,
+}
+`;
+
+exports[`theme baseline: snapshot stabilitas > sketch: JSON.stringify(getTheme) stabil (reread equal + snapshot) 1`] = `
+{
+  "description": "Hand-drawn sketchbook: warm cream paper, graphite ink, pencil-blue brand with vermilion accent, wobbly hand-lettered headings.",
+  "fonts": {
+    "body": "var(--font-patrick), 'Patrick Hand', 'Segoe Print', cursive",
+    "heading": "var(--font-caveat), 'Caveat', 'Segoe Print', cursive",
+  },
+  "id": "sketch",
+  "layout": {
+    "footerVariant": "sketch-margin",
+    "headerVariant": "sketch-notebook",
+    "heroVariant": "sketch-doodle",
+    "homepageSections": [
+      {
+        "enabled": true,
+        "id": "hero",
+      },
+      {
+        "enabled": true,
+        "id": "welcome",
+      },
+      {
+        "enabled": true,
+        "id": "featured",
+      },
+      {
+        "enabled": true,
+        "id": "announcement",
+      },
+      {
+        "enabled": true,
+        "id": "news",
+      },
+      {
+        "enabled": true,
+        "id": "stats",
+      },
+      {
+        "enabled": true,
+        "id": "testimonials",
+      },
+    ],
+  },
+  "name": "Sketch Notebook",
+  "ornament": "ruled-paper",
+  "radius": {
+    "lg": "1.6rem",
+    "md": "0.9rem",
+    "sm": "0.35rem",
+  },
+  "shadow": {
+    "lg": "5px 6px 0 0 #2A2620",
+    "md": "3px 3px 0 0 #2A2620",
+    "sm": "1px 2px 0 0 #2A2620",
+  },
+  "spacing": {
+    "card": "1.75rem",
+    "container": "70rem",
+    "section": "5rem",
+  },
+  "tokens": {
+    "accent": "#D9480F",
+    "accent-soft": "#FDE8D7",
+    "brand": "#3B5BA9",
+    "brand-soft": "#E3EAF7",
+    "brand-strong": "#1E3A6E",
+    "heading": "#1E3A6E",
+    "ink": "#2A2620",
+    "surface": "#FBF6E9",
+  },
+  "version": 1,
+}
+`;
