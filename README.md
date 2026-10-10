@@ -148,18 +148,22 @@ jadi akun admin pertama dibuat manual setelah signup:
 2. Buka Supabase Dashboard → SQL Editor, jalankan dalam satu transaksi (ganti email):
 
 ```sql
+BEGIN;
 ALTER TABLE public.profiles DISABLE TRIGGER trg_strip_profiles_role;
 UPDATE public.profiles
 SET role = 'admin'
 WHERE id = (SELECT id FROM auth.users WHERE email = 'email-kamu@contoh.com');
 ALTER TABLE public.profiles ENABLE TRIGGER trg_strip_profiles_role;
+COMMIT;
+-- verifikasi: trg_strip_profiles_role harus 'O' (enabled)
+SELECT tgname, tgenabled FROM pg_trigger WHERE tgrelid = 'public.profiles'::regclass;
 ```
 
    > Pastikan email sudah terdaftar (selesaikan langkah 1 dulu) — email yang tidak
    > ditemukan = 0 baris ter-update, juga tanpa error (senyap).
 
 3. (Opsional) isi data awal perpus — nama, kategori, rak, buku contoh — dengan menjalankan
-   `supabase/seed.sql` (paste ke SQL Editor, atau via psql: `psql $env:DATABASE_URL -f supabase/seed.sql`).
+   `supabase/seed.sql` (paste ke SQL Editor, atau via psql: PowerShell `psql $env:DATABASE_URL -f supabase/seed.sql`, Linux/macOS `psql "$DATABASE_URL" -f supabase/seed.sql` — `DATABASE_URL` lihat `supabase/README.md` §Prasyarat).
 
 Kenapa tidak cukup `UPDATE` polos: ada dua trigger di jalur itu. `0019_role_guard.sql`
 melewatkan aktor session-less (`auth.uid() IS NULL` — SQL Editor/psql/`service_role`),
