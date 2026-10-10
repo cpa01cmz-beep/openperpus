@@ -21,19 +21,22 @@ export default function BukuPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [bulkLoading, setBulkLoading] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
+    setError('');
     try {
       const q = new URLSearchParams({ page: String(page), per_page: '10', q: search });
       const res = await fetch(`/api/books?${q}`);
       const json = (await res.json()) as { data?: BukuRow[]; pagination?: { totalPages?: number } };
-      if (res.ok) {
-        setRows(json.data ?? []);
-        setTotalPages(json.pagination?.totalPages ?? 1);
-      }
+      if (!res.ok) throw new Error(errMsg(json, 'Gagal memuat buku.'));
+      setRows(json.data ?? []);
+      setTotalPages(json.pagination?.totalPages ?? 1);
+    } catch (e) {
+      setError((e as Error).message);
     } finally {
       setLoading(false);
     }
@@ -46,10 +49,15 @@ export default function BukuPage() {
 
   async function onDelete(id: string) {
     if (!confirm('Hapus buku ini?')) return;
-    const res = await fetch(`/api/books/${id}`, { method: 'DELETE' });
-    const json = await res.json();
-    if (!res.ok) return alert(errMsg(json));
-    load();
+    setError('');
+    try {
+      const res = await fetch(`/api/books/${id}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (!res.ok) throw new Error(errMsg(json));
+      load();
+    } catch (e) {
+      setError((e as Error).message);
+    }
   }
 
   function toggleSelect(id: string) {
@@ -69,13 +77,14 @@ export default function BukuPage() {
     if (selected.size === 0) return;
     if (!confirm(`Hapus ${selected.size} buku terpilih?`)) return;
     setBulkLoading(true);
+    setError('');
     try {
       const res = await fetch(`/api/books?id=${[...selected].join(',')}`, { method: 'DELETE' });
       const json = (await res.json()) as {
         data?: { deleted?: string[]; skipped?: string[] };
         error?: { message?: string } | string;
       };
-      if (!res.ok) return alert(errMsg(json));
+      if (!res.ok) throw new Error(errMsg(json));
       const skipped = json.data?.skipped ?? [];
       if (skipped.length > 0)
         alert(
@@ -83,6 +92,8 @@ export default function BukuPage() {
         );
       setSelected(new Set());
       load();
+    } catch (e) {
+      setError((e as Error).message);
     } finally {
       setBulkLoading(false);
     }
@@ -106,6 +117,7 @@ export default function BukuPage() {
     if (!Number.isInteger(sa) || sa < 0 || sa > st) return alert('stok_available harus 0–total.');
     if (!confirm(`Terapkan stok ${sa}/${st} ke ${selected.size} buku?`)) return;
     setBulkLoading(true);
+    setError('');
     try {
       const items = [...selected].map((id) => ({ id, stock_total: st, stock_available: sa }));
       const res = await fetch('/api/books', {
@@ -117,7 +129,7 @@ export default function BukuPage() {
         data?: { updated?: string[]; skipped?: { id: string; reason: string }[] };
         error?: { message?: string } | string;
       };
-      if (!res.ok) return alert(errMsg(json));
+      if (!res.ok) throw new Error(errMsg(json));
       const updated = json.data?.updated ?? [];
       const skipped = json.data?.skipped ?? [];
       if (skipped.length > 0)
@@ -129,6 +141,8 @@ export default function BukuPage() {
         );
       setSelected(new Set());
       load();
+    } catch (e) {
+      setError((e as Error).message);
     } finally {
       setBulkLoading(false);
     }
@@ -184,6 +198,14 @@ export default function BukuPage() {
           </>
         )}
       </div>
+      {error && (
+        <p
+          role="alert"
+          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        >
+          {error}
+        </p>
+      )}
       {loading ? (
         <p className="text-sm text-slate-500">Memuat…</p>
       ) : (

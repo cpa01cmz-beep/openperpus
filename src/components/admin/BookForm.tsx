@@ -11,6 +11,8 @@ import { errMsg } from '@/lib/admin-errors';
 export type CategoryOption = { id: string; name: string };
 export type RackOption = { id: string; code: string; name: string };
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /** Kolom canonical migrasi books. */
 export type BookInitial = {
   id?: string;
@@ -70,28 +72,52 @@ export default function BookForm({
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErr('');
-    if (!form.title?.trim()) return setErr('Judul wajib diisi.');
-    if (!form.author?.trim()) return setErr('Penulis wajib diisi.');
-    if ((form.stock_available ?? 0) < 0) return setErr('stock_available tidak boleh negatif.');
-    if ((form.stock_available ?? 0) > (form.stock_total ?? 0))
+    const title = form.title?.trim() ?? '';
+    const author = form.author?.trim() ?? '';
+    if (!title) return setErr('Judul wajib diisi.');
+    if (title.length > 500) return setErr('Judul maksimal 500 karakter.');
+    if (!author) return setErr('Penulis wajib diisi.');
+    if (author.length > 300) return setErr('Penulis maksimal 300 karakter.');
+    const stockTotal = Number(form.stock_total);
+    if (!Number.isInteger(stockTotal) || stockTotal < 0)
+      return setErr('stock_total harus bilangan bulat >= 0.');
+    const stockAvailable = Number(form.stock_available);
+    if (!Number.isInteger(stockAvailable) || stockAvailable < 0)
+      return setErr('stock_available tidak boleh negatif.');
+    if (stockAvailable > stockTotal)
       return setErr('stock_available tidak boleh melebihi stock_total.');
+    const year = form.year === null || form.year === undefined ? null : Number(form.year);
+    if (
+      year !== null &&
+      (!Number.isInteger(year) || year < 1000 || year > new Date().getFullYear())
+    )
+      return setErr(`Tahun harus 1000–${new Date().getFullYear()}.`);
+    const pages = form.pages === null || form.pages === undefined ? null : Number(form.pages);
+    if (pages !== null && (!Number.isInteger(pages) || pages < 1))
+      return setErr('Jumlah halaman minimal 1.');
+    // UUID guard hanya untuk input teks manual; dropdown diisi server dengan UUID valid.
+    if (categories.length === 0 && form.category_id && !UUID_RE.test(form.category_id))
+      return setErr('Kategori tidak valid.');
+    if (racks.length === 0 && form.rack_id && !UUID_RE.test(form.rack_id))
+      return setErr('Rak tidak valid.');
+    if (form.isbn && form.isbn.trim().length > 32) return setErr('ISBN maksimal 32 karakter.');
     setLoading(true);
     try {
       const payload = {
-        title: form.title?.trim(),
-        author: form.author?.trim(),
-        publisher: form.publisher || null,
-        year: form.year ? Number(form.year) : null,
-        isbn: form.isbn || null,
+        title,
+        author,
+        publisher: form.publisher?.trim() || null,
+        year,
+        isbn: form.isbn?.trim() || null,
         category_id: form.category_id || null,
         rack_id: form.rack_id || null,
         cover_url: form.cover_url || null,
         pdf_url: form.pdf_url || null,
-        description: form.description || null,
-        pages: form.pages ? Number(form.pages) : null,
+        description: form.description?.trim() || null,
+        pages,
         language: form.language || 'id',
-        stock_total: Number(form.stock_total ?? 1),
-        stock_available: Number(form.stock_available ?? 1),
+        stock_total: stockTotal,
+        stock_available: stockAvailable,
         featured: Boolean(form.featured),
         is_active: form.is_active === undefined ? true : Boolean(form.is_active),
       };

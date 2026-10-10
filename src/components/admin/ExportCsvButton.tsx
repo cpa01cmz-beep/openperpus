@@ -6,14 +6,16 @@ import { downloadCSV, toCSV, type CsvCell } from '@/lib/csv-export';
 type Props = { filename: string; headers: string[]; rows: CsvCell[][] };
 
 export default function ExportCsvButton({ filename, headers, rows }: Props) {
+  const stamp = new Date().toISOString().slice(0, 10);
+  const dated = filename.replace(/\.csv$/, `-${stamp}.csv`);
   return (
     <Button
       type="button"
       variant="outline"
       size="sm"
-      onClick={() => downloadCSV(filename, toCSV(headers, rows))}
+      onClick={() => downloadCSV(dated, toCSV(headers, rows))}
     >
-      Ekspor CSV
+      Ekspor halaman ini
     </Button>
   );
 }

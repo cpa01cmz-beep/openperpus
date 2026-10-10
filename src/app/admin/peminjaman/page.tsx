@@ -29,6 +29,7 @@ type Loan = {
 
 export default function PeminjamanPage() {
   const [loans, setLoans] = useState<Loan[]>([]);
+  const [error, setError] = useState('');
   const [members, setMembers] = useState<
     {
       id: string;
@@ -51,12 +52,15 @@ export default function PeminjamanPage() {
   const [finePerDay, setFinePerDay] = useState(1000);
   useEffect(() => {
     fetch('/api/settings')
-      .then((r) => r.json() as Promise<{ data?: { fine_per_day?: unknown } }>)
+      .then((r) => {
+        if (!r.ok) throw new Error('Gagal memuat tarif denda; memakai tarif default.');
+        return r.json() as Promise<{ data?: { fine_per_day?: unknown } }>;
+      })
       .then((j) => {
         const v = Number(j.data?.fine_per_day);
         if (Number.isFinite(v) && v > 0) setFinePerDay(v);
       })
-      .catch(() => {});
+      .catch((e: Error) => setError(e.message));
   }, []);
   const [pendingExtend, setPendingExtend] = useState<string | null>(null);
   const [extendDays, setExtendDays] = useState('7');
@@ -74,27 +78,32 @@ export default function PeminjamanPage() {
   }, []);
 
   const load = useCallback(async () => {
-    const q = new URLSearchParams({
-      page: String(page),
-      per_page: '10',
-      ...(overdueOnly ? { overdue: '1' } : status ? { status } : {}),
-      ...(sortKey ? { sort: sortKey, order: sortDir } : {}),
-    });
-    const res = await fetch(`/api/loans?${q}`);
-    if (res.status === 401 || res.status === 403) {
-      setDenied(true);
-      setLoans([]);
-      return;
+    setError('');
+    try {
+      const q = new URLSearchParams({
+        page: String(page),
+        per_page: '10',
+        ...(overdueOnly ? { overdue: '1' } : status ? { status } : {}),
+        ...(sortKey ? { sort: sortKey, order: sortDir } : {}),
+      });
+      const res = await fetch(`/api/loans?${q}`);
+      if (res.status === 401 || res.status === 403) {
+        setDenied(true);
+        setLoans([]);
+        return;
+      }
+      setDenied(false);
+      const json = (await res.json()) as {
+        data?: Loan[];
+        pagination?: { totalPages?: number };
+        meta?: { totalPages?: number };
+      };
+      if (!res.ok) throw new Error(errMsg(json, 'Gagal memuat peminjaman.'));
+      setLoans(json.data ?? []);
+      setTotalPages(json.pagination?.totalPages ?? json.meta?.totalPages ?? 1);
+    } catch (e) {
+      setError((e as Error).message);
     }
-    setDenied(false);
-    const json = (await res.json()) as {
-      data?: Loan[];
-      pagination?: { totalPages?: number };
-      meta?: { totalPages?: number };
-    };
-    if (!res.ok) return;
-    setLoans(json.data ?? []);
-    setTotalPages(json.pagination?.totalPages ?? json.meta?.totalPages ?? 1);
   }, [status, overdueOnly, page, sortKey, sortDir]);
 
   const loadOptions = useCallback(async (force = false) => {
@@ -190,38 +199,48 @@ export default function PeminjamanPage() {
     const id = pendingReturn;
     if (!id) return;
     setPendingReturn(null);
-    const res = await fetch(`/api/loans?id=${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'return' }),
-    });
-    const json = (await res.json()) as { data?: { fine_amount?: number } | null };
-    if (!res.ok) {
-      setNotice(errMsg(json));
-      return;
+    setError('');
+    try {
+      const res = await fetch(`/api/loans?id=${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'return' }),
+      });
+      const json = (await res.json()) as { data?: { fine_amount?: number } | null };
+      if (!res.ok) {
+        setNotice(errMsg(json));
+        return;
+      }
+      setNotice(`Dikembalikan. Denda: Rp${(json.data?.fine_amount ?? 0).toLocaleString('id-ID')}`);
+      void Promise.all([load(), loadOptions(true)]);
+    } catch (e) {
+      setError((e as Error).message);
     }
-    setNotice(`Dikembalikan. Denda: Rp${(json.data?.fine_amount ?? 0).toLocaleString('id-ID')}`);
-    void Promise.all([load(), loadOptions(true)]);
   }
 
   async function confirmExtend() {
     const id = pendingExtend;
     if (!id) return;
     setPendingExtend(null);
-    const days = Number(extendDays);
-    const res = await fetch(`/api/loans?id=${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'extend', days }),
-    });
-    const json = (await res.json()) as { data?: { due_at?: string } | null };
-    if (!res.ok) {
-      setNotice(errMsg(json));
-      return;
+    setError('');
+    try {
+      const days = Number(extendDays);
+      const res = await fetch(`/api/loans?id=${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'extend', days }),
+      });
+      const json = (await res.json()) as { data?: { due_at?: string } | null };
+      if (!res.ok) {
+        setNotice(errMsg(json));
+        return;
+      }
+      const due = json.data?.due_at ? new Date(json.data.due_at).toLocaleDateString('id-ID') : '-';
+      setNotice(`Diperpanjang ${Number.isFinite(days) ? days : '?'} hari. Tempo baru: ${due}.`);
+      void Promise.all([load(), loadOptions(true)]);
+    } catch (e) {
+      setError((e as Error).message);
     }
-    const due = json.data?.due_at ? new Date(json.data.due_at).toLocaleDateString('id-ID') : '-';
-    setNotice(`Diperpanjang ${Number.isFinite(days) ? days : '?'} hari. Tempo baru: ${due}.`);
-    void Promise.all([load(), loadOptions(true)]);
   }
 
   const fmtRp = (n: number) => `Rp${(n ?? 0).toLocaleString('id-ID')}`;
@@ -306,6 +325,14 @@ export default function PeminjamanPage() {
         >
           Akses ditolak (401/403). Silakan login sebagai petugas untuk menagih dan memproses
           pengembalian.
+        </div>
+      )}
+      {error && (
+        <div
+          role="alert"
+          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        >
+          {error}
         </div>
       )}
       <LoanForm members={members} books={books} />
