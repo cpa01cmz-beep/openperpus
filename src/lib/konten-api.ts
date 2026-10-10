@@ -25,7 +25,7 @@ export async function apiList<T>(path: string, page = 1): Promise<ApiListResult<
   return {
     missing: false,
     rows: (json.data ?? []) as T[],
-    totalPages: json.pagination?.totalPages ?? json.meta?.totalPages ?? 1,
+    totalPages: json.pagination?.totalPages ?? 1,
   };
 }
 

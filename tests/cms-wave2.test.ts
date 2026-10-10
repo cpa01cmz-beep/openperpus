@@ -46,9 +46,9 @@ describe('wave2: GET /api/services publik', () => {
     });
     const res = await SVC_GET(req('/api/services'));
     expect(res.status).toBe(200);
-    const j = (await res.json()) as { data: unknown[]; meta: { total: number } };
+    const j = (await res.json()) as { data: unknown[]; pagination: { total: number } };
     expect(j.data).toHaveLength(1);
-    expect(j.meta.total).toBe(1);
+    expect(j.pagination.total).toBe(1);
   });
 });
 

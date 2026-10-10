@@ -121,7 +121,6 @@ type FetchJson = Record<string, unknown>;
 
 const baseList: FetchJson = {
   data: [],
-  meta: { page: 1, per_page: 20, total: 0 },
   pagination: { page: 1, limit: 20, total: 0, totalPages: 1 },
 };
 
@@ -137,7 +136,7 @@ const defaultFetch = async (input: unknown, init?: RequestInit) => {
   if (url.includes('/api/settings'))
     return jsonResponse(200, { data: { fine_per_day: 1500, name: 'Perpustakaan Digital' } });
   if (url.includes('/api/fines'))
-    return jsonResponse(200, { data: [], meta: { totalPages: 1 }, pagination: { totalPages: 1 } });
+    return jsonResponse(200, { data: [], pagination: { totalPages: 1 } });
   if (method === 'GET') return jsonResponse(200, baseList);
   return jsonResponse(method === 'POST' ? 201 : 200, { data: { id: 'row-new' }, message: 'ok' });
 };

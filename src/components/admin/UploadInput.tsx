@@ -10,6 +10,9 @@ const MAX_SIZE = 10485760; // 10MB — matches supabase/migrations/0004_storage.
 // S-sec-rls: svg REJECTED (stored-XSS vector) — keep jpeg/png/webp/gif/pdf only.
 // Client-only check is bypassable; server guard lives in
 // supabase/migrations/0007_storage_guard.sql (bucket mime list w/o svg).
+// KNOWN LIMITATION: `file.type` berasal dari ekstensi (mudah dipalsukan);
+// upgrade path bila perlu: validasi magic-byte (header PNG/JPEG/GIF/WebP/PDF)
+// di sini — server/storage tetap guard otoritatif.
 export const ALLOWED_MIME = [
   'image/jpeg',
   'image/png',
@@ -28,6 +31,17 @@ export const ALLOWED_FOLDERS = [
   'ebooks',
 ] as const;
 
+// Per-folder mime: cover/banner/logo/artikel/avatars gambar saja; ebooks PDF saja.
+// Folder tak dikenal (sanitizeFolder -> 'covers') selalu gambar.
+export const ALLOWED_MIME_BY_FOLDER: Record<string, readonly string[]> = {
+  covers: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+  banners: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+  logo: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+  articles: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+  avatars: ['image/jpeg', 'image/png', 'image/webp', 'image/gif'],
+  ebooks: ['application/pdf'],
+};
+
 export type UploadInputProps = {
   value?: string;
   onUploaded: (url: string) => void;
@@ -44,6 +58,15 @@ function sanitizeFolder(folder: string): string {
 
 function isImageUrl(url: string): boolean {
   return /\.(jpe?g|png|webp|gif)(\?|#|$)/i.test(url);
+}
+
+// decode aman: '%' tak lengkap di URL tempelan melempar URIError saat render.
+function safeDecode(name: string): string {
+  try {
+    return decodeURIComponent(name);
+  } catch {
+    return name;
+  }
 }
 
 export default function UploadInput({
@@ -64,8 +87,11 @@ export default function UploadInput({
       setErr('Ukuran file maksimal 10MB.');
       return;
     }
-    if (!ALLOWED_MIME.includes(file.type)) {
-      setErr(`Tipe file tidak didukung (${file.type || 'unknown'}).`);
+    const allowed = ALLOWED_MIME_BY_FOLDER[sanitizeFolder(folder)] ?? ALLOWED_MIME;
+    if (!allowed.includes(file.type)) {
+      setErr(
+        `Tipe file tidak didukung untuk ${sanitizeFolder(folder)} (${file.type || 'unknown'}).`
+      );
       return;
     }
     setUploading(true);
@@ -130,8 +156,17 @@ export default function UploadInput({
           className="h-20 w-20 rounded-lg border object-cover"
         />
       )}
+      {value && isAllowedImageUrl(value) && !isImageUrl(value) && (
+        <p className="text-xs text-slate-600">
+          File terpilih: {safeDecode(value.split('/').pop() ?? value)}
+        </p>
+      )}
       {uploading && <p className="text-xs text-slate-500">Mengunggah…</p>}
-      {err && <p className="text-xs text-red-600">{err}</p>}
+      {err && (
+        <p role="alert" className="text-xs text-red-600">
+          {err}
+        </p>
+      )}
     </div>
   );
 }
