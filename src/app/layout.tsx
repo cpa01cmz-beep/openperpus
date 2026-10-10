@@ -198,6 +198,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       }
     >
       <head>
+        {settings.favicon_url ? <link rel="icon" href={settings.favicon_url} /> : null}
         {remote ? (
           <>
             <link rel="preconnect" href={remote} crossOrigin="anonymous" />
