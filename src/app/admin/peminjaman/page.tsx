@@ -29,7 +29,16 @@ type Loan = {
 
 export default function PeminjamanPage() {
   const [loans, setLoans] = useState<Loan[]>([]);
-  const [members, setMembers] = useState<{ id: string; label: string; sub?: string }[]>([]);
+  const [members, setMembers] = useState<
+    {
+      id: string;
+      label: string;
+      sub?: string;
+      fines_total?: number;
+      active_loans?: number;
+      overdue_loans?: number;
+    }[]
+  >([]);
   const [books, setBooks] = useState<{ id: string; label: string; stock?: number }[]>([]);
   const [status, setStatus] = useState('');
   const [overdueOnly, setOverdueOnly] = useState(false);
@@ -98,15 +107,35 @@ export default function PeminjamanPage() {
         .then((r) => r.json())
         .catch(() => ({})),
     ])) as [
-      { data?: { id: string; member_code: string; profiles?: { full_name: string } }[] },
+      {
+        data?: {
+          id: string;
+          member_code: string;
+          profiles?: { full_name: string };
+          fines_total?: number;
+          active_loans?: number;
+          overdue_loans?: number;
+        }[];
+      },
       { data?: { id: string; title: string; stock_available: number }[] },
     ];
     setMembers(
       (m.data ?? []).map(
-        (x: { id: string; member_code: string; profiles?: { full_name: string } }) => ({
+        (x: {
+          id: string;
+          member_code: string;
+          profiles?: { full_name: string };
+          fines_total?: number;
+          active_loans?: number;
+          overdue_loans?: number;
+        }) => ({
           id: x.id,
           label: x.profiles?.full_name ?? x.member_code,
           sub: x.member_code,
+          // Isu #56: agregat kelayakan checkout untuk gate pra-submit LoanForm.
+          fines_total: Number(x.fines_total ?? 0),
+          active_loans: Number(x.active_loans ?? 0),
+          overdue_loans: Number(x.overdue_loans ?? 0),
         })
       )
     );

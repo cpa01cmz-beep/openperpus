@@ -105,6 +105,8 @@ function setLoansMock(rpcError: { code: string; message: string } | null) {
         if (rpcError) return { data: null, error: rpcError };
         return { data: { id: 'loan-1' }, error: null };
       }
+      // Isu #56: gate kelayakan memanggil get_fines_total lebih dulu.
+      if (fn === 'get_fines_total') return { data: 0, error: null };
       return { data: null, error: { code: '42883', message: 'function missing' } };
     },
   });
@@ -192,8 +194,20 @@ function setResMockDuplicate() {
             }),
           }),
         };
+      // Isu #56: ringkasan pinjaman anggota untuk gate kelayakan.
+      if (table === 'loans') {
+        const c: Record<string, unknown> = {};
+        c.select = () => c;
+        c.eq = () => c;
+        c.in = () => c;
+        c.limit = async () => ({ data: [], error: null });
+        return c;
+      }
       return { insert: async () => ({ error: null }) };
     }),
+    // Isu #56: gate kelayakan reservasi memanggil get_fines_total lebih dulu.
+    rpc: async (fn: string) =>
+      fn === 'get_fines_total' ? { data: 0, error: null } : { data: null, error: null },
   });
 }
 

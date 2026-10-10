@@ -108,10 +108,22 @@ describe('QA-E2E-SMOKE rantai sirkulasi', () => {
               }),
             }),
           };
+        // Isu #56: gate kelayakan (ringkasan pinjaman + denda) di POST.
+        if (table === 'loans') {
+          const c: Record<string, unknown> = {};
+          c.select = () => c;
+          c.eq = () => c;
+          c.in = () => c;
+          c.limit = async () => ({ data: [], error: null });
+          return c;
+        }
         return {
           select: () => ({ eq: () => ({ single: async () => ({ data: null, error: null }) }) }),
         };
       }),
+      // Isu #56: get_fines_total dipanggil sebelum insert reservasi.
+      rpc: async (fn: string) =>
+        fn === 'get_fines_total' ? { data: 0, error: null } : { data: { id: 'R-1' }, error: null },
     };
     const r1 = await RES_POST(jreq('http://localhost/api/reservations', 'POST', { book_id: BID }));
     expect(r1.status).toBe(201);
@@ -147,7 +159,11 @@ describe('QA-E2E-SMOKE rantai sirkulasi', () => {
           select: () => ({ eq: () => ({ single: async () => ({ data: null, error: null }) }) }),
         };
       }),
-      rpc: async () => ({ data: { id: 'L-1', status: 'borrowed' }, error: null }),
+      // Isu #56: gate kelayakan memanggil get_fines_total sebelum checkout.
+      rpc: async (fn: string) =>
+        fn === 'get_fines_total'
+          ? { data: 0, error: null }
+          : { data: { id: 'L-1', status: 'borrowed' }, error: null },
     };
     const r2 = await LOANS_POST(
       jreq('http://localhost/api/loans', 'POST', { member_id: MID, book_id: BID })

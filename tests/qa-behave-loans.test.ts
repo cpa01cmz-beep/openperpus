@@ -59,7 +59,8 @@ function setCheckoutMock(rpc: () => Promise<unknown>) {
   (globalThis as unknown as { __mockSupabase: unknown }).__mockSupabase = {
     auth: { getUser: async () => ({ data: { user: { id: 'U-ADMIN' } }, error: null }) },
     from,
-    rpc,
+    // Isu #56: gate kelayakan memanggil get_fines_total sebelum checkout.
+    rpc: async (fn: string) => (fn === 'get_fines_total' ? { data: 0, error: null } : rpc()),
   };
 }
 

@@ -43,6 +43,10 @@ components:
                   RATE_LIMITED,
                   GONE,
                   CSRF_MISMATCH,
+                  MEMBER_HAS_FINES,
+                  MEMBER_OVERDUE,
+                  MEMBER_LOAN_LIMIT,
+                  MEMBER_CHECK_FAILED,
                 ]
             message:
               type: string
@@ -653,6 +657,12 @@ paths:
       responses:
         '201':
           description: created
+        '409':
+          description: 'Anggota tidak layak checkout: MEMBER_HAS_FINES (tagihan belum lunas), MEMBER_OVERDUE (pinjaman terlambat), MEMBER_LOAN_LIMIT (batas pinjaman aktif), atau CONFLICT (loan ganda/stok habis)'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     put:
       summary: 'Extend or return loan (action: extend|return, staff)'
       security:
@@ -983,6 +993,12 @@ paths:
           description: created
         '401':
           description: Silakan login
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: 'Anggota tidak layak checkout: MEMBER_HAS_FINES (tagihan belum lunas), MEMBER_OVERDUE (pinjaman terlambat), MEMBER_LOAN_LIMIT (batas pinjaman aktif), atau CONFLICT (reservasi pending ganda)'
           content:
             application/json:
               schema:

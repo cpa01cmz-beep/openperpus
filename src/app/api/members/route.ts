@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireStaff, jsonError, parsePaging } from '@/lib/supabase/auth';
+import { getMembersLoanSummaries } from '@/lib/loan-eligibility';
 import { sanitizeIlike } from '@/lib/search';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
@@ -49,9 +50,18 @@ export async function GET(req: Request) {
     log.error('members.fetch_failed', { detail: error.message });
     return jsonError('FETCH_FAILED', 'Gagal mengambil anggota.', 500, { requestId: log.requestId });
   }
+  // Isu #56: agregat tagihan + pinjaman aktif/terlambat per anggota di halaman
+  // ini (2 query untuk seluruh halaman, bukan N+1) supaya admin melihat
+  // kelayakan checkout tanpa pindah halaman.
+  const ids = ((data ?? []) as { id: string }[]).map((m) => m.id);
+  const summaries = await getMembersLoanSummaries(supabase, ids);
+  const rows = ((data ?? []) as ({ id: string } & Record<string, unknown>)[]).map((m) => ({
+    ...m,
+    ...(summaries[m.id] ?? { fines_total: 0, active_loans: 0, overdue_loans: 0 }),
+  }));
   const total = count ?? 0;
   return NextResponse.json({
-    data,
+    data: rows,
     meta: { page, per_page: perPage, total },
     pagination: { page, limit: perPage, total, totalPages: Math.ceil(total / perPage) },
   });
