@@ -9,6 +9,7 @@ const CenteredHero = dynamic(() => import('./variants/CenteredHero'), { ssr: tru
 const EditorialHero = dynamic(() => import('./variants/EditorialHero'), { ssr: true });
 const StackedHero = dynamic(() => import('./variants/StackedHero'), { ssr: true });
 const SplitHero = dynamic(() => import('./variants/SplitHero'), { ssr: true });
+const SketchHero = dynamic(() => import('./variants/SketchHero'), { ssr: true });
 
 // Preload map for variant switching anticipation
 const variantComponents = {
@@ -22,6 +23,9 @@ const variantComponents = {
   split: SplitHero,
   'midnight-showcase': ClassicHero,
   classic: ClassicHero,
+  'sketch-doodle': SketchHero,
+  sketch: SketchHero,
+  doodle: SketchHero,
 } as const;
 
 type VariantKey = keyof typeof variantComponents;
@@ -31,6 +35,7 @@ const variantOrder: readonly VariantKey[] = [
   'brutalist-manifesto',
   'ocean-tide',
   'midnight-showcase',
+  'sketch-doodle',
 ] as const;
 
 // Preload links for next/prev variant chunks
@@ -45,6 +50,9 @@ const variantPreloadPaths: Record<VariantKey, string> = {
   split: '/_next/static/chunks/components/hero/variants/SplitHero.js',
   'midnight-showcase': '/_next/static/chunks/components/hero/variants/ClassicHero.js',
   classic: '/_next/static/chunks/components/hero/variants/ClassicHero.js',
+  'sketch-doodle': '/_next/static/chunks/components/hero/variants/SketchHero.js',
+  sketch: '/_next/static/chunks/components/hero/variants/SketchHero.js',
+  doodle: '/_next/static/chunks/components/hero/variants/SketchHero.js',
 };
 
 type Props = HeroProps & {

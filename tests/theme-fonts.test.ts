@@ -21,6 +21,7 @@ const EXPECTED_VARS: Record<string, { heading: string; body: string }> = {
   paper: { heading: '--font-source-serif', body: '--font-source-sans' },
   brutalist: { heading: '--font-archivo', body: '--font-space' },
   ocean: { heading: '--font-fraunces', body: '--font-inter' },
+  sketch: { heading: '--font-caveat', body: '--font-patrick' },
 };
 
 // layout.tsx const name -> CSS var it declares
@@ -31,6 +32,8 @@ const VAR_IDENT: Record<string, string> = {
   fraunces: '--font-fraunces',
   archivo: '--font-archivo',
   space: '--font-space',
+  caveat: '--font-caveat',
+  patrick: '--font-patrick',
   sourceSerif: '--font-source-serif',
   sourceSans: '--font-source-sans',
 };
@@ -41,6 +44,7 @@ const THEME_IDENT_PAIR: Record<string, [string, string]> = {
   paper: ['sourceSerif', 'sourceSans'],
   brutalist: ['archivo', 'space'],
   ocean: ['fraunces', 'inter'],
+  sketch: ['caveat', 'patrick'],
 };
 
 describe('T-FONT-SPLIT: theme font vars resolve', () => {
@@ -56,7 +60,7 @@ describe('T-FONT-SPLIT: theme font vars resolve', () => {
 });
 
 describe('T-FONT-SPLIT: layout.tsx attaches max 2 font families per active theme', () => {
-  it('keeps all 8 next/font/google declarations available', () => {
+  it('keeps all 10 next/font/google declarations available', () => {
     const src = readLayout();
     for (const callee of [
       'Inter(',
@@ -67,6 +71,8 @@ describe('T-FONT-SPLIT: layout.tsx attaches max 2 font families per active theme
       'Space_Grotesk(',
       'Source_Serif_4(',
       'Source_Sans_3(',
+      'Caveat(',
+      'Patrick_Hand(',
     ]) {
       expect(src, `layout.tsx must keep ${callee} declaration`).toContain(callee);
     }
@@ -77,8 +83,8 @@ describe('T-FONT-SPLIT: layout.tsx attaches max 2 font families per active theme
     const hits = src.match(/display:\s*['"]swap['"]/g) ?? [];
     expect(
       hits.length,
-      `expected 8 display:swap loaders, found ${hits.length}`
-    ).toBeGreaterThanOrEqual(8);
+      `expected 10 display:swap loaders, found ${hits.length}`
+    ).toBeGreaterThanOrEqual(10);
   });
 
   it('gates font variable assembly per theme.id (conditional, max 2 per render)', () => {

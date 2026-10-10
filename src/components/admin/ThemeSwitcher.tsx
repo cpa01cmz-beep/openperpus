@@ -49,7 +49,7 @@ export default function ThemeSwitcher({ current }: { current: string }) {
       <div>
         <h2 className="font-semibold">Tema Tampilan</h2>
         <p className="text-sm text-slate-500">
-          Pilih salah satu dari 5 tema. Perubahan tersimpan otomatis.
+          Pilih salah satu dari 6 tema. Perubahan tersimpan otomatis.
         </p>
       </div>
       {err && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{err}</p>}

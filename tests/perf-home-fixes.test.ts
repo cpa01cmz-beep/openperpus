@@ -10,10 +10,17 @@ describe('Perf fixes: home + books API + catalog', () => {
   it('(a) HeroSwitch splits variants via next/dynamic (no static bulk import)', () => {
     const src = read('src/components/hero/HeroSwitch.tsx');
     expect(src, 'RED: HeroSwitch has no next/dynamic per-variant split').toMatch(/next\/dynamic/);
-    for (const v of ['ClassicHero', 'CenteredHero', 'EditorialHero', 'StackedHero', 'SplitHero']) {
+    for (const v of [
+      'ClassicHero',
+      'CenteredHero',
+      'EditorialHero',
+      'StackedHero',
+      'SplitHero',
+      'SketchHero',
+    ]) {
       expect(
         src,
-        `RED: HeroSwitch statically imports ${v} — all 5 variants land in home chunk`
+        `RED: HeroSwitch statically imports ${v} — all 6 variants land in home chunk`
       ).not.toMatch(new RegExp(`import\\s+${v}\\s+from`));
     }
   });

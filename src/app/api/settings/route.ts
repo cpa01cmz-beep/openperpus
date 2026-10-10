@@ -118,10 +118,10 @@ export async function PUT(req: Request) {
     payload.active_theme !== ''
   ) {
     const theme = String(payload.active_theme);
-    if (!['emerald', 'midnight', 'paper', 'brutalist', 'ocean'].includes(theme)) {
+    if (!['emerald', 'midnight', 'paper', 'brutalist', 'ocean', 'sketch'].includes(theme)) {
       return jsonError(
         'VALIDATION',
-        'Tema tidak dikenal. Pilih emerald, midnight, paper, brutalist, atau ocean.',
+        'Tema tidak dikenal. Pilih emerald, midnight, paper, brutalist, ocean, atau sketch.',
         422
       );
     }
