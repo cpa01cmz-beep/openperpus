@@ -1,5 +1,5 @@
 -- ============================================================================
--- 0024_dashboard_stats_rtt.sql — Dashboard 1-RTT: get_dashboard_stats v2 + index (#58)
+-- 0025_dashboard_stats_rtt.sql — Dashboard 1-RTT: get_dashboard_stats v2 + index (#58)
 -- 1. get_dashboard_stats v2: + fine_per_day (hapus serial getFineRate),
 --    + fines_open (tagihan terbuka ala get_fines_total),
 --    chart bucket sargable: borrowed_at >= d.day AND < d.day+1 (bukan ::date).

@@ -57,8 +57,8 @@ export default async function AdminDashboard() {
   if (statsError || !stats) {
     console.error('[dashboard] get_dashboard_stats gagal', statsError?.message ?? 'data kosong');
   } else if (!('fines_open' in stats)) {
-    // Guard deploy: signature v1 = migrasi 0023 belum diterapkan (lihat PR body).
-    console.error('[dashboard] get_dashboard_stats v1 — jalankan migrasi 0023 sebelum deploy app');
+    // Guard deploy: signature v1 = migrasi 0025 belum diterapkan (lihat PR body).
+    console.error('[dashboard] get_dashboard_stats v1 — jalankan migrasi 0025 sebelum deploy app');
   }
 
   const num = (v: number | string | null | undefined, d = 0) => {
