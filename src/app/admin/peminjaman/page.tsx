@@ -65,6 +65,7 @@ export default function PeminjamanPage() {
   const [pendingExtend, setPendingExtend] = useState<string | null>(null);
   const [extendDays, setExtendDays] = useState('7');
   const [notice, setNotice] = useState<string | null>(null);
+  const [optionsError, setOptionsError] = useState('');
   const [denied, setDenied] = useState(false);
   const optionsLoaded = useRef(false);
 
@@ -93,7 +94,7 @@ export default function PeminjamanPage() {
         return;
       }
       setDenied(false);
-      const json = (await res.json()) as {
+      const json = (await res.json().catch(() => ({}))) as {
         data?: Loan[];
         pagination?: { totalPages?: number };
         meta?: { totalPages?: number };
@@ -106,17 +107,15 @@ export default function PeminjamanPage() {
     }
   }, [status, overdueOnly, page, sortKey, sortDir]);
 
+  // Gagal -> optionsLoaded TIDAK diset (retry oleh "Muat ulang"/force berikutnya).
   const loadOptions = useCallback(async (force = false) => {
     if (optionsLoaded.current && !force) return;
-    const [m, b] = (await Promise.all([
-      fetch('/api/members?per_page=20')
-        .then((r) => r.json())
-        .catch(() => ({})),
-      fetch('/api/books?per_page=20')
-        .then((r) => r.json())
-        .catch(() => ({})),
-    ])) as [
-      {
+    try {
+      const [mr, br] = await Promise.all([
+        fetch('/api/members?per_page=20'),
+        fetch('/api/books?per_page=20'),
+      ]);
+      const m = (await mr.json().catch(() => ({}))) as {
         data?: {
           id: string;
           member_code: string;
@@ -125,37 +124,44 @@ export default function PeminjamanPage() {
           active_loans?: number;
           overdue_loans?: number;
         }[];
-      },
-      { data?: { id: string; title: string; stock_available: number }[] },
-    ];
-    setMembers(
-      (m.data ?? []).map(
-        (x: {
-          id: string;
-          member_code: string;
-          profiles?: { full_name: string };
-          fines_total?: number;
-          active_loans?: number;
-          overdue_loans?: number;
-        }) => ({
+      };
+      const b = (await br.json().catch(() => ({}))) as {
+        data?: { id: string; title: string; stock_available: number }[];
+      };
+      if (!mr.ok) throw new Error(errMsg(m, 'Gagal memuat opsi anggota.'));
+      if (!br.ok) throw new Error(errMsg(b, 'Gagal memuat opsi buku.'));
+      setMembers(
+        (m.data ?? []).map(
+          (x: {
+            id: string;
+            member_code: string;
+            profiles?: { full_name: string };
+            fines_total?: number;
+            active_loans?: number;
+            overdue_loans?: number;
+          }) => ({
+            id: x.id,
+            label: x.profiles?.full_name ?? x.member_code,
+            sub: x.member_code,
+            // Isu #56: agregat kelayakan checkout untuk gate pra-submit LoanForm.
+            fines_total: Number(x.fines_total ?? 0),
+            active_loans: Number(x.active_loans ?? 0),
+            overdue_loans: Number(x.overdue_loans ?? 0),
+          })
+        )
+      );
+      setBooks(
+        (b.data ?? []).map((x: { id: string; title: string; stock_available: number }) => ({
           id: x.id,
-          label: x.profiles?.full_name ?? x.member_code,
-          sub: x.member_code,
-          // Isu #56: agregat kelayakan checkout untuk gate pra-submit LoanForm.
-          fines_total: Number(x.fines_total ?? 0),
-          active_loans: Number(x.active_loans ?? 0),
-          overdue_loans: Number(x.overdue_loans ?? 0),
-        })
-      )
-    );
-    setBooks(
-      (b.data ?? []).map((x: { id: string; title: string; stock_available: number }) => ({
-        id: x.id,
-        label: x.title,
-        stock: x.stock_available,
-      }))
-    );
-    optionsLoaded.current = true;
+          label: x.title,
+          stock: x.stock_available,
+        }))
+      );
+      setOptionsError('');
+      optionsLoaded.current = true;
+    } catch (e) {
+      setOptionsError((e as Error).message);
+    }
   }, []);
 
   useEffect(() => {
@@ -206,9 +212,11 @@ export default function PeminjamanPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'return' }),
       });
-      const json = (await res.json()) as { data?: { fine_amount?: number } | null };
+      const json = (await res.json().catch(() => ({}))) as {
+        data?: { fine_amount?: number } | null;
+      };
       if (!res.ok) {
-        setNotice(errMsg(json));
+        setError(errMsg(json, 'Gagal memproses pengembalian.'));
         return;
       }
       setNotice(`Dikembalikan. Denda: Rp${(json.data?.fine_amount ?? 0).toLocaleString('id-ID')}`);
@@ -230,9 +238,9 @@ export default function PeminjamanPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'extend', days }),
       });
-      const json = (await res.json()) as { data?: { due_at?: string } | null };
+      const json = (await res.json().catch(() => ({}))) as { data?: { due_at?: string } | null };
       if (!res.ok) {
-        setNotice(errMsg(json));
+        setError(errMsg(json, 'Gagal memproses perpanjangan.'));
         return;
       }
       const due = json.data?.due_at ? new Date(json.data.due_at).toLocaleDateString('id-ID') : '-';
@@ -334,6 +342,12 @@ export default function PeminjamanPage() {
         >
           {error}
         </div>
+      )}
+      {optionsError && (
+        <p role="alert" className="text-sm text-red-600">
+          {optionsError} Opsi anggota/buku mungkin kosong — klik &quot;Muat ulang&quot; untuk
+          mencoba lagi.
+        </p>
       )}
       <LoanForm members={members} books={books} />
       <div className="flex flex-wrap items-end gap-2 text-sm">

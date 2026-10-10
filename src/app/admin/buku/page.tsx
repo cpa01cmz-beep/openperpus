@@ -31,7 +31,10 @@ export default function BukuPage() {
     try {
       const q = new URLSearchParams({ page: String(page), per_page: '10', q: search });
       const res = await fetch(`/api/books?${q}`);
-      const json = (await res.json()) as { data?: BukuRow[]; pagination?: { totalPages?: number } };
+      const json = (await res.json().catch(() => ({}))) as {
+        data?: BukuRow[];
+        pagination?: { totalPages?: number };
+      };
       if (!res.ok) throw new Error(errMsg(json, 'Gagal memuat buku.'));
       setRows(json.data ?? []);
       setTotalPages(json.pagination?.totalPages ?? 1);
@@ -52,7 +55,7 @@ export default function BukuPage() {
     setError('');
     try {
       const res = await fetch(`/api/books/${id}`, { method: 'DELETE' });
-      const json = await res.json();
+      const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(errMsg(json));
       load();
     } catch (e) {
@@ -80,7 +83,7 @@ export default function BukuPage() {
     setError('');
     try {
       const res = await fetch(`/api/books?id=${[...selected].join(',')}`, { method: 'DELETE' });
-      const json = (await res.json()) as {
+      const json = (await res.json().catch(() => ({}))) as {
         data?: { deleted?: string[]; skipped?: string[] };
         error?: { message?: string } | string;
       };
@@ -125,7 +128,7 @@ export default function BukuPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'stock_opname', items }),
       });
-      const json = (await res.json()) as {
+      const json = (await res.json().catch(() => ({}))) as {
         data?: { updated?: string[]; skipped?: { id: string; reason: string }[] };
         error?: { message?: string } | string;
       };

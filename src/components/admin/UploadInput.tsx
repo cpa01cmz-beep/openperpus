@@ -57,6 +57,15 @@ function isImageUrl(url: string): boolean {
   return /\.(jpe?g|png|webp|gif)(\?|#|$)/i.test(url);
 }
 
+// decode aman: '%' tak lengkap di URL tempelan melempar URIError saat render.
+function safeDecode(name: string): string {
+  try {
+    return decodeURIComponent(name);
+  } catch {
+    return name;
+  }
+}
+
 export default function UploadInput({
   value = '',
   onUploaded,
@@ -146,11 +155,15 @@ export default function UploadInput({
       )}
       {value && isAllowedImageUrl(value) && !isImageUrl(value) && (
         <p className="text-xs text-slate-600">
-          File terpilih: {decodeURIComponent(value.split('/').pop() ?? value)}
+          File terpilih: {safeDecode(value.split('/').pop() ?? value)}
         </p>
       )}
       {uploading && <p className="text-xs text-slate-500">Mengunggah…</p>}
-      {err && <p className="text-xs text-red-600">{err}</p>}
+      {err && (
+        <p role="alert" className="text-xs text-red-600">
+          {err}
+        </p>
+      )}
     </div>
   );
 }

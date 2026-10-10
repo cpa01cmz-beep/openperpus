@@ -51,7 +51,7 @@ export default function AnggotaPage() {
     try {
       const q = new URLSearchParams({ page: String(page), per_page: '10', q: search });
       const res = await fetch(`/api/members?${q}`);
-      const json = (await res.json()) as {
+      const json = (await res.json().catch(() => ({}))) as {
         data?: Member[];
         pagination?: { totalPages?: number };
         meta?: { totalPages?: number };
@@ -88,7 +88,7 @@ export default function AnggotaPage() {
         const params = new URLSearchParams({ q: clean, per_page: '10' });
         const res = await fetch(`/api/members?${params}`);
         if (!res.ok) return;
-        const json = (await res.json()) as { data?: Member[] };
+        const json = (await res.json().catch(() => ({}))) as { data?: Member[] };
         setPickOptions(
           (json.data ?? []).map((m) => ({
             user_id: m.user_id,
@@ -147,7 +147,7 @@ export default function AnggotaPage() {
           address: form.address || null,
         }),
       });
-      const json = await res.json();
+      const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(errMsg(json));
       setForm({ user_id: '', member_code: '', phone: '', address: '' });
       setPickText('');
@@ -166,7 +166,7 @@ export default function AnggotaPage() {
     setLoadError('');
     try {
       const res = await fetch(`/api/members?id=${id}`, { method: 'DELETE' });
-      const json = await res.json();
+      const json = await res.json().catch(() => ({}));
       if (!res.ok) {
         // Cerminan buku: tolak dengan penjelasan bila masih ada pinjaman berjalan.
         if (res.status === 409) {
@@ -212,10 +212,13 @@ export default function AnggotaPage() {
       );
       let deleted = 0;
       let skipped = 0;
-      let failure = '';
-      for (const r of results) {
+      const failed: string[] = [];
+      let failureMsg = '';
+      for (const [i, r] of results.entries()) {
+        const id = ids[i];
         if (r.status === 'rejected') {
-          failure = (r.reason as Error)?.message || 'Gagal menghapus anggota.';
+          if (id) failed.push(id);
+          failureMsg = (r.reason as Error)?.message || 'Gagal menghapus anggota.';
           continue;
         }
         const res = r.value;
@@ -224,14 +227,26 @@ export default function AnggotaPage() {
         } else if (res.status === 409) {
           skipped++;
         } else {
+          if (id) failed.push(id);
           const json = (await res.json().catch(() => ({}))) as unknown;
-          failure = errMsg(json, 'Gagal menghapus anggota.');
+          failureMsg = errMsg(json, 'Gagal menghapus anggota.');
         }
       }
-      if (failure) setActionError(failure);
-      else if (skipped > 0)
-        setActionError(`${deleted} dihapus, ${skipped} dilewati (masih punya pinjaman berjalan).`);
-      setSelected(new Set());
+      // Sukses bersih = tanpa pesan; parsial/gagal = ringkasan akurat + id gagal.
+      if (failed.length > 0 || skipped > 0) {
+        const parts = [`${deleted} dihapus`];
+        if (skipped > 0) parts.push(`${skipped} dilewati (masih punya pinjaman berjalan)`);
+        if (failed.length > 0) parts.push(`${failed.length} gagal`);
+        const idLine =
+          failed.length > 0
+            ? ` ID gagal: ${failed.slice(0, 5).join(', ')}${failed.length > 5 ? ', …' : ''}`
+            : '';
+        setActionError(parts.join(', ') + (failureMsg ? `. ${failureMsg}` : '') + idLine);
+      } else {
+        setActionError('');
+      }
+      // Saat ada kegagalan, pertahankan seleksi = id gagal agar bisa diulang.
+      setSelected(failed.length > 0 ? new Set(failed) : new Set());
       load();
     } catch (e) {
       setActionError((e as Error).message);

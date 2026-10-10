@@ -153,6 +153,8 @@ export default function BookForm({
         <Input
           id="book-title"
           label="Judul"
+          aria-invalid={err ? true : undefined}
+          aria-describedby={err ? 'book-form-error' : undefined}
           value={form.title}
           onChange={(e) => set('title', e.target.value)}
           required
@@ -160,6 +162,8 @@ export default function BookForm({
         <Input
           id="book-author"
           label="Penulis"
+          aria-invalid={err ? true : undefined}
+          aria-describedby={err ? 'book-form-error' : undefined}
           hint="Nama penulis wajib diisi"
           value={form.author}
           onChange={(e) => set('author', e.target.value)}
@@ -174,6 +178,8 @@ export default function BookForm({
         <Input
           id="book-year"
           label="Tahun"
+          aria-invalid={err ? true : undefined}
+          aria-describedby={err ? 'book-form-error' : undefined}
           type="number"
           value={form.year ?? ''}
           onChange={(e) => set('year', e.target.value ? Number(e.target.value) : null)}
@@ -267,6 +273,8 @@ export default function BookForm({
         <Input
           id="book-stock-total"
           label="Stok total"
+          aria-invalid={err ? true : undefined}
+          aria-describedby={err ? 'book-form-error' : undefined}
           type="number"
           min={0}
           value={form.stock_total}
@@ -275,6 +283,8 @@ export default function BookForm({
         <Input
           id="book-stock-available"
           label="Stok tersedia"
+          aria-invalid={err ? true : undefined}
+          aria-describedby={err ? 'book-form-error' : undefined}
           type="number"
           min={0}
           value={form.stock_available}
@@ -283,6 +293,8 @@ export default function BookForm({
         <Input
           id="book-pages"
           label="Jumlah halaman"
+          aria-invalid={err ? true : undefined}
+          aria-describedby={err ? 'book-form-error' : undefined}
           type="number"
           min={1}
           value={form.pages ?? ''}
