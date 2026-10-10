@@ -36,6 +36,7 @@ export default function AnggotaPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [form, setForm] = useState({ user_id: '', member_code: '', phone: '', address: '' });
   const [actionError, setActionError] = useState('');
+  const [loadError, setLoadError] = useState('');
   const [loading, setLoading] = useState(false);
   const [bulkLoading, setBulkLoading] = useState(false);
   // Profile picker (search-as-you-type) — mengisi user_id tanpa paste UUID manual.
@@ -46,16 +47,20 @@ export default function AnggotaPage() {
   const pickerListId = useId();
 
   const load = useCallback(async () => {
-    const q = new URLSearchParams({ page: String(page), per_page: '10', q: search });
-    const res = await fetch(`/api/members?${q}`);
-    const json = (await res.json()) as {
-      data?: Member[];
-      pagination?: { totalPages?: number };
-      meta?: { totalPages?: number };
-    };
-    if (res.ok) {
+    setLoadError('');
+    try {
+      const q = new URLSearchParams({ page: String(page), per_page: '10', q: search });
+      const res = await fetch(`/api/members?${q}`);
+      const json = (await res.json().catch(() => ({}))) as {
+        data?: Member[];
+        pagination?: { totalPages?: number };
+        meta?: { totalPages?: number };
+      };
+      if (!res.ok) throw new Error(errMsg(json, 'Gagal memuat anggota.'));
       setRows(json.data ?? []);
       setTotalPages(json.pagination?.totalPages ?? json.meta?.totalPages ?? 1);
+    } catch (e) {
+      setLoadError((e as Error).message);
     }
   }, [search, page]);
 
@@ -83,7 +88,7 @@ export default function AnggotaPage() {
         const params = new URLSearchParams({ q: clean, per_page: '10' });
         const res = await fetch(`/api/members?${params}`);
         if (!res.ok) return;
-        const json = (await res.json()) as { data?: Member[] };
+        const json = (await res.json().catch(() => ({}))) as { data?: Member[] };
         setPickOptions(
           (json.data ?? []).map((m) => ({
             user_id: m.user_id,
@@ -142,7 +147,7 @@ export default function AnggotaPage() {
           address: form.address || null,
         }),
       });
-      const json = await res.json();
+      const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(errMsg(json));
       setForm({ user_id: '', member_code: '', phone: '', address: '' });
       setPickText('');
@@ -158,19 +163,24 @@ export default function AnggotaPage() {
   async function onDelete(id: string, code: string) {
     if (!confirm('Hapus anggota ini?')) return;
     setActionError('');
-    const res = await fetch(`/api/members?id=${id}`, { method: 'DELETE' });
-    const json = await res.json();
-    if (!res.ok) {
-      // Cerminan buku: tolak dengan penjelasan bila masih ada pinjaman berjalan.
-      if (res.status === 409) {
-        setActionError(
-          `Anggota ${code} tidak bisa dihapus: masih punya pinjaman berjalan. Kembalikan dulu semua pinjamannya.`
-        );
-        return;
+    setLoadError('');
+    try {
+      const res = await fetch(`/api/members?id=${id}`, { method: 'DELETE' });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        // Cerminan buku: tolak dengan penjelasan bila masih ada pinjaman berjalan.
+        if (res.status === 409) {
+          setActionError(
+            `Anggota ${code} tidak bisa dihapus: masih punya pinjaman berjalan. Kembalikan dulu semua pinjamannya.`
+          );
+          return;
+        }
+        throw new Error(errMsg(json));
       }
-      return alert(errMsg(json));
+      load();
+    } catch (e) {
+      setActionError((e as Error).message);
     }
-    load();
   }
 
   // Isu #56: suspend/unsuspend langsung dari daftar — anggota bermasalah
@@ -193,26 +203,54 @@ export default function AnggotaPage() {
     if (selected.size === 0) return;
     if (!confirm(`Hapus ${selected.size} anggota terpilih?`)) return;
     setActionError('');
+    setLoadError('');
     setBulkLoading(true);
     try {
       const ids = [...selected];
-      const deleted: string[] = [];
-      const skipped: string[] = [];
-      for (const id of ids) {
-        const res = await fetch(`/api/members?id=${id}`, { method: 'DELETE' });
-        if (res.ok) deleted.push(id);
-        else if (res.status === 409) skipped.push(id);
-        else {
+      const results = await Promise.allSettled(
+        ids.map((id) => fetch(`/api/members?id=${id}`, { method: 'DELETE' }))
+      );
+      let deleted = 0;
+      let skipped = 0;
+      const failed: string[] = [];
+      const failureMsgs: string[] = [];
+      for (const [i, r] of results.entries()) {
+        const id = ids[i];
+        if (r.status === 'rejected') {
+          if (id) failed.push(id);
+          failureMsgs.push((r.reason as Error)?.message || 'Gagal menghapus anggota.');
+          continue;
+        }
+        const res = r.value;
+        if (res.ok) {
+          deleted++;
+        } else if (res.status === 409) {
+          skipped++;
+        } else {
+          if (id) failed.push(id);
           const json = (await res.json().catch(() => ({}))) as unknown;
-          return alert(errMsg(json));
+          failureMsgs.push(errMsg(json, 'Gagal menghapus anggota.'));
         }
       }
-      if (skipped.length > 0)
-        setActionError(
-          `${deleted.length} dihapus, ${skipped.length} dilewati (masih punya pinjaman berjalan).`
-        );
-      setSelected(new Set());
+      const failureMsg = [...new Set(failureMsgs)].join('; ');
+      // Sukses bersih = tanpa pesan; parsial/gagal = ringkasan akurat + id gagal.
+      if (failed.length > 0 || skipped > 0) {
+        const parts = [`${deleted} dihapus`];
+        if (skipped > 0) parts.push(`${skipped} dilewati (masih punya pinjaman berjalan)`);
+        if (failed.length > 0) parts.push(`${failed.length} gagal`);
+        const idLine =
+          failed.length > 0
+            ? ` ID gagal: ${failed.slice(0, 5).join(', ')}${failed.length > 5 ? ', …' : ''}`
+            : '';
+        setActionError(parts.join(', ') + (failureMsg ? `. ${failureMsg}` : '') + idLine);
+      } else {
+        setActionError('');
+      }
+      // Saat ada kegagalan, pertahankan seleksi = id gagal agar bisa diulang.
+      setSelected(failed.length > 0 ? new Set(failed) : new Set());
       load();
+    } catch (e) {
+      setActionError((e as Error).message);
     } finally {
       setBulkLoading(false);
     }
@@ -339,6 +377,11 @@ export default function AnggotaPage() {
           </Button>
         )}
       </div>
+      {loadError && (
+        <p role="alert" className="text-sm text-red-600">
+          {loadError}
+        </p>
+      )}
       {actionError && (
         <p role="alert" className="text-sm text-red-600">
           {actionError}

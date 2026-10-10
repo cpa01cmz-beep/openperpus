@@ -609,7 +609,7 @@ describe('admin list page interactions', () => {
     await waitFor(() => expect(screen.getAllByRole('checkbox').length).toBeGreaterThan(0), {
       timeout: 2500,
     });
-    fireEvent.click(screen.getByRole('button', { name: /ekspor csv/i }));
+    fireEvent.click(screen.getByRole('button', { name: /ekspor halaman ini/i }));
     await waitFor(
       () =>
         expect(
