@@ -1,4 +1,4 @@
-# webperpus-oc — CMS Perpustakaan
+# openperpus — CMS Perpustakaan
 
 Next.js 14 + Supabase + Tailwind 3, deploy ke Vercel **atau** Cloudflare Workers (keduanya didukung, lihat ADR-002).
 
