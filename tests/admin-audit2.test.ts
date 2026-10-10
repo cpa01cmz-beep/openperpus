@@ -241,10 +241,15 @@ describe('S-admin-audit2 alias+collective audit + dashboard bound', () => {
     expect(src, 'S-AUDIT2: overdueQueue must be capped with .limit(8)').toMatch(
       /\.limit\(\s*8\s*\)/
     );
+    // Agregat wajib dibaca dari baris RPC (bukan sekadar substring nama kolom —
+    // substring juga lolos via deklarasi type StatsRow). Pola count-head lama dilarang.
     expect(
-      src.includes('overdue_count'),
-      'S-AUDIT2: dashboard must read aggregates from get_dashboard_stats *_count'
-    ).toBe(true);
+      src,
+      'S-AUDIT2: dashboard must read aggregates from get_dashboard_stats row via num(stats?...)'
+    ).toMatch(/num\(stats\?\.(total_books|total_members|active_loans|overdue_count)/);
+    expect(src, 'S-AUDIT2: count-head exact must stay out of the dashboard page').not.toMatch(
+      /count:\s*['"]exact['"]/
+    );
     expect(
       src.includes('get_dashboard_stats'),
       'S-AUDIT2: dashboard chart must use get_dashboard_stats RPC, not unbounded fetch'

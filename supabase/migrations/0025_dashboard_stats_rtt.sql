@@ -10,8 +10,21 @@
 --   ulang 0017_dashboard_stats.sql; DROP INDEX IF EXISTS public.idx_loans_borrowed_at,
 --   public.idx_loans_active_due;
 -- Catatan: index dibuat non-CONCURRENTLY agar satu transaction migration
---   (pola repo). Untuk tabel besar di produksi, jalankan manual:
---   CREATE INDEX CONCURRENTLY ... (lihat catatan verifikasi PR #58).
+--   (pola repo). GATE pre-deploy wajib utk tabel loans besar di produksi —
+--   jalankan DULU di luar transaksi (psql langsung, bukan via db push):
+--   CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_loans_borrowed_at
+--     ON public.loans (borrowed_at DESC);
+--   CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_loans_active_due
+--     ON public.loans (due_at) WHERE status IN ('borrowed', 'overdue');
+--   Jika pre-step ini diskip, db push mengambil SHARE lock di loans dan
+--   memblokir INSERT/UPDATE/DELETE (checkout/return stall) selama build index.
+--   IF NOT EXISTS hanya cek nama index, bukan definisi/predikat: bila nama
+--   sudah ada dgn predikat berbeda, statement jadi no-op diam-diam. Gate
+--   post-deploy wajib: verifikasi definisi via
+--   SELECT indexdef FROM pg_indexes WHERE indexname IN
+--     ('idx_loans_borrowed_at','idx_loans_active_due');
+--   + EXPLAIN (overdue queue: Index Scan idx_loans_active_due, tanpa Sort;
+--   lihat catatan verifikasi PR #58).
 -- ============================================================================
 
 -- ----------------------------------------------------------------------------

@@ -8,12 +8,17 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 // Zero-fill 7 slot chart saat RPC gagal/v1-lengkap — bar tetap ada, bukan blank.
+// Hari UTC agar konsisten dengan bucket SQL (UTC) bila TZ runtime non-UTC.
 function seedWeekDays(): { label: string; count: number }[] {
   const out: { label: string; count: number }[] = [];
+  const now = new Date();
   for (let i = 6; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    out.push({ label: d.toLocaleDateString('id-ID', { weekday: 'short' }), count: 0 });
+    const d = new Date(now);
+    d.setUTCDate(d.getUTCDate() - i);
+    out.push({
+      label: d.toLocaleDateString('id-ID', { weekday: 'short', timeZone: 'UTC' }),
+      count: 0,
+    });
   }
   return out;
 }
@@ -25,7 +30,11 @@ export default async function AdminDashboard() {
   // #58: 3 query (dari ~8 RTT) — 1 RPC get_dashboard_stats (counts + chart +
   // tarif denda + tagihan terbuka) + 2 list terbatas top-8.
   // Fallback bucket limit-500 dihapus; chart datang dari RPC (sargable).
-  const [{ data: statsData, error: statsError }, { data: recent }, { data: overdueQueue }] =
+  const [
+    { data: statsData, error: statsError },
+    { data: recent, error: recentError },
+    { data: overdueQueue, error: overdueError },
+  ] =
     await Promise.all([
       supabase.rpc('get_dashboard_stats', { p_days: 7 }),
       supabase
@@ -54,11 +63,18 @@ export default async function AdminDashboard() {
   const stats = ((Array.isArray(statsData) ? statsData[0] : statsData) ?? null) as StatsRow | null;
 
   // Kegagalan RPC jangan senyap (review #58): log + chart zero-fill 7 hari.
+  // List query error juga jangan senyap: bedakan antrean kosong vs query gagal.
   if (statsError || !stats) {
     console.error('[dashboard] get_dashboard_stats gagal', statsError?.message ?? 'data kosong');
   } else if (!('fines_open' in stats)) {
     // Guard deploy: signature v1 = migrasi 0025 belum diterapkan (lihat PR body).
     console.error('[dashboard] get_dashboard_stats v1 — jalankan migrasi 0025 sebelum deploy app');
+  }
+  if (recentError) {
+    console.error('[dashboard] recent loans gagal', recentError.message);
+  }
+  if (overdueError) {
+    console.error('[dashboard] overdue queue gagal', overdueError.message);
   }
 
   const num = (v: number | string | null | undefined, d = 0) => {
@@ -80,7 +96,11 @@ export default async function AdminDashboard() {
   const perDay = stats?.loans_per_day ?? [];
   const days = perDay.length
     ? perDay.map((d) => ({
-        label: new Date(d.day).toLocaleDateString('id-ID', { weekday: 'short' }),
+        // Bucket SQL hari UTC — label eksplisit UTC agar tak geser sehari bila TZ runtime non-UTC.
+        label: new Date(`${d.day}T00:00:00Z`).toLocaleDateString('id-ID', {
+          weekday: 'short',
+          timeZone: 'UTC',
+        }),
         count: Number(d.total),
       }))
     : seedWeekDays();

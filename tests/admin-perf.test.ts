@@ -76,9 +76,12 @@ describe('S-admin-perf', () => {
   it('(e) RPC contract: RETURNS TABLE 0025 ⊇ StatsRow keys (rename kolom ketahuan)', () => {
     const mig = read('supabase/migrations/0025_dashboard_stats_rtt.sql');
     const src = read('src/app/admin/page.tsx');
-    // Parse blok RETURNS TABLE (...) — bukan toMatch lebar yang bisa dipenuhi komentar.
+    // Parse blok RETURNS TABLE (...) — terima tipe apa pun agar kolom baru
+    // bertipe lain (TEXT/TIMESTAMPTZ/INT8) tetap terdeteksi, bukan lolos diam-diam.
     const retBlock = mig.match(/RETURNS TABLE \(([\s\S]*?)^\)/m)?.[1] ?? '';
-    const cols = [...retBlock.matchAll(/^\s{2}(\w+)\s+(BIGINT|NUMERIC|JSONB)/gm)].map((m) => m[1]);
+    const cols = [...retBlock.matchAll(/^\s+(\w+)\s+[A-Z][A-Z0-9_]*(\([^)]*\))?/gm)].map(
+      (m) => m[1]
+    );
     const statsBlock = src.match(/type StatsRow = \{([\s\S]*?)\n\s*\};/)?.[1] ?? '';
     const keys = [...statsBlock.matchAll(/^\s+(\w+):/gm)].map((m) => m[1]);
     expect(cols.length, 'RED: parse RETURNS TABLE dari 0025 gagal').toBeGreaterThanOrEqual(7);
@@ -147,7 +150,8 @@ describe('S-admin-perf', () => {
     setRpc('get_dashboard_stats', { data: null, error: { message: 'db down' } });
     const markup = renderToStaticMarkup((await AdminDashboard()) as React.ReactElement);
     expect(markup).toContain('Total Buku'); // kartu render, nol tidak lagi senyap
-    expect(markup.split(' pinjam').length - 1, 'chart harus zero-fill 7 bar').toBe(7);
+    // Zero-fill = 7 elemen bar (satu per hari), bukan hitungan substring teks title.
+    expect(markup.match(/title="[^"]*"/g)?.length ?? 0, 'chart harus zero-fill 7 bar').toBe(7);
     expect(markup).not.toContain('tagihan terbuka');
     expect(markup).toContain('Denda Rp1.000/hari'); // fallback tarif tetap
     expect(
