@@ -11,6 +11,11 @@ type Ctx = { params: Promise<{ id: string }> };
  * PATCH /api/reservations/[id] {status:"batal"|..., notes?} — pemilik hanya boleh batal
  * PUT /api/reservations/[id] — alias PATCH (staf penuh)
  * DELETE /api/reservations/[id] — pemilik / pustakawan+
+ *
+ * STATE-MACHINE (issue #73): pending->ready, any->cancelled/expired.
+ * status='completed' TIDAK bisa lewat PUT — hanya via checkout atomik
+ * POST /api/reservations/{id}/checkout (RPC checkout_reservation_tx, migrasi
+ * 0024) yang membuat loan + menandai completed dalam satu transaksi.
  */
 
 const STATUSES = ['pending', 'ready', 'completed', 'cancelled', 'expired'] as const;
@@ -98,14 +103,22 @@ async function updateById(req: Request, id: string) {
     }
     if (!isStaff && st !== 'cancelled')
       return jsonError('FORBIDDEN', 'Anggota hanya boleh membatalkan reservasi.', 403);
+    // #73: completed WAJIB lewat checkout atomik (POST .../checkout) yang
+    // membuat loan. PUT completed langsung = stok tak berkurang + antrean
+    // fiktif selesai — jalur ini ditutup total.
+    if (st === 'completed') {
+      return jsonError(
+        'VALIDATION',
+        'Selesaikan reservasi lewat POST /api/reservations/{id}/checkout (membuat loan atomik).',
+        422
+      );
+    }
     const from = cur.status;
     const allowed =
       from === st ||
       st === 'cancelled' ||
       st === 'expired' ||
-      (from === 'pending' && st === 'ready') ||
-      (from === 'ready' && st === 'completed') ||
-      (from === 'pending' && st === 'completed');
+      (from === 'pending' && st === 'ready');
     if (!allowed) {
       return jsonError('VALIDATION', `Transisi status ${from}->${st} tidak diizinkan.`, 422);
     }
