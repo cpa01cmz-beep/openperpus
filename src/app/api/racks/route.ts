@@ -9,8 +9,8 @@ import { createLogger, requestIdFromHeaders } from '@/lib/logger';
  * GET /api/racks?page=&per_page=&q= — publik (filter OPAC, hanya is_active).
  *   Staf: ?all=1 untuk lihat semua.
  * POST /api/racks — pustakawan+ {kode|code, nama|name, lantai?|keterangan?|location?, capacity?, is_active?}
- * PUT /api/racks?id= — pustakawan+
- * DELETE /api/racks?id= — admin (409 bila dipakai buku)
+ * PUT /api/racks/{id} — pustakawan+ (satu transport ID, issue #54: ?id= dihapus)
+ * DELETE /api/racks/{id} — admin (409 bila dipakai buku)
  * Kolom migrasi 0001: code UNIQUE, name, location, capacity, is_active.
  */
 
@@ -158,95 +158,4 @@ export async function POST(req: Request) {
 
   await writeLog(supabase, user?.id, 'racks.create', (data as { id: string }).id, { code });
   return NextResponse.json({ data, revalidated: revalidateRacks() }, { status: 201 });
-}
-
-export async function PUT(req: Request) {
-  const log = createLogger(requestIdFromHeaders(req.headers));
-  const guard = await requireStaff(['admin', 'librarian']);
-  if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
-  const { supabase, user } = guard as {
-    supabase: ReturnType<typeof createClient>;
-    user: { id: string };
-  };
-
-  const id = new URL(req.url).searchParams.get('id');
-  if (!id) return jsonError('VALIDATION', 'Parameter ?id= wajib.', 400);
-
-  let body: Record<string, unknown>;
-  try {
-    body = (await req.json()) as Record<string, unknown>;
-  } catch {
-    return jsonError('INVALID_JSON', 'Body JSON tidak valid.', 400);
-  }
-
-  const payload: Record<string, unknown> = {};
-  if (body.code !== undefined || body.kode !== undefined) {
-    const code = pickCode(body);
-    if (!code) return jsonError('VALIDATION', 'kode/code tidak boleh kosong.', 422);
-    payload.code = code;
-  }
-  if (body.name !== undefined || body.nama !== undefined) {
-    const name = pickName(body);
-    if (!name) return jsonError('VALIDATION', 'nama/name tidak boleh kosong.', 422);
-    payload.name = name;
-  }
-  if (body.location !== undefined || body.keterangan !== undefined || body.lantai !== undefined) {
-    payload.location = pickLocation(body);
-  }
-  if (body.capacity !== undefined) {
-    if (body.capacity === null || body.capacity === '') payload.capacity = null;
-    else {
-      const c = Number(body.capacity);
-      if (!Number.isInteger(c) || c < 0)
-        return jsonError('VALIDATION', 'capacity harus bilangan bulat >= 0.', 422);
-      payload.capacity = c;
-    }
-  }
-  if (body.is_active !== undefined) payload.is_active = Boolean(body.is_active);
-
-  const { data, error } = await supabase
-    .from('racks')
-    .update(payload)
-    .eq('id', id)
-    .select()
-    .single();
-  if (error) {
-    if ((error as { code?: string }).code === '23505') {
-      log.warn('racks.conflict', { detail: error.message });
-      return jsonError('CONFLICT', 'Kode rak sudah dipakai.', 409, { requestId: log.requestId });
-    }
-    log.error('racks.save_failed', { detail: error.message });
-    return jsonError('SAVE_FAILED', 'Gagal mengupdate rak.', 500, { requestId: log.requestId });
-  }
-
-  await writeLog(supabase, user?.id, 'racks.update', id, payload);
-  return NextResponse.json({ data, revalidated: revalidateRacks() });
-}
-
-export async function DELETE(req: Request) {
-  const log = createLogger(requestIdFromHeaders(req.headers));
-  const guard = await requireStaff(['admin']);
-  if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
-  const { supabase, user } = guard as {
-    supabase: ReturnType<typeof createClient>;
-    user: { id: string };
-  };
-
-  const id = new URL(req.url).searchParams.get('id');
-  if (!id) return jsonError('VALIDATION', 'Parameter ?id= wajib.', 400);
-
-  const { count } = await supabase
-    .from('books')
-    .select('id', { count: 'exact', head: true })
-    .eq('rack_id', id);
-  if ((count ?? 0) > 0) return jsonError('CONFLICT', 'Rak dipakai buku, tidak bisa dihapus.', 409);
-
-  const { error } = await supabase.from('racks').delete().eq('id', id);
-  if (error) {
-    log.error('racks.delete_failed', { detail: error.message });
-    return jsonError('DELETE_FAILED', 'Gagal menghapus rak.', 500, { requestId: log.requestId });
-  }
-
-  await writeLog(supabase, user?.id, 'racks.delete', id);
-  return NextResponse.json({ message: 'Rak dihapus.', revalidated: revalidateRacks() });
 }

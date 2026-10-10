@@ -8,8 +8,8 @@ import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 /**
  * GET /api/members?page=&per_page=&q=&status= — pustakawan+
  * POST /api/members { user_id, member_code?, phone?, address?, status? }
- * PUT /api/members?id= — partial update (status/address/phone)
- * DELETE /api/members?id= (admin; tolak bila ada loan borrowed/overdue)
+ * PUT /api/members/{id} — partial update (status/address/phone) — issue #54: ?id= dihapus
+ * DELETE /api/members/{id} (admin; tolak bila ada loan borrowed/overdue)
  *
  * Kolom mengikuti migrasi 0001: user_id(FK profiles, UNIQUE NOT NULL),
  * member_code UNIQUE, address, phone, join_date, status active|suspended|expired|pending.
@@ -116,72 +116,4 @@ export async function POST(req: Request) {
     return jsonError('SAVE_FAILED', 'Gagal menambah anggota.', 500, { requestId: log.requestId });
   }
   return NextResponse.json({ data }, { status: 201 });
-}
-
-export async function PUT(req: Request) {
-  const log = createLogger(requestIdFromHeaders(req.headers));
-  const guard = await requireStaff(['admin', 'librarian']);
-  if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
-  const { supabase } = guard as { supabase: ReturnType<typeof createClient> };
-
-  const id = new URL(req.url).searchParams.get('id');
-  if (!id) return jsonError('VALIDATION', 'Parameter ?id= wajib.', 400);
-
-  let body: Record<string, unknown>;
-  try {
-    body = (await req.json()) as Record<string, unknown>;
-  } catch {
-    return jsonError('INVALID_JSON', 'Body JSON tidak valid.', 400);
-  }
-
-  const payload: Record<string, unknown> = {};
-  if (body.phone !== undefined || body.telepon !== undefined)
-    payload.phone = (body.phone ?? body.telepon) as string | null;
-  if (body.address !== undefined || body.alamat !== undefined)
-    payload.address = (body.address ?? body.alamat) as string | null;
-  if (body.status !== undefined) {
-    if (!(STATUSES as readonly string[]).includes(body.status as string)) {
-      return jsonError('VALIDATION', 'status harus: active|suspended|expired|pending.', 422);
-    }
-    payload.status = body.status;
-  }
-  if (body.member_code !== undefined) payload.member_code = body.member_code;
-
-  const { data, error } = await supabase
-    .from('members')
-    .update(payload)
-    .eq('id', id)
-    .select()
-    .single();
-  if (error) {
-    log.error('members.save_failed', { detail: error.message });
-    return jsonError('SAVE_FAILED', 'Gagal mengupdate anggota.', 500, { requestId: log.requestId });
-  }
-  return NextResponse.json({ data });
-}
-
-export async function DELETE(req: Request) {
-  const log = createLogger(requestIdFromHeaders(req.headers));
-  const guard = await requireStaff(['admin']);
-  if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
-  const { supabase } = guard as { supabase: ReturnType<typeof createClient> };
-
-  const id = new URL(req.url).searchParams.get('id');
-  if (!id) return jsonError('VALIDATION', 'Parameter ?id= wajib.', 400);
-
-  const { count } = await supabase
-    .from('loans')
-    .select('id', { count: 'exact', head: true })
-    .eq('member_id', id)
-    .in('status', ['borrowed', 'overdue']);
-  if ((count ?? 0) > 0) return jsonError('CONFLICT', 'Anggota masih punya pinjaman berjalan.', 409);
-
-  const { error } = await supabase.from('members').delete().eq('id', id);
-  if (error) {
-    log.error('members.delete_failed', { detail: error.message });
-    return jsonError('DELETE_FAILED', 'Gagal menghapus anggota.', 500, {
-      requestId: log.requestId,
-    });
-  }
-  return NextResponse.json({ message: 'Anggota dihapus.' });
 }

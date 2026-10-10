@@ -32,8 +32,16 @@ import {
 import { PUT as BOOK_PUT, DELETE as BOOK_DEL } from '@/app/api/books/[id]/route';
 import { GET as FINE_GET } from '@/app/api/fines/[id]/route';
 import { POST as PAY_POST } from '@/app/api/fines/[id]/pay/route';
+import { GET as MEM_GET, PUT as MEM_PUT, DELETE as MEM_DEL } from '@/app/api/members/[id]/route';
+import { GET as ART_GET, PUT as ART_PUT, DELETE as ART_DEL } from '@/app/api/articles/[id]/route';
+import { GET as BAN_GET, PUT as BAN_PUT, DELETE as BAN_DEL } from '@/app/api/banners/[id]/route';
+import { PUT as SVC_PUT, DELETE as SVC_DEL } from '@/app/api/services/[id]/route';
+import { GET as LOAN_GET, PUT as LOAN_PUT, DELETE as LOAN_DEL } from '@/app/api/loans/[id]/route';
+import { PUT as RES_PUT, DELETE as RES_DEL } from '@/app/api/reservations/[id]/route';
 
-const ctx = { params: { id: 'row-1' } };
+// #54: semua route [id] memakai UUID valid di path (bukan 'row-1').
+const ctx = { params: { id: '11111111-1111-4111-8111-111111111111' } };
+const badCtx = { params: { id: 'bukan-uuid' } };
 
 beforeEach(() => {
   resetMockDb();
@@ -339,5 +347,156 @@ describe('fines/[id] + pay guards', () => {
     expect((await PAY_POST(badJsonReq('POST', '/api/x'), ctx)).status).toBe(400);
     setTable('fines', { single: { data: null, error: { message: 'nf' } } });
     expect((await PAY_POST(jsonReq('POST', '/api/x', { metode: 'cash' }), ctx)).status).toBe(404);
+  });
+});
+
+describe('#54: semua route [id] wajib UUID — non-UUID -> 400 VALIDATION', () => {
+  it('GET/PUT/DELETE tiap modul menolak id non-UUID lebih awal', async () => {
+    expect((await CAT_GET(req('/api/x'), badCtx)).status).toBe(400);
+    expect((await CAT_PUT(jsonReq('PUT', '/api/x', { name: 'X' }), badCtx)).status).toBe(400);
+    expect((await CAT_DEL(req('/api/x', { method: 'DELETE' }), badCtx)).status).toBe(400);
+    expect((await RACK_GET(req('/api/x'), badCtx)).status).toBe(400);
+    expect((await RACK_PUT(jsonReq('PUT', '/api/x', { name: 'X' }), badCtx)).status).toBe(400);
+    expect((await RACK_DEL(req('/api/x', { method: 'DELETE' }), badCtx)).status).toBe(400);
+    expect((await MENU_GET(req('/api/x'), badCtx)).status).toBe(400);
+    expect((await MENU_PUT(jsonReq('PUT', '/api/x', { label: 'X' }), badCtx)).status).toBe(400);
+    expect((await MENU_DEL(req('/api/x', { method: 'DELETE' }), badCtx)).status).toBe(400);
+    expect((await PAGE_GET(req('/api/x'), badCtx)).status).toBe(400);
+    expect((await PAGE_PUT(jsonReq('PUT', '/api/x', { title: 'X' }), badCtx)).status).toBe(400);
+    expect((await PAGE_DEL(req('/api/x', { method: 'DELETE' }), badCtx)).status).toBe(400);
+    expect((await FAQ_GET(req('/api/x'), badCtx)).status).toBe(400);
+    expect((await FAQ_PUT(jsonReq('PUT', '/api/x', { question: 'X' }), badCtx)).status).toBe(400);
+    expect((await FAQ_DEL(req('/api/x', { method: 'DELETE' }), badCtx)).status).toBe(400);
+    expect((await TST_GET(req('/api/x'), badCtx)).status).toBe(400);
+    expect((await TST_PUT(jsonReq('PUT', '/api/x', { name: 'X' }), badCtx)).status).toBe(400);
+    expect((await TST_DEL(req('/api/x', { method: 'DELETE' }), badCtx)).status).toBe(400);
+    expect((await BOOK_PUT(jsonReq('PUT', '/api/x', { title: 'X' }), badCtx)).status).toBe(400);
+    expect((await BOOK_DEL(req('/api/x', { method: 'DELETE' }), badCtx)).status).toBe(400);
+    expect((await FINE_GET(req('/api/x'), badCtx)).status).toBe(400);
+    expect((await PAY_POST(jsonReq('POST', '/api/x', { metode: 'cash' }), badCtx)).status).toBe(
+      400
+    );
+    expect((await SVC_PUT(jsonReq('PUT', '/api/x', { title: 'X' }), badCtx)).status).toBe(400);
+    expect((await SVC_DEL(req('/api/x', { method: 'DELETE' }), badCtx)).status).toBe(400);
+    expect((await LOAN_GET(req('/api/x'), badCtx)).status).toBe(400);
+    expect((await LOAN_PUT(jsonReq('PUT', '/api/x', { action: 'return' }), badCtx)).status).toBe(
+      400
+    );
+    expect((await LOAN_DEL(req('/api/x', { method: 'DELETE' }), badCtx)).status).toBe(400);
+    expect((await RES_PUT(jsonReq('PUT', '/api/x', { status: 'cancelled' }), badCtx)).status).toBe(
+      400
+    );
+    expect((await RES_DEL(req('/api/x', { method: 'DELETE' }), badCtx)).status).toBe(400);
+    expect((await MEM_GET(req('/api/x'), badCtx)).status).toBe(400);
+    expect((await MEM_PUT(jsonReq('PUT', '/api/x', { status: 'active' }), badCtx)).status).toBe(
+      400
+    );
+    expect((await MEM_DEL(req('/api/x', { method: 'DELETE' }), badCtx)).status).toBe(400);
+    expect((await ART_GET(req('/api/x'), badCtx)).status).toBe(400);
+    expect((await ART_PUT(jsonReq('PUT', '/api/x', { title: 'X' }), badCtx)).status).toBe(400);
+    expect((await ART_DEL(req('/api/x', { method: 'DELETE' }), badCtx)).status).toBe(400);
+    expect((await BAN_GET(req('/api/x'), badCtx)).status).toBe(400);
+    expect((await BAN_PUT(jsonReq('PUT', '/api/x', { title: 'X' }), badCtx)).status).toBe(400);
+    expect((await BAN_DEL(req('/api/x', { method: 'DELETE' }), badCtx)).status).toBe(400);
+  });
+});
+
+describe('members/[id]', () => {
+  it('GET staff 200 / missing 404', async () => {
+    setTable('profiles', { single: { data: { role: 'admin' } } });
+    setTable('members', { single: { data: { id: ctx.params.id } } });
+    expect((await MEM_GET(req('/api/x'), ctx)).status).toBe(200);
+    setTable('members', { single: { data: null, error: { message: 'nf' } } });
+    expect((await MEM_GET(req('/api/x'), ctx)).status).toBe(404);
+  });
+
+  it('PUT json/status/save-fail/success', async () => {
+    expect((await MEM_PUT(badJsonReq('PUT', '/api/x'), ctx)).status).toBe(400);
+    expect((await MEM_PUT(jsonReq('PUT', '/api/x', { status: 'ghost' }), ctx)).status).toBe(422);
+    setTable('members', { update: { data: null, error: { message: 'db' } } });
+    expect((await MEM_PUT(jsonReq('PUT', '/api/x', { phone: '1' }), ctx)).status).toBe(500);
+    setTable('members', { update: { data: { id: ctx.params.id }, error: null } });
+    const ok = await MEM_PUT(
+      jsonReq('PUT', '/api/x', { status: 'suspended', address: 'Jl.' }),
+      ctx
+    );
+    expect(ok.status).toBe(200);
+  });
+
+  it('DELETE active-loan 409 / success / failure', async () => {
+    setTable('loans', { count: 2 });
+    expect((await MEM_DEL(req('/api/x', { method: 'DELETE' }), ctx)).status).toBe(409);
+    setTable('loans', { count: 0 });
+    expect((await MEM_DEL(req('/api/x', { method: 'DELETE' }), ctx)).status).toBe(200);
+    setTable('members', { delete: { data: null, error: { message: 'db' } } });
+    expect((await MEM_DEL(req('/api/x', { method: 'DELETE' }), ctx)).status).toBe(500);
+  });
+});
+
+describe('articles/[id]', () => {
+  it('GET published 200 / draft anon 404 / draft staff 200 / missing 404', async () => {
+    setTable('articles', { single: { data: { id: ctx.params.id, status: 'published' } } });
+    setAuthUser(null);
+    expect((await ART_GET(req('/api/x'), ctx)).status).toBe(200);
+    setTable('articles', { single: { data: { id: ctx.params.id, status: 'draft' } } });
+    expect((await ART_GET(req('/api/x'), ctx)).status).toBe(404);
+    setAuthUser({ id: 'user-1' });
+    setTable('profiles', { single: { data: { role: 'admin' } } });
+    expect((await ART_GET(req('/api/x'), ctx)).status).toBe(200);
+    setTable('articles', { single: { data: null, error: { message: 'nf' } } });
+    expect((await ART_GET(req('/api/x'), ctx)).status).toBe(404);
+  });
+
+  it('PUT json/status/conflict/save-fail/success', async () => {
+    expect((await ART_PUT(badJsonReq('PUT', '/api/x'), ctx)).status).toBe(400);
+    expect((await ART_PUT(jsonReq('PUT', '/api/x', { status: 'nope' }), ctx)).status).toBe(422);
+    setTable('articles', { update: { data: null, error: { message: 'dup', code: '23505' } } });
+    expect((await ART_PUT(jsonReq('PUT', '/api/x', { title: 'T' }), ctx)).status).toBe(409);
+    setTable('articles', { update: { data: null, error: { message: 'db' } } });
+    expect((await ART_PUT(jsonReq('PUT', '/api/x', { title: 'T' }), ctx)).status).toBe(500);
+    setTable('articles', { update: { data: { id: ctx.params.id }, error: null } });
+    const ok = await ART_PUT(
+      jsonReq('PUT', '/api/x', { judul: 'Judul Baru', konten: '# isi' }),
+      ctx
+    );
+    expect(ok.status).toBe(200);
+  });
+
+  it('DELETE success / failure', async () => {
+    setTable('articles', { delete: { data: null, error: null } });
+    expect((await ART_DEL(req('/api/x', { method: 'DELETE' }), ctx)).status).toBe(200);
+    setTable('articles', { delete: { data: null, error: { message: 'db' } } });
+    expect((await ART_DEL(req('/api/x', { method: 'DELETE' }), ctx)).status).toBe(500);
+  });
+});
+
+describe('banners/[id]', () => {
+  it('GET active 200 / inactive anon 404 / inactive staff 200 / missing 404', async () => {
+    setTable('banners', { single: { data: { id: ctx.params.id, is_active: true } } });
+    setAuthUser(null);
+    expect((await BAN_GET(req('/api/x'), ctx)).status).toBe(200);
+    setTable('banners', { single: { data: { id: ctx.params.id, is_active: false } } });
+    expect((await BAN_GET(req('/api/x'), ctx)).status).toBe(404);
+    setAuthUser({ id: 'user-1' });
+    setTable('profiles', { single: { data: { role: 'admin' } } });
+    expect((await BAN_GET(req('/api/x'), ctx)).status).toBe(200);
+    setTable('banners', { single: { data: null, error: { message: 'nf' } } });
+    expect((await BAN_GET(req('/api/x'), ctx)).status).toBe(404);
+  });
+
+  it('PUT json/save-fail/success', async () => {
+    expect((await BAN_PUT(badJsonReq('PUT', '/api/x'), ctx)).status).toBe(400);
+    setTable('banners', { update: { data: null, error: { message: 'db' } } });
+    expect((await BAN_PUT(jsonReq('PUT', '/api/x', { title: 'T' }), ctx)).status).toBe(500);
+    setTable('banners', { update: { data: { id: ctx.params.id }, error: null } });
+    const ok = await BAN_PUT(jsonReq('PUT', '/api/x', { judul: 'Judul', urutan: 2 }), ctx);
+    expect(ok.status).toBe(200);
+  });
+
+  it('DELETE success / failure', async () => {
+    setTable('banners', { delete: { data: null, error: null } });
+    expect((await BAN_DEL(req('/api/x', { method: 'DELETE' }), ctx)).status).toBe(200);
+    setTable('banners', { delete: { data: null, error: { message: 'db' } } });
+    expect((await BAN_DEL(req('/api/x', { method: 'DELETE' }), ctx)).status).toBe(500);
   });
 });

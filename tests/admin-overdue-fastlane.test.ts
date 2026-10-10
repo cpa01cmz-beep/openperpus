@@ -144,10 +144,11 @@ describe('US-2 overdue fastlane — peminjaman preselect + 1-click return', () =
       read('src/lib/loans-return.ts') +
       read('src/lib/returnLoan.ts') +
       read('src/lib/legacyReturn.ts');
-    const collective = read('src/app/api/loans/route.ts');
+    // Issue #54: koleksi hanya GET/POST — return/extend via path [id] saja.
+    const alias = read('src/app/api/loans/[id]/route.ts');
     const single = read('src/app/api/loans/[id]/return/route.ts');
     for (const [name, src] of [
-      ['collective PUT', collective + '\n' + helper],
+      ['[id] PUT', alias + '\n' + helper],
       ['[id]/return POST', single + '\n' + helper],
     ] as const) {
       expect(src, `${name} must reuse error-contract CONFLICT`).toMatch(
@@ -157,7 +158,7 @@ describe('US-2 overdue fastlane — peminjaman preselect + 1-click return', () =
     }
     // Boundary: already-returned → 409 (no double return / no double stock +1).
     expect(helper, 'helper already-returned guard missing').toMatch(/Sudah dikembalikan/);
-    expect(collective, 'collective PUT must delegate to returnLoan').toContain('returnLoan');
+    expect(alias, '[id] PUT must delegate to returnLoan').toContain('returnLoan');
     expect(single, '[id]/return must delegate to returnLoan').toContain('returnLoan');
   });
 });

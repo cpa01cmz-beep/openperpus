@@ -18,7 +18,7 @@
   | 20      | `/api/categories`, `/api/racks`, `/api/faqs`, `/api/services`, `/api/pages`, `/api/menus`, `/api/testimonials`, `/api/reservations`, `/api/fines` |
 
 - **Nama field kanonis = bahasa Inggris** (`title`, `author`, `status`, `book_id`, ...). Beberapa route masih **menerima alias Indonesia** pada body (`judul|title`, `penulis|author`, `nama|name`, `batal|cancelled`) untuk kompatibilitas klien lama — alias ini tidak lagi didokumentasikan sebagai kontrak dan akan dibekukan (issue #71).
-- **Transport ID:** `PUT/DELETE` memakai `?id=<uuid>` (boleh koma untuk bulk). `GET /api/<resource>/[id]` menerima id **atau** slug bila resource punya slug.
+- **Transport ID (issue #54):** semua single-resource `PUT/PATCH/DELETE` WAJIB lewat path REST `/api/<resource>/{id}`. Parameter `?id=` untuk operasi tulis **dihapus** — request lama mendapat `405` (handler koleksi hanya GET/POST). Id di path divalidasi UUID: bukan UUID → `400 VALIDATION`. Satu-satunya `?id=` yang masih ada adalah bulk `DELETE /api/books?id=<uuid>[,<uuid>...]` (multi-resource). `GET /api/<resource>/[id]` menerima id **atau** slug bila resource punya slug.
 - **Cache:** GET publik `/api/books` kirim `Cache-Control: public, s-maxage=300, stale-while-revalidate=60`; GET admin `no-store`. Mutasi memanggil `revalidateTag` (mis. `books`, `settings`, `max`).
 
 ---
@@ -177,16 +177,16 @@
 - `q` mencari di profil/`member_code`, `status` ∈ `active|suspended|expired|pending` (nilai lain → `422`). `?all=1` menyertakan non-aktif.
 - Item: kolom `members.*` + embed `profiles(id, full_name)`; urut `created_at desc`.
 
-### `GET /api/members/{id}` — pustakawan+; anggota hanya miliknya (`403` bila bukan).
+### `GET /api/members/{id}` — pustakawan+
 
 ### `POST /api/members` — pustakawan+
 
 - Body: `{user_id (profiles.id), member_code? (no_anggota; auto `AG-YYYYMM-XXXX` bila kosong), phone? (telepon), address? (alamat), status? (default active)}`.
 - `404` bila `profiles` tidak ada; `409 CONFLICT` bila `member_code`/`user_id` sudah dipakai; `422` status/format salah.
 
-### `PUT /api/members?id=<uuid>` — pustakawan+ (role TIDAK di sini)
+### `PUT /api/members/{id}` — pustakawan+ (role TIDAK di sini)
 
-### `DELETE /api/members?id=<uuid>` — admin only
+### `DELETE /api/members/{id}` — admin only
 
 - `409 CONFLICT` bila anggota masih punya loan `borrowed|overdue`. (Retensi arsip loan/denda historis: lihat issue #75.)
 
@@ -220,7 +220,7 @@
 - Default `borrowed_at = now`, `due_at = borrowed_at + 14 hari` (masih hardcode — memakai `library_settings.lama_pinjam_hari` diissue #74).
 - `201 {data: loan}` + log `loans.create`.
 
-### `PUT /api/loans?id=<uuid>` — pustakawan+
+### `PUT /api/loans/{id}` — pustakawan+
 
 - `{ "action": "extend", "days": 7 }` → perpanjang tempo. Limit perpanjangan dihitung dari `activity_logs` (`src/lib/extendLoan.ts`).
 - `{ "action": "return", "returned_at": "..." }` → pengembalian sederhana (kondisi selalu `baik`).
@@ -235,7 +235,7 @@
 - `kondisi` absen = simple return (sama seperti `PUT action=return`). Diteruskan ke RPC `return_loan(p_kondisi)` (migrasi 0011) yang menghitung denda telat, membuat row `fines` bila >0, dan menyesuaikan stok sesuai kondisi.
 - Response: `{ data: {...}, meta: { fine, kondisi, book_id } }` + log `loans.return`.
 
-### `DELETE /api/loans?id=<uuid>` — admin only (hanya loan `returned`/`lost`)
+### `DELETE /api/loans/{id}` — admin only (hanya loan `returned`/`lost`)
 
 ### `GET/POST /api/reservations` — anggota (miliknya) + pustakawan (semua)
 
@@ -243,7 +243,7 @@
 - POST anggota: `{book_id, expires_at?, notes?}` → `pending`. `expires_at` opsional (harus di masa depan). Staff boleh menambah `member_id` (peminjaman atas nama anggota).
 - `201 {data: reservation, revalidated: [...]}` + log `reservations.create`.
 
-### `PUT /api/reservations?id=<uuid>` — pemilik reservasi / pustakawan+
+### `PUT /api/reservations/{id}` — pemilik reservasi / pustakawan+
 
 - `{status: "batal"|"cancelled"}` (alias) untuk membatalkan; staf dapat `pending → ready` dan mengubah `expires_at`. Non-staf tidak boleh set `ready`.
 - **Tidak lagi menerima `completed`** (422) — status itu hanya lewat endpoint checkout.
@@ -255,22 +255,20 @@
 - Body opsional: `{borrowed_at?, due_at?, notes?}` (default tempo +14 hari).
 - `201` → `{ data: { loan, reservation } }`. `409` → stok habis / anggota sudah meminjam buku ini / tagihan denda belum lunas / pinjaman terlambat / batas pinjaman aktif / reservasi belum `ready`. `422` → anggota tidak aktif / parameter tanggal tidak valid. `404` → data tidak ditemukan.
 
-### `DELETE /api/reservations?id=<uuid>` — pemilik / pustakawan+ (dengan guard status)
+### `DELETE /api/reservations/{id}` — pemilik / pustakawan+ (dengan guard status)
 
 ### `GET /api/fines?member_id=&status=&page=&per_page=` — anggota baca miliknya; staf baca semua.
 
 - `?status=` ∈ `unpaid|partial|paid|waived` (nilai lain → `422`). Embed `loans(id,book_id,due_at,status)`, `members(id,member_code)`.
 - Kolom: `loan_id, member_id, amount, paid_amount, status, notes, issued_at, ...`.
 
-### `POST /api/fines` / `PUT /api/fines?id=<uuid>` — pustakawan+ (terbitkan/ubah denda manual)
+### `POST /api/fines` — pustakawan+ (terbitkan denda manual)
 
 ### `POST /api/fines/{id}/pay` — pustakawan+
 
 - Body: `{amount?, metode?: cash|transfer|... (alias: method|payment_method|nominal), notes?}`.
 - Menyimpan `paid_amount` + status menjadi `paid`/`partial`. Pembayaran **belum** punya tabel receipts bernomor — lihat issue #72.
 - `200 {data: fine}` + log `fines.pay`.
-
-### `DELETE /api/fines?id=<uuid>` — admin only
 
 ## 6. Articles (artikel/berita/event)
 
@@ -286,7 +284,7 @@
 - Body kanonis: `{title, content_md, excerpt?, category?, cover_url?, status?, published_at?}` (alias: `judul`, `konten|content`, `ringkasan`, `gambar_url`).
 - `201 {data: article}` / `409 CONFLICT` slug bentrok / `422 VALIDATION`. `status=published` otomatis mengisi `published_at`.
 
-### `PUT/DELETE /api/articles?id=<uuid>` — pustakawan+/admin. DELETE = hapus baris + log.
+### `PUT/DELETE /api/articles/{id}` — pustakawan+/admin. DELETE = hapus baris + log.
 
 ## 7. Banners (+ pages/menus/services/testimonials/faqs — pola sama)
 
@@ -301,7 +299,7 @@ Semua list memakai envelope pagination tunggal (§Konvensi). Body kanonis (alias
 
 - GET publik: hanya baris `published`/`is_active` (banners: aktif + dalam jadwal); `?all=1` memerlukan staf.
 - Mutasi: admin (faqs + insert testimonials boleh pustakawan/anon-terbatas sesuai db-design).
-- PUT/DELETE: `?id=<uuid>`.
+- PUT/DELETE: `/api/<resource>/{id}` (path REST; id non-UUID → `400`).
 
 ## 8. Logs audit (BUKAN REST)
 

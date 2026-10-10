@@ -1,7 +1,8 @@
 // S-roi6: Sweep reservasi kedaluwarsa 1-klik (orkestrasi client N-call).
 // Kandidat: status pending|ready + expires_at < now(). Baris lain tak tersentuh.
-// Sweep: PUT /api/reservations?id= {status:"expired"} per kandidat (server gate
-// mengizinkan any->expired). 422/403/offline per-baris: diskip + failure count,
+// Sweep: PUT /api/reservations/{id} {status:"expired"} per kandidat (server gate
+// mengizinkan any->expired). Satu transport ID (issue #54): id di path REST.
+// 422/403/offline per-baris: diskip + failure count,
 // tanpa membatalkan kandidat valid lain. Non-staff: guard throw, zero mutations.
 
 type FetchLike = (
@@ -62,7 +63,7 @@ export async function sweepExpiredReservations(
       const c = queue.shift();
       if (!c) return;
       try {
-        const res = await deps.fetchLike(`/api/reservations?id=${encodeURIComponent(c.id)}`, {
+        const res = await deps.fetchLike(`/api/reservations/${encodeURIComponent(c.id)}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ status: 'expired' }),

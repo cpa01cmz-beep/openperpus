@@ -128,7 +128,7 @@ export default function ReservasiSayaPage() {
     setError('');
     setNotice('');
     try {
-      // Batal → confirm sudah di kartu → PUT ?id= {status:cancelled} 200.
+      // Batal → confirm sudah di kartu → PUT /api/reservations/{id} {status:cancelled} 200.
       // Activity log "reservations.cancelled" ditulis server (best-effort).
       const updated = await cancelMyReservation({ fetchLike: fetch }, { id });
       setReservations((prev) =>

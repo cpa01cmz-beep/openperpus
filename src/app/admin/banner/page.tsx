@@ -74,7 +74,7 @@ export default function BannerPage() {
   }
 
   async function onToggle(r: Banner) {
-    const res = await fetch(`/api/banners?id=${r.id}`, {
+    const res = await fetch(`/api/banners/${r.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ is_active: !r.is_active }),
@@ -85,7 +85,7 @@ export default function BannerPage() {
 
   async function onDelete(id: string) {
     if (!confirm('Hapus banner?')) return;
-    const res = await fetch(`/api/banners?id=${id}`, { method: 'DELETE' });
+    const res = await fetch(`/api/banners/${id}`, { method: 'DELETE' });
     if (!res.ok) return alert('Gagal menghapus.');
     load();
   }

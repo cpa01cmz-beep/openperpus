@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { requireStaff, jsonError } from '@/lib/supabase/auth';
+import { isUuid } from '@/lib/api-utils';
 import { getSession } from '@/lib/session';
 import { returnLoan, extendLoan } from '@/lib/loans-return';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
@@ -12,7 +13,8 @@ type Ctx = { params: Promise<{ id: string }> };
 /**
  * GET /api/loans/[id] — pustakawan+ (atau pemilik? kontrak: anggota otomatis miliknya).
  *   Di sini: staf penuh; anggota boleh bila loan miliknya.
- * PUT /api/loans/[id] {action:"return", returned_at?, notes?} — pustakawan+ (alias route koleksi ?id=)
+ * PUT /api/loans/[id] {action:"return", returned_at?, notes?} — pustakawan+
+ *   (satu-satunya transport write issue #54; varian koleksi ?id= dihapus)
  * DELETE /api/loans/[id] — admin (hanya returned/lost)
  */
 
@@ -45,6 +47,8 @@ export async function GET(_req: Request, { params }: Ctx) {
   const s = await getSession();
   if ('errorResponse' in s) return s.errorResponse;
   const { supabase, userId, isStaff } = s.session;
+  // #54: id path WAJIB UUID — tolak 400 lebih awal, bukan string sembaran ke query.
+  if (!isUuid(id)) return jsonError('VALIDATION', 'ID peminjaman tidak valid (harus UUID).', 400);
 
   const { data: loan, error } = await supabase
     .from('loans')
@@ -73,6 +77,8 @@ export async function PUT(req: Request, { params }: Ctx) {
     supabase: ReturnType<typeof createClient>;
     user: { id: string };
   };
+  // #54: id path WAJIB UUID — tolak 400 lebih awal, bukan string sembaran ke query.
+  if (!isUuid(id)) return jsonError('VALIDATION', 'ID peminjaman tidak valid (harus UUID).', 400);
 
   let body: Record<string, unknown>;
   try {
@@ -120,6 +126,8 @@ export async function DELETE(_req: Request, { params }: Ctx) {
     supabase: ReturnType<typeof createClient>;
     user: { id: string };
   };
+  // #54: id path WAJIB UUID — tolak 400 lebih awal, bukan string sembaran ke query.
+  if (!isUuid(id)) return jsonError('VALIDATION', 'ID peminjaman tidak valid (harus UUID).', 400);
 
   const { data: loan } = await supabase.from('loans').select('status').eq('id', id).single();
   if (!loan) return jsonError('NOT_FOUND', 'Peminjaman tidak ditemukan.', 404);

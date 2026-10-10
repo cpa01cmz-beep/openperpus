@@ -90,25 +90,27 @@ function setReturnFlowMock(opts: {
 }
 
 describe('S-roi3 return single-source', () => {
-  it('RETURN-SINGLE-01 tiga route memanggil helper yang sama', async () => {
+  it('RETURN-SINGLE-01 dua route memanggil helper yang sama (issue #54: koleksi ?id= dihapus)', async () => {
     const mod = (await import('@/lib/loans-return')) as unknown as {
       returnLoan: unknown;
     };
     expect(typeof mod.returnLoan, 'RED: src/lib/loans-return.ts must export returnLoan').toBe(
       'function'
     );
+    // Koleksi hanya GET/POST — tulis single-resource via path [id] (issue #54).
     const collective = read('src/app/api/loans/route.ts');
+    expect(collective, 'koleksi loans tak boleh ekspor PUT lagi').not.toMatch(
+      /export\s+async\s+function\s+PUT\b/
+    );
     const alias = read('src/app/api/loans/[id]/route.ts');
     const single = read('src/app/api/loans/[id]/return/route.ts');
     for (const [name, src] of [
-      ['collective PUT', collective],
       ['alias PUT', alias],
       ['return POST', single],
     ] as const) {
       expect(src, `RED: ${name} must call returnLoan`).toContain('returnLoan');
     }
     for (const [name, src] of [
-      ['collective PUT', collective],
       ['alias PUT', alias],
       ['return POST', single],
     ] as const) {

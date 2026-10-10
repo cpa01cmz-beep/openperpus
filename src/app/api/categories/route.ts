@@ -9,8 +9,8 @@ import { createLogger, requestIdFromHeaders } from '@/lib/logger';
  * GET /api/categories?page=&per_page=&q= — publik (filter OPAC, hanya is_active).
  *   Staf: ?all=1 untuk lihat semua (butuh login staff).
  * POST /api/categories — pustakawan+ {nama|name, deskripsi?|description?, icon?|cover_url?, sort_order?, is_active?}
- * PUT /api/categories?id= — pustakawan+
- * DELETE /api/categories?id= — admin (409 bila dipakai buku)
+ * PUT /api/categories/{id} — pustakawan+ (satu transport ID, issue #54: ?id= dihapus)
+ * DELETE /api/categories/{id} — admin (409 bila dipakai buku)
  * Kolom migrasi 0001: name UNIQUE, slug UNIQUE, description, cover_url, sort_order, is_active.
  */
 
@@ -149,99 +149,4 @@ export async function POST(req: Request) {
 
   await writeLog(supabase, user?.id, 'categories.create', (data as { id: string }).id, { name });
   return NextResponse.json({ data, revalidated: revalidateCategories() }, { status: 201 });
-}
-
-export async function PUT(req: Request) {
-  const log = createLogger(requestIdFromHeaders(req.headers));
-  const guard = await requireStaff(['admin', 'librarian']);
-  if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
-  const { supabase, user } = guard as {
-    supabase: ReturnType<typeof createClient>;
-    user: { id: string };
-  };
-
-  const id = new URL(req.url).searchParams.get('id');
-  if (!id) return jsonError('VALIDATION', 'Parameter ?id= wajib.', 400);
-
-  let body: Record<string, unknown>;
-  try {
-    body = (await req.json()) as Record<string, unknown>;
-  } catch {
-    return jsonError('INVALID_JSON', 'Body JSON tidak valid.', 400);
-  }
-
-  const payload: Record<string, unknown> = {};
-  if (body.name !== undefined || body.nama !== undefined) {
-    const name = pickName(body);
-    if (!name) return jsonError('VALIDATION', 'nama/name tidak boleh kosong.', 422);
-    payload.name = name;
-    payload.slug =
-      typeof body.slug === 'string' && body.slug.trim() ? slugify(body.slug) : slugify(name);
-  } else if (typeof body.slug === 'string' && body.slug.trim()) {
-    payload.slug = slugify(body.slug);
-  }
-  if (body.description !== undefined || body.deskripsi !== undefined)
-    payload.description = (body.description ?? body.deskripsi) as string | null;
-  if (body.cover_url !== undefined || body.icon !== undefined || body.gambar_url !== undefined) {
-    payload.cover_url = (body.cover_url ?? body.icon ?? body.gambar_url) as string | null;
-  }
-  if (body.sort_order !== undefined) {
-    if (!Number.isInteger(Number(body.sort_order)))
-      return jsonError('VALIDATION', 'sort_order harus bilangan bulat.', 422);
-    payload.sort_order = Number(body.sort_order);
-  }
-  if (body.is_active !== undefined) payload.is_active = Boolean(body.is_active);
-
-  const { data, error } = await supabase
-    .from('categories')
-    .update(payload)
-    .eq('id', id)
-    .select()
-    .single();
-  if (error) {
-    if ((error as { code?: string }).code === '23505') {
-      log.warn('categories.conflict', { detail: error.message });
-      return jsonError('CONFLICT', 'Nama/slug kategori sudah dipakai.', 409, {
-        requestId: log.requestId,
-      });
-    }
-    log.error('categories.save_failed', { detail: error.message });
-    return jsonError('SAVE_FAILED', 'Gagal mengupdate kategori.', 500, {
-      requestId: log.requestId,
-    });
-  }
-
-  await writeLog(supabase, user?.id, 'categories.update', id, payload);
-  return NextResponse.json({ data, revalidated: revalidateCategories() });
-}
-
-export async function DELETE(req: Request) {
-  const log = createLogger(requestIdFromHeaders(req.headers));
-  const guard = await requireStaff(['admin']);
-  if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
-  const { supabase, user } = guard as {
-    supabase: ReturnType<typeof createClient>;
-    user: { id: string };
-  };
-
-  const id = new URL(req.url).searchParams.get('id');
-  if (!id) return jsonError('VALIDATION', 'Parameter ?id= wajib.', 400);
-
-  const { count } = await supabase
-    .from('books')
-    .select('id', { count: 'exact', head: true })
-    .eq('category_id', id);
-  if ((count ?? 0) > 0)
-    return jsonError('CONFLICT', 'Kategori dipakai buku, tidak bisa dihapus.', 409);
-
-  const { error } = await supabase.from('categories').delete().eq('id', id);
-  if (error) {
-    log.error('categories.delete_failed', { detail: error.message });
-    return jsonError('DELETE_FAILED', 'Gagal menghapus kategori.', 500, {
-      requestId: log.requestId,
-    });
-  }
-
-  await writeLog(supabase, user?.id, 'categories.delete', id);
-  return NextResponse.json({ message: 'Kategori dihapus.', revalidated: revalidateCategories() });
 }
