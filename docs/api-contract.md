@@ -125,7 +125,14 @@
 
 ## 5. Loans / Reservations / Fines (sirkulasi)
 
-### `GET /api/loans?status=&member_id=&overdue=1&page=` — pustakawan+ (anggota: otomatis filter miliknya, `member_id` diabaikan).
+### `GET /api/loans?status=&member_id=&overdue=1&q=&page=&per_page=` — pustakawan+ (anggota: otomatis filter miliknya, `member_id` diabaikan).
+
+**Status terlambat = turunan (definisi tunggal, issue #57).** `overdue` ⇔ `status IN ('borrowed','overdue') AND due_at < NOW()`. Aplikasi tidak pernah menulis kolom `loans.status='overdue'` (checkout selalu `borrowed`, return menulis `returned`/`lost`); nilai enum itu hanya kompatibilitas baris lama.
+
+- `?status=` menerima `borrowed|returned|overdue|lost` (nilai lain → `422 VALIDATION`).
+- `?status=overdue` dan `?overdue=1` adalah **satu** filter yang sama (definisi turunan) — keduanya tidak mungkin beda hasil dengan tombol "Terlambat saja" di admin.
+- Setiap baris membawa `is_overdue` (boolean), `effective_status` (`overdue` bila turunan terlambat, selain itu nilai kolom `status`), dan `fine_preview` (estimasi denda, tarif `library_settings.fine_per_day`).
+- Semua pembaca memakai `src/lib/loans-overdue.ts`; di sisi DB definisi yang sama dimakai `get_overdue_count` (migrasi 0012) dan `get_dashboard_stats` (0017).
 
 ### `POST /api/loans` (checkout) — pustakawan+
 
