@@ -87,10 +87,22 @@ export default function ReservasiPage() {
     return () => clearTimeout(t);
   }, [load]);
 
-  async function confirmCheckout() {
+  function onCheckout(r: Reservation) {
+    setPendingCheckout(r);
+  }
+
+  function onUpdate(id: string, next: 'ready' | 'cancelled') {
+    const row = rows.find((x) => x.id === id);
+    if (row) setPendingUpdate({ row, next });
+  }
+
+  async function runCheckout() {
     const r = pendingCheckout;
     if (!r) return;
     setPendingCheckout(null);
+    // #92: checkout atomik 1-klik — POST /api/reservations/{id}/checkout
+    // (RPC checkout_reservation_tx): loan + completed dalam satu transaksi.
+    // Gagal => rollback penuh; message server persis ditampilkan inline.
     setActingId(r.id);
     setNotice('');
     setError('');
@@ -119,7 +131,7 @@ export default function ReservasiPage() {
     }
   }
 
-  async function confirmUpdate() {
+  async function runUpdate() {
     const pending = pendingUpdate;
     if (!pending) return;
     setPendingUpdate(null);
@@ -344,7 +356,7 @@ export default function ReservasiPage() {
                       <button
                         type="button"
                         disabled={actingId === r.id}
-                        onClick={() => setPendingUpdate({ row: r, next: 'ready' })}
+                        onClick={() => onUpdate(r.id, 'ready')}
                         className="inline-flex min-h-[44px] items-center rounded bg-brand px-3 text-xs font-semibold text-white transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {actingId === r.id ? '…' : 'Setujui'}
@@ -354,7 +366,7 @@ export default function ReservasiPage() {
                       <button
                         type="button"
                         disabled={actingId === r.id}
-                        onClick={() => setPendingCheckout(r)}
+                        onClick={() => onCheckout(r)}
                         className="inline-flex min-h-[44px] items-center rounded bg-brand px-3 text-xs font-semibold text-white transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         {actingId === r.id ? '…' : 'Pinjamkan'}
@@ -363,7 +375,7 @@ export default function ReservasiPage() {
                     <button
                       type="button"
                       disabled={actingId === r.id}
-                      onClick={() => setPendingUpdate({ row: r, next: 'cancelled' })}
+                      onClick={() => onUpdate(r.id, 'cancelled')}
                       className="inline-flex min-h-[44px] items-center rounded border border-slate-200 bg-white px-3 text-xs font-semibold text-red-600 transition hover:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       Batal
@@ -390,7 +402,7 @@ export default function ReservasiPage() {
       <ConfirmModal
         open={pendingCheckout !== null}
         onClose={() => setPendingCheckout(null)}
-        onConfirm={() => void confirmCheckout()}
+        onConfirm={() => void runCheckout()}
         title="Pinjamkan buku"
         description="Loan dibuat dulu; reservasi ditandai selesai hanya jika loan berhasil."
         confirmLabel="Ya, pinjamkan"
@@ -405,7 +417,7 @@ export default function ReservasiPage() {
       <ConfirmModal
         open={pendingUpdate !== null}
         onClose={() => setPendingUpdate(null)}
-        onConfirm={() => void confirmUpdate()}
+        onConfirm={() => void runUpdate()}
         title={pendingUpdate ? NEXT_ACTION_LABEL[pendingUpdate.next] : 'Perbarui reservasi'}
         confirmLabel="Ya, lanjutkan"
       >

@@ -113,11 +113,10 @@ export default function PeminjamanPage() {
       const json = (await res.json().catch(() => ({}))) as {
         data?: Loan[];
         pagination?: { totalPages?: number };
-        meta?: { totalPages?: number };
       };
       if (!res.ok) throw new Error(errMsg(json, 'Gagal memuat peminjaman.'));
       setLoans(json.data ?? []);
-      setTotalPages(json.pagination?.totalPages ?? json.meta?.totalPages ?? 1);
+      setTotalPages(json.pagination?.totalPages ?? 1);
     } catch (e) {
       setError((e as Error).message);
     }
