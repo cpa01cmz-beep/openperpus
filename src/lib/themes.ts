@@ -272,6 +272,47 @@ export const THEMES: Record<string, ThemeDef> = {
       ],
     },
   },
+  sketch: {
+    id: 'sketch',
+    name: 'Sketch Notebook',
+    description:
+      'Hand-drawn sketchbook: warm cream paper, graphite ink, pencil-blue brand with vermilion accent, wobbly hand-lettered headings.',
+    tokens: {
+      brand: '#3B5BA9',
+      'brand-soft': '#E3EAF7',
+      'brand-strong': '#1E3A6E',
+      accent: '#D9480F',
+      'accent-soft': '#FDE8D7',
+      surface: '#FBF6E9',
+      ink: '#2A2620',
+      heading: '#1E3A6E',
+    },
+    fonts: {
+      heading: "var(--font-caveat), 'Caveat', 'Segoe Print', cursive",
+      body: "var(--font-patrick), 'Patrick Hand', 'Segoe Print', cursive",
+    },
+    radius: { sm: '0.35rem', md: '0.9rem', lg: '1.6rem' },
+    shadow: {
+      sm: '1px 2px 0 0 #2A2620',
+      md: '3px 3px 0 0 #2A2620',
+      lg: '5px 6px 0 0 #2A2620',
+    },
+    spacing: { container: '70rem', section: '5rem', card: '1.75rem' },
+    layout: {
+      headerVariant: 'sketch-notebook',
+      heroVariant: 'sketch-doodle',
+      footerVariant: 'sketch-margin',
+      homepageSections: [
+        { id: 'hero', enabled: true },
+        { id: 'welcome', enabled: true },
+        { id: 'featured', enabled: true },
+        { id: 'announcement', enabled: true },
+        { id: 'news', enabled: true },
+        { id: 'stats', enabled: true },
+        { id: 'testimonials', enabled: true },
+      ],
+    },
+  },
 };
 
 /** Array view of the registry (test contract: `themes`). */

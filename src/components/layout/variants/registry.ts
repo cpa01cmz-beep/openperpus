@@ -5,9 +5,11 @@ import CenteredHeader from './headers/CenteredHeader';
 import MinimalHeader from './headers/MinimalHeader';
 import TopBarHeader from './headers/TopBarHeader';
 import SplitHeader from './headers/SplitHeader';
+import SketchHeader from './headers/SketchHeader';
 import ClassicFooter from './footers/ClassicFooter';
 import MinimalFooter from './footers/MinimalFooter';
 import StackedFooter from './footers/StackedFooter';
+import SketchFooter from './footers/SketchFooter';
 
 export type HeaderVariantComponent = ComponentType<HeaderVariantProps>;
 export type FooterVariantComponent = ComponentType<FooterVariantProps>;
@@ -26,6 +28,7 @@ export const HEADER_VARIANTS: Record<string, HeaderVariantComponent> = {
   'paper-minimal': MinimalHeader,
   'brutalist-bar': SplitHeader,
   'ocean-wave': TopBarHeader,
+  'sketch-notebook': SketchHeader,
   // generic structural aliases (no if-hell for future themes)
   classic: ClassicHeader,
   centered: CenteredHeader,
@@ -44,6 +47,7 @@ export const FOOTER_VARIANTS: Record<string, FooterVariantComponent> = {
   'paper-colophon': MinimalFooter,
   'brutalist-index': StackedFooter,
   'ocean-harbor': StackedFooter,
+  'sketch-margin': SketchFooter,
   // generic structural aliases
   classic: ClassicFooter,
   standard: ClassicFooter,

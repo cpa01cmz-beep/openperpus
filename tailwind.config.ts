@@ -34,7 +34,15 @@ const config: Config = {
         archivo: ['var(--font-archivo)', "'Archivo Black'", "'Arial Black'", 'sans-serif'],
         space: ['var(--font-space)', "'Space Grotesk'", 'ui-monospace', 'monospace'],
         'source-serif': ['var(--font-source-serif)', "'Source Serif 4'", 'Georgia', 'serif'],
-        'source-sans': ['var(--font-source-sans)', "'Source Sans 3'", 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        'source-sans': [
+          'var(--font-source-sans)',
+          "'Source Sans 3'",
+          'ui-sans-serif',
+          'system-ui',
+          'sans-serif',
+        ],
+        caveat: ['var(--font-caveat)', "'Caveat'", "'Segoe Print'", 'cursive'],
+        patrick: ['var(--font-patrick)', "'Patrick Hand'", "'Segoe Print'", 'cursive'],
       },
       borderRadius: {
         sm: 'var(--radius-sm)',

@@ -2,9 +2,11 @@ import type { CSSProperties } from 'react';
 import type { Metadata, Viewport } from 'next';
 import {
   Archivo_Black,
+  Caveat,
   Cormorant_Garamond,
   Fraunces,
   Inter,
+  Patrick_Hand,
   Playfair_Display,
   Source_Sans_3,
   Source_Serif_4,
@@ -80,12 +82,26 @@ const sourceSans = Source_Sans_3({
   display: 'swap',
 });
 
+const caveat = Caveat({
+  subsets: ['latin'],
+  variable: '--font-caveat',
+  display: 'swap',
+});
+
+const patrick = Patrick_Hand({
+  subsets: ['latin'],
+  variable: '--font-patrick',
+  display: 'swap',
+  weight: '400',
+});
+
 /**
  * T-FONT-SPLIT (S4 perf): attach only the 2 font families the active theme
- * needs instead of all 8 vars. All 8 next/font/google declarations above stay
+ * needs instead of all 10 vars. All 10 next/font/google declarations above stay
  * available; this gates which `.variable` classes reach `<html>` per render.
  * Map: emerald Playfair+Inter, midnight Cormorant+Inter, paper
- * SourceSerif+SourceSans, brutalist Archivo+Space, ocean Fraunces+Inter.
+ * SourceSerif+SourceSans, brutalist Archivo+Space, ocean Fraunces+Inter,
+ * sketch Caveat+PatrickHand.
  */
 export function fontVariablesForTheme(themeId: string): string {
   switch (themeId) {
@@ -99,6 +115,8 @@ export function fontVariablesForTheme(themeId: string): string {
       return `${archivo.variable} ${space.variable}`;
     case 'ocean':
       return `${fraunces.variable} ${inter.variable}`;
+    case 'sketch':
+      return `${caveat.variable} ${patrick.variable}`;
     default:
       return `${inter.variable} ${playfair.variable}`;
   }

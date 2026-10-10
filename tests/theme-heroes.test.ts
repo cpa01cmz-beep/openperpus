@@ -54,7 +54,7 @@ describe('T-HEROES legacy deprecation + fallback tokens', () => {
 
 /** T-HEROES-EXT: HeroSwitch preload map for variant switching */
 describe('T-HEROES-EXT HeroSwitch preload map', () => {
-  it('HeroSwitch defines a preload map for all 5 variants', () => {
+  it('HeroSwitch defines a preload map for all 6 variants', () => {
     const src = fs.readFileSync(path.join(root, 'src/components/hero/HeroSwitch.tsx'), 'utf8');
     // Should have a preload map object with variant keys
     expect(
@@ -63,10 +63,17 @@ describe('T-HEROES-EXT HeroSwitch preload map', () => {
     ).toBe(true);
   });
 
-  it('HeroSwitch preload map includes all 5 variants as keys', () => {
+  it('HeroSwitch preload map includes all 6 variants as keys', () => {
     const src = fs.readFileSync(path.join(root, 'src/components/hero/HeroSwitch.tsx'), 'utf8');
-    // At minimum the 5 dynamic imports should be in the map
-    for (const v of ['ClassicHero', 'CenteredHero', 'EditorialHero', 'StackedHero', 'SplitHero']) {
+    // At minimum the 6 dynamic imports should be in the map
+    for (const v of [
+      'ClassicHero',
+      'CenteredHero',
+      'EditorialHero',
+      'StackedHero',
+      'SplitHero',
+      'SketchHero',
+    ]) {
       expect(src.includes(v), `HeroSwitch preload map must reference ${v}`).toBe(true);
     }
   });
@@ -75,7 +82,7 @@ describe('T-HEROES-EXT HeroSwitch preload map', () => {
     const src = fs.readFileSync(path.join(root, 'src/components/hero/HeroSwitch.tsx'), 'utf8');
     // Each dynamic import should have { ssr: true }
     const dynamicImports = src.match(/dynamic\(\(\) => import\([^)]+\)\s*,\s*\{[^}]+\}\)/gs) || [];
-    expect(dynamicImports.length, 'HeroSwitch must have 5 dynamic imports').toBe(5);
+    expect(dynamicImports.length, 'HeroSwitch must have 6 dynamic imports').toBe(6);
     for (const imp of dynamicImports) {
       expect(imp.includes('ssr: true'), `Dynamic import must keep ssr:true: ${imp}`).toBe(true);
     }

@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 @config "../../tailwind.config.ts";
 
 /* ponytail: v4 preflight drops v3's default border color (#e5e7eb) → uncolored
@@ -25,9 +25,11 @@
   --font-space: 'Space Grotesk', ui-monospace, monospace;
   --font-source-serif: 'Source Serif 4', Georgia, serif;
   --font-source-sans: 'Source Sans 3', ui-sans-serif, system-ui, sans-serif;
+  --font-caveat: 'Caveat', 'Segoe Print', cursive;
+  --font-patrick: 'Patrick Hand', 'Segoe Print', cursive;
 }
 
-[data-theme="emerald"] {
+[data-theme='emerald'] {
   --brand: #047857;
   --brand-soft: #ecfdf5;
   --brand-strong: #065f46;
@@ -43,21 +45,21 @@
   --radius-lg: 1rem;
   --shadow-sm: 0 1px 2px 0 rgb(15 23 42 / 0.06);
   --shadow-md: 0 4px 12px -2px rgb(4 120 87 / 0.14), 0 2px 4px -2px rgb(15 23 42 / 0.08);
-  --shadow-lg: 0 12px 32px -8px rgb(4 120 87 / 0.20), 0 4px 12px -4px rgb(15 23 42 / 0.10);
+  --shadow-lg: 0 12px 32px -8px rgb(4 120 87 / 0.2), 0 4px 12px -4px rgb(15 23 42 / 0.1);
   --container: 72rem;
   --spacing-section: 4rem;
   --spacing-card: 1.5rem;
 }
 
-[data-theme="midnight"] {
-  --brand: #1E3A5F;
-  --brand-soft: #2A4365;
-  --brand-strong: #060D1A;
-  --accent: #D4AF37;
-  --accent-soft: #2A2415;
-  --surface: #0B1220;
-  --ink: #E9EEF6;
-  --heading: #E9EEF6;
+[data-theme='midnight'] {
+  --brand: #1e3a5f;
+  --brand-soft: #2a4365;
+  --brand-strong: #060d1a;
+  --accent: #d4af37;
+  --accent-soft: #2a2415;
+  --surface: #0b1220;
+  --ink: #e9eef6;
+  --heading: #e9eef6;
   --font-heading: var(--font-cormorant), 'Cormorant Garamond', Georgia, serif;
   --font-body: 'Inter', ui-sans-serif, system-ui, sans-serif;
   --radius-sm: 0.25rem;
@@ -71,15 +73,15 @@
   --spacing-card: 2rem;
 }
 
-[data-theme="paper"] {
-  --brand: #6F7D6C;
-  --brand-soft: #E8ECE5;
-  --brand-strong: #4A5548;
-  --accent: #A98A6B;
-  --accent-soft: #F1E8DC;
-  --surface: #FAF7F2;
-  --ink: #2B2622;
-  --heading: #4A5548;
+[data-theme='paper'] {
+  --brand: #6f7d6c;
+  --brand-soft: #e8ece5;
+  --brand-strong: #4a5548;
+  --accent: #a98a6b;
+  --accent-soft: #f1e8dc;
+  --surface: #faf7f2;
+  --ink: #2b2622;
+  --heading: #4a5548;
   --font-heading: var(--font-source-serif), 'Source Serif 4', Georgia, serif;
   --font-body: var(--font-source-sans), 'Source Sans 3', ui-sans-serif, system-ui, sans-serif;
   --radius-sm: 0.125rem;
@@ -93,13 +95,13 @@
   --spacing-card: 2.25rem;
 }
 
-[data-theme="brutalist"] {
-  --brand: #FF4D00;
-  --brand-soft: #FFD9C2;
-  --brand-strong: #8F2A00;
-  --accent: #FFC400;
-  --accent-soft: #FFF0B3;
-  --surface: #F2EEE3;
+[data-theme='brutalist'] {
+  --brand: #ff4d00;
+  --brand-soft: #ffd9c2;
+  --brand-strong: #8f2a00;
+  --accent: #ffc400;
+  --accent-soft: #fff0b3;
+  --surface: #f2eee3;
   --ink: #111110;
   --heading: #111110;
   --font-heading: var(--font-archivo), 'Archivo Black', 'Arial Black', sans-serif;
@@ -115,14 +117,14 @@
   --spacing-card: 1rem;
 }
 
-[data-theme="ocean"] {
-  --brand: #0E6E6B;
-  --brand-soft: #D2E9E6;
+[data-theme='ocean'] {
+  --brand: #0e6e6b;
+  --brand-soft: #d2e9e6;
   --brand-strong: #084443;
-  --accent: #FF6B4A;
-  --accent-soft: #FFE0D3;
-  --surface: #F4F7F6;
-  --ink: #102E2E;
+  --accent: #ff6b4a;
+  --accent-soft: #ffe0d3;
+  --surface: #f4f7f6;
+  --ink: #102e2e;
   --heading: #084443;
   --font-heading: var(--font-fraunces), 'Fraunces', Georgia, serif;
   --font-body: var(--font-inter), 'Inter', ui-sans-serif, system-ui, sans-serif;
@@ -135,6 +137,42 @@
   --container: 74rem;
   --spacing-section: 4.75rem;
   --spacing-card: 1.75rem;
+}
+
+[data-theme='sketch'] {
+  --brand: #3b5ba9;
+  --brand-soft: #e3eaf7;
+  --brand-strong: #1e3a6e;
+  --accent: #d9480f;
+  --accent-soft: #fde8d7;
+  --surface: #fbf6e9;
+  --ink: #2a2620;
+  --heading: #1e3a6e;
+  --font-heading: var(--font-caveat), 'Caveat', 'Segoe Print', cursive;
+  --font-body: var(--font-patrick), 'Patrick Hand', 'Segoe Print', cursive;
+  --radius-sm: 0.35rem;
+  --radius-md: 0.9rem;
+  --radius-lg: 1.6rem;
+  --shadow-sm: 1px 2px 0 0 #2a2620;
+  --shadow-md: 3px 3px 0 0 #2a2620;
+  --shadow-lg: 5px 6px 0 0 #2a2620;
+  --container: 70rem;
+  --spacing-section: 5rem;
+  --spacing-card: 1.75rem;
+}
+
+/* Sketch notebook texture: faint ruled lines + paper grain on cream surface. */
+[data-theme='sketch'] body {
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 27px,
+    rgb(42 38 32 / 0.055) 27px,
+    rgb(42 38 32 / 0.055) 28px
+  );
+}
+[data-theme='sketch'] ::selection {
+  background: #fde8d7;
 }
 
 html {
