@@ -4,6 +4,7 @@ import { useState, type FormEvent } from 'react';
 import DataTable from '@/components/admin/DataTable';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import Badge from '@/components/ui/Badge';
 
 type Faq = {
   id: string;
@@ -32,12 +33,16 @@ export function FaqsTab({
   onDeleteFaq: (id: string) => void;
 }) {
   const [faqForm, setFaqForm] = useState({ question: '', answer: '', category: '' });
+  const [formError, setFormError] = useState('');
   const [busy, setBusy] = useState(false);
 
   const handleAdd = (e: FormEvent) => {
     e.preventDefault();
-    if (!faqForm.question.trim() || !faqForm.answer.trim())
-      return alert('Pertanyaan & jawaban wajib.');
+    setFormError('');
+    if (!faqForm.question.trim() || !faqForm.answer.trim()) {
+      setFormError('Pertanyaan & jawaban wajib.');
+      return;
+    }
     setBusy(true);
     onAddFaq({ ...faqForm, sort_order: 0 });
     setFaqForm({ question: '', answer: '', category: '' });
@@ -86,6 +91,11 @@ export function FaqsTab({
             + Tambah FAQ
           </Button>
         </div>
+        {formError && (
+          <p role="alert" className="text-sm text-red-600">
+            {formError}
+          </p>
+        )}
       </form>
       <DataTable<Faq>
         caption={`Daftar konten halaman ${page} dari ${totalPages}`}
@@ -99,7 +109,11 @@ export function FaqsTab({
           {
             key: 'is_active',
             header: 'Aktif',
-            render: (r) => (r.is_active ? 'Ya' : 'Tidak'),
+            render: (r) => (
+              <Badge tone={r.is_active ? 'emerald' : 'slate'}>
+                {r.is_active ? 'Aktif' : 'Nonaktif'}
+              </Badge>
+            ),
           },
           {
             key: 'aksi',

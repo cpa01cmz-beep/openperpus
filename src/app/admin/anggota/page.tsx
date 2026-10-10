@@ -1,10 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useRef, useState } from 'react';
 import DataTable, { type SortDir } from '@/components/admin/DataTable';
+import ConfirmModal from '@/components/admin/ConfirmModal';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Pagination from '@/components/ui/Pagination';
+import StatusBadge from '@/components/ui/StatusBadge';
 import { sanitizeIlike } from '@/lib/search';
 import { errMsg } from '@/lib/admin-errors';
 
@@ -26,6 +28,13 @@ const fmtRp = (v: number | null | undefined) => `Rp${Number(v ?? 0).toLocaleStri
 
 type PickOption = { user_id: string; label: string; sub: string };
 
+// Kolom DataTable -> kunci sort server (/api/members whitelist).
+const SORT_KEY_MAP: Record<string, string> = {
+  member_code: 'member_code',
+  profiles: 'full_name',
+  status: 'status',
+};
+
 export default function AnggotaPage() {
   const [rows, setRows] = useState<Member[]>([]);
   const [search, setSearch] = useState('');
@@ -35,10 +44,15 @@ export default function AnggotaPage() {
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [form, setForm] = useState({ user_id: '', member_code: '', phone: '', address: '' });
+  const [formError, setFormError] = useState('');
   const [actionError, setActionError] = useState('');
   const [loadError, setLoadError] = useState('');
+  const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(false);
   const [bulkLoading, setBulkLoading] = useState(false);
+  // Pengganti window.confirm: dialog konfirmasi hapus.
+  const [pendingDelete, setPendingDelete] = useState<Member | null>(null);
+  const [pendingBulkDelete, setPendingBulkDelete] = useState(false);
   // Profile picker (search-as-you-type) — mengisi user_id tanpa paste UUID manual.
   const [pickText, setPickText] = useState('');
   const [pickOptions, setPickOptions] = useState<PickOption[]>([]);
@@ -49,7 +63,13 @@ export default function AnggotaPage() {
   const load = useCallback(async () => {
     setLoadError('');
     try {
-      const q = new URLSearchParams({ page: String(page), per_page: '10', q: search });
+      // Sort ditangani server — bukan client sort halaman-aktif (menyesatkan).
+      const q = new URLSearchParams({
+        page: String(page),
+        per_page: '10',
+        q: search,
+        ...(sortKey && SORT_KEY_MAP[sortKey] ? { sort: SORT_KEY_MAP[sortKey], order: sortDir } : {}),
+      });
       const res = await fetch(`/api/members?${q}`);
       const json = (await res.json().catch(() => ({}))) as {
         data?: Member[];
@@ -58,11 +78,11 @@ export default function AnggotaPage() {
       };
       if (!res.ok) throw new Error(errMsg(json, 'Gagal memuat anggota.'));
       setRows(json.data ?? []);
-      setTotalPages(json.pagination?.totalPages ?? 1);
+      setTotalPages(json.pagination?.totalPages ?? json.meta?.totalPages ?? 1);
     } catch (e) {
       setLoadError((e as Error).message);
     }
-  }, [search, page]);
+  }, [search, page, sortKey, sortDir]);
 
   useEffect(() => {
     const t = setTimeout(load, 300);
@@ -103,19 +123,10 @@ export default function AnggotaPage() {
     }, 300);
   }
 
-  const sorted = useMemo(() => {
-    if (!sortKey) return rows;
-    const val = (m: Member): string => {
-      if (sortKey === 'profiles') return m.profiles?.full_name ?? '';
-      return String((m as unknown as Record<string, unknown>)[sortKey] ?? '');
-    };
-    const dir = sortDir === 'asc' ? 1 : -1;
-    return [...rows].sort((a, b) => val(a).localeCompare(val(b)) * dir);
-  }, [rows, sortKey, sortDir]);
-
   function toggleSort(key: string) {
     setSortDir((prev) => (sortKey === key && prev === 'asc' ? 'desc' : 'asc'));
     setSortKey(key);
+    setPage(1);
   }
 
   function toggleSelect(id: string) {
@@ -127,14 +138,19 @@ export default function AnggotaPage() {
     });
   }
 
-  function toggleAll() {
+  function toggleAllMembers() {
     setSelected((prev) => (prev.size === rows.length ? new Set() : new Set(rows.map((r) => r.id))));
   }
 
   async function onAdd(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.user_id.trim())
-      return alert('Pilih profil anggota lewat pencarian atau isi user_id.');
+    setFormError('');
+    setActionError('');
+    setNotice('');
+    if (!form.user_id.trim()) {
+      setFormError('Pilih profil anggota lewat pencarian atau isi user_id.');
+      return;
+    }
     setLoading(true);
     try {
       const res = await fetch('/api/members', {
@@ -148,35 +164,42 @@ export default function AnggotaPage() {
         }),
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(errMsg(json));
+      if (!res.ok) {
+        setFormError(errMsg(json));
+        return;
+      }
       setForm({ user_id: '', member_code: '', phone: '', address: '' });
       setPickText('');
       setPickOptions([]);
+      setNotice('Anggota baru ditambahkan.');
       load();
-    } catch (e) {
-      alert((e as Error).message);
+    } catch (err) {
+      setFormError((err as Error).message);
     } finally {
       setLoading(false);
     }
   }
 
-  async function onDelete(id: string, code: string) {
-    if (!confirm('Hapus anggota ini?')) return;
+  async function confirmDelete() {
+    const row = pendingDelete;
+    if (!row) return;
+    setPendingDelete(null);
     setActionError('');
     setLoadError('');
+    setNotice('');
     try {
-      const res = await fetch(`/api/members/${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/members/${row.id}`, { method: 'DELETE' });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        // Cerminan buku: tolak dengan penjelasan bila masih ada pinjaman berjalan.
         if (res.status === 409) {
           setActionError(
-            `Anggota ${code} tidak bisa dihapus: masih punya pinjaman berjalan. Kembalikan dulu semua pinjamannya.`
+            `Anggota ${row.member_code} tidak bisa dihapus: masih punya pinjaman berjalan. Kembalikan dulu semua pinjamannya.`
           );
           return;
         }
         throw new Error(errMsg(json));
       }
+      setNotice(`Anggota ${row.member_code} dihapus.`);
       load();
     } catch (e) {
       setActionError((e as Error).message);
@@ -185,25 +208,36 @@ export default function AnggotaPage() {
 
   // Isu #56: suspend/unsuspend langsung dari daftar — anggota bermasalah
   // (berdenda/terlambat) langsung tidak lolos gate checkout pinjam/reservasi.
-  async function onSetStatus(id: string, code: string, next: 'active' | 'suspended') {
-    if (next === 'suspended' && !confirm(`Suspend anggota ${code}? Pinjam/reservasi akan ditolak.`))
-      return;
+  // Pengganti window.confirm: dialog konfirmasi suspend via ConfirmModal.
+  const [pendingStatus, setPendingStatus] = useState<{
+    id: string;
+    code: string;
+    next: 'active' | 'suspended';
+  } | null>(null);
+
+  async function confirmSetStatus() {
+    const p = pendingStatus;
+    if (!p) return;
+    setPendingStatus(null);
     setActionError('');
-    const res = await fetch(`/api/members/${id}`, {
+    const res = await fetch(`/api/members/${p.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: next }),
+      body: JSON.stringify({ status: p.next }),
     });
     const json = await res.json();
-    if (!res.ok) return alert(errMsg(json));
+    if (!res.ok) {
+      setActionError(errMsg(json));
+      return;
+    }
     load();
   }
 
-  async function onBulkDelete() {
-    if (selected.size === 0) return;
-    if (!confirm(`Hapus ${selected.size} anggota terpilih?`)) return;
+  async function confirmBulkDelete() {
+    setPendingBulkDelete(false);
     setActionError('');
     setLoadError('');
+    setNotice('');
     setBulkLoading(true);
     try {
       const ids = [...selected];
@@ -233,7 +267,6 @@ export default function AnggotaPage() {
         }
       }
       const failureMsg = [...new Set(failureMsgs)].join('; ');
-      // Sukses bersih = tanpa pesan; parsial/gagal = ringkasan akurat + id gagal.
       if (failed.length > 0 || skipped > 0) {
         const parts = [`${deleted} dihapus`];
         if (skipped > 0) parts.push(`${skipped} dilewati (masih punya pinjaman berjalan)`);
@@ -245,8 +278,8 @@ export default function AnggotaPage() {
         setActionError(parts.join(', ') + (failureMsg ? `. ${failureMsg}` : '') + idLine);
       } else {
         setActionError('');
+        setNotice(`${deleted} anggota dihapus.`);
       }
-      // Saat ada kegagalan, pertahankan seleksi = id gagal agar bisa diulang.
       setSelected(failed.length > 0 ? new Set(failed) : new Set());
       load();
     } catch (e) {
@@ -265,6 +298,27 @@ export default function AnggotaPage() {
           profiles.full_name.
         </p>
       </div>
+      {notice && (
+        <div
+          role="status"
+          className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+        >
+          {notice}
+        </div>
+      )}
+      {loadError && (
+        <p role="alert" className="text-sm text-red-600">
+          {loadError}
+        </p>
+      )}
+      {actionError && (
+        <div
+          role="alert"
+          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        >
+          {actionError}
+        </div>
+      )}
       <form onSubmit={onAdd} className="grid gap-2 rounded-2xl border bg-white p-4">
         <div className="grid gap-1">
           <label
@@ -357,13 +411,18 @@ export default function AnggotaPage() {
             + Tambah
           </Button>
         </div>
+        {formError && (
+          <p role="alert" className="text-sm text-red-600">
+            {formError}
+          </p>
+        )}
       </form>
       <div className="flex flex-wrap items-end gap-3">
         <div className="w-full max-w-sm">
           <Input
             id="anggota-search"
             label="Cari anggota"
-            placeholder="Cari kode / telepon…"
+            placeholder="Cari kode / nama / telepon…"
             value={search}
             onChange={(e) => {
               setPage(1);
@@ -372,21 +431,21 @@ export default function AnggotaPage() {
           />
         </div>
         {selected.size > 0 && (
-          <Button variant="danger" size="sm" loading={bulkLoading} onClick={onBulkDelete}>
-            {`Hapus terpilih (${selected.size})`}
-          </Button>
+          <>
+            <Button variant="outline" size="sm" onClick={toggleAllMembers}>
+              {selected.size === rows.length ? 'Batalkan semua' : 'Pilih semua'}
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              loading={bulkLoading}
+              onClick={() => setPendingBulkDelete(true)}
+            >
+              {`Hapus terpilih (${selected.size})`}
+            </Button>
+          </>
         )}
       </div>
-      {loadError && (
-        <p role="alert" className="text-sm text-red-600">
-          {loadError}
-        </p>
-      )}
-      {actionError && (
-        <p role="alert" className="text-sm text-red-600">
-          {actionError}
-        </p>
-      )}
       <DataTable<Member>
         caption={`Daftar anggota halaman ${page} dari ${totalPages}`}
         sortKey={sortKey}
@@ -394,7 +453,7 @@ export default function AnggotaPage() {
         onSort={toggleSort}
         selectedKeys={selected}
         onToggleRow={toggleSelect}
-        onToggleAll={toggleAll}
+        onToggleAll={toggleAllMembers}
         bulkLabel={(k) => `Pilih anggota ${k}`}
         columns={[
           {
@@ -410,7 +469,12 @@ export default function AnggotaPage() {
             render: (r) => r.profiles?.full_name ?? '-',
           },
           { key: 'phone', header: 'Telepon' },
-          { key: 'status', header: 'Status', sortable: true },
+          {
+            key: 'status',
+            header: 'Status',
+            sortable: true,
+            render: (r) => <StatusBadge status={r.status} />,
+          },
           {
             key: 'fines_total',
             header: 'Tagihan',
@@ -456,7 +520,9 @@ export default function AnggotaPage() {
                 {r.status === 'active' ? (
                   <button
                     type="button"
-                    onClick={() => onSetStatus(r.id, r.member_code, 'suspended')}
+                    onClick={() =>
+                      setPendingStatus({ id: r.id, code: r.member_code, next: 'suspended' })
+                    }
                     aria-label={`Suspend anggota ${r.member_code}`}
                     className="inline-flex min-h-[44px] items-center text-amber-700 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                   >
@@ -465,7 +531,9 @@ export default function AnggotaPage() {
                 ) : (
                   <button
                     type="button"
-                    onClick={() => onSetStatus(r.id, r.member_code, 'active')}
+                    onClick={() =>
+                      setPendingStatus({ id: r.id, code: r.member_code, next: 'active' })
+                    }
                     aria-label={`Aktifkan anggota ${r.member_code}`}
                     className="inline-flex min-h-[44px] items-center text-green-700 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                   >
@@ -474,7 +542,7 @@ export default function AnggotaPage() {
                 )}
                 <button
                   type="button"
-                  onClick={() => onDelete(r.id, r.member_code)}
+                  onClick={() => setPendingDelete(r)}
                   aria-label={`Hapus anggota ${r.member_code}`}
                   className="inline-flex min-h-[44px] items-center text-red-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
@@ -484,10 +552,59 @@ export default function AnggotaPage() {
             ),
           },
         ]}
-        rows={sorted}
+        rows={rows}
         getRowKey={(r) => r.id}
+        emptyState={{
+          title: 'Belum ada anggota',
+          description: search
+            ? `Tidak ada anggota yang cocok dengan "${search}". Coba kode atau nama lain.`
+            : 'Anggota terdaftar akan muncul di sini.',
+        }}
       />
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+
+      <ConfirmModal
+        open={pendingDelete !== null}
+        onClose={() => setPendingDelete(null)}
+        onConfirm={() => void confirmDelete()}
+        title="Hapus anggota"
+        description="Anggota yang masih punya pinjaman berjalan tidak bisa dihapus."
+        confirmLabel="Ya, hapus"
+      >
+        <p>
+          Hapus anggota <strong>{pendingDelete?.member_code}</strong>?
+        </p>
+      </ConfirmModal>
+
+      <ConfirmModal
+        open={pendingBulkDelete}
+        onClose={() => setPendingBulkDelete(false)}
+        onConfirm={() => void confirmBulkDelete()}
+        title={`Hapus ${selected.size} anggota terpilih`}
+        description="Anggota yang masih punya pinjaman berjalan akan dilewati otomatis."
+        confirmLabel="Ya, hapus semua"
+        loading={bulkLoading}
+      >
+        <p>Hapus {selected.size} anggota terpilih?</p>
+      </ConfirmModal>
+
+      <ConfirmModal
+        open={pendingStatus !== null}
+        onClose={() => setPendingStatus(null)}
+        onConfirm={() => void confirmSetStatus()}
+        title={pendingStatus?.next === 'suspended' ? 'Suspend anggota' : 'Aktifkan anggota'}
+        description={
+          pendingStatus?.next === 'suspended'
+            ? 'Pinjam/reservasi anggota akan ditolak gate kelayakan.'
+            : undefined
+        }
+        confirmLabel={pendingStatus?.next === 'suspended' ? 'Ya, suspend' : 'Ya, aktifkan'}
+      >
+        <p>
+          {pendingStatus?.next === 'suspended' ? 'Suspend' : 'Aktifkan'} anggota{' '}
+          <strong>{pendingStatus?.code}</strong>?
+        </p>
+      </ConfirmModal>
     </div>
   );
 }

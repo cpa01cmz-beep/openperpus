@@ -3,8 +3,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import DataTable from '@/components/admin/DataTable';
 import ExportCsvButton from '@/components/admin/ExportCsvButton';
+import ConfirmModal from '@/components/admin/ConfirmModal';
+import FilterBar from '@/components/admin/FilterBar';
 import StatCard from '@/components/admin/StatCard';
 import Pagination from '@/components/ui/Pagination';
+import StatusBadge from '@/components/ui/StatusBadge';
 import { errMsg } from '@/lib/admin-errors';
 
 type Fine = {
@@ -28,13 +31,16 @@ const fmtRp = (v: number | string | null | undefined) => `Rp${num(v).toLocaleStr
 export default function DendaPage() {
   const [rows, setRows] = useState<Fine[]>([]);
   const [status, setStatus] = useState('');
+  const [search, setSearch] = useState('');
   const [method, setMethod] = useState('tunai');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [payingId, setPayingId] = useState<string | null>(null);
+  const [pendingPay, setPendingPay] = useState<Fine | null>(null);
   const [apiMissing, setApiMissing] = useState(false);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [finePerDay, setFinePerDay] = useState(1000);
   const [tagihanTotal, setTagihanTotal] = useState(0);
 
@@ -70,6 +76,7 @@ export default function DendaPage() {
         page: String(page),
         per_page: '20',
         ...(status ? { status } : {}),
+        ...(search ? { q: search } : {}),
       });
       const res = await fetch(`/api/fines?${q}`, { cache: 'no-store' });
       if (res.status === 404) {
@@ -91,22 +98,24 @@ export default function DendaPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, status]);
+  }, [page, status, search]);
 
   useEffect(() => {
-    load();
-    loadTotals();
-  }, [load, loadTotals]);
+    const t = setTimeout(load, 300);
+    return () => clearTimeout(t);
+  }, [load]);
 
-  async function onPay(f: Fine) {
-    const sisa = num(f.amount) - num(f.paid_amount);
-    if (
-      !confirm(
-        `Tandai lunas denda ${fmtRp(sisa)} (${f.members?.member_code ?? '?'}) via ${method}?`
-      )
-    )
-      return;
+  useEffect(() => {
+    loadTotals();
+  }, [loadTotals]);
+
+  async function confirmPay() {
+    const f = pendingPay;
+    if (!f) return;
+    setPendingPay(null);
     setPayingId(f.id);
+    setNotice('');
+    setError('');
     try {
       const res = await fetch(`/api/fines/${f.id}/pay`, {
         method: 'POST',
@@ -116,11 +125,20 @@ export default function DendaPage() {
       const json = await res.json().catch(() => ({}));
       if (res.status === 404) {
         setApiMissing(true);
-        return alert('API /api/fines belum tersedia di backend.');
+        setError('API /api/fines belum tersedia di backend.');
+        return;
       }
-      if (!res.ok) return alert(errMsg(json));
+      if (!res.ok) {
+        setError(errMsg(json));
+        return;
+      }
+      setNotice(
+        `Denda ${f.members?.member_code ?? '-'} lunas via ${method} (${fmtRp(num(f.amount) - num(f.paid_amount))}).`
+      );
       load();
       loadTotals();
+    } catch (e) {
+      setError((e as Error).message);
     } finally {
       setPayingId(null);
     }
@@ -144,7 +162,7 @@ export default function DendaPage() {
           className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800"
         >
           API <code className="font-mono">/api/fines</code> belum tersedia di backend (404). Daftar
-          & tombol bayar menunggu worker backend. Sudah dilaporkan ke mandor.
+          &amp; tombol bayar menunggu worker backend. Sudah dilaporkan ke mandor.
         </div>
       )}
       {error && (
@@ -153,6 +171,14 @@ export default function DendaPage() {
           className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
         >
           {error}
+        </div>
+      )}
+      {notice && (
+        <div
+          role="status"
+          className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+        >
+          {notice}
         </div>
       )}
 
@@ -170,7 +196,33 @@ export default function DendaPage() {
         />
       </div>
 
-      <div className="flex flex-wrap items-end gap-2 text-sm">
+      <FilterBar
+        search={{
+          id: 'denda-search',
+          label: 'Cari denda',
+          placeholder: 'Cari kode anggota…',
+          value: search,
+          onChange: (v) => {
+            setPage(1);
+            setSearch(v);
+          },
+        }}
+        onReload={load}
+        actions={
+          <ExportCsvButton
+            filename="denda.csv"
+            headers={['ID', 'Anggota', 'Tagihan', 'Dibayar', 'Status', 'Terbit']}
+            rows={rows.map((r) => [
+              r.id,
+              r.members?.member_code ?? '',
+              num(r.amount),
+              num(r.paid_amount),
+              r.status,
+              r.issued_at,
+            ])}
+          />
+        }
+      >
         <div className="grid gap-1">
           <label htmlFor="filter-status" className="text-sm font-semibold text-slate-700">
             Filter status
@@ -208,26 +260,7 @@ export default function DendaPage() {
             ))}
           </select>
         </div>
-        <button
-          type="button"
-          onClick={load}
-          className="inline-flex min-h-[44px] items-center justify-center rounded-md border border-slate-200 bg-white px-3 font-semibold text-slate-700 transition hover:border-brand hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-        >
-          Muat ulang
-        </button>
-        <ExportCsvButton
-          filename="denda.csv"
-          headers={['ID', 'Anggota', 'Tagihan', 'Dibayar', 'Status', 'Terbit']}
-          rows={rows.map((r) => [
-            r.id,
-            r.members?.member_code ?? '',
-            num(r.amount),
-            num(r.paid_amount),
-            r.status,
-            r.issued_at,
-          ])}
-        />
-      </div>
+      </FilterBar>
 
       {loading ? (
         <p className="text-sm text-slate-500" aria-live="polite">
@@ -252,7 +285,7 @@ export default function DendaPage() {
                 </span>
               ),
             },
-            { key: 'status', header: 'Status' },
+            { key: 'status', header: 'Status', render: (r) => <StatusBadge status={r.status} /> },
             {
               key: 'issued_at',
               header: 'Terbit',
@@ -266,7 +299,7 @@ export default function DendaPage() {
                   <button
                     type="button"
                     disabled={payingId === r.id}
-                    onClick={() => onPay(r)}
+                    onClick={() => setPendingPay(r)}
                     aria-label={`Bayar denda anggota ${r.members?.member_code ?? r.id}`}
                     className="inline-flex min-h-[44px] items-center rounded bg-brand px-3 text-xs font-semibold text-white transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
                   >
@@ -279,11 +312,53 @@ export default function DendaPage() {
           ]}
           rows={rows}
           getRowKey={(r) => r.id}
-          emptyText="Belum ada denda."
+          emptyState={{
+            title: 'Belum ada denda',
+            description: search
+              ? `Tidak ada denda yang cocok dengan "${search}". Coba kata kunci lain.`
+              : 'Denda muncul otomatis saat ada pengembalian terlambat.',
+          }}
         />
       )}
 
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+
+      <ConfirmModal
+        open={pendingPay !== null}
+        onClose={() => setPendingPay(null)}
+        onConfirm={() => void confirmPay()}
+        title="Tandai lunas"
+        description="Pembayaran langsung tercatat lunas penuh; kwitansi bisa dicetak dari riwayat."
+        confirmLabel="Ya, bayar"
+        loading={payingId !== null}
+      >
+        <div className="grid gap-3">
+          <p>
+            Tandai lunas denda{' '}
+            <strong>
+              {fmtRp(pendingPay ? num(pendingPay.amount) - num(pendingPay.paid_amount) : 0)}
+            </strong>{' '}
+            ({pendingPay?.members?.member_code ?? '?'})?
+          </p>
+          <div className="grid gap-1">
+            <label htmlFor="pay-method-modal" className="text-sm font-semibold text-slate-700">
+              Metode bayar
+            </label>
+            <select
+              id="pay-method-modal"
+              className="h-11 min-h-[44px] rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
+              value={method}
+              onChange={(e) => setMethod(e.target.value)}
+            >
+              {METHOD_OPTS.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </ConfirmModal>
     </div>
   );
 }

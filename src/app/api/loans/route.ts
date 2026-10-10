@@ -16,9 +16,10 @@ import { ACTIVE_LOAN_STATUSES, isLoanStatus, loansListFilter } from '@/lib/loans
  * AND due_at < NOW(). Aplikasi tidak pernah menulis kolom status='overdue',
  * jadi filter/kolom apa pun WAJIB lewat src/lib/loans-overdue.ts.
  *
- * GET /api/loans?status=&member_id=&overdue=1&page=&per_page=
+ * GET /api/loans?status=&member_id=&overdue=1&q=&page=&per_page=
  *   status=overdue ≡ overdue=1 → definisi turunan yang sama.
  *   Response memuat is_overdue + effective_status per baris.
+ *   q mencari member_code | judul buku | catatan (lintas relasi).
  * POST /api/loans { member_id, book_id, borrowed_at?, due_at?, notes? }
  *   -> gate kelayakan anggota (#56): denda belum lunas / pinjaman terlambat /
  *      batas pinjaman aktif -> 409; due auto +14 hari, stok_available -1 (guard >0)
@@ -102,8 +103,12 @@ export async function GET(req: Request) {
   if (filter.overdue) query = query.in('status', [...ACTIVE_LOAN_STATUSES]).lt('due_at', nowIso);
   if (memberId) query = query.eq('member_id', memberId);
   if (q) {
+    // Cari lintas relasi: kode anggota, judul buku, catatan (embedded PostgREST).
     const clean = sanitizeIlike(q);
-    if (clean) query = query.ilike('notes', `%${clean}%`);
+    if (clean)
+      query = query.or(
+        `members.member_code.ilike.%${clean}%,books.title.ilike.%${clean}%,notes.ilike.%${clean}%`
+      );
   }
 
   const { data, error, count } = await query;

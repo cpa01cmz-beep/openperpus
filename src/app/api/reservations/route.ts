@@ -3,11 +3,13 @@ import { revalidatePath, revalidateTag } from 'next/cache';
 import { jsonError, parsePaging } from '@/lib/supabase/auth';
 import { isUuid, createWriteLog } from '@/lib/api-utils';
 import { checkMemberLoanEligibility } from '@/lib/loan-eligibility';
+import { sanitizeIlike } from '@/lib/search';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 import { getSession } from '@/lib/session';
 
 /**
- * GET /api/reservations?status=&member_id=&book_id=&page=&per_page=
+ * GET /api/reservations?status=&member_id=&book_id=&q=&page=&per_page=
+ *   — q mencari member_code | judul buku | catatan (lintas relasi).
  *   — anggota: otomatis miliknya (member_id diabaikan); pustakawan+: semua/filter.
  * POST /api/reservations {book_id, member_id?, notes?}
  *   — anggota: {book_id} -> pending (member_id miliknya); pustakawan+: boleh untuk member lain.
@@ -49,7 +51,7 @@ export async function GET(req: Request) {
   if ('errorResponse' in s) return s.errorResponse;
   const { supabase, memberId, isStaff } = s.session;
 
-  const { sp, page, perPage, from, to } = parsePaging(req.url, 20);
+  const { sp, page, perPage, q, from, to } = parsePaging(req.url, 20);
   const status = (sp.get('status') ?? '').trim();
   const bookId = (sp.get('book_id') ?? '').trim();
   let memberFilter = (sp.get('member_id') ?? '').trim();
@@ -66,6 +68,14 @@ export async function GET(req: Request) {
   if (status) query = query.eq('status', status);
   if (bookId) query = query.eq('book_id', bookId);
   if (memberFilter) query = query.eq('member_id', memberFilter);
+  if (q) {
+    // Cari lintas relasi: kode anggota, judul buku, catatan (embedded PostgREST).
+    const clean = sanitizeIlike(q);
+    if (clean)
+      query = query.or(
+        `members.member_code.ilike.%${clean}%,books.title.ilike.%${clean}%,notes.ilike.%${clean}%`
+      );
+  }
 
   const { data, error, count } = await query;
   if (error) {
