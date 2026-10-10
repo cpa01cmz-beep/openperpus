@@ -123,10 +123,12 @@ describe('POST /api/reservations/[id]/checkout (issue #73)', () => {
     expect(mock.rpc).not.toHaveBeenCalled();
   });
 
-  it('id reservasi bukan UUID -> 422', async () => {
+  it('id reservasi bukan UUID -> 400 VALIDATION (issues #54: satu aturan UUID)', async () => {
     setMock(staffMock());
     const res = await CHECKOUT_POST(checkoutReq(), ctx('bukan-uuid'));
-    expect(res.status).toBe(422);
+    expect(res.status).toBe(400);
+    const j = (await res.json()) as { error?: { code?: string } };
+    expect(j.error?.code).toBe('VALIDATION');
   });
 
   it('non-staff (anggota) -> 403 dari requireStaff', async () => {
@@ -194,7 +196,7 @@ describe('migrasi 0024_checkout_reservation_tx.sql — kontrak SQL', () => {
     expect(low).toContain('create unique index if not exists uq_reservations_loan_id');
   });
 
-  it("invariant completed wajib loan_id (CHECK ... NOT VALID)", () => {
+  it('invariant completed wajib loan_id (CHECK ... NOT VALID)', () => {
     expect(low).toContain('reservations_completed_needs_loan');
     expect(low).toContain("status <> 'completed' or loan_id is not null");
     expect(low).toContain('not valid');
@@ -235,10 +237,7 @@ describe('migrasi 0024_checkout_reservation_tx.sql — kontrak SQL', () => {
 
 describe('UI admin — tombol Selesaikan tanpa loan dihapus', () => {
   it('halaman reservasi tak lagi menawarkan aksi completed langsung', () => {
-    const src = readFileSync(
-      join(process.cwd(), 'src/app/admin/reservasi/page.tsx'),
-      'utf8'
-    );
+    const src = readFileSync(join(process.cwd(), 'src/app/admin/reservasi/page.tsx'), 'utf8');
     expect(src).not.toContain('Selesaikan');
     expect(src).not.toContain("onUpdate(r.id, 'completed')");
     // Jalur tersisa: Setujui (pending->ready) + Pinjamkan (checkout atomik) + Batal.
