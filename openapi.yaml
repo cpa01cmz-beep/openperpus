@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: OpenPerpus API
   version: 0.1.0
-  description: CMS Perpustakaan — 35 route modules (31 resource + health/readyz/docs/metrics/register). Deploy utama Vercel (ADR-002), Cloudflare Workers alternatif; preview lokal via `npm run dev` / `npm run cf:preview`. Enforced bidirectionally by tests/openapi-conformance.test.ts.
+  description: CMS Perpustakaan — 35 route handler (30 resource + health/readyz/docs/metrics/register). Deploy utama Vercel (ADR-002), Cloudflare Workers alternatif; preview lokal via `npm run dev` / `npm run cf:preview`. Enforced bidirectionally by tests/openapi-conformance.test.ts.
 servers:
   - url: http://localhost:3000
     description: local

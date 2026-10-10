@@ -93,7 +93,7 @@ Sistem CMS penuh, bukan fondasi saja.
 
 Admin (19 halaman di `src/app/admin/`, flat — tanpa Route Group): dashboard, buku (list/tambah/edit), anggota, peminjaman, reservasi, denda, kategori, rak, menu, konten, artikel (list/edit), banner (list/edit), layanan, logs, pengaturan.
 
-API (34 route handler, kontrak dua arah di `openapi.yaml` + `docs/api-contract.md`): 15 modul resource — books, categories, racks, members, loans (+return), reservations, fines (+pay), pages, faqs, testimonials, articles, banners, menus, services, settings (+`/settings/theme`) — plus health, readyz, docs, metrics, register.
+API (35 route handler, kontrak dua arah di `openapi.yaml` + `docs/api-contract.md`): 15 modul resource — books, categories, racks, members, loans (+return), reservations, fines (+pay), pages, faqs, testimonials, articles, banners, menus, services, settings (+`/settings/theme`) — plus health, readyz, docs, metrics, register.
 
 Publik (15 halaman): home, katalog (+detail), buku, berita (+detail), halaman dinamis, faq, layanan, tentang, kontak, denda, reservasi-saya (di `src/app/(public)/`), plus `login` dan `daftar`, serta `sitemap.ts`/`robots.ts`/`manifest.ts`.
 
@@ -127,6 +127,8 @@ supabase/migrations/0019_role_guard.sql
 supabase/migrations/0020_sketch_theme.sql
 supabase/migrations/0021_services.sql
 supabase/migrations/0022_theme_overrides.sql
+supabase/migrations/0023_loan_eligibility.sql
+supabase/migrations/0024_checkout_reservation_tx.sql
 ```
 
 Alternatif (tanpa paste manual): `supabase db push` dari root repo — prasyarat:
@@ -157,7 +159,7 @@ ALTER TABLE public.profiles ENABLE TRIGGER trg_strip_profiles_role;
    > ditemukan = 0 baris ter-update, juga tanpa error (senyap).
 
 3. (Opsional) isi data awal perpus — nama, kategori, rak, buku contoh — dengan menjalankan
-   `supabase/seed.sql` (paste ke SQL Editor, atau `supabase db query --file supabase/seed.sql`).
+   `supabase/seed.sql` (paste ke SQL Editor, atau via psql: `psql $env:DATABASE_URL -f supabase/seed.sql`).
 
 Kenapa tidak cukup `UPDATE` polos: ada dua trigger di jalur itu. `0019_role_guard.sql`
 melewatkan aktor session-less (`auth.uid() IS NULL` — SQL Editor/psql/`service_role`),
@@ -200,7 +202,7 @@ login di `/login`, lalu cek halaman `/admin` memakai akun admin dari §Akun admi
 | `PUT /api/settings/theme` 500 / kolom `theme_overrides` tidak ada | Migrasi `0022_theme_overrides.sql` belum jalan — lihat §Migrasi Supabase |
 | Login langsung kembali ke `/login` | Tambahkan URL situs ke Supabase Dashboard → Authentication → URL Configuration → Redirect URLs |
 | Sudah login tapi 403 di `/admin` atau API admin | Role belum `admin` — jalankan §Akun admin pertama |
-| Upload gambar gagal | Bucket `library-assets` belum ada — jalankan `0004_storage.sql` |
+| Upload gambar gagal | Bucket `library-assets` belum ada — jalankan `0004_storage.sql` lalu `0007_storage_guard.sql` (0004 saja mengembalikan svg ke daftar mime) |
 | Deploy CF error 1102 resource limit | Pakai Vercel sebagai target utama (ADR-002); worker CF tetap alternatif — cek juga `wrangler secret put` (§Alternatif deploy) |
 
 ## Keamanan

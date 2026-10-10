@@ -27,6 +27,8 @@
 | `migrations/0020_sketch_theme.sql`      | Tema `sketch` (tema ke-6)                                                                                 |
 | `migrations/0021_services.sql`          | Tabel `services` (kartu Layanan)                                                                          |
 | `migrations/0022_theme_overrides.sql`   | Kolom `theme_overrides` (layout-only Fase 1)                                                              |
+| `migrations/0023_loan_eligibility.sql`  | Batas pinjaman aktif per anggota (gate checkout)                                                          |
+| `migrations/0024_checkout_reservation_tx.sql` | RPC checkout reservasi atomik (issue #73)                                                           |
 | `seed.sql`                              | Data awal (settings#1, 6 kategori, 3 rak, 8 buku, 3 banner, 3 artikel, 4 FAQ, 3 halaman, testimoni, menu) |
 | `config.toml` _(opsional)_              | Konfigurasi `supabase` CLI bila di-init                                                                   |
 
@@ -49,14 +51,14 @@ supabase status
 ```
 
 Alternatif tanpa CLI: buka SQL Editor di dashboard, paste isi migrasi
-berurutan `0001 → 0022` (0010 dilewati, tidak dipakai), Run.
+berurutan `0001 → 0024` (0010 dilewati, tidak dipakai), Run.
 
-## 2. Jalankan migrasi (urutan WAJIB 0001 → 0022)
+## 2. Jalankan migrasi (urutan WAJIB 0001 → 0024)
 
 ### Opsi A — Supabase CLI (disarankan, tercatat di `supabase/migrations`)
 
 ```powershell
-# Dari root repo; file 0001..0022 sudah bernama versi + timestamp-friendly.
+# Dari root repo; file 0001..0024 sudah bernama versi + timestamp-friendly.
 # Bila `supabase link` sudah dilakukan:
 supabase db push
 # Cek:
@@ -67,7 +69,7 @@ supabase migration list
 > ini tetap valid sebagai SQL biasa; bila `db push` menolak prefix numerik,
 > rename sekali saja, mis.:
 > `0001_core.sql → 20260917000001_core.sql` (dst. `...02` s/d `...09`,
-> `...11` s/d `...22` — lewati 0010, tidak dipakai)
+> `...11` s/d `...24` — lewati 0010, tidak dipakai)
 > tanpa mengubah isi.
 
 ### Opsi B — psql langsung (tanpa CLI)
@@ -87,7 +89,7 @@ Paste tiap file → Run, sesuai urutan. Perhatikan pesan sukses per file.
 
 ```powershell
 psql $env:DATABASE_URL -f supabase/seed.sql
-# atau: supabase db query --file supabase/seed.sql
+# atau paste ke SQL Editor dashboard
 ```
 
 Seed **idempotent** (aman dijalankan ulang): memakai
@@ -146,7 +148,7 @@ order by created_at desc limit 12;
 - `0003`: hardening RLS — drop policy yang ditambah di file (lihat blok ROLLBACK di file).
 - `0004`: hapus policy `storage.objects`, kosongkan objek, lalu hapus bucket
   (lihat blok ROLLBACK di file).
-- `0005`–`0009` dan `0011`–`0022`: non-destruktif — revert objek yang
+- `0005`–`0009` dan `0011`–`0024`: non-destruktif — revert objek yang
   ditambah tiap file (lihat komentar `-- Rollback:` di masing-masing file).
 - `seed.sql`: data contoh — hapus manual per tabel bila perlu
   (`delete from public.books where slug in (...)`), jangan `truncate`
