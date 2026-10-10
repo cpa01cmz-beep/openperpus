@@ -4,6 +4,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 
 (globalThis as unknown as { React: unknown }).React = React;
 
+vi.mock('server-only', () => ({}));
+
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(() => (globalThis as unknown as { __mockSupabase: unknown }).__mockSupabase),
 }));

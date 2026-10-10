@@ -23,7 +23,7 @@ describe('ops ci workflow (T-O2)', () => {
   it('RED: has test job running vitest --project=unit', () => {
     const raw = readCi();
     expect(raw).toMatch(/^\s{2}test\s*:/m);
-    expect(raw).toContain('vitest --project=unit');
+    expect(raw).toMatch(/vitest (run )?--project=unit/);
   });
 
   it('RED: has playwright-list job running npx playwright test --list', () => {
@@ -41,9 +41,9 @@ describe('ops ci workflow (T-O2)', () => {
     expect(raw).toContain('dev');
   });
 
-  it('GREEN guard: Node 20 + npm ci + npm cache', () => {
+  it('GREEN guard: Node 22 + npm ci + npm cache', () => {
     const raw = readCi();
-    expect(raw).toMatch(/node-version\s*:\s*['"]?20['"]?/);
+    expect(raw).toMatch(/node-version\s*:\s*['"]?22['"]?/);
     expect(raw).toContain('npm ci');
     expect(raw).toMatch(/cache\s*:\s*npm/);
   });
