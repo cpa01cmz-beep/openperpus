@@ -167,6 +167,7 @@ describe('#59 bulk delete anggota', () => {
     fireEvent.click(selectAll!);
     const bulkBtn = await screen.findByRole('button', { name: /hapus terpilih \(2\)/i });
     fireEvent.click(bulkBtn);
+    fireEvent.click(await screen.findByRole('button', { name: /ya, hapus semua/i }));
     await waitFor(
       () =>
         expect(
@@ -202,6 +203,7 @@ describe('#59 bulk delete anggota', () => {
     ) as HTMLInputElement | null;
     fireEvent.click(selectAll!);
     fireEvent.click(await screen.findByRole('button', { name: /hapus terpilih \(2\)/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /ya, hapus semua/i }));
     await waitFor(() => expect(screen.getByRole('alert').textContent).toMatch(/dilewati/), {
       timeout: 2500,
     });
@@ -233,6 +235,7 @@ describe('#59 bulk delete anggota', () => {
       view.container.querySelector('thead input[type="checkbox"]') as HTMLInputElement
     );
     fireEvent.click(await screen.findByRole('button', { name: /hapus terpilih \(3\)/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /ya, hapus semua/i }));
     await waitFor(
       () => {
         const t = screen.getByRole('alert').textContent ?? '';
