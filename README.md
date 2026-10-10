@@ -1,6 +1,6 @@
 # openperpus — CMS Perpustakaan
 
-Next.js 14 + Supabase + Tailwind 3, deploy ke Vercel **atau** Cloudflare Workers (keduanya didukung, lihat ADR-002).
+Next.js 16 + Supabase + Tailwind 4, deploy ke Vercel **atau** Cloudflare Workers (keduanya didukung, lihat ADR-002).
 
 ## 1. Install
 
@@ -8,7 +8,7 @@ Next.js 14 + Supabase + Tailwind 3, deploy ke Vercel **atau** Cloudflare Workers
 npm install
 ```
 
-> Node >= 20.9.0. Tanpa `npm install` penuh pun `package.json` sudah tervalidasi JSON.
+> Node >= 20.9.0 (`engines` di package.json; `.nvmrc` memakai Node 22). Tanpa `npm install` penuh pun `package.json` sudah tervalidasi JSON.
 
 ## 2. Setup Supabase
 
@@ -42,6 +42,8 @@ npm run dev
 # buka http://localhost:3000
 ```
 
+> Baru pertama kali? Selesaikan dulu **Migrasi Supabase** dan **Akun admin pertama** (bagian bawah) — tanpa skema + admin, aplikasi belum bisa dipakai.
+
 ## 4. Deploy Vercel
 
 Deploy utama: **Vercel** (ADR-002 — Workers free plan kena error 1102 resource limit).
@@ -55,6 +57,8 @@ Deploy utama: **Vercel** (ADR-002 — Workers free plan kena error 1102 resource
    | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | anon public key                 |
    | `SUPABASE_SERVICE_ROLE_KEY`     | service_role (server only)      |
    | `NEXT_PUBLIC_SITE_URL`          | `https://openperpus.cmz.web.id` |
+   | `METRICS_TOKEN`                 | token acak untuk `/api/metrics` (opsional; mis. `openssl rand -hex 32`) |
+   | `SENTRY_DSN`                    | DSN Sentry (opsional; kosong = tracking nonaktif) |
 
 3. Tambah custom domain `openperpus.cmz.web.id` + DNS record di zone Cloudflare.
 4. Supabase Dashboard → Authentication → URL Configuration: tambahkan domain Vercel ke
@@ -87,11 +91,11 @@ Konfigurasi CF: `wrangler.toml` (`compatibility_date = "2025-01-01"`) + `open-ne
 
 Sistem CMS penuh, bukan fondasi saja.
 
-Admin (14 rute di `src/app/admin/`): dashboard, buku, anggota, peminjaman, reservasi, denda, kategori, rak, menu, konten, artikel, banner, logs, pengaturan. Halaman edit tersedia untuk artikel (`artikel/edit`) dan banner (`banner/edit`).
+Admin (19 halaman di `src/app/admin/`, flat — tanpa Route Group): dashboard, buku (list/tambah/edit), anggota, peminjaman, reservasi, denda, kategori, rak, menu, konten, artikel (list/edit), banner (list/edit), layanan, logs, pengaturan.
 
-API (26 rute, lihat `.omo/baseline/routes.json`): books, categories, racks, members, loans (+return), reservations, fines (+pay), pages, faqs, testimonials, articles, banners, menus, settings.
+API (34 route handler, kontrak dua arah di `openapi.yaml` + `docs/api-contract.md`): 15 modul resource — books, categories, racks, members, loans (+return), reservations, fines (+pay), pages, faqs, testimonials, articles, banners, menus, services, settings (+`/settings/theme`) — plus health, readyz, docs, metrics, register.
 
-Publik (11 rute): katalog (paginasi server), buku, berita, halaman dinamis, faq, layanan, tentang, kontak, home, login, plus `sitemap.ts`/`robots.ts`/`manifest.ts`.
+Publik (15 halaman): home, katalog (+detail), buku, berita (+detail), halaman dinamis, faq, layanan, tentang, kontak, denda, reservasi-saya (di `src/app/(public)/`), plus `login` dan `daftar`, serta `sitemap.ts`/`robots.ts`/`manifest.ts`.
 
 ## Fitur
 
@@ -122,13 +126,74 @@ supabase/migrations/0018_perf_fixes.sql
 supabase/migrations/0019_role_guard.sql
 supabase/migrations/0020_sketch_theme.sql
 supabase/migrations/0021_services.sql
+supabase/migrations/0022_theme_overrides.sql
 ```
+
+Alternatif (tanpa paste manual): jalankan `supabase db push` dari root repo —
+migrasi terdeteksi otomatis dari folder `supabase/migrations` (lihat `supabase/README.md`).
 
 Catatan: penomoran unik dan berurutan (0010 dilewati, tidak dipakai). Jalankan semua sesuai urutan di atas.
 
+## Akun admin pertama
+
+Pendaftaran publik (`/daftar` → `POST /api/register`) selalu membuat profile dengan role `member`,
+jadi akun admin pertama dibuat manual setelah signup:
+
+1. Daftar di `http://localhost:3000/daftar` (konfirmasi email bila diaktifkan di
+   Supabase Dashboard → Authentication → Providers → Email), lalu login.
+2. Buka Supabase Dashboard → SQL Editor, jalankan (ganti email):
+
+```sql
+UPDATE public.profiles
+SET role = 'admin'
+WHERE id = (SELECT id FROM auth.users WHERE email = 'email-kamu@contoh.com');
+```
+
+3. (Opsional) isi data awal perpus — nama, kategori, rak, buku contoh — dengan menjalankan
+   `supabase/seed.sql` (paste ke SQL Editor, atau `supabase db execute --file supabase/seed.sql`).
+
+Kenapa SQL dan bukan lewat aplikasi: trigger `0019_role_guard.sql` menolak perubahan
+`profiles.role` oleh user ber-sesi yang bukan admin; jalur SQL Editor/psql/`service_role`
+(tanpa `auth.uid()`) dikecualikan — itu jalur seed/admin manual yang tepercaya.
+Setelah admin pertama ada, perubahan role berikutnya cukup lewat SQL serupa.
+
+## Storage bucket
+
+Upload sampul/gambar memakai bucket `library-assets` yang **dibuat otomatis** oleh
+`supabase/migrations/0004_storage.sql` (public read, tulis hanya staf, batas 2 MB image/*,
+policies di `0007_storage_guard.sql`). Tidak perlu membuat bucket manual di dashboard.
+Bila bucket terlanjur dihapus, jalankan ulang `0004_storage.sql`.
+
+## Verifikasi (smoke test)
+
+Dengan `npm run dev` berjalan dan env terisi:
+
+```bash
+curl -s http://localhost:3000/api/health
+# → {"status":"ok","uptime":...,...}
+
+curl -s http://localhost:3000/api/readyz
+# → {"ready":true,"checks":{"supabase":"ok","latencyMs":...}}
+# balas 503 {"ready":false,...} bila Supabase tak terjangkau (cek env/migrasi)
+```
+
+Lanjut manual: buka `http://localhost:3000` (katalog terisi bila `seed.sql` dijalankan),
+login di `/login`, lalu cek halaman `/admin` memakai akun admin dari §Akun admin pertama.
+
+## Troubleshooting
+
+| Gejala | Penyebab / fix |
+| ------ | -------------- |
+| `/api/metrics` balas 401 | Set env `METRICS_TOKEN` lalu kirim header `Authorization: Bearer <token>` (token kosong = route terbuka tanpa auth) |
+| `PUT /api/settings/theme` 500 / kolom `theme_overrides` tidak ada | Migrasi `0022_theme_overrides.sql` belum jalan — lihat §Migrasi Supabase |
+| Login langsung kembali ke `/login` | Tambahkan URL situs ke Supabase Dashboard → Authentication → URL Configuration → Redirect URLs |
+| Sudah login tapi 403 di `/admin` atau API admin | Role belum `admin` — jalankan §Akun admin pertama |
+| Upload gambar gagal | Bucket `library-assets` belum ada — jalankan `0004_storage.sql` |
+| Deploy CF error 1102 resource limit | Pakai Vercel sebagai target utama (ADR-002); worker CF tetap alternatif — cek juga `wrangler secret put` (§Alternatif deploy) |
+
 ## Keamanan
 
-RLS aktif plus hardening di `0003_hardening.sql`. Next.js dipin ke `14.2.35` (memenuhi syarat `>=14.2.25` untuk CVE). Input pencarian disanitasi sebelum dipakai di query `ilike`. `service_role` hanya dipakai di server, jangan taruh di kode klien.
+RLS aktif plus hardening di `0003_hardening.sql`. `next` di-pin eksak di `package.json` (saat ini 16.4.0) — perbarui saat ada rilis keamanan. Input pencarian disanitasi sebelum dipakai di query `ilike`. `service_role` hanya dipakai di server, jangan taruh di kode klien.
 
 ### Cloudflare Rate Limiting Rules (Recommended)
 
