@@ -213,12 +213,12 @@ export default function AnggotaPage() {
       let deleted = 0;
       let skipped = 0;
       const failed: string[] = [];
-      let failureMsg = '';
+      const failureMsgs: string[] = [];
       for (const [i, r] of results.entries()) {
         const id = ids[i];
         if (r.status === 'rejected') {
           if (id) failed.push(id);
-          failureMsg = (r.reason as Error)?.message || 'Gagal menghapus anggota.';
+          failureMsgs.push((r.reason as Error)?.message || 'Gagal menghapus anggota.');
           continue;
         }
         const res = r.value;
@@ -229,9 +229,10 @@ export default function AnggotaPage() {
         } else {
           if (id) failed.push(id);
           const json = (await res.json().catch(() => ({}))) as unknown;
-          failureMsg = errMsg(json, 'Gagal menghapus anggota.');
+          failureMsgs.push(errMsg(json, 'Gagal menghapus anggota.'));
         }
       }
+      const failureMsg = [...new Set(failureMsgs)].join('; ');
       // Sukses bersih = tanpa pesan; parsial/gagal = ringkasan akurat + id gagal.
       if (failed.length > 0 || skipped > 0) {
         const parts = [`${deleted} dihapus`];

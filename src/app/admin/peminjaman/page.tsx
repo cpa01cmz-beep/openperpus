@@ -64,7 +64,9 @@ export default function PeminjamanPage() {
     fetch('/api/settings')
       .then((r) => {
         if (!r.ok) throw new Error('Gagal memuat tarif denda; memakai tarif default.');
-        return r.json() as Promise<{ data?: { fine_per_day?: unknown } }>;
+        return (r.json().catch(() => {
+          throw new Error('Gagal memuat tarif denda; memakai tarif default.');
+        }) as Promise<{ data?: { fine_per_day?: unknown } }>);
       })
       .then((j) => {
         const v = Number(j.data?.fine_per_day);
