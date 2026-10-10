@@ -43,7 +43,6 @@ export async function GET(req: Request) {
       return NextResponse.json(
         {
           data: [],
-          meta: { page, per_page: perPage, total: 0 },
           pagination: { page, limit: perPage, total: 0, totalPages: 0 },
         },
         { headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60' } }
@@ -76,7 +75,6 @@ export async function GET(req: Request) {
   return NextResponse.json(
     {
       data,
-      meta: { page, per_page: perPage, total },
       pagination: { page, limit: perPage, total, totalPages: Math.ceil(total / perPage) },
     },
     { headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60' } }

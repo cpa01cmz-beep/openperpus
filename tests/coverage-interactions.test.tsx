@@ -99,7 +99,6 @@ const defaultFetch = async (input: unknown, init?: RequestInit) => {
   if (method === 'GET') {
     return jsonResponse(200, {
       data: listRows,
-      meta: { page: 1, per_page: 20, total: listRows.length },
       pagination: { page: 1, limit: 20, total: listRows.length, totalPages: 1 },
     });
   }

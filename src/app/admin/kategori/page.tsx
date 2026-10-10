@@ -36,7 +36,7 @@ export default function KategoriPage() {
     };
     if (res.ok) {
       setRows(json.data ?? []);
-      setTotalPages(json.pagination?.totalPages ?? json.meta?.totalPages ?? 1);
+      setTotalPages(json.pagination?.totalPages ?? 1);
     }
   }, [search, page]);
 

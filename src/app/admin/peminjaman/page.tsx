@@ -64,9 +64,9 @@ export default function PeminjamanPage() {
     fetch('/api/settings')
       .then((r) => {
         if (!r.ok) throw new Error('Gagal memuat tarif denda; memakai tarif default.');
-        return (r.json().catch(() => {
+        return r.json().catch(() => {
           throw new Error('Gagal memuat tarif denda; memakai tarif default.');
-        }) as Promise<{ data?: { fine_per_day?: unknown } }>);
+        }) as Promise<{ data?: { fine_per_day?: unknown } }>;
       })
       .then((j) => {
         const v = Number(j.data?.fine_per_day);
@@ -113,7 +113,7 @@ export default function PeminjamanPage() {
       };
       if (!res.ok) throw new Error(errMsg(json, 'Gagal memuat peminjaman.'));
       setLoans(json.data ?? []);
-      setTotalPages(json.pagination?.totalPages ?? json.meta?.totalPages ?? 1);
+      setTotalPages(json.pagination?.totalPages ?? 1);
     } catch (e) {
       setError((e as Error).message);
     }
