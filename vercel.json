@@ -1,3 +1,9 @@
 {
-  "buildCommand": "npm run next:build"
+  "buildCommand": "npm run next:build",
+  "crons": [
+    {
+      "path": "/api/cron/sweep-reservations",
+      "schedule": "0 1 * * *"
+    }
+  ]
 }
