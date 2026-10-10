@@ -73,7 +73,6 @@ export async function GET(req: Request) {
   const total = count ?? 0;
   return NextResponse.json({
     data,
-    meta: { page, per_page: perPage, total },
     pagination: { page, limit: perPage, total, totalPages: Math.ceil(total / perPage) },
   });
 }

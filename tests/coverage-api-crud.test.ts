@@ -95,18 +95,18 @@ beforeEach(() => {
 });
 
 describe('GET /api/categories', () => {
-  it('list 200 with meta+pagination', async () => {
+  it('list 200 with single pagination envelope (#61)', async () => {
     setTable('categories', { list: { data: [{ id: 'c1', name: 'Fiksi' }], count: 1 } });
     const res = await CAT_GET(req('/api/categories'));
     expect(res.status).toBe(200);
     const j = (await res.json()) as {
       data: unknown[];
-      meta: { total: number };
-      pagination: { totalPages: number };
+      pagination: { totalPages: number; total: number };
     };
     expect(j.data).toHaveLength(1);
-    expect(j.meta.total).toBe(1);
+    expect(j.pagination.total).toBe(1);
     expect(j.pagination.totalPages).toBe(1);
+    expect((j as Record<string, unknown>).meta).toBeUndefined();
   });
 
   it('fetch error -> 500 FETCH_FAILED', async () => {

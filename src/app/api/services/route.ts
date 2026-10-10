@@ -117,7 +117,6 @@ export async function GET(req: Request) {
   return NextResponse.json(
     {
       data,
-      meta: { page, per_page: perPage, total },
       pagination: { page, limit: perPage, total, totalPages: Math.ceil(total / perPage) },
     },
     { headers: { 'Cache-Control': all === '1' ? 'no-store' : 'public, s-maxage=300' } }

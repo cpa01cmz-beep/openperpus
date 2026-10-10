@@ -270,15 +270,14 @@ describe('readyz contract', () => {
 describe('articles contract', () => {
   const articles = readSrc('src/app/api/articles/route.ts');
 
-  it('GET 200 is {data, meta, pagination} with the actual inner keys', () => {
+  it('GET 200 is {data, pagination} with the actual inner keys (meta removed, #61)', () => {
     const schema = responseJson(op('/api/articles', 'get'), '200');
-    expect(requiredOf(schema).sort()).toEqual(['data', 'meta', 'pagination']);
-    const meta = propsOf(schema)['meta'] as Obj;
-    expect(requiredOf(meta).sort()).toEqual(['page', 'per_page', 'total']);
+    expect(requiredOf(schema).sort()).toEqual(['data', 'pagination']);
+    expect(propsOf(schema)['meta']).toBeUndefined();
     const pagination = propsOf(schema)['pagination'] as Obj;
     expect(requiredOf(pagination).sort()).toEqual(['limit', 'page', 'total', 'totalPages']);
-    expect(articles).toContain('meta: { page, per_page: perPage, total }');
     expect(articles).toContain('pagination: { page, limit: perPage, total, totalPages');
+    expect(articles).not.toContain('meta: { page, per_page');
   });
 
   it('GET per_page defaults to 10 like parsePaging in the handler', () => {

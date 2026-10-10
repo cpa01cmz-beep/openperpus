@@ -99,7 +99,6 @@ const defaultFetch = async (input: unknown, init?: RequestInit) => {
   if (method === 'GET') {
     return jsonResponse(200, {
       data: listRows,
-      meta: { page: 1, per_page: 20, total: listRows.length },
       pagination: { page: 1, limit: 20, total: listRows.length, totalPages: 1 },
     });
   }
@@ -609,7 +608,7 @@ describe('admin list page interactions', () => {
     await waitFor(() => expect(screen.getAllByRole('checkbox').length).toBeGreaterThan(0), {
       timeout: 2500,
     });
-    fireEvent.click(screen.getByRole('button', { name: /ekspor csv/i }));
+    fireEvent.click(screen.getByRole('button', { name: /ekspor halaman ini/i }));
     await waitFor(
       () =>
         expect(

@@ -26,56 +26,79 @@
 ```
 /
 ├── app/
-│   ├── (public)/
-  │   │   ├── layout.tsx              # baca settings (cached), pasang SEO dinamis, header/footer dinamis
+│   ├── (public)/                    # route group OPAC (layout.tsx baca settings cached)
 │   │   ├── page.tsx                # home: banner slider + sambutan + buku terbaru/populer + artikel + testimoni
 │   │   ├── katalog/page.tsx        # OPAC search + filter kategori/rak/ketersediaan (SSR, searchParams)
-│   │   ├── buku/[slug]/page.tsx    # detail buku (generateMetadata dinamis) + salinan tersedia + reservasi
-│   │   ├── artikel/page.tsx + [slug]/page.tsx
+│   │   ├── katalog/[slug]/page.tsx # detail buku (generateMetadata dinamis) + reservasi
+│   │   ├── buku/[slug]/page.tsx    # permanen redirect -> /katalog/[slug]
+│   │   ├── berita/page.tsx + [slug]/page.tsx
 │   │   ├── halaman/[slug]/page.tsx # pages dinamis (visi-misi, dll — slug dari tabel pages)
 │   │   ├── faq/page.tsx
-│   │   └── kontak/page.tsx         # alamat/telepon/jam dari settings
-│   ├── (admin)/
+│   │   ├── kontak/page.tsx         # alamat/telepon/jam dari settings
+│   │   ├── layanan/page.tsx
+│   │   ├── tentang/page.tsx
+│   │   ├── reservasi-saya/page.tsx # anggota: reservasi miliknya (login)
+│   │   ├── denda/page.tsx          # anggota: denda miliknya (login)
+│   │   └── error.tsx / loading.tsx
+│   ├── admin/                      # panel staf (flat, TANPA route group — guard di layout.tsx)
 │   │   ├── layout.tsx              # guard session + role check (admin/pustakawan), sidebar dinamis
-│   │   ├── admin/page.tsx          # dashboard: statistik loans, overdue, stok, grafik
-│   │   ├── admin/settings/page.tsx
-│   │   ├── admin/books/page.tsx + [id]/page.tsx
-│   │   ├── admin/members/page.tsx
-│   │   ├── admin/loans/page.tsx
-│   │   ├── admin/reservations/page.tsx
-│   │   ├── admin/contents/page.tsx # articles, banners, pages, testimonials, faqs, menus
-│   │   └── admin/logs/page.tsx
-│   ├── api/                        # REST contract (lihat docs/api-contract.md)
+│   │   ├── page.tsx                # dashboard: RPC get_dashboard_stats (migrasi 0017)
+│   │   ├── pengaturan/page.tsx     # settings (identitas + tema)
+│   │   ├── buku/page.tsx + tambah + edit/[id]
+│   │   ├── anggota/page.tsx
+│   │   ├── peminjaman/page.tsx     # loans: list + LoanForm + aksi extend/return/kondisi
+│   │   ├── denda/page.tsx
+│   │   ├── reservasi/page.tsx
+│   │   ├── kategori/page.tsx / rak/page.tsx / layanan/page.tsx
+│   │   ├── artikel/page.tsx + edit/[id]
+│   │   ├── banner/page.tsx + edit/[id]
+│   │   ├── konten/page.tsx + FaqsTab/PagesTab/TestimonialsTab
+│   │   ├── menu/page.tsx
+│   │   └── logs/page.tsx           # RSC force-dynamic, baca activity_logs LANGSUNG (bukan /api/logs — 404)
+│   ├── daftar/page.tsx             # registrasi anggota (publik)
+│   ├── login/{page,layout}.tsx
+│   ├── api/                        # REST contract (lihat docs/api-contract.md + openapi.yaml)
 │   │   ├── settings/route.ts       # GET public (whitelist field) + PUT admin
+│   │   ├── settings/theme/route.ts # admin only, layout-only
 │   │   ├── books/route.ts + [id]/route.ts
-│   │   ├── categories/route.ts
+│   │   ├── categories/route.ts + racks/route.ts
 │   │   ├── members/route.ts
-│   │   ├── loans/route.ts + [id]/route.ts
+│   │   ├── loans/route.ts + [id]/route.ts + [id]/return/route.ts
+│   │   ├── reservations/route.ts + [id]/route.ts + [id]/checkout/route.ts
+│   │   ├── fines/route.ts + [id]/route.ts + [id]/pay/route.ts
 │   │   ├── articles/route.ts
-│   │   └── banners/route.ts
-│   ├── login/page.tsx
-│   └── layout.tsx                  # root: font, theme provider, viewport
+│   │   ├── banners/route.ts
+│   │   ├── pages/route.ts, menus/route.ts, services/route.ts, testimonials/route.ts, faqs/route.ts
+│   │   └── health/, readyz/, metrics/, register/, docs/
+│   ├── layout.tsx                  # root: font, theme provider, viewport
+│   ├── globals.css                 # Tailwind v4 + token tema
+│   ├── error.tsx / global-error.tsx / not-found.tsx
+│   └── manifest.ts / robots.ts / sitemap.ts
 ├── components/
-│   ├── public/   # Navbar (menu dinamis), Footer (settings), BookCard, BannerSlider, SearchBar
-│   ├── admin/    # Sidebar, DataTable, Forms (BookForm, SettingsForm), StatCard
-│   └── ui/       # Button, Input, Badge, Modal, Pagination (shadcn-style, Tailwind only)
+│   ├── public/   # Navbar (menu dinamis), Footer (settings), BookCard, CatalogExplorer, dll
+│   ├── admin/    # Sidebar, DataTable, Forms (BookForm, LoanForm, SettingsForm), StatCard, Modal, dll
+│   ├── hero/ + layout/ # varian tema (per family: classic, sketch, editorial, dll)
+│   └── ui/       # Button, Input, Badge, Modal, Pagination (Tailwind only, tanpa komponen UI library)
 ├── lib/
-│   ├── supabase/
-│   │   ├── client.ts               # browser client (@supabase/ssr createBrowserClient)
-│   │   ├── server.ts               # server/RSC client (createServerClient + cookies)
-│   │   └── middleware.ts           # refresh session (updateSession)
-│   ├── settings.ts                 # getLibrarySettings() cached + helper (jam operasional, sosmed)
-│   ├── auth.ts                     # getSessionUser(), normalizeRole() — guard kanonis: requireStaff (lib/supabase/auth.ts)
-│   └── utils.ts                    # slugify, formatRupiah, due-date calc
-├── middleware.ts                   # root: pakai lib/supabase/middleware.ts (auth refresh + redirect /login)
-├── styles/globals.css              # Tailwind + CSS var tema dari settings (primary color)
-├── types/database.ts               # tipe hasil `supabase gen types`
-└── docs/                           # arsitektur, db-design, api-contract, adr
+│   ├── supabase/                   # client.ts (browser) | server.ts (RSC/route) | middleware.ts (refresh)
+│   ├── settings.ts                 # getLibrarySettings() cached + helper (jam operasional, sosmed, fine rate)
+│   ├── supabase/auth.ts            # guard kanonis: requireStaff/getSession + jsonError + slugify
+│   ├── paging.ts                   # parsePaging (page/per_page|limit, maks 100) — SATU kontrak pagination
+│   ├── loans-overdue.ts            # definisi tunggal status terlambat (issue #57)
+│   ├── loan-eligibility.ts         # gate kelayakan pinjam (issue #56)
+│   ├── returnLoan.ts / loans-return.ts # pengembalian (kondisi RPC 0011)
+│   ├── reservation-checkout.ts / reservation-sweep.ts
+│   ├── validation/ + validation.ts # validasi per-entitas (bukan Zod per route)
+│   └── ... (per-domain: books/, articles, banners, konten-api, stats, themes, dll)
+├── middleware.ts                   # auth refresh + proteksi /admin
+├── supabase/migrations/            # 0001..0024 (SQL lineal, RPC + RLS + index)
+├── tests/                          # vitest (unit/components) + e2e playwright + integration
+└── docs/                           # arsitektur, db-design, api-contract, adr, runbook, onboarding
 ```
 
 **Keputusan struktur:**
 
-- Opsi A (dipilih): Route Groups `(public)` / `(admin)` satu app — sharing `lib/settings.ts`, satu deploy.
+- Opsi A (dipilih): route group `(public)` untuk OPAC + folder flat `admin/` (tanpa `(admin)` — guard cukup di `admin/layout.tsx`), satu app — sharing `lib/settings.ts`, satu deploy.
 - Opsi B (ditolak): dua app terpisah (public + admin) — duplikasi auth/settings, 2x deploy cost, over-engineering untuk skala perpus.
 
 ---
@@ -87,7 +110,7 @@
 ```
 Browser → Cloudflare Edge → Next RSC (app/(public))
   → lib/settings.ts:getLibrarySettings()   [cache: 'force-cache', tag 'settings']
-  → Supabase PostgREST (anon key, RLS SELECT public) : settings(id=1), books+stock view, articles published, banners active, menus, pages
+   → Supabase PostgREST (anon key, RLS SELECT public) : settings(id=1), books (kolom stock_total/stock_available), articles published, banners active, menus, pages
   → HTML streaming (Suspense: BannerSlider, BookGrid skeleton)
 ```
 
@@ -133,19 +156,19 @@ Browser → middleware.ts (refresh session + role gate staff) → admin/layout.t
 
 ## 5. Strategi Data-Fetching (SSR + RSC)
 
-| Area                      | Pola                                                                                     | Contoh                               |
-| ------------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------ |
-| Public SEO (home, detail) | RSC async + `fetch` cache / Supabase langsung, `revalidate`                              | `getLibrarySettings()` + query books |
-| Katalog search/filter     | RSC + `searchParams`, `dynamic='force-dynamic'` bila query ada; prefetch kategori statis | `/katalog`                           |
-| Admin list                | RSC `cache:'no-store'` + pagination server-side                                          | `/admin/loans?page=`                 |
-| Mutasi                    | Client → `fetch('/api/...')` → `router.refresh()` + toast                                | pinjam/kembali                       |
-| Realtime ringan           | Supabase Realtime hanya di dashboard admin (stok/loan baru); JANGAN di public            | badge overdue                        |
+| Area                      | Pola                                                                                                                             | Contoh                               |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| Public SEO (home, detail) | RSC async + `fetch` cache / Supabase langsung, `revalidate`                                                                      | `getLibrarySettings()` + query books |
+| Katalog search/filter     | RSC + `searchParams`, query Supabase langsung (bukan via /api) untuk SEO + 1 hop lebih sedikit; pencarian via RPC `search_books` | `/katalog`                           |
+| Admin list                | Client component → `fetch('/api/...')` `no-store`; pagination `?page=` (envelope `pagination`, lihat docs/api-contract.md)       | `/admin/peminjaman?page=2`           |
+| Mutasi                    | Client → `fetch('/api/...')` → `router.refresh()` + toast                                                                        | pinjam/kembali                       |
+| Logs audit                | RSC `force-dynamic` baca `activity_logs` langsung (TIDAK ada `/api/logs`)                                                        | `/admin/logs`                        |
 
 **Aturan:**
 
 - Public JANGAN pakai `cookies()`-dependent fetch yang memaksa dynamic — pisahkan komponen settings (cached) dari komponen user-specific.
-- Semua query list wajib paginasi (`range()`) + `order()` eksplisit + `count:'exact'` untuk pagination.
-- N+1 dilarang: pakai `select('*, categories(name), book_copies(count)')` / view `books_with_stock`.
+- Semua query list wajib paginasi (`range()`) + `order()` eksplisit. Count: `estimated` untuk `/api/books`, `exact` untuk list staf ber-total (loans/members/fines/reservations) — satu envelope `pagination` untuk semua (issue #61).
+- N+1 dilarang: pakai embed PostgREST (mis. `select('*, categories(id,name,slug), racks(code,name,location)')`) atau RPC agregat (`get_dashboard_stats`, `search_books`) — view `books_with_stock` sudah tidak ada.
 
 ---
 
