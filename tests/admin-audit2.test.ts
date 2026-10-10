@@ -2,9 +2,9 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-// S-admin-audit2: (a) alias PUT /api/loans/[id] return path must audit
-// activity_logs with retry (not silent); (b) collective PUT /api/loans?id=
-// return path must audit activity_logs (not silent); (c) dashboard
+// S-admin-audit2: (a) PUT /api/loans/[id] return path must audit
+// activity_logs with retry (not silent) — koleksi ?id= dihapus (issue #54),
+// jadi [id] adalah SATU-satunya jalur tulis; (c) dashboard
 // activeLoans query must be bounded with .limit().
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -17,7 +17,6 @@ vi.mock('next/cache', () => ({
 }));
 
 import { PUT as ALIAS_PUT } from '@/app/api/loans/[id]/route';
-import { PUT as COLLECTIVE_PUT } from '@/app/api/loans/route';
 
 const MID = '11111111-1111-4111-8111-111111111111';
 const BID = '22222222-2222-4222-8222-222222222222';
@@ -122,22 +121,17 @@ beforeEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('S-admin-audit2 alias+collective audit + dashboard bound', () => {
+describe('S-admin-audit2 [id] audit + dashboard bound', () => {
   // --- error-contract exact codes (reuse reliability lane) ---
   it('(contract) alias PUT missing loan -> 404 NOT_FOUND exact', async () => {
     setReturnMock({ loan: null });
-    const res = await ALIAS_PUT(putReq('http://localhost/api/loans/L-1', { action: 'return' }), {
-      params: { id: 'L-1' },
-    });
-    expect(res.status).toBe(404);
-    const j = (await res.json()) as { error: { code: string } };
-    expect(j.error.code).toBe('NOT_FOUND');
-  });
-
-  it('(contract) collective PUT missing loan -> 404 NOT_FOUND exact', async () => {
-    setReturnMock({ loan: null });
-    const res = await COLLECTIVE_PUT(
-      putReq('http://localhost/api/loans?id=L-1', { action: 'return' })
+    const res = await ALIAS_PUT(
+      putReq('http://localhost/api/loans/33333333-3333-4333-8333-333333333333', {
+        action: 'return',
+      }),
+      {
+        params: { id: '33333333-3333-4333-8333-333333333333' },
+      }
     );
     expect(res.status).toBe(404);
     const j = (await res.json()) as { error: { code: string } };
@@ -148,9 +142,14 @@ describe('S-admin-audit2 alias+collective audit + dashboard bound', () => {
   it('(a) alias PUT return inserts activity_logs with {fine}', async () => {
     const seen: Record<string, unknown>[] = [];
     setReturnMock({ onAuditInsert: (p) => seen.push(p) });
-    const res = await ALIAS_PUT(putReq('http://localhost/api/loans/L-1', { action: 'return' }), {
-      params: { id: 'L-1' },
-    });
+    const res = await ALIAS_PUT(
+      putReq('http://localhost/api/loans/33333333-3333-4333-8333-333333333333', {
+        action: 'return',
+      }),
+      {
+        params: { id: '33333333-3333-4333-8333-333333333333' },
+      }
+    );
     expect(res.status).toBe(200);
     expect(seen.length >= 1, 'S-AUDIT2 RED: alias PUT must insert activity_logs').toBe(true);
     const meta = (seen[0] as { metadata?: Record<string, unknown> }).metadata ?? {};
@@ -162,9 +161,14 @@ describe('S-admin-audit2 alias+collective audit + dashboard bound', () => {
     const { getAuditCalls } = setReturnMock({
       auditResults: [{ error: { message: 'db down' } }, { error: null }],
     });
-    const res = await ALIAS_PUT(putReq('http://localhost/api/loans/L-1', { action: 'return' }), {
-      params: { id: 'L-1' },
-    });
+    const res = await ALIAS_PUT(
+      putReq('http://localhost/api/loans/33333333-3333-4333-8333-333333333333', {
+        action: 'return',
+      }),
+      {
+        params: { id: '33333333-3333-4333-8333-333333333333' },
+      }
+    );
     expect(res.status).toBe(200);
     expect(getAuditCalls()).toBe(2);
     errSpy.mockRestore();
@@ -192,60 +196,30 @@ describe('S-admin-audit2 alias+collective audit + dashboard bound', () => {
   });
 
   // --- (b) collective PUT audit ---
-  it('(b) collective PUT return inserts activity_logs with {fine}', async () => {
-    const seen: Record<string, unknown>[] = [];
-    setReturnMock({ onAuditInsert: (p) => seen.push(p) });
-    const res = await COLLECTIVE_PUT(
-      putReq('http://localhost/api/loans?id=L-1', { action: 'return' })
-    );
-    expect(res.status).toBe(200);
-    expect(seen.length >= 1, 'S-AUDIT2 RED: collective PUT must insert activity_logs').toBe(true);
-    const meta = (seen[0] as { metadata?: Record<string, unknown> }).metadata ?? {};
-    expect(typeof meta.fine).toBe('number');
-  });
-
-  it('(b) collective PUT audit retries once then logs (not silent)', async () => {
-    const errSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-    const { getAuditCalls } = setReturnMock({
-      auditResults: [{ error: { message: 'db down' } }, { error: null }],
-    });
-    const res = await COLLECTIVE_PUT(
-      putReq('http://localhost/api/loans?id=L-1', { action: 'return' })
-    );
-    expect(res.status).toBe(200);
-    expect(getAuditCalls()).toBe(2);
-    errSpy.mockRestore();
-  });
-
-  it('(b) collective PUT audit is non-best-effort (retry + log)', () => {
-    const src = read('src/app/api/loans/route.ts') + '\n' + read('src/lib/loans-return.ts');
-    expect(
-      src.includes('activity_logs'),
-      'S-AUDIT2 RED: collective PUT never writes activity_logs'
-    ).toBe(true);
-    expect(
-      src.includes('createLogger') || src.includes('audit.activity_logs_retry'),
-      'S-AUDIT2 RED: collective PUT must log audit failure (structured logger)'
-    ).toBe(true);
-  });
-
   // --- (c) dashboard queries bounded ---
-  it('(c) dashboard loan queries are bounded (count-head or .limit())', () => {
+  it('(c) dashboard loan queries are bounded (get_dashboard_stats + .limit())', () => {
     const src = read('src/app/admin/page.tsx');
-    // All loan reads must be bounded: count-head (no rows) or explicit .limit().
+    // All loan reads must be bounded: explicit .limit().
     // Iteration 1 (2026-09-19): perf fix replaced unbounded activeLoans fetch
     // with count-exact-head + get_loans_per_day RPC; overdueQueue capped .limit(8).
+    // Iteration 2 (#58): aggregates move to 1-RTT get_dashboard_stats RPC
+    // (counts live in *_count columns); recent + overdueQueue stay capped .limit(8).
     expect(src.includes('id,due_at'), 'S-AUDIT2: overdueQueue select missing').toBe(true);
     expect(src, 'S-AUDIT2: overdueQueue must be capped with .limit(8)').toMatch(
       /\.limit\(\s*8\s*\)/
     );
+    // Agregat wajib dibaca dari baris RPC (bukan sekadar substring nama kolom —
+    // substring juga lolos via deklarasi type StatsRow). Pola count-head lama dilarang.
     expect(
-      src.includes('count'),
-      'S-AUDIT2: dashboard must use count-exact-head for aggregates'
-    ).toBe(true);
+      src,
+      'S-AUDIT2: dashboard must read aggregates from get_dashboard_stats row via num(stats?...)'
+    ).toMatch(/num\(stats\?\.(total_books|total_members|active_loans|overdue_count)/);
+    expect(src, 'S-AUDIT2: count-head exact must stay out of the dashboard page').not.toMatch(
+      /count:\s*['"]exact['"]/
+    );
     expect(
-      src.includes('get_loans_per_day'),
-      'S-AUDIT2: dashboard chart must use grouped RPC, not unbounded fetch'
+      src.includes('get_dashboard_stats'),
+      'S-AUDIT2: dashboard chart must use get_dashboard_stats RPC, not unbounded fetch'
     ).toBe(true);
   });
 });

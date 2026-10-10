@@ -12,8 +12,8 @@ import { getSession } from '@/lib/session';
  * POST /api/reservations {book_id, member_id?, notes?}
  *   — anggota: {book_id} -> pending (member_id miliknya); pustakawan+: boleh untuk member lain.
  *   Gate kelayakan (#56): denda belum lunas / terlambat / batas pinjaman -> 409.
- * PUT /api/reservations?id= {status|notes} — batal: {status:"batal"|"cancelled"}
- * DELETE /api/reservations?id= — pemilik / pustakawan+ (hanya pending/cancelled/expired)
+ * PUT/DELETE satu-resource PINDAH ke /api/reservations/{id} (issue #54 —
+ * transport ?id= dihapus; kontrak lengkap + state-machine ada di route [id]).
  *
  * Kolom migrasi 0001: book_id, member_id, status pending|ready|completed|cancelled|expired,
  * reserved_at, expires_at, notes. Unik pending (book_id,member_id).
@@ -24,19 +24,7 @@ import { getSession } from '@/lib/session';
  * 0024) yang membuat loan + menandai completed dalam satu transaksi.
  */
 
-const STATUSES = ['pending', 'ready', 'completed', 'cancelled', 'expired'] as const;
-
 const writeLog = createWriteLog('reservations');
-
-function normStatus(v: unknown): string | null {
-  if (v === undefined || v === null) return null;
-  const s = String(v).trim().toLowerCase();
-  if (s === 'batal' || s === 'cancel') return 'cancelled';
-  if (s === 'menunggu') return 'pending';
-  if (s === 'selesai') return 'completed';
-  if ((STATUSES as readonly string[]).includes(s)) return s;
-  return s; // biarkan validasi di bawah menolak
-}
 
 function revalidateReservations(): string[] {
   const done: string[] = [];
@@ -203,143 +191,4 @@ export async function POST(req: Request) {
     member_id: targetMember,
   });
   return NextResponse.json({ data, revalidated: revalidateReservations() }, { status: 201 });
-}
-
-export async function PUT(req: Request) {
-  const log = createLogger(requestIdFromHeaders(req.headers));
-  const s = await getSession();
-  if ('errorResponse' in s) return s.errorResponse;
-  const { supabase, userId, memberId, isStaff, role } = s.session;
-
-  const id = new URL(req.url).searchParams.get('id');
-  if (!id) return jsonError('VALIDATION', 'Parameter ?id= wajib.', 400);
-
-  let body: Record<string, unknown>;
-  try {
-    body = (await req.json()) as Record<string, unknown>;
-  } catch {
-    return jsonError('INVALID_JSON', 'Body JSON tidak valid.', 400);
-  }
-
-  const { data: cur } = await supabase.from('reservations').select('*').eq('id', id).single();
-  if (!cur) return jsonError('NOT_FOUND', 'Reservasi tidak ditemukan.', 404);
-  const c = cur as { member_id: string; status: string };
-
-  if (!isStaff && c.member_id !== memberId)
-    return jsonError('FORBIDDEN', 'Bukan reservasi milik Anda.', 403);
-
-  const payload: Record<string, unknown> = {};
-  if (body.status !== undefined) {
-    const st = normStatus(body.status);
-    if (!(STATUSES as readonly string[]).includes(st as string)) {
-      return jsonError(
-        'VALIDATION',
-        'status harus: pending|ready|completed|cancelled|expired.',
-        422
-      );
-    }
-    // Anggota hanya boleh membatalkan miliknya.
-    if (!isStaff && st !== 'cancelled')
-      return jsonError('FORBIDDEN', 'Anggota hanya boleh membatalkan reservasi.', 403);
-    // #73: completed WAJIB lewat checkout atomik (POST .../checkout) yang
-    // membuat loan. PUT completed langsung = stok tak berkurang + antrean
-    // fiktif selesai — jalur ini ditutup total.
-    if (st === 'completed') {
-      return jsonError(
-        'VALIDATION',
-        'Selesaikan reservasi lewat POST /api/reservations/{id}/checkout (membuat loan atomik).',
-        422
-      );
-    }
-    payload.status = st;
-    // State-machine gate: pending->ready, any->cancelled/expired.
-    // (completed hanya via checkout atomik — lihat guard di atas.)
-    const from = c.status;
-    const to = st as string;
-    const allowed =
-      from === to ||
-      to === 'cancelled' ||
-      to === 'expired' ||
-      (from === 'pending' && to === 'ready');
-    if (!allowed) {
-      return jsonError('VALIDATION', `Transisi status ${from}->${to} tidak diizinkan.`, 422);
-    }
-  }
-  if (body.notes !== undefined) payload.notes = body.notes as string | null;
-  // Hanya staf boleh set ready/expires_at (completed hanya via checkout atomik).
-  if (!isStaff && (body.expires_at !== undefined || payload.status === 'ready')) {
-    return jsonError('FORBIDDEN', 'Hanya pustakawan yang boleh memproses reservasi.', 403);
-  }
-  if (isStaff && body.expires_at !== undefined) {
-    if (body.expires_at === null) payload.expires_at = null;
-    else {
-      const d = new Date(body.expires_at as string);
-      if (Number.isNaN(d.getTime())) {
-        return jsonError('VALIDATION', 'expires_at tidak valid.', 422);
-      }
-      payload.expires_at = d.toISOString();
-    }
-  }
-
-  const { data, error } = await supabase
-    .from('reservations')
-    .update(payload)
-    .eq('id', id)
-    .select()
-    .single();
-  if (error)
-    return jsonError('SAVE_FAILED', 'Gagal mengupdate reservasi.', 500, {
-      requestId: log.requestId,
-    });
-
-  await writeLog(supabase, userId, `reservations.${String(payload.status ?? 'update')}`, id, {
-    role,
-    ...payload,
-  });
-  return NextResponse.json({ data, revalidated: revalidateReservations() });
-}
-
-export async function PATCH(req: Request) {
-  return PUT(req);
-}
-
-export async function DELETE(req: Request) {
-  const log = createLogger(requestIdFromHeaders(req.headers));
-  const s = await getSession();
-  if ('errorResponse' in s) return s.errorResponse;
-  const { supabase, userId, memberId, isStaff } = s.session;
-
-  const id = new URL(req.url).searchParams.get('id');
-  if (!id) {
-    return jsonError('VALIDATION', 'Parameter ?id= wajib.', 400);
-  }
-
-  const { data: cur } = await supabase
-    .from('reservations')
-    .select('member_id,status')
-    .eq('id', id)
-    .single();
-  if (!cur) return jsonError('NOT_FOUND', 'Reservasi tidak ditemukan.', 404);
-  const c = cur as { member_id: string; status: string };
-  if (!isStaff && c.member_id !== memberId)
-    return jsonError('FORBIDDEN', 'Bukan reservasi milik Anda.', 403);
-  if (c.status === 'ready' || c.status === 'completed') {
-    return jsonError(
-      'CONFLICT',
-      'Reservasi yang sudah diproses tidak bisa dihapus. Batalkan dulu via staff.',
-      409
-    );
-  }
-
-  const { error } = await supabase.from('reservations').delete().eq('id', id);
-  if (error)
-    return jsonError('DELETE_FAILED', 'Gagal menghapus reservasi.', 500, {
-      requestId: log.requestId,
-    });
-
-  await writeLog(supabase, userId, 'reservations.delete', id);
-  return NextResponse.json({
-    message: 'Reservasi dihapus.',
-    revalidated: revalidateReservations(),
-  });
 }

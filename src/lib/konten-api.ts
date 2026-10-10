@@ -73,7 +73,8 @@ export async function onToggle(
   opts?: KontenMutateOpts
 ): Promise<boolean> {
   const path = pathForKind(kind);
-  const res = await fetch(`${path}?id=${id}`, {
+  // Satu transport ID (issue #54): PUT via path REST /{id}, bukan ?id=.
+  const res = await fetch(`${path}/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ is_active: !is_active }),
@@ -99,7 +100,8 @@ export async function onDelete(
 ): Promise<boolean> {
   if (!confirm('Hapus data ini?')) return false;
   const path = pathForKind(kind);
-  const res = await fetch(`${path}?id=${id}`, { method: 'DELETE' });
+  // Satu transport ID (issue #54): DELETE via path REST /{id}, bukan ?id=.
+  const res = await fetch(`${path}/${id}`, { method: 'DELETE' });
   if (res.status === 404) {
     opts?.onMissing?.(kind);
     alert(`API ${path} belum tersedia di backend.`);

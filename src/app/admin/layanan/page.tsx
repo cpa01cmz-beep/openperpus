@@ -76,7 +76,7 @@ export default function LayananAdminPage() {
         sort_order: sortOrder,
       };
       const res = editingId
-        ? await fetch(`/api/services?id=${editingId}`, {
+        ? await fetch(`/api/services/${editingId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
@@ -117,7 +117,7 @@ export default function LayananAdminPage() {
 
   async function onToggle(row: ServiceRow) {
     setActionError('');
-    const res = await fetch(`/api/services?id=${row.id}`, {
+    const res = await fetch(`/api/services/${row.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ is_active: !row.is_active }),
@@ -133,7 +133,7 @@ export default function LayananAdminPage() {
   async function onDelete(id: string) {
     if (!confirm('Hapus layanan ini?')) return;
     setActionError('');
-    const res = await fetch(`/api/services?id=${id}`, { method: 'DELETE' });
+    const res = await fetch(`/api/services/${id}`, { method: 'DELETE' });
     const json = await res.json();
     if (!res.ok) {
       setActionError(errMsg(json));

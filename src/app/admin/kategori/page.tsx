@@ -76,7 +76,7 @@ export default function KategoriPage() {
 
   async function onToggle(row: Category) {
     setActionError('');
-    const res = await fetch(`/api/categories?id=${row.id}`, {
+    const res = await fetch(`/api/categories/${row.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ is_active: !row.is_active }),
@@ -92,7 +92,7 @@ export default function KategoriPage() {
   async function onDelete(id: string) {
     if (!confirm('Hapus kategori ini?')) return;
     setActionError('');
-    const res = await fetch(`/api/categories?id=${id}`, { method: 'DELETE' });
+    const res = await fetch(`/api/categories/${id}`, { method: 'DELETE' });
     const json = await res.json();
     if (!res.ok) {
       setActionError(errMsg(json));

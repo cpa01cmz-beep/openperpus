@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 
 // S-roi6: Sweep reservasi kedaluwarsa 1-klik di meja sirkulasi.
 // AC1: banner "Kedaluwarsa N baris" + kandidat, baris lain utuh.
-// AC2: PUT /api/reservations?id= {status:expired} per kandidat, 422 diskip + failure count.
+// AC2: PUT /api/reservations/{id} {status:expired} per kandidat, 422 diskip + failure count.
 // AC3: non-staff / 403 / offline → zero mutations, guard alert, reload no-store.
 
 import { findExpiredCandidates, sweepExpiredReservations } from '@/lib/reservation-sweep';
@@ -50,7 +50,7 @@ describe('S-roi6 expiry sweep', () => {
     expect(findExpiredCandidates(rows, NOW)).toEqual([]);
   });
 
-  it('AC2: sweep PUT /api/reservations?id= {status:expired} per kandidat → semua expired', async () => {
+  it('AC2: sweep PUT /api/reservations/{id} {status:expired} per kandidat → semua expired', async () => {
     const { fn, calls } = mockFetch([
       { status: 200, body: { data: { id: 'a', status: 'expired' } } },
       { status: 200, body: { data: { id: 'b', status: 'expired' } } },
@@ -61,7 +61,7 @@ describe('S-roi6 expiry sweep', () => {
       { candidates: [{ id: 'a' }, { id: 'b' }, { id: 'c' }] }
     );
     expect(calls).toHaveLength(3);
-    expect(calls[0]!.url).toBe('/api/reservations?id=a');
+    expect(calls[0]!.url).toBe('/api/reservations/a');
     expect(JSON.parse(String(calls[0]!.init?.body))).toEqual({ status: 'expired' });
     expect(res.succeeded).toBe(3);
     expect(res.failed).toBe(0);

@@ -165,7 +165,7 @@ export default function AnggotaPage() {
     setActionError('');
     setLoadError('');
     try {
-      const res = await fetch(`/api/members?id=${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/members/${id}`, { method: 'DELETE' });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
         // Cerminan buku: tolak dengan penjelasan bila masih ada pinjaman berjalan.
@@ -189,7 +189,7 @@ export default function AnggotaPage() {
     if (next === 'suspended' && !confirm(`Suspend anggota ${code}? Pinjam/reservasi akan ditolak.`))
       return;
     setActionError('');
-    const res = await fetch(`/api/members?id=${id}`, {
+    const res = await fetch(`/api/members/${id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: next }),
@@ -208,7 +208,7 @@ export default function AnggotaPage() {
     try {
       const ids = [...selected];
       const results = await Promise.allSettled(
-        ids.map((id) => fetch(`/api/members?id=${id}`, { method: 'DELETE' }))
+        ids.map((id) => fetch(`/api/members/${id}`, { method: 'DELETE' }))
       );
       let deleted = 0;
       let skipped = 0;

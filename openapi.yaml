@@ -330,20 +330,53 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/articles/{id}:
+    get:
+      summary: Get article by id (public when published; staff otherwise)
+      security:
+        - BearerAuth: []
+        - {}
+      responses:
+        '200':
+          description: ok
+        '400':
+          description: Invalid id (not a UUID)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     put:
-      summary: Update article (staff, ?id=)
+      summary: Update article (staff)
       security:
         - BearerAuth: []
       responses:
         '200':
           description: ok
+        '400':
+          description: Invalid id (not a UUID)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Slug already used
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     delete:
-      summary: Delete article (admin, ?id=)
+      summary: Delete article (admin)
       security:
         - BearerAuth: []
       responses:
         '200':
           description: ok
+        '400':
+          description: Invalid id (not a UUID)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/banners:
     get:
       summary: List banners (staff; public site uses helper lib)
@@ -406,20 +439,47 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/banners/{id}:
+    get:
+      summary: Get banner by id (public when active; staff otherwise)
+      security:
+        - BearerAuth: []
+        - {}
+      responses:
+        '200':
+          description: ok
+        '400':
+          description: Invalid id (not a UUID)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     put:
-      summary: Update banner (staff, ?id=)
+      summary: Update banner (staff)
       security:
         - BearerAuth: []
       responses:
         '200':
           description: ok
+        '400':
+          description: Invalid id (not a UUID)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     delete:
-      summary: Delete banner (admin, ?id=)
+      summary: Delete banner (admin)
       security:
         - BearerAuth: []
       responses:
         '200':
           description: ok
+        '400':
+          description: Invalid id (not a UUID)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/books:
     get:
       summary: List books (public, paginated; RLS is_active)
@@ -486,20 +546,6 @@ paths:
       responses:
         '201':
           description: created
-    put:
-      summary: Update category (staff, ?id=)
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: ok
-    delete:
-      summary: Delete category (admin, ?id=)
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: ok
   /api/categories/{id}:
     get:
       summary: Get category by id (public when active; staff otherwise)
@@ -542,20 +588,6 @@ paths:
       responses:
         '201':
           description: created
-    put:
-      summary: Update faq (staff, ?id=)
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: ok
-    delete:
-      summary: Delete faq (admin, ?id=)
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: ok
   /api/faqs/{id}:
     get:
       summary: Get faq by id (public when active; staff otherwise)
@@ -716,42 +748,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-    put:
-      summary: 'Extend or return loan (action: extend|return, staff)'
-      security:
-        - BearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [action]
-              properties:
-                action:
-                  type: string
-                  enum: [extend, return]
-                days:
-                  type: integer
-                  minimum: 1
-                  maximum: 90
-                  description: 'action=extend: days to add to due_at'
-                returned_at:
-                  type: string
-                  format: date-time
-                  description: 'action=return: return timestamp'
-                notes:
-                  type: string
-      responses:
-        '200':
-          description: ok
-    delete:
-      summary: Delete loan (admin, only returned/lost; ?id=)
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: ok
   /api/loans/{id}:
     get:
       summary: Get loan by id (auth required; staff or owner)
@@ -838,20 +834,52 @@ paths:
       responses:
         '201':
           description: created
+  /api/members/{id}:
+    get:
+      summary: Get member by id (staff)
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: ok
+        '400':
+          description: Invalid id (not a UUID)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     put:
-      summary: Update member (staff, ?id=)
+      summary: Update member (staff; status/address/phone)
       security:
         - BearerAuth: []
       responses:
         '200':
           description: ok
+        '400':
+          description: Invalid id (not a UUID)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     delete:
-      summary: Delete member (admin, ?id=)
+      summary: Delete member (admin; 409 while active loans)
       security:
         - BearerAuth: []
       responses:
         '200':
           description: ok
+        '400':
+          description: Invalid id (not a UUID)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Member still has active loans
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/menus:
     get:
       summary: List menus (public; ?all=1 staff elevation)
@@ -871,20 +899,6 @@ paths:
       responses:
         '201':
           description: created
-    put:
-      summary: Update menu (staff, ?id=)
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: ok
-    delete:
-      summary: Delete menu (admin, ?id=)
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: ok
   /api/menus/{id}:
     get:
       summary: Get menu by id (public when active; staff otherwise)
@@ -927,20 +941,6 @@ paths:
       responses:
         '201':
           description: created
-    put:
-      summary: Update page (staff, ?id=)
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: ok
-    delete:
-      summary: Delete page (admin, ?id=)
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: ok
   /api/pages/{id}:
     get:
       summary: Get page by id (public when active; staff otherwise)
@@ -983,20 +983,6 @@ paths:
       responses:
         '201':
           description: created
-    put:
-      summary: Update rack (staff, ?id=)
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: ok
-    delete:
-      summary: Delete rack (admin, ?id=)
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: ok
   /api/racks/{id}:
     get:
       summary: Get rack by id (public when active; staff otherwise)
@@ -1058,45 +1044,6 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '410':
           description: Buku sudah tidak aktif (GONE)
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-    put:
-      summary: Update reservation (auth required; owner cancel or staff process, ?id=)
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: ok
-        '401':
-          description: Silakan login
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-    patch:
-      summary: Alias of PUT (auth required, ?id=)
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: ok
-        '401':
-          description: Silakan login
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ErrorResponse'
-    delete:
-      summary: Cancel/delete reservation (auth required; owner or staff, ?id=)
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: ok
-        '401':
-          description: Silakan login
           content:
             application/json:
               schema:
@@ -1240,20 +1187,6 @@ paths:
       responses:
         '201':
           description: created
-    put:
-      summary: Update service (staff, ?id=)
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: ok
-    delete:
-      summary: Delete service (admin, ?id=)
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: ok
   /api/services/{id}:
     get:
       summary: Get service by id (public when active; staff otherwise)
@@ -1379,20 +1312,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
-    put:
-      summary: Moderate/update testimonial (staff, ?id=)
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: ok
-    delete:
-      summary: Delete testimonial (admin, ?id=)
-      security:
-        - BearerAuth: []
-      responses:
-        '200':
-          description: ok
   /api/testimonials/{id}:
     get:
       summary: Get testimonial by id (public when active; staff otherwise)

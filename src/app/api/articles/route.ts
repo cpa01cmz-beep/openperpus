@@ -7,7 +7,7 @@ import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 /**
  * GET /api/articles?page=&per_page=&q=&status= (staf; publik via helper lib)
  * POST /api/articles { title, content_md|konten, excerpt|ringkasan, cover_url|gambar_url, category, status }
- * PUT /api/articles?id= | DELETE /api/articles?id= (admin)
+ * PUT /api/articles/{id} | DELETE /api/articles/{id} (admin) — issue #54: ?id= dihapus
  * Kolom migrasi: title, slug, excerpt, content_md, cover_url, category,
  * author_id, published_at, status draft|published|archived, views.
  */
@@ -139,87 +139,4 @@ export async function POST(req: Request) {
     status,
   });
   return NextResponse.json({ data }, { status: 201 });
-}
-
-export async function PUT(req: Request) {
-  const log = createLogger(requestIdFromHeaders(req.headers));
-  const guard = await requireStaff(['admin', 'librarian']);
-  if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
-  const { supabase, user } = guard as {
-    supabase: ReturnType<typeof createClient>;
-    user: { id: string };
-  };
-
-  const id = new URL(req.url).searchParams.get('id');
-  if (!id) return jsonError('VALIDATION', 'Parameter ?id= wajib.', 400);
-
-  let body: Record<string, unknown>;
-  try {
-    body = (await req.json()) as Record<string, unknown>;
-  } catch {
-    return jsonError('INVALID_JSON', 'Body JSON tidak valid.', 400);
-  }
-
-  const payload: Record<string, unknown> = {};
-  if (body.title !== undefined || body.judul !== undefined)
-    payload.title = ((body.title ?? body.judul) as string).trim();
-  if (body.content_md !== undefined || body.konten !== undefined || body.content !== undefined) {
-    payload.content_md = ((body.content_md ?? body.konten ?? body.content) as string).trim();
-  }
-  if (body.excerpt !== undefined || body.ringkasan !== undefined)
-    payload.excerpt = (body.excerpt ?? body.ringkasan) as string | null;
-  if (body.cover_url !== undefined || body.gambar_url !== undefined)
-    payload.cover_url = (body.cover_url ?? body.gambar_url) as string | null;
-  if (body.category !== undefined) payload.category = body.category;
-  if (body.status !== undefined) {
-    if (!(STATUSES as readonly string[]).includes(body.status as string)) {
-      return jsonError('VALIDATION', 'status harus: draft|published|archived.', 422);
-    }
-    payload.status = body.status;
-    if (body.status === 'published') payload.published_at = new Date().toISOString();
-  }
-  if (typeof payload.title === 'string' && payload.title) {
-    payload.slug =
-      typeof body.slug === 'string' && body.slug.trim()
-        ? slugify(body.slug)
-        : slugify(payload.title as string);
-  } else if (typeof body.slug === 'string' && body.slug.trim()) {
-    payload.slug = slugify(body.slug);
-  }
-
-  const { data, error } = await supabase
-    .from('articles')
-    .update(payload)
-    .eq('id', id)
-    .select()
-    .single();
-  if (error) {
-    log.error('articles.save_failed', { detail: error.message });
-    return jsonError('SAVE_FAILED', 'Gagal mengupdate artikel.', 500, { requestId: log.requestId });
-  }
-  await writeLog(supabase, user?.id, 'articles.update', id, payload);
-  return NextResponse.json({ data });
-}
-
-export async function DELETE(req: Request) {
-  const log = createLogger(requestIdFromHeaders(req.headers));
-  const guard = await requireStaff(['admin']);
-  if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
-  const { supabase, user } = guard as {
-    supabase: ReturnType<typeof createClient>;
-    user: { id: string };
-  };
-
-  const id = new URL(req.url).searchParams.get('id');
-  if (!id) return jsonError('VALIDATION', 'Parameter ?id= wajib.', 400);
-
-  const { error } = await supabase.from('articles').delete().eq('id', id);
-  if (error) {
-    log.error('articles.delete_failed', { detail: error.message });
-    return jsonError('DELETE_FAILED', 'Gagal menghapus artikel.', 500, {
-      requestId: log.requestId,
-    });
-  }
-  await writeLog(supabase, user?.id, 'articles.delete', id);
-  return NextResponse.json({ message: 'Artikel dihapus.' });
 }

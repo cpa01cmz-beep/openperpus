@@ -7,10 +7,10 @@ import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
 /**
  * GET /api/menus?page=&per_page=&q=&position= — publik (hanya is_active).
- *   Staf: ?all=1 untuk lihat semua (termasuk nonaktif). ?id= untuk satu menu.
+ *   Staf: ?all=1 untuk lihat semua (termasuk nonaktif).
  * POST /api/menus — pustakawan+ {label|nama, url|link, position|posisi?, parent_id?, sort_order|urutan?, is_active?, target?}
- * PUT /api/menus?id= — pustakawan+
- * DELETE /api/menus?id= — admin
+ * PUT /api/menus/{id} — pustakawan+ (satu transport ID, issue #54: ?id= dihapus)
+ * DELETE /api/menus/{id} — admin
  * Kolom migrasi 0001: label, url, position header|footer|sidebar, parent_id (self-ref),
  * sort_order, is_active, target _self|_blank.
  */
@@ -187,113 +187,4 @@ export async function POST(req: Request) {
 
   await writeLog(supabase, user?.id, 'menus.create', (data as { id: string }).id, { label, url });
   return NextResponse.json({ data, revalidated: revalidateMenus() }, { status: 201 });
-}
-
-export async function PUT(req: Request) {
-  const log = createLogger(requestIdFromHeaders(req.headers));
-  const guard = await requireStaff(['admin', 'librarian']);
-  if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
-  const { supabase, user } = guard as {
-    supabase: ReturnType<typeof createClient>;
-    user: { id: string };
-  };
-
-  const id = new URL(req.url).searchParams.get('id');
-  if (!id) return jsonError('VALIDATION', 'Parameter ?id= wajib.', 400);
-
-  let body: Record<string, unknown>;
-  try {
-    body = (await req.json()) as Record<string, unknown>;
-  } catch {
-    return jsonError('INVALID_JSON', 'Body JSON tidak valid.', 400);
-  }
-
-  const payload: Record<string, unknown> = {};
-  if (body.label !== undefined || body.nama !== undefined) {
-    const label = String(body.label ?? body.nama ?? '').trim();
-    if (!label) return jsonError('VALIDATION', 'label/nama tidak boleh kosong.', 422);
-    payload.label = label;
-  }
-  if (body.url !== undefined || body.link !== undefined) {
-    const url = String(body.url ?? body.link ?? '').trim();
-    if (!url) return jsonError('VALIDATION', 'url/link tidak boleh kosong.', 422);
-    payload.url = url;
-  }
-  if (body.position !== undefined || body.posisi !== undefined) {
-    const position = String(body.position ?? body.posisi ?? '').trim();
-    if (!(POSITIONS as readonly string[]).includes(position)) {
-      return jsonError('VALIDATION', 'position/posisi harus: header|footer|sidebar.', 422);
-    }
-    payload.position = position;
-  }
-  if (body.target !== undefined) {
-    const target = String(body.target ?? '').trim();
-    if (!(TARGETS as readonly string[]).includes(target)) {
-      return jsonError('VALIDATION', 'target harus: _self|_blank.', 422);
-    }
-    payload.target = target;
-  }
-  if (body.parent_id !== undefined) {
-    const parentRaw = body.parent_id;
-    if (parentRaw !== null && parentRaw !== '' && !isUuid(parentRaw)) {
-      return jsonError('VALIDATION', 'parent_id harus UUID valid atau null.', 422);
-    }
-    if (typeof parentRaw === 'string' && parentRaw === id) {
-      return jsonError('VALIDATION', 'parent_id tidak boleh merujuk ke dirinya sendiri.', 422);
-    }
-    payload.parent_id = parentRaw === '' ? null : (parentRaw as string | null);
-  }
-  if (body.sort_order !== undefined || body.urutan !== undefined) {
-    const sort_order = toInt(body.sort_order ?? body.urutan, 0);
-    if (!Number.isInteger(sort_order))
-      return jsonError('VALIDATION', 'sort_order/urutan harus bilangan bulat.', 422);
-    payload.sort_order = sort_order;
-  }
-  if (body.is_active !== undefined) payload.is_active = Boolean(body.is_active);
-  if (Object.keys(payload).length === 0)
-    return jsonError('VALIDATION', 'Tidak ada field yang diupdate.', 422);
-
-  const { data, error } = await supabase
-    .from('menus')
-    .update(payload)
-    .eq('id', id)
-    .select()
-    .single();
-  if (error) {
-    log.error('menus.save_failed', { detail: error.message });
-    return jsonError('SAVE_FAILED', 'Gagal mengupdate menu.', 500, { requestId: log.requestId });
-  }
-
-  await writeLog(supabase, user?.id, 'menus.update', id, payload);
-  return NextResponse.json({ data, revalidated: revalidateMenus() });
-}
-
-export async function DELETE(req: Request) {
-  const log = createLogger(requestIdFromHeaders(req.headers));
-  const guard = await requireStaff(['admin']);
-  if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
-  const { supabase, user } = guard as {
-    supabase: ReturnType<typeof createClient>;
-    user: { id: string };
-  };
-
-  const id = new URL(req.url).searchParams.get('id');
-  if (!id) return jsonError('VALIDATION', 'Parameter ?id= wajib.', 400);
-
-  // Tolak hapus menu yang masih punya anak (hindari orphan; ON DELETE CASCADE di DB sebagai jaring pengaman).
-  const { count } = await supabase
-    .from('menus')
-    .select('id', { count: 'exact', head: true })
-    .eq('parent_id', id);
-  if ((count ?? 0) > 0)
-    return jsonError('CONFLICT', 'Menu masih punya sub-menu, pindahkan/hapus dulu anaknya.', 409);
-
-  const { error } = await supabase.from('menus').delete().eq('id', id);
-  if (error) {
-    log.error('menus.delete_failed', { detail: error.message });
-    return jsonError('DELETE_FAILED', 'Gagal menghapus menu.', 500, { requestId: log.requestId });
-  }
-
-  await writeLog(supabase, user?.id, 'menus.delete', id);
-  return NextResponse.json({ message: 'Menu dihapus.', revalidated: revalidateMenus() });
 }

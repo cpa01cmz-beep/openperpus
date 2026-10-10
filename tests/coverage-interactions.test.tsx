@@ -318,7 +318,7 @@ describe('admin list page interactions', () => {
         expect(
           fetchMock.mock.calls.some(
             (c) =>
-              String(c[0]).includes('/api/racks?id=') &&
+              String(c[0]).includes('/api/racks/') &&
               (c[1] as RequestInit | undefined)?.method === 'DELETE'
           )
         ).toBe(true),

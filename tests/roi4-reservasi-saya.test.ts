@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 // S-roi4: Reservasi & pinjaman saya dengan batal 1-klik.
 // RED first — modul @/lib/reservations-client belum ada.
 // AC1: GET /api/reservations (no-store) -> status, judul, expires_at + loan due_at.
-// AC2: PUT /api/reservations?id= {status:'cancelled'} 200 -> batal.
+// AC2: PUT /api/reservations/{id} {status:'cancelled'} 200 -> batal.
 // AC3: 401 -> login banner; offline -> cached + reload; tanpa bocor data anggota lain.
 
 import { cancelMyReservation, fetchMyLoans, fetchMyReservations } from '@/lib/reservations-client';
@@ -69,13 +69,13 @@ describe('S-roi4 AC1: daftar reservasi + pinjaman aktif (no-store)', () => {
 });
 
 describe('S-roi4 AC2: batal 1-klik milik sendiri', () => {
-  it("cancelMyReservation PUT /api/reservations?id= {status:'cancelled'} -> 200 data", async () => {
+  it("cancelMyReservation PUT /api/reservations/{id} {status:'cancelled'} -> 200 data", async () => {
     const { fn, calls } = mockFetchOnce(200, {
       data: { ...RES_ROW, status: 'cancelled' },
     });
     const row = (await cancelMyReservation({ fetchLike: fn }, { id: RES_ROW.id })) as Json;
     expect(calls.length).toBe(1);
-    expect(String(calls[0]!.url)).toBe(`/api/reservations?id=${RES_ROW.id}`);
+    expect(String(calls[0]!.url)).toBe(`/api/reservations/${RES_ROW.id}`);
     expect((calls[0]!.init?.method ?? '').toUpperCase()).toBe('PUT');
     expect(JSON.parse(String(calls[0]!.init?.body))).toMatchObject({
       status: 'cancelled',
