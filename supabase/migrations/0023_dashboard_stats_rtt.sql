@@ -41,6 +41,8 @@ AS $func$
        WHERE status IN ('borrowed', 'overdue') AND due_at < NOW()) AS overdue_count,
       (SELECT coalesce(ls.fine_per_day, 1000)
          FROM public.library_settings ls WHERE ls.id = 1) AS fine_per_day,
+      -- Duplikat get_fines_total(NULL) (0018) sengaja: versi asli SECURITY DEFINER
+      -- — memanggilnya justru bypass RLS. Inline ini agar RLS fines tetap berlaku.
       (SELECT coalesce(sum(f.amount - f.paid_amount), 0)
          FROM public.fines f WHERE f.status IN ('unpaid', 'partial')) AS fines_open
   ),

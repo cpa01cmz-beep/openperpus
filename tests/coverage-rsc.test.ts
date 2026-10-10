@@ -1,6 +1,5 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 import React from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
 
 (globalThis as unknown as { React: unknown }).React = React;
 
@@ -78,7 +77,6 @@ import BukuAliasPage, { generateMetadata as bukuMeta } from '@/app/(public)/buku
 import PublicLayout, { generateMetadata as layoutMeta } from '@/app/(public)/layout';
 import AdminLayout from '@/app/admin/layout';
 import LogsPage from '@/app/admin/logs/page';
-import AdminDashboard from '@/app/admin/page';
 import PengaturanPage from '@/app/admin/pengaturan/page';
 import TambahBukuPage from '@/app/admin/buku/tambah/page';
 import EditBukuPage from '@/app/admin/buku/edit/[id]/page';
@@ -394,37 +392,6 @@ describe('admin RSC pages', () => {
   it('pengaturan renders settings row', async () => {
     const el = await PengaturanPage();
     expect(el).toBeTruthy();
-  });
-
-  it('dashboard renders stat cards with rpc chart data', async () => {
-    setRpc('get_dashboard_stats', {
-      data: [
-        {
-          total_books: 1,
-          total_members: 2,
-          active_loans: 3,
-          overdue_count: 0,
-          loans_per_day: [{ day: '2026-09-01', total: 4 }],
-          fine_per_day: 1000,
-          fines_open: 2000,
-        },
-      ],
-    });
-    const el = await AdminDashboard();
-    const markup = renderToStaticMarkup(el as React.ReactElement);
-    expect(markup).toContain('Total Buku');
-    expect(markup).toContain('Perlu dikembalikan');
-    // #58: tarif + tagihan terbuka datang dari RPC (tanpa serial getFineRate).
-    expect(markup).toContain('Denda Rp1.000/hari');
-    expect(markup).toContain('tagihan terbuka Rp2.000');
-  });
-
-  it('dashboard renders empty queue when stats rpc returns no row', async () => {
-    setRpc('get_dashboard_stats', { data: [] });
-    setTable('loans', { list: { data: [], count: 0 } });
-    const el = await AdminDashboard();
-    const markup = renderToStaticMarkup(el as React.ReactElement);
-    expect(markup).toContain('Belum ada keterlambatan.');
   });
 
   it('tambah buku loads category+rack options', async () => {

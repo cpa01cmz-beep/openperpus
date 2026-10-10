@@ -7,6 +7,17 @@ import StatCard from '@/components/admin/StatCard';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
+// Zero-fill 7 slot chart saat RPC gagal/v1-lengkap — bar tetap ada, bukan blank.
+function seedWeekDays(): { label: string; count: number }[] {
+  const out: { label: string; count: number }[] = [];
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    out.push({ label: d.toLocaleDateString('id-ID', { weekday: 'short' }), count: 0 });
+  }
+  return out;
+}
+
 export default async function AdminDashboard() {
   const supabase = createClient();
   const now = new Date();
@@ -14,21 +25,22 @@ export default async function AdminDashboard() {
   // #58: 3 query (dari ~8 RTT) — 1 RPC get_dashboard_stats (counts + chart +
   // tarif denda + tagihan terbuka) + 2 list terbatas top-8.
   // Fallback bucket limit-500 dihapus; chart datang dari RPC (sargable).
-  const [{ data: statsData }, { data: recent }, { data: overdueQueue }] = await Promise.all([
-    supabase.rpc('get_dashboard_stats', { p_days: 7 }),
-    supabase
-      .from('loans')
-      .select('id,borrowed_at,due_at,status,fine_amount,members(id,member_code),books(title)')
-      .order('borrowed_at', { ascending: false })
-      .limit(8),
-    supabase
-      .from('loans')
-      .select('id,due_at,status,fine_amount,members(id,member_code),books(title)')
-      .in('status', ['borrowed', 'overdue'])
-      .lt('due_at', now.toISOString())
-      .order('due_at', { ascending: true })
-      .limit(8),
-  ]);
+  const [{ data: statsData, error: statsError }, { data: recent }, { data: overdueQueue }] =
+    await Promise.all([
+      supabase.rpc('get_dashboard_stats', { p_days: 7 }),
+      supabase
+        .from('loans')
+        .select('id,borrowed_at,due_at,status,fine_amount,members(id,member_code),books(title)')
+        .order('borrowed_at', { ascending: false })
+        .limit(8),
+      supabase
+        .from('loans')
+        .select('id,due_at,status,fine_amount,members(id,member_code),books(title)')
+        .in('status', ['borrowed', 'overdue'])
+        .lt('due_at', now.toISOString())
+        .order('due_at', { ascending: true })
+        .limit(8),
+    ]);
 
   type StatsRow = {
     total_books: number | string | null;
@@ -40,6 +52,15 @@ export default async function AdminDashboard() {
     fines_open: number | string | null;
   };
   const stats = ((Array.isArray(statsData) ? statsData[0] : statsData) ?? null) as StatsRow | null;
+
+  // Kegagalan RPC jangan senyap (review #58): log + chart zero-fill 7 hari.
+  if (statsError || !stats) {
+    console.error('[dashboard] get_dashboard_stats gagal', statsError?.message ?? 'data kosong');
+  } else if (!('fines_open' in stats)) {
+    // Guard deploy: signature v1 = migrasi 0023 belum diterapkan (lihat PR body).
+    console.error('[dashboard] get_dashboard_stats v1 — jalankan migrasi 0023 sebelum deploy app');
+  }
+
   const num = (v: number | string | null | undefined, d = 0) => {
     const x = Number(v);
     return Number.isFinite(x) ? x : d;
@@ -48,13 +69,21 @@ export default async function AdminDashboard() {
   const totalMembers = num(stats?.total_members);
   const dipinjam = num(stats?.active_loans);
   const terlambat = num(stats?.overdue_count);
-  const fineRate = num(stats?.fine_per_day, FINE_PER_DAY) || FINE_PER_DAY;
-  const finesOpen = num(stats?.fines_open);
+  const fineRateRaw = num(stats?.fine_per_day, 0);
+  const fineRate = fineRateRaw || FINE_PER_DAY;
+  if (!fineRateRaw) {
+    console.warn('[dashboard] fine_per_day tidak tersedia — fallback FINE_PER_DAY', fineRate);
+  }
+  // Guard deploy: tagihan terbuka hanya bila kolom RPC v2 benar-benar ada.
+  const finesOpen = stats && 'fines_open' in stats ? num(stats.fines_open) : null;
 
-  const days = (stats?.loans_per_day ?? []).map((d) => ({
-    label: new Date(d.day).toLocaleDateString('id-ID', { weekday: 'short' }),
-    count: Number(d.total),
-  }));
+  const perDay = stats?.loans_per_day ?? [];
+  const days = perDay.length
+    ? perDay.map((d) => ({
+        label: new Date(d.day).toLocaleDateString('id-ID', { weekday: 'short' }),
+        count: Number(d.total),
+      }))
+    : seedWeekDays();
   const max = Math.max(1, ...days.map((d) => d.count));
 
   type OverdueRow = {
@@ -71,13 +100,15 @@ export default async function AdminDashboard() {
     <div className="grid gap-6">
       <h1 className="text-2xl font-bold">Dashboard</h1>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <StatCard label="Total Buku" value={totalBooks ?? 0} hint="Judul terdaftar" />
+        <StatCard label="Total Buku" value={totalBooks ?? 0} hint="Judul aktif" />
         <StatCard label="Anggota" value={totalMembers ?? 0} hint="Terdaftar" />
         <StatCard label="Dipinjam" value={dipinjam} hint="borrowed/overdue berjalan" />
         <StatCard
           label="Terlambat"
           value={terlambat}
-          hint={`Denda Rp${fineRate.toLocaleString('id-ID')}/hari · tagihan terbuka ${fmtRp(finesOpen)}`}
+          hint={`Denda Rp${fineRate.toLocaleString('id-ID')}/hari${
+            finesOpen === null ? '' : ` · tagihan terbuka ${fmtRp(finesOpen)}`
+          }`}
         />
       </div>
 
