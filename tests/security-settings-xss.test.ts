@@ -106,16 +106,24 @@ describe('PUT /api/settings socials URL scheme guard (#52 review #1)', () => {
     expect(j.data.socials.whatsapp).toBe('081234567890');
   });
 
-  it('isAllowedLinkUrl: bypass tab/newline + protocol-relative ditolak', async () => {
-    const { isAllowedLinkUrl } = await import('@/lib/validation');
+  it('isAllowedLinkUrl: bypass tab/newline + C0 control + protocol-relative ditolak', async () => {
+    const { escapeJsonLd, isAllowedLinkUrl } = await import('@/lib/validation');
     expect(isAllowedLinkUrl('java\tscript:alert(1)')).toBe(false);
     expect(isAllowedLinkUrl('java\nscript:alert(1)')).toBe(false);
     expect(isAllowedLinkUrl('vbscript:msgbox')).toBe(false);
     expect(isAllowedLinkUrl('file:///etc/passwd')).toBe(false);
+    // C0 control di ujung (browser strip saat parse → jadi javascript:) — fail-closed.
+    expect(isAllowedLinkUrl('\u0001javascript:alert(1)')).toBe(false);
+    expect(isAllowedLinkUrl('javascript:alert(1)\u001F')).toBe(false);
+    expect(isAllowedLinkUrl('tel:+62211234567')).toBe(true);
+    expect(isAllowedLinkUrl('sms:+6281234567890')).toBe(true);
     expect(isAllowedLinkUrl('https://ok.example')).toBe(true);
     expect(isAllowedLinkUrl('081234567890')).toBe(true);
     expect(isAllowedLinkUrl('')).toBe(true);
     expect(isAllowedLinkUrl(123)).toBe(false);
+    // escapeJsonLd: satu-satunya penahan breakout </script> di 5 sink JSON-LD.
+    expect(escapeJsonLd({ x: '</script><script>alert(1)</script>' })).not.toContain('</script>');
+    expect(escapeJsonLd({ x: '</script>' })).toContain('\\u003c');
   });
 
   it('sink render memakai getSocials (strip skema berbahaya data lama)', () => {
@@ -138,10 +146,16 @@ describe('PUT /api/settings logo/favicon URL scheme guard (#52 review #2)', () =
         jsonReq('PUT', '/api/settings', { name: 'Perpus Aman', logo_url: bad })
       );
       expect(logo.status, `logo_url=${bad} must be 422`).toBe(422);
+      const lj = (await logo.json()) as { error: { code: string; message: string } };
+      expect(lj.error.code).toBe('VALIDATION');
+      expect(lj.error.message).toContain('logo_url');
       const favicon = await SET_PUT(
         jsonReq('PUT', '/api/settings', { name: 'Perpus Aman', favicon_url: bad })
       );
       expect(favicon.status, `favicon_url=${bad} must be 422`).toBe(422);
+      const fj = (await favicon.json()) as { error: { code: string; message: string } };
+      expect(fj.error.code).toBe('VALIDATION');
+      expect(fj.error.message).toContain('favicon_url');
     }
   });
 
@@ -171,7 +185,9 @@ describe('audit sink JSON-LD publik (#52)', () => {
       'src/app/(public)/katalog/page.tsx',
     ];
     for (const file of dynamicSinks) {
-      expect(read(file), `${file} must escape < in JSON-LD`).toContain('.replace(/</g');
+      const src = read(file);
+      expect(src, `${file} must use escapeJsonLd`).toContain('escapeJsonLd(');
+      expect(src, `${file} must not inline JSON-LD escape`).not.toContain('.replace(/</g');
     }
   });
 

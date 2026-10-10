@@ -16,6 +16,7 @@ export { validateFine, fineSchema } from './fine';
 export {
   CONTENT_LIMITS,
   type ContentEntity,
+  escapeJsonLd,
   sanitizeHtmlContent,
   isAllowedImageUrl,
   isAllowedLinkUrl,

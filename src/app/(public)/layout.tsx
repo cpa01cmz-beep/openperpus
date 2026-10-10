@@ -7,6 +7,7 @@ import { getOgImage, getSiteName } from '@/lib/settings';
 import { fetchHeaderMenus, fetchFooterMenus } from '@/lib/menus';
 import { getSiteUrl } from '@/lib/site';
 import { getEffectiveThemeFromSettings } from '@/lib/theme-overrides';
+import { escapeJsonLd } from '@/lib/validation';
 
 export const revalidate = 60;
 
@@ -77,7 +78,7 @@ export default async function PublicLayout({ children }: { children: React.React
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c'),
+          __html: escapeJsonLd(jsonLd),
         }}
       />
       <Navbar

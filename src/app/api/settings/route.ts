@@ -98,6 +98,18 @@ export async function PUT(req: Request) {
   }
 
   const payload = normalizeSettings(body as Record<string, unknown>);
+  // Fase 1 (layout-only): tema dikunci di endpoint umum — cek DULU agar kontrak
+  // HINT_USE_THEME_ENDPOINT utuh walau field lain ikut invalid.
+  {
+    const rawBody = body as Record<string, unknown>;
+    if ('active_theme' in rawBody || 'theme_overrides' in rawBody) {
+      return jsonError(
+        'HINT_USE_THEME_ENDPOINT',
+        'Pengaturan tema terkunci di endpoint ini — gunakan PUT /api/settings/theme.',
+        422
+      );
+    }
+  }
   // socials dirender sebagai href publik — tolak skema berbahaya (javascript:/data:/dst).
   if ('socials' in payload && payload.socials != null) {
     const soc = payload.socials;
@@ -126,18 +138,6 @@ export async function PUT(req: Request) {
     const v = payload[f];
     if (v != null && v !== '' && !isAllowedLinkUrl(v)) {
       return jsonError('VALIDATION', `${f} harus URL http(s), path relatif, atau kosong.`, 422);
-    }
-  }
-  // Fase 1 (layout-only): tema dikunci di endpoint umum — ADDITIVE guard,
-  // perilaku field non-tema tidak berubah.
-  {
-    const rawBody = body as Record<string, unknown>;
-    if ('active_theme' in rawBody || 'theme_overrides' in rawBody) {
-      return jsonError(
-        'HINT_USE_THEME_ENDPOINT',
-        'Pengaturan tema terkunci di endpoint ini — gunakan PUT /api/settings/theme.',
-        422
-      );
     }
   }
   if (typeof payload.name === 'string' && payload.name.trim().length < 3) {

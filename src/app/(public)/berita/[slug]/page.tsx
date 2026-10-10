@@ -6,6 +6,7 @@ import { fetchArticleBySlug, fetchArticles, fetchSettings } from '@/lib/books';
 import { getOgImage, getSiteName } from '@/lib/settings';
 import { coverSrc } from '@/lib/cover';
 import { getSiteUrl } from '@/lib/site';
+import { escapeJsonLd } from '@/lib/validation';
 import Breadcrumb from '@/components/public/Breadcrumb';
 
 export const revalidate = 60;
@@ -92,7 +93,7 @@ export default async function BeritaDetailPage({ params }: Props) {
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c'),
+          __html: escapeJsonLd(jsonLd),
         }}
       />
       <Breadcrumb

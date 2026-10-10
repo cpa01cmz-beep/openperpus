@@ -3,6 +3,7 @@ import CatalogExplorer from '@/components/public/CatalogExplorer';
 import { fetchBooksPaged, fetchCategories, fetchSettings } from '@/lib/books';
 import { getOgImage, getSiteName } from '@/lib/settings';
 import { getSiteUrl } from '@/lib/site';
+import { escapeJsonLd } from '@/lib/validation';
 import Breadcrumb from '@/components/public/Breadcrumb';
 
 export const revalidate = 60;
@@ -81,7 +82,7 @@ export default async function KatalogPage({
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
+          __html: escapeJsonLd({
             '@context': 'https://schema.org',
             '@graph': [
               {
@@ -109,7 +110,7 @@ export default async function KatalogPage({
                 ],
               },
             ],
-          }).replace(/</g, '\\u003c'),
+          }),
         }}
       />
       <Breadcrumb items={[{ label: 'Beranda', href: '/' }, { label: 'Katalog' }]} />
