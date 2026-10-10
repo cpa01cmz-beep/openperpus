@@ -1,6 +1,7 @@
-# ADR-001 — Stack: Next.js 14 + Supabase + Cloudflare Pages
+# ADR-001 — Stack: Next.js + Supabase + Cloudflare Pages
 
 > Status: **DITERIMA** (tetap, jangan diubah worker tanpa ADR baru).
+> **Diperbarui:** versi Next.js kini mengikuti `package.json` (16.4.0).
 > Bagian **Deploy diganti → Vercel** oleh [ADR-002](adr-002-vercel.md).
 
 ## Konteks
@@ -9,7 +10,7 @@ Greenfield CMS Perpustakaan: OPAC publik SEO + admin sirkulasi + konten dinamis.
 
 ## Keputusan
 
-- **Frontend+Backend:** Next.js 14 App Router + TypeScript + TailwindCSS.
+- **Frontend+Backend:** Next.js App Router + TypeScript + TailwindCSS (keputusan saat Next.js 14; versi berjalan lihat `package.json`).
 - **Data+Auth+Storage:** Supabase (Postgres + RLS + Auth + Storage + Realtime ringan) via `@supabase/ssr`.
 - **Deploy:** Cloudflare Pages via `@opennextjs/cloudflare` (Workers runtime).
 

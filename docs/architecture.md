@@ -1,6 +1,6 @@
 # Architecture — CMS Perpustakaan (Greenfield)
 
-> Stack tetap: Next.js 14 App Router + TypeScript + TailwindCSS + Supabase (`@supabase/ssr`) + Cloudflare Workers via OpenNext (`@opennextjs/cloudflare`)
+> Stack tetap: Next.js 16 App Router + TypeScript + TailwindCSS + Supabase (`@supabase/ssr`) + deploy Vercel (primer, ADR-002) atau Cloudflare Workers via OpenNext (`@opennextjs/cloudflare`) (alternatif)
 > Prinsip: **CMS 100% dinamis, tanpa hardcoded**. Seluruh identitas perpustakaan (nama, logo, alamat, telepon, email, jam operasional JSON, sosmed JSON, sambutan, visi-misi, SEO) WAJIB dibaca dari tabel `settings` (single-row). Tema: premium elegant, mobile-first.
 
 ---
@@ -11,20 +11,20 @@
 
 - OPAC publik (katalog, detail buku, artikel/berita/event, halaman dinamis, testimoni, FAQ, banner) yang cepat (edge) dan SEO-friendly.
 - Admin CMS (kelola settings, buku+stok, kategori, rak, anggota, sirkulasi loans/reservations/fines, konten, menu, banner) dengan RBAC.
-- Satu codebase, dua area: `(public)` dan `(admin)`.
+- Satu codebase, dua area: route group `(public)` dan `/admin` (flat).
 
 **Batasan (jangan dilanggar worker):**
 
 - Jangan ganti stack. Jangan intro Kafka/microservices/Express terpisah.
 - Jangan hardcode identitas perpus di JSX/metadata. Semua via `settings`.
-- Deploy target = Cloudflare Workers via OpenNext (Workers runtime = edge, Node API terbatas). Hindari API Node-only (`fs`, `sharp` custom) di runtime request.
+- Deploy target = Vercel (ADR-002); Cloudflare Workers via OpenNext tetap target alternatif — karena itu tetap hindari API Node-only (`fs`, `sharp` custom) di runtime request.
 
 ---
 
-## 2. Struktur Folder Usulan
+## 2. Struktur Folder (aktual)
 
 ```
-/
+src/
 ├── app/
 │   ├── (public)/                    # route group OPAC (layout.tsx baca settings cached)
 │   │   ├── page.tsx                # home: banner slider + sambutan + buku terbaru/populer + artikel + testimoni
@@ -57,7 +57,7 @@
 │   │   └── logs/page.tsx           # RSC force-dynamic, baca activity_logs LANGSUNG (bukan /api/logs — 404)
 │   ├── daftar/page.tsx             # registrasi anggota (publik)
 │   ├── login/{page,layout}.tsx
-│   ├── api/                        # REST contract (lihat docs/api-contract.md + openapi.yaml)
+│   ├── api/                        # 35 route handler — REST contract (lihat docs/api-contract.md + openapi.yaml)
 │   │   ├── settings/route.ts       # GET public (whitelist field) + PUT admin
 │   │   ├── settings/theme/route.ts # admin only, layout-only
 │   │   ├── books/route.ts + [id]/route.ts
@@ -108,7 +108,7 @@
 ### 3.1 Public OPAC (unauthenticated, SEO, edge-cached)
 
 ```
-Browser → Cloudflare Edge → Next RSC (app/(public))
+Browser → CDN edge (Vercel/Cloudflare) → Next RSC (src/app/(public))
   → lib/settings.ts:getLibrarySettings()   [cache: 'force-cache', tag 'settings']
    → Supabase PostgREST (anon key, RLS SELECT public) : settings(id=1), books (kolom stock_total/stock_available), articles published, banners active, menus, pages
   → HTML streaming (Suspense: BannerSlider, BookGrid skeleton)
@@ -144,8 +144,8 @@ Browser → middleware.ts (refresh session + role gate staff) → admin/layout.t
 
 ## 4. Auth & Roles
 
-- **Provider:** Supabase Auth (email+password). Tabel `profiles(id UUID PK → auth.users, role: admin|pustakawan|anggota, member_id nullable)`.
-- **Alur:** trigger `handle_new_user` buat `profiles` default `anggota` + baris `members` (no_anggota auto). Admin ubah role manual via admin UI (hanya admin).
+- **Provider:** Supabase Auth (email+password). Tabel `profiles(id UUID PK → auth.users(id), role CHECK IN ('admin','librarian','member'), full_name, avatar_url)`; app menormalisasi role DB → kanonis (`normalizeRole()`: `librarian→pustakawan`, `member→anggota`).
+- **Alur:** pendaftaran lewat `POST /api/register` membuat baris `profiles` (role `member`) + baris `members` (member_code otomatis, status `pending`) — tidak ada trigger `handle_new_user`. Promosi jadi `admin` lewat SQL Editor/psql/`service_role` **dengan menonaktifkan sementara trigger strip role `0003`** (tanpa itu UPDATE diam-diam di-revert; resep lengkap: README §Akun admin pertama). Tidak ada endpoint aplikasi yang mengubah `profiles.role`.
 - **Enforcement 3 lapis:**
   1. `middleware.ts` refresh session + redirect `/admin/*` tanpa session → `/login`; non-staff (role bukan admin|librarian) → `/` (fail-closed).
   2. `admin/layout.tsx` cek `profiles.role` + guard API `requireStaff()` (kanonis, berbasis `normalizeRole`) → 403 bila role tak cukup.
@@ -192,7 +192,7 @@ Browser → middleware.ts (refresh session + role gate staff) → admin/layout.t
 
 | Bucket           | Public?     | Isi                                                                                              | Aturan                                                                                                                                                                             |
 | ---------------- | ----------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `library-assets` | public read | cover buku (`books/{id}/cover.webp`), logo, favicon, banner slider, gambar artikel, foto anggota | anon SELECT; tulis hanya pustakawan+admin (foto anggota: user boleh tulis folder `auth.uid()` miliknya); batas 2MB, mimetype image/*; pakai transform `?width=400` untuk thumbnail |
+| `library-assets` | public read | cover buku (`books/{id}/cover.webp`), logo, favicon, banner slider, gambar artikel, foto anggota | anon SELECT; tulis hanya pustakawan+admin (foto anggota: user boleh tulis folder `auth.uid()` miliknya); batas 10MB, mimetype jpeg/png/webp/gif + pdf (svg ditolak 0007); pakai transform `?width=400` untuk thumbnail |
 
 - Upload via admin UI → Supabase Storage langsung (signed) lalu simpan `cover_url`/`logo_url` ke DB. Jangan proxy binary lewat Next route (boros Workers subrequest).
 - Cleanup: hapus file lama saat cover/logo diganti (worker wajib implement di PUT).
@@ -204,7 +204,7 @@ Browser → middleware.ts (refresh session + role gate staff) → admin/layout.t
 - Registry `src/lib/themes.ts`: 6 preset `THEMES` (`emerald`, `midnight`, `paper`, `brutalist`, `ocean`, `sketch`). Tiap `ThemeDef` = `tokens` (8 hex: `brand`, `brand-soft`, `brand-strong`, `accent`, `accent-soft`, `surface`, `ink`, `heading`) + `fonts` + `radius` + `shadow` + `spacing` + `layout` (`headerVariant`/`heroVariant`/`footerVariant`/`homepageSections`) + `ornament` (`none`|`ruled-paper`) + `version: 1`. Default/fallback `emerald` via `getTheme()`; `DEFAULT_THEME='emerald'`.
 - Famili `src/lib/theme-compat.ts` (`THEME_FAMILIES`): `formal` (emerald/ocean/midnight/paper), `hard` (brutalist), `hand` (sketch). Matriks `ALLOWED_LAYOUT` membatasi variant header/hero/footer yang kompatibel per famili; `isCompatible()` fail-closed, `fallbackVariant()` kembali ke variant bawaan tema. Famili tak dikenal → `formal`.
 - Fase 1 — tema dikunci, hanya layout: `tokens`/`fonts`/`radius`/`shadow`/`spacing` ditolak API dengan 422. Override valid hanya `{layout:{headerVariant?,heroVariant?,footerVariant?,homepageSections?}}` (maks 7 section, `order` int 0–50, ≤8000 char) — validasi strict di `src/lib/theme-overrides.ts` (`ThemeOverridesLayoutSchema`), sanitasi lenient di jalur render (`sanitizeLayoutOverrides`).
-- Render: `getEffectiveTheme(baseId, rawOverrides)` / `getEffectiveThemeFromSettings(settings)` = clone base + terapkan override layout yang kompatibel (inkompatibel → fallback bawaan; tak pernah mutasi `THEMES`; `NULL` → clone base). `layout.tsx` (`app/` + `app/(public)/`) menambahkan class `ornament-ruled-paper` bila `effective.ornament==='ruled-paper'` (saat ini hanya `sketch`).
+- Render: `getEffectiveTheme(baseId, rawOverrides)` / `getEffectiveThemeFromSettings(settings)` = clone base + terapkan override layout yang kompatibel (inkompatibel → fallback bawaan; tak pernah mutasi `THEMES`; `NULL` → clone base). Root `layout.tsx` (`src/app/`) menambahkan class `ornament-ruled-paper` bila `effective.ornament==='ruled-paper'` (saat ini hanya `sketch`).
 - Invalidasi tema: `PUT /api/settings/theme` (admin-only) → `revalidateTag('settings','max')` + `revalidatePath('/')` agar tema baru langsung ter-render.
 - Layout: navbar sticky blur + drawer mobile; hero slider 16:9 → kartu buku grid 2 kolom (mobile) → 5 kolom (desktop); footer kaya (alamat, jam operasional JSON dirender, sosmed JSON icons).
 - Aksesibilitas: kontras ≥4.5, focus ring, alt cover = judul buku. Lighthouse target ≥90 mobile.
@@ -218,7 +218,7 @@ Browser → middleware.ts (refresh session + role gate staff) → admin/layout.t
 3. **Worker-OPAC:** home, katalog, detail buku, artikel, halaman dinamis. Verifikasi: Lighthouse + `view-source` metadata berisi nama perpus dari DB.
 4. **Worker-Sirkulasi:** loans/reservations/fines + trigger stok. Verifikasi: pinjam→stok berkurang, kembali telat→denda otomatis.
 5. **Worker-Admin Konten:** banners/menus/pages/testimonials/faqs + upload storage. Verifikasi: CRUD tanpa redeploy.
-6. **Worker-Polish:** PWA ringan + 404 + empty states + audit hardcoded (`grep` nama perpus di `app/` harus nol hasil di luar seed).
+6. **Worker-Polish:** PWA ringan + 404 + empty states + audit hardcoded (`grep` nama perpus di `src/app/` harus nol hasil di luar seed).
 
 ## 10. Risiko & Mitigasi
 

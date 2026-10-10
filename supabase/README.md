@@ -6,7 +6,7 @@
 
 | File                                    | Fungsi                                                                                                    |
 | --------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `migrations/0001_core.sql`              | Extension + 17 tabel + index + trigger `updated_at`                                                       |
+| `migrations/0001_core.sql`              | Extension + 16 tabel + index + trigger `updated_at`                                                       |
 | `migrations/0002_rls.sql`               | `is_staff()/is_admin()` + enable RLS + policies                                                           |
 | `migrations/0003_hardening.sql`         | Hardening RLS/policies                                                                                    |
 | `migrations/0004_storage.sql`           | Bucket publik `library-assets` + policies `storage.objects`                                               |
@@ -15,6 +15,20 @@
 | `migrations/0007_storage_guard.sql`     | Guard tambahan storage                                                                                    |
 | `migrations/0008_theme.sql`             | Tema/library settings                                                                                     |
 | `migrations/0009_drop_legacy_theme.sql` | Drop kolom/fungsi tema legacy                                                                             |
+| `migrations/0011_return_loan.sql`       | RPC return loan (atomic)                                                                                  |
+| `migrations/0012_perf.sql`              | Index & optimasi performa                                                                                 |
+| `migrations/0013_pay_own_fine.sql`      | RPC self-pay denda (owner)                                                                                |
+| `migrations/0014_fine_rate.sql`         | Tarif denda configurable                                                                                  |
+| `migrations/0015_checkout_active_guard.sql` | Guard double-POST checkout (idempotensi)                                                                |
+| `migrations/0016_articles_trgm.sql`     | Trigram GIN index pencarian artikel                                                                       |
+| `migrations/0017_dashboard_stats.sql`   | RPC agregat dashboard admin                                                                               |
+| `migrations/0018_perf_fixes.sql`        | 3 RPC agregat lanjutan                                                                                    |
+| `migrations/0019_role_guard.sql`        | Trigger guard eskalasi role profiles (hanya admin)                                                        |
+| `migrations/0020_sketch_theme.sql`      | Tema `sketch` (tema ke-6)                                                                                 |
+| `migrations/0021_services.sql`          | Tabel `services` (kartu Layanan)                                                                          |
+| `migrations/0022_theme_overrides.sql`   | Kolom `theme_overrides` (layout-only Fase 1)                                                              |
+| `migrations/0023_loan_eligibility.sql`  | Batas pinjaman aktif per anggota (gate checkout)                                                          |
+| `migrations/0024_checkout_reservation_tx.sql` | RPC checkout reservasi atomik (issue #73)                                                           |
 | `seed.sql`                              | Data awal (settings#1, 6 kategori, 3 rak, 8 buku, 3 banner, 3 artikel, 4 FAQ, 3 halaman, testimoni, menu) |
 | `config.toml` _(opsional)_              | Konfigurasi `supabase` CLI bila di-init                                                                   |
 
@@ -37,14 +51,14 @@ supabase status
 ```
 
 Alternatif tanpa CLI: buka SQL Editor di dashboard, paste isi migrasi
-berurutan `0001 → 0009`, Run.
+berurutan `0001 → 0024` (0010 dilewati, tidak dipakai), Run.
 
-## 2. Jalankan migrasi (urutan WAJIB 0001 → 0009)
+## 2. Jalankan migrasi (urutan WAJIB 0001 → 0024)
 
 ### Opsi A — Supabase CLI (disarankan, tercatat di `supabase/migrations`)
 
 ```powershell
-# Dari root repo; file 0001..0009 sudah bernama versi + timestamp-friendly.
+# Dari root repo; file 0001..0024 sudah bernama versi + timestamp-friendly.
 # Bila `supabase link` sudah dilakukan:
 supabase db push
 # Cek:
@@ -54,24 +68,17 @@ supabase migration list
 > CLI resmi memakai nama `YYYYMMDDHHMMSS_nama.sql`. File `0001_*` di repo
 > ini tetap valid sebagai SQL biasa; bila `db push` menolak prefix numerik,
 > rename sekali saja, mis.:
-> `0001_core.sql → 20260917000001_core.sql` (dst. `...02_rls`, `...03_hardening`,
-> `...04_storage`, `...05_checkout`, `...06_content`, `...07_storage_guard`,
-> `...08_theme`, `...09_drop_legacy_theme`)
+> `0001_core.sql → 20260917000001_core.sql` (dst. `...02` s/d `...09`,
+> `...11` s/d `...24` — lewati 0010, tidak dipakai)
 > tanpa mengubah isi.
 
 ### Opsi B — psql langsung (tanpa CLI)
 
 ```powershell
 $env:DATABASE_URL = "postgresql://postgres:<PASSWORD>@db.<REF>.supabase.co:5432/postgres"
-psql $env:DATABASE_URL -f supabase/migrations/0001_core.sql
-psql $env:DATABASE_URL -f supabase/migrations/0002_rls.sql
-psql $env:DATABASE_URL -f supabase/migrations/0003_hardening.sql
-psql $env:DATABASE_URL -f supabase/migrations/0004_storage.sql
-psql $env:DATABASE_URL -f supabase/migrations/0005_checkout.sql
-psql $env:DATABASE_URL -f supabase/migrations/0006_content.sql
-psql $env:DATABASE_URL -f supabase/migrations/0007_storage_guard.sql
-psql $env:DATABASE_URL -f supabase/migrations/0008_theme.sql
-psql $env:DATABASE_URL -f supabase/migrations/0009_drop_legacy_theme.sql
+Get-ChildItem supabase/migrations/*.sql | Sort-Object Name | ForEach-Object {
+  psql $env:DATABASE_URL -v ON_ERROR_STOP=1 -f $_.FullName
+}
 ```
 
 ### Opsi C — SQL Editor dashboard
@@ -82,19 +89,24 @@ Paste tiap file → Run, sesuai urutan. Perhatikan pesan sukses per file.
 
 ```powershell
 psql $env:DATABASE_URL -f supabase/seed.sql
-# atau: supabase db execute --file supabase/seed.sql
+# atau paste ke SQL Editor dashboard
 ```
 
 Seed **idempotent** (aman dijalankan ulang): memakai
 `ON CONFLICT ... DO UPDATE / DO NOTHING` + `WHERE NOT EXISTS`.
 `profiles/members/loans` TIDAK di-seed — butuh user `auth.users` asli.
-Buat user dulu via Dashboard → Authentication → Users, lalu:
+Buat user dulu via Dashboard → Authentication → Users, lalu (dalam satu
+transaksi — trigger strip role `0003` harus dimatikan, lihat README root
+§Akun admin pertama; tanpa itu INSERT dipaksa `member` / UPDATE di-revert
+senyap):
 
 ```sql
 -- Jadikan user pertama admin (ganti UID):
+ALTER TABLE public.profiles DISABLE TRIGGER trg_strip_profiles_role;
 insert into public.profiles (id, role, full_name)
 values ('<UID_ADMIN>', 'admin', 'Admin Perpus')
 on conflict (id) do update set role='admin';
+ALTER TABLE public.profiles ENABLE TRIGGER trg_strip_profiles_role;
 ```
 
 ## 4. Verifikasi
@@ -136,8 +148,8 @@ order by created_at desc limit 12;
 - `0003`: hardening RLS — drop policy yang ditambah di file (lihat blok ROLLBACK di file).
 - `0004`: hapus policy `storage.objects`, kosongkan objek, lalu hapus bucket
   (lihat blok ROLLBACK di file).
-- `0005`–`0009`: non-destruktif — revert objek yang ditambah tiap file
-  (lihat blok ROLLBACK di masing-masing file).
+- `0005`–`0009` dan `0011`–`0024`: non-destruktif — revert objek yang
+  ditambah tiap file (lihat komentar `-- Rollback:` di masing-masing file).
 - `seed.sql`: data contoh — hapus manual per tabel bila perlu
   (`delete from public.books where slug in (...)`), jangan `truncate`
   di production.
