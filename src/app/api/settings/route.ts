@@ -3,7 +3,11 @@ import { revalidatePath, revalidateTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { requireStaff, jsonError } from '@/lib/supabase/auth';
 import { THEMES } from '@/lib/themes';
-import { sanitizeContentPayload, validateContentFields } from '@/lib/validation';
+import {
+  isAllowedLinkUrl,
+  sanitizeContentPayload,
+  validateContentFields,
+} from '@/lib/validation';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
 /**
@@ -98,6 +102,23 @@ export async function PUT(req: Request) {
   }
 
   const payload = normalizeSettings(body as Record<string, unknown>);
+  // socials dirender sebagai href publik — tolak skema berbahaya (javascript:/data:/dst).
+  if ('socials' in payload && payload.socials != null) {
+    const soc = payload.socials;
+    if (typeof soc !== 'object' || Array.isArray(soc)) {
+      return jsonError('VALIDATION', 'socials harus object.', 422);
+    }
+    for (const [k, v] of Object.entries(soc as Record<string, unknown>)) {
+      if (v == null) continue;
+      if (typeof v !== 'string' || !isAllowedLinkUrl(v)) {
+        return jsonError(
+          'VALIDATION',
+          `socials.${k} harus URL http(s) atau mailto yang valid.`,
+          422
+        );
+      }
+    }
+  }
   sanitizeContentPayload('settings', payload);
   const capErr = validateContentFields('settings', payload);
   if (capErr) return jsonError('VALIDATION', capErr, 422);

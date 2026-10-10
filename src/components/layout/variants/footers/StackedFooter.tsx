@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { BookOpenText, Clock, Mail, MapPin, MessageCircle, Phone } from 'lucide-react';
 import type { FooterVariantProps } from '../types';
 import type { NavItem } from '@/lib/types';
+import { getSocials } from '@/lib/settings';
 import { FOOTER_LINKS, SOCIAL_ICON, hourLabel } from '../shared';
 
 /**
@@ -12,7 +13,7 @@ import { FOOTER_LINKS, SOCIAL_ICON, hourLabel } from '../shared';
  */
 export default function StackedFooter({ settings, menus }: FooterVariantProps) {
   const name = settings.name ?? 'Perpustakaan Digital';
-  const socials = settings.socials ?? {};
+  const socials = getSocials(settings);
   const hours = Array.isArray(settings.operational_hours) ? settings.operational_hours : [];
   const socialEntries = Object.entries(socials).filter(([, v]) => !!v?.trim?.());
   const footerLinks: NavItem[] = menus && menus.length > 0 ? menus : FOOTER_LINKS;

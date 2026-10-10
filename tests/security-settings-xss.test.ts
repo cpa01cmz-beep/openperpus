@@ -65,6 +65,72 @@ describe('PUT /api/settings menyimpan konten tersanitasi (#52)', () => {
   });
 });
 
+describe('PUT /api/settings socials URL scheme guard (#52 review #1)', () => {
+  it('menolak socials dengan skema javascript:/data: (422)', async () => {
+    for (const bad of ['javascript:alert(1)', 'data:text/html,<script>x</script>', '//evil.com']) {
+      const res = await SET_PUT(
+        jsonReq('PUT', '/api/settings', {
+          name: 'Perpus Aman',
+          socials: { facebook: bad },
+        })
+      );
+      expect(res.status, `socials=${bad} must be 422`).toBe(422);
+      const j = (await res.json()) as { error: { code: string; message: string } };
+      expect(j.error.code).toBe('VALIDATION');
+      expect(j.error.message).toContain('socials.facebook');
+    }
+  });
+
+  it('menolak socials non-object', async () => {
+    const res = await SET_PUT(
+      jsonReq('PUT', '/api/settings', { name: 'Perpus Aman', socials: 'https://x.com' })
+    );
+    expect(res.status).toBe(422);
+  });
+
+  it('menerima https/mailto dan nomor telepon tanpa skema', async () => {
+    const res = await SET_PUT(
+      jsonReq('PUT', '/api/settings', {
+        name: 'Perpus Aman',
+        socials: {
+          facebook: 'https://facebook.com/x',
+          email: 'mailto:info@perpus.id',
+          whatsapp: '081234567890',
+          instagram: '',
+        },
+      })
+    );
+    expect(res.status).toBe(200);
+    const j = (await res.json()) as { data: { socials: Record<string, string> } };
+    expect(j.data.socials.facebook).toBe('https://facebook.com/x');
+    expect(j.data.socials.whatsapp).toBe('081234567890');
+  });
+
+  it('isAllowedLinkUrl: bypass tab/newline + protocol-relative ditolak', async () => {
+    const { isAllowedLinkUrl } = await import('@/lib/validation');
+    expect(isAllowedLinkUrl('java\tscript:alert(1)')).toBe(false);
+    expect(isAllowedLinkUrl('java\nscript:alert(1)')).toBe(false);
+    expect(isAllowedLinkUrl('vbscript:msgbox')).toBe(false);
+    expect(isAllowedLinkUrl('file:///etc/passwd')).toBe(false);
+    expect(isAllowedLinkUrl('https://ok.example')).toBe(true);
+    expect(isAllowedLinkUrl('081234567890')).toBe(true);
+    expect(isAllowedLinkUrl('')).toBe(true);
+    expect(isAllowedLinkUrl(123)).toBe(false);
+  });
+
+  it('sink render memakai getSocials (strip skema berbahaya data lama)', () => {
+    const sinks = [
+      'src/components/layout/variants/footers/ClassicFooter.tsx',
+      'src/components/layout/variants/footers/StackedFooter.tsx',
+      'src/components/layout/variants/footers/SketchFooter.tsx',
+      'src/app/(public)/kontak/page.tsx',
+    ];
+    for (const file of sinks) {
+      expect(read(file), `${file} must read socials via getSocials`).toContain('getSocials(');
+    }
+  });
+});
+
 describe('audit sink JSON-LD publik (#52)', () => {
   it('sink JSON-LD dengan data dinamis meng-escape <', () => {
     const dynamicSinks = [

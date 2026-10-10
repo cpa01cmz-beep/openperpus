@@ -18,6 +18,7 @@ export {
   type ContentEntity,
   sanitizeHtmlContent,
   isAllowedImageUrl,
+  isAllowedLinkUrl,
   validateContentFields,
   sanitizeContentPayload,
 } from './content';

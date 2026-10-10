@@ -157,7 +157,27 @@ export function validateContentFields(entity: ContentEntity, fields: FieldMap): 
 }
 
 /**
+ * Guard skema URL untuk field link (mis. socials settings) yang dirender
+ * sebagai `href`. Nilai berskema wajib https:/http:/mailto: — javascript:,
+ * data:, vbscript:, file: dan skema tak dikenal ditolak. Nilai tanpa skema
+ * (nomor telepon mis. socials.whatsapp, path relatif) dibiarkan agar kompatibel
+ * dengan data yang ada. Protocol-relative (//evil) dan tab/newline antar
+ * karakter skema (bypass parser browser) ditolak. String kosong = true.
+ */
+export function isAllowedLinkUrl(url: unknown): boolean {
+  if (typeof url !== 'string') return false;
+  // Browser membuang tab/newline saat parse URL — buang dulu sebelum cek skema.
+  const cleaned = url.replace(/[\t\n\r]/g, '').trim();
+  if (cleaned === '') return true;
+  if (cleaned.startsWith('//')) return false;
+  const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(cleaned)?.[1]?.toLowerCase();
+  if (!scheme) return true; // tanpa skema — bukan vektor skema-XSS
+  return scheme === 'https' || scheme === 'http' || scheme === 'mailto';
+}
+
+/**
  * Sanitasi in-place untuk field HTML bebas pada payload yang sudah dinormalisasi.
+ * Untuk entity 'settings' juga memfilter nilai socials ber-skema berbahaya.
  * Mengembalikan payload yang sama (mutasi dangkal) demi call-site minimal.
  */
 export function sanitizeContentPayload(entity: ContentEntity, payload: FieldMap): FieldMap {
@@ -171,6 +191,14 @@ export function sanitizeContentPayload(entity: ContentEntity, payload: FieldMap)
     if (typeof payload[field] === 'string') {
       payload[field] = sanitizeHtmlContent(payload[field]);
     }
+  }
+  if (entity === 'settings' && payload.socials && typeof payload.socials === 'object') {
+    const soc = payload.socials as Record<string, unknown>;
+    payload.socials = Object.fromEntries(
+      Object.entries(soc).filter(
+        ([, v]) => v == null || (typeof v === 'string' && isAllowedLinkUrl(v))
+      )
+    );
   }
   return payload;
 }
