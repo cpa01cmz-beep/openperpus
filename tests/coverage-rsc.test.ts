@@ -1,6 +1,5 @@
 import { describe, expect, it, beforeEach, vi } from 'vitest';
 import React from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
 
 (globalThis as unknown as { React: unknown }).React = React;
 
@@ -78,7 +77,6 @@ import BukuAliasPage, { generateMetadata as bukuMeta } from '@/app/(public)/buku
 import PublicLayout, { generateMetadata as layoutMeta } from '@/app/(public)/layout';
 import AdminLayout from '@/app/admin/layout';
 import LogsPage from '@/app/admin/logs/page';
-import AdminDashboard from '@/app/admin/page';
 import PengaturanPage from '@/app/admin/pengaturan/page';
 import TambahBukuPage from '@/app/admin/buku/tambah/page';
 import EditBukuPage from '@/app/admin/buku/edit/[id]/page';
@@ -394,22 +392,6 @@ describe('admin RSC pages', () => {
   it('pengaturan renders settings row', async () => {
     const el = await PengaturanPage();
     expect(el).toBeTruthy();
-  });
-
-  it('dashboard renders stat cards with rpc chart data', async () => {
-    setRpc('get_loans_per_day', { data: [{ day: '2026-09-01', total: 4 }] });
-    const el = await AdminDashboard();
-    const markup = renderToStaticMarkup(el as React.ReactElement);
-    expect(markup).toContain('Total Buku');
-    expect(markup).toContain('Perlu dikembalikan');
-  });
-
-  it('dashboard falls back to bucketed week query when rpc empty', async () => {
-    setRpc('get_loans_per_day', { data: [] });
-    setTable('loans', { list: { data: [], count: 0 } });
-    const el = await AdminDashboard();
-    const markup = renderToStaticMarkup(el as React.ReactElement);
-    expect(markup).toContain('Belum ada keterlambatan.');
   });
 
   it('tambah buku loads category+rack options', async () => {

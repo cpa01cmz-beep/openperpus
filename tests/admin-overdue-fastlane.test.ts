@@ -49,9 +49,16 @@ describe('US-2 overdue fastlane — dashboard queue', () => {
     );
   });
 
-  it('dashboard keeps .limit(500) bounds (no unbounded fetch)', () => {
+  it('dashboard stays bounded — no .limit(500) fallback, queues capped top-8', () => {
     const src = read('src/app/admin/page.tsx');
-    expect(src, 'dashboard must keep .limit(500) bounds').toMatch(/\.limit\(\s*500\s*\)/);
+    // #58: fallback bucket .limit(500) dihapus; agregat via get_dashboard_stats.
+    expect(src, 'RED: fallback .limit(500) fetch must be gone (issue #58)').not.toMatch(
+      /\.limit\(\s*500\s*\)/
+    );
+    expect(src, 'queues must stay capped at .limit(8)').toMatch(/\.limit\(\s*8\s*\)/);
+    expect(src, 'dashboard must use 1-RTT get_dashboard_stats').toMatch(
+      /\.rpc\(\s*['"]get_dashboard_stats['"]/
+    );
   });
 });
 
