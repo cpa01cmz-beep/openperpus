@@ -69,9 +69,9 @@ export default function ReservasiPage() {
   }, [load]);
 
   async function onCheckout(r: Reservation) {
-    // US-02 1-klik: POST /api/loans dulu, HANYA jika 201 lanjut PUT completed.
-    // Jika POST gagal: message server persis via alert + reservasi tak tersentuh.
-    // Kompensasi: tanpa rollback loan bila PUT gagal (lihat reservation-checkout.ts).
+    // #73: checkout atomik 1-klik — POST /api/reservations/{id}/checkout
+    // (RPC checkout_reservation_tx): loan + completed dalam satu transaksi.
+    // Gagal => rollback penuh; message server persis ditampilkan.
     if (!confirm(`Pinjamkan buku "${r.books?.title ?? '-'}" ke ${r.members?.member_code ?? '-'}?`))
       return;
     setActingId(r.id);
@@ -85,7 +85,7 @@ export default function ReservasiPage() {
               json: () => Promise<unknown>;
             }>,
         },
-        { reservationId: r.id, memberId: r.member_id, bookId: r.book_id }
+        { reservationId: r.id }
       );
       if (out.skipped) return;
       load();
@@ -96,13 +96,8 @@ export default function ReservasiPage() {
     }
   }
 
-  async function onUpdate(id: string, next: 'ready' | 'completed' | 'cancelled') {
-    const label =
-      next === 'ready'
-        ? 'setujui (siap diambil)'
-        : next === 'completed'
-          ? 'selesaikan'
-          : 'batalkan';
+  async function onUpdate(id: string, next: 'ready' | 'cancelled') {
+    const label = next === 'ready' ? 'setujui (siap diambil)' : 'batalkan';
     if (!confirm(`Yakin ${label} reservasi ini?`)) return;
     setActingId(id);
     try {
@@ -304,24 +299,14 @@ export default function ReservasiPage() {
                       </button>
                     )}
                     {r.status === 'ready' && (
-                      <>
-                        <button
-                          type="button"
-                          disabled={actingId === r.id}
-                          onClick={() => onCheckout(r)}
-                          className="inline-flex min-h-[44px] items-center rounded bg-brand px-3 text-xs font-semibold text-white transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          {actingId === r.id ? '…' : 'Pinjamkan'}
-                        </button>
-                        <button
-                          type="button"
-                          disabled={actingId === r.id}
-                          onClick={() => onUpdate(r.id, 'completed')}
-                          className="inline-flex min-h-[44px] items-center rounded bg-brand px-3 text-xs font-semibold text-white transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
-                        >
-                          {actingId === r.id ? '…' : 'Selesaikan'}
-                        </button>
-                      </>
+                      <button
+                        type="button"
+                        disabled={actingId === r.id}
+                        onClick={() => onCheckout(r)}
+                        className="inline-flex min-h-[44px] items-center rounded bg-brand px-3 text-xs font-semibold text-white transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {actingId === r.id ? '…' : 'Pinjamkan'}
+                      </button>
                     )}
                     <button
                       type="button"

@@ -91,6 +91,7 @@ import {
   DELETE as racksDELETE,
 } from '@/app/api/racks/route';
 import { PUT as rackByIdPUT, DELETE as rackByIdDELETE } from '@/app/api/racks/[id]/route';
+import { POST as reservationCheckoutPOST } from '@/app/api/reservations/[id]/checkout/route';
 import { PUT as settingsPUT } from '@/app/api/settings/route';
 import { PUT as settingsThemePUT } from '@/app/api/settings/theme/route';
 import {
@@ -220,6 +221,7 @@ const adminOnly: Case[] = [
   { name: 'PUT /api/racks/[id]', run: () => rackByIdPUT(req(), CTX) },
   { name: 'DELETE /api/racks/[id]', run: () => rackByIdDELETE(req(), CTX) },
   { name: 'PUT /api/services/[id]', run: () => serviceByIdPUT(req(), SVC_CTX) },
+  { name: 'POST /api/reservations/[id]/checkout', run: () => reservationCheckoutPOST(req(), SVC_CTX) },
   { name: 'DELETE /api/services/[id]', run: () => serviceByIdDELETE(req(), SVC_CTX) },
   { name: 'PUT /api/testimonials/[id]', run: () => testimonialByIdPUT(req(), CTX) },
   { name: 'DELETE /api/testimonials/[id]', run: () => testimonialByIdDELETE(req(), CTX) },
@@ -291,13 +293,14 @@ function scanAdminOnlyHandlers(): string[] {
 }
 
 describe('issue #25 — unified staff authorization (Gherkin: non-staff → 403 everywhere)', () => {
-  it('matrix covers exactly the 60 admin-only handlers found in src/app/api', () => {
+  it('matrix covers exactly the 61 admin-only handlers found in src/app/api', () => {
     const scanned = scanAdminOnlyHandlers();
     const covered = adminOnly.map((c) => c.name).sort();
     // Wave2: +5 handler services (POST/PUT/DELETE koleksi + PUT/DELETE [id]);
     // GET koleksi/[id] publik-dengan-elevasi, benar tak masuk matrix.
     // Fase 1 tema: +1 PUT /api/settings/theme (admin-only, layout-only).
-    expect(covered.length, 'matrix must declare 60 admin-only endpoint+method pairs').toBe(60);
+    // Issue #73: +1 POST /api/reservations/[id]/checkout (checkout atomik).
+    expect(covered.length, 'matrix must declare 61 admin-only endpoint+method pairs').toBe(61);
     expect(covered, 'matrix missing admin-only handlers present in src/app/api').toEqual(scanned);
   });
 

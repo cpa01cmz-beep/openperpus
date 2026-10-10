@@ -125,7 +125,14 @@
 
 ## 5. Loans / Reservations / Fines (sirkulasi)
 
-### `GET /api/loans?status=&member_id=&overdue=1&page=` — pustakawan+ (anggota: otomatis filter miliknya, `member_id` diabaikan).
+### `GET /api/loans?status=&member_id=&overdue=1&q=&page=&per_page=` — pustakawan+ (anggota: otomatis filter miliknya, `member_id` diabaikan).
+
+**Status terlambat = turunan (definisi tunggal, issue #57).** `overdue` ⇔ `status IN ('borrowed','overdue') AND due_at < NOW()`. Aplikasi tidak pernah menulis kolom `loans.status='overdue'` (checkout selalu `borrowed`, return menulis `returned`/`lost`); nilai enum itu hanya kompatibilitas baris lama.
+
+- `?status=` menerima `borrowed|returned|overdue|lost` (nilai lain → `422 VALIDATION`).
+- `?status=overdue` dan `?overdue=1` adalah **satu** filter yang sama (definisi turunan) — keduanya tidak mungkin beda hasil dengan tombol "Terlambat saja" di admin.
+- Setiap baris membawa `is_overdue` (boolean), `effective_status` (`overdue` bila turunan terlambat, selain itu nilai kolom `status`), dan `fine_preview` (estimasi denda, tarif `library_settings.fine_per_day`).
+- Semua pembaca memakai `src/lib/loans-overdue.ts`; di sisi DB definisi yang sama dimakai `get_overdue_count` (migrasi 0012) dan `get_dashboard_stats` (0017).
 
 ### `POST /api/loans` (checkout) — pustakawan+
 
@@ -147,6 +154,24 @@
 ### `GET/POST /api/reservations` — anggota (miliknya) + pustakawan+
 
 - POST anggota: `{book_id}` → `menunggu`. Cancel: `PATCH /api/reservations/[id] {status:"batal"}`.
+
+### `POST /api/reservations/[id]/checkout` — pustakawan+ (atomik, issue #73)
+
+- Satu panggilan untuk menutup reservasi `ready` → `completed`: RPC
+  `checkout_reservation_tx` (migrasi 0024) mengunci reservasi + buku
+  (`FOR UPDATE`), jalankan gate stok + kelayakan anggota (#56), insert loan,
+  kurangi stok, dan set `completed` + `loan_id` dalam **satu transaksi**.
+  Gagal di titik mana pun = rollback penuh (tidak ada loan yatim / reservasi
+  separuh selesai). Retry aman: panggilan ulang pada reservasi yang sudah
+  `completed` + `loan_id` mengembalikan hasil lama.
+- Body opsional: `{borrowed_at?, due_at?, notes?}` (default tempo +14 hari).
+- 201 → `{ data: { loan, reservation } }`. 409 → stok habis / anggota sudah
+  meminjam buku ini / tagihan denda belum lunas / pinjaman terlambat / batas
+  pinjaman aktif / reservasi belum `ready`. 422 → anggota tidak aktif /
+  parameter tanggal tidak valid. 404 → data tidak ditemukan.
+- `PUT /api/reservations/[id] {status}` **tidak lagi menerima** `completed`
+  (422) — status itu hanya bisa dicapai lewat endpoint checkout ini.
+  Transisi PUT yang berlaku: `pending→ready`, `*→cancelled/expired`.
 
 ### `GET /api/fines?member_id=&status=` + `POST /api/fines/[id]/pay {metode}` — anggota baca miliknya; bayar hanya pustakawan+.
 

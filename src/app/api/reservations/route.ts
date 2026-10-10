@@ -17,6 +17,11 @@ import { getSession } from '@/lib/session';
  *
  * Kolom migrasi 0001: book_id, member_id, status pending|ready|completed|cancelled|expired,
  * reserved_at, expires_at, notes. Unik pending (book_id,member_id).
+ *
+ * STATE-MACHINE (issue #73): pending->ready, any->cancelled/expired.
+ * status='completed' TIDAK bisa lewat PUT — hanya via checkout atomik
+ * POST /api/reservations/{id}/checkout (RPC checkout_reservation_tx, migrasi
+ * 0024) yang membuat loan + menandai completed dalam satu transaksi.
  */
 
 const STATUSES = ['pending', 'ready', 'completed', 'cancelled', 'expired'] as const;
@@ -237,28 +242,33 @@ export async function PUT(req: Request) {
     // Anggota hanya boleh membatalkan miliknya.
     if (!isStaff && st !== 'cancelled')
       return jsonError('FORBIDDEN', 'Anggota hanya boleh membatalkan reservasi.', 403);
+    // #73: completed WAJIB lewat checkout atomik (POST .../checkout) yang
+    // membuat loan. PUT completed langsung = stok tak berkurang + antrean
+    // fiktif selesai — jalur ini ditutup total.
+    if (st === 'completed') {
+      return jsonError(
+        'VALIDATION',
+        'Selesaikan reservasi lewat POST /api/reservations/{id}/checkout (membuat loan atomik).',
+        422
+      );
+    }
     payload.status = st;
-    // State-machine gate: pending->ready, ready->completed, pending->completed (1-klik staf),
-    // any->cancelled/expired.
+    // State-machine gate: pending->ready, any->cancelled/expired.
+    // (completed hanya via checkout atomik — lihat guard di atas.)
     const from = c.status;
     const to = st as string;
     const allowed =
       from === to ||
       to === 'cancelled' ||
       to === 'expired' ||
-      (from === 'pending' && to === 'ready') ||
-      (from === 'ready' && to === 'completed') ||
-      (from === 'pending' && to === 'completed');
+      (from === 'pending' && to === 'ready');
     if (!allowed) {
       return jsonError('VALIDATION', `Transisi status ${from}->${to} tidak diizinkan.`, 422);
     }
   }
   if (body.notes !== undefined) payload.notes = body.notes as string | null;
-  // Hanya staf boleh set ready/completed/expired/expires_at.
-  if (
-    !isStaff &&
-    (body.expires_at !== undefined || payload.status === 'ready' || payload.status === 'completed')
-  ) {
+  // Hanya staf boleh set ready/expires_at (completed hanya via checkout atomik).
+  if (!isStaff && (body.expires_at !== undefined || payload.status === 'ready')) {
     return jsonError('FORBIDDEN', 'Hanya pustakawan yang boleh memproses reservasi.', 403);
   }
   if (isStaff && body.expires_at !== undefined) {

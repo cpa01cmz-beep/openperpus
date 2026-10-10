@@ -5,6 +5,7 @@ import { requireStaff, jsonError } from '@/lib/supabase/auth';
 import { getSession } from '@/lib/session';
 import { returnLoan, extendLoan } from '@/lib/loans-return';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
+import { isActiveLoanStatus } from '@/lib/loans-overdue';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -122,10 +123,8 @@ export async function DELETE(_req: Request, { params }: Ctx) {
 
   const { data: loan } = await supabase.from('loans').select('status').eq('id', id).single();
   if (!loan) return jsonError('NOT_FOUND', 'Peminjaman tidak ditemukan.', 404);
-  if (
-    (loan as { status: string }).status === 'borrowed' ||
-    (loan as { status: string }).status === 'overdue'
-  ) {
+  // Berjalan = belum returned/lost (status terlambat bersifat turunan — issue #57).
+  if (isActiveLoanStatus((loan as { status: string }).status)) {
     return jsonError('CONFLICT', 'Tidak bisa hapus peminjaman berjalan. Kembalikan dulu.', 409);
   }
 

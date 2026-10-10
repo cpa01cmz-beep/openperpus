@@ -1,14 +1,14 @@
-// US-02: Reservasi → Pinjam 1-klik (orkestrasi client 2-call).
-// Urutan: POST /api/loans dulu, HANYA jika 201 lanjut PUT /api/reservations completed.
-// Jika POST gagal: lempar message server persis + JANGAN ubah reservasi.
-// KOMPENSASI: tidak ada rollback loan jika PUT gagal — loan tetap tercatat,
-// error dilempar + logger.error untuk visibilitas, staff menyelesaikan manual.
-// (Rollback loan via DELETE dilarang: DELETE loans hanya admin + hanya
-// returned/lost, dan menghapus loan valid merusak stok/audit.)
-// IDEMPOTENCY: guard client-side per reservationId (inflight Set, satu tab).
-// Guard server-side: PUT reservations completed hanya dari status pending/ready
-// (ditolak 409 bila sudah completed — src/app/api/reservations/route.ts),
-// sehingga retry setelah PUT-sukses-sebagian aman diulang.
+// US-02 v2 (issue #73): Reservasi → Pinjam jadi SATU panggilan atomik.
+// Dulu: POST /api/loans lalu PUT /api/reservations {status:"completed"} —
+// bila PUT gagal, loan tetap tercatat sementara reservasi belum selesai
+// (rekonsiliasi manual), dan completed juga bisa dicapai tanpa loan.
+// Sekarang: POST /api/reservations/{id}/checkout → RPC checkout_reservation_tx
+// (migrasi 0024) mengerjakan lock reservasi+buku, gate kelayakan, insert loan,
+// update reservasi dalam SATU transaksi Postgres. Gagal di titik mana pun =
+// rollback penuh; retry aman (idempoten bila sudah completed + loan_id).
+// Server tetap menolak PUT status=completed langsung (422).
+// IDEMPOTENCY: guard client-side per reservationId (inflight Set, satu tab) —
+// klik ganda tidak memicu dua checkout.
 
 import { logger } from '@/lib/logger';
 
@@ -19,8 +19,6 @@ type FetchLike = (
 
 export type CheckoutInput = {
   reservationId: string;
-  memberId: string;
-  bookId: string;
   notes?: string;
 };
 
@@ -52,46 +50,23 @@ export async function checkoutReservation(
   }
   inflight.add(key);
   try {
-    // 1) Buat loan dulu (server: guard member active 422, stok habis 409, due auto +14h).
-    const loanRes = await deps.fetchLike('/api/loans', {
+    const res = await deps.fetchLike(`/api/reservations/${encodeURIComponent(key)}/checkout`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        member_id: input.memberId,
-        book_id: input.bookId,
-        ...(input.notes !== undefined ? { notes: input.notes } : {}),
-      }),
+      body: JSON.stringify(input.notes !== undefined ? { notes: input.notes } : {}),
     });
-    const loanJson = (await loanRes.json().catch(() => ({}))) as {
-      data?: unknown;
+    const json = (await res.json().catch(() => ({}))) as {
+      data?: { loan?: unknown; reservation?: unknown };
     };
-    if (!loanRes.ok || loanRes.status !== 201) {
-      throw new Error(serverMessage(loanJson));
+    if (!res.ok || res.status !== 201) {
+      throw new Error(serverMessage(json));
     }
-
-    // 2) HANYA jika loan 201: tandai reservasi completed (server menulis
-    // activity_logs "reservations.completed" via writeLog di PUT).
-    const putRes = await deps.fetchLike(`/api/reservations?id=${encodeURIComponent(key)}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status: 'completed' }),
+    return { loan: json.data?.loan ?? null, reservation: json.data?.reservation ?? null };
+  } catch (e) {
+    logger.error(`[US-02] checkout reservasi ${key} gagal.`, {
+      detail: (e as Error).message,
     });
-    const putJson = (await putRes.json().catch(() => ({}))) as {
-      data?: unknown;
-    };
-    if (!putRes.ok) {
-      const detail = serverMessage(putJson);
-      const loanId = (loanJson as { data?: { id?: string } }).data?.id ?? 'tak-dikenal';
-      logger.error(
-        `[US-02] loan dibuat tetapi reservasi ${key} gagal completed — selesaikan manual.`,
-        {
-          detail,
-        }
-      );
-      throw new Error(`${detail} (loan ${loanId} perlu rekonsiliasi manual)`);
-    }
-
-    return { loan: loanJson.data ?? null, reservation: putJson.data ?? null };
+    throw e;
   } finally {
     inflight.delete(key);
   }

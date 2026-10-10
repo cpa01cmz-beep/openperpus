@@ -9,6 +9,7 @@ import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
 import Pagination from '@/components/ui/Pagination';
 import { errMsg } from '@/lib/admin-errors';
+import { effectiveLoanStatus } from '@/lib/loans-overdue';
 
 const LoanForm = nextDynamic(() => import('@/components/admin/LoanForm'), {
   ssr: false,
@@ -23,9 +24,15 @@ type Loan = {
   status: string;
   fine_amount: number;
   is_overdue?: boolean;
+  effective_status?: string;
   members: { member_code: string } | null;
   books: { title: string } | null;
 };
+
+/** Status tunggal untuk tampilan: kolom status + turunan terlambat (issue #57). */
+function statusOf(loan: Loan): string {
+  return loan.effective_status ?? effectiveLoanStatus(loan);
+}
 
 export default function PeminjamanPage() {
   const [loans, setLoans] = useState<Loan[]>([]);
@@ -326,7 +333,6 @@ export default function PeminjamanPage() {
           >
             <option value="">Semua</option>
             <option value="borrowed">borrowed</option>
-            <option value="overdue">overdue</option>
             <option value="returned">returned</option>
             <option value="lost">lost</option>
           </select>
@@ -335,6 +341,7 @@ export default function PeminjamanPage() {
           type="button"
           aria-pressed={overdueOnly}
           onClick={() => setOverdueOnly((v) => !v)}
+          title="Terlambat = pinjaman berjalan yang melewati jatuh tempo (definisi tunggal, sama dengan status overdue di API)"
           className={`inline-flex min-h-[44px] items-center justify-center rounded-md border px-3 font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${overdueOnly ? 'border-red-300 bg-red-50 text-red-700' : 'border-slate-200 bg-white text-slate-700 hover:border-brand hover:text-brand'}`}
         >
           Terlambat saja
@@ -357,7 +364,7 @@ export default function PeminjamanPage() {
             r.books?.title ?? '',
             r.borrowed_at,
             r.due_at,
-            r.status,
+            statusOf(r),
             r.fine_amount,
           ])}
         />
@@ -390,19 +397,25 @@ export default function PeminjamanPage() {
               <span>
                 {new Date(r.borrowed_at).toLocaleDateString('id-ID')}
                 <br />→ {new Date(r.due_at).toLocaleDateString('id-ID')}
-                {r.is_overdue && (
+                {statusOf(r) === 'overdue' && (
                   <span className="ml-1 rounded bg-red-100 px-1 text-xs text-red-700">telat</span>
                 )}
               </span>
             ),
           },
-          { key: 'status', header: 'Status', sortable: true, render: (r) => r.status },
+          {
+            key: 'status',
+            header: 'Status',
+            sortable: true,
+            render: (r) => statusOf(r),
+          },
           { key: 'fine_amount', header: 'Denda', render: (r) => fmtRp(r.fine_amount) },
           {
             key: 'aksi',
             header: 'Aksi',
-            render: (r) =>
-              r.status === 'borrowed' || r.status === 'overdue' ? (
+            render: (r) => {
+              const eff = statusOf(r);
+              return eff === 'borrowed' || eff === 'overdue' ? (
                 <span className="inline-flex flex-wrap items-center gap-1">
                   <button
                     type="button"
@@ -422,7 +435,7 @@ export default function PeminjamanPage() {
                   >
                     Perpanjang
                   </button>
-                  {r.is_overdue && (
+                  {eff === 'overdue' && (
                     <DunningButton
                       loanId={r.id}
                       memberCode={r.members?.member_code ?? '-'}
@@ -435,7 +448,8 @@ export default function PeminjamanPage() {
                 </span>
               ) : (
                 <span className="text-xs text-slate-400">-</span>
-              ),
+              );
+            },
           },
         ]}
         rows={loans}
