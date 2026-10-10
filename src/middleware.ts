@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { updateSession } from '@/lib/supabase/middleware';
 import { checkRateLimit, WRITE_API_LIMIT, WRITE_API_WINDOW_MS } from '@/lib/rate-limit';
+import { ROLE_HEADER } from '@/lib/role-claim';
 
 /**
  * CSRF guard untuk write /api/*: Origin/Referer harus same-origin LENGKAP
@@ -166,6 +167,8 @@ async function getProfileRole(request: NextRequest, userId: string): Promise<str
 }
 
 export async function middleware(request: NextRequest) {
+  // Selalu buang klaim klien di awal — nilai sah hanya datang dari blok role gate.
+  request.headers.delete(ROLE_HEADER);
   const { pathname, search } = request.nextUrl;
   const isAdmin = pathname === '/admin' || pathname.startsWith('/admin/');
   const isLogin = pathname === '/login' || pathname.startsWith('/login');
@@ -250,7 +253,8 @@ export async function middleware(request: NextRequest) {
   }
 
   // 3. Role gate /admin (I5 defense-in-depth): sesi SAJA tidak cukup —
-  //    wajib staff (admin|librarian), sejajar admin/layout.tsx.
+  //    wajib staff (admin|librarian). Klaim role ditaruh di header request
+  //    (overwrite) untuk admin layout — 1 query role per hit, bukan 2.
   //    Fail-closed: role bukan staff / query gagal → redirect '/'.
   if (isAdmin && user) {
     const role = await getProfileRole(request, user.id);
@@ -260,6 +264,13 @@ export async function middleware(request: NextRequest) {
       url.search = '';
       return NextResponse.redirect(url);
     }
+    request.headers.set(ROLE_HEADER, role);
+    // sessionResponse dibuat di updateSession SEBELUM klaim di-set —
+    // handleMiddlewareField me-snapshot header saat konstruksi, jadi bangun
+    // ulang response agar x-role ikut diteruskan; cookie refresh disalin.
+    const claimed = NextResponse.next({ request });
+    for (const c of sessionResponse.cookies.getAll()) claimed.cookies.set(c);
+    sessionResponse = claimed;
   }
 
   sessionResponse.headers.set('Content-Security-Policy', csp);

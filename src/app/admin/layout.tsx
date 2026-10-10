@@ -1,23 +1,17 @@
+import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { createClient } from '@/lib/supabase/server';
 import { isStaffRole } from '@/lib/supabase/auth';
+import { ROLE_HEADER } from '@/lib/role-claim';
 import { getLibrarySettings } from '@/lib/settings';
 import Sidebar from '@/components/admin/Sidebar';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const supabase = createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) redirect('/login');
-
-  const [profileResult, settings] = await Promise.all([
-    supabase.from('profiles').select('role').eq('id', user.id).single(),
-    getLibrarySettings(),
-  ]);
-  const role = (profileResult.data as { role?: string } | null)?.role;
+  // Klaim role dari middleware (satu query profiles.role per hit — di middleware).
+  // Fail-closed: tanpa klaim (mis. render tanpa middleware) → redirect /login.
+  const role = (await headers()).get(ROLE_HEADER);
   if (!isStaffRole(role)) redirect('/login');
+
+  const settings = await getLibrarySettings();
 
   const libraryName = settings?.name ?? 'Perpustakaan';
 

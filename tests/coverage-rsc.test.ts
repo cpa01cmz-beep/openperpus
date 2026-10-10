@@ -4,6 +4,12 @@ import React from 'react';
 (globalThis as unknown as { React: unknown }).React = React;
 
 vi.mock('server-only', () => ({}));
+// Issue #53: admin/layout membaca klaim x-role dari middleware via headers()
+// (tanpa query profiles). Store mutable agar tiap testatur klaim sendiri.
+const roleClaim = vi.hoisted(() => ({ value: null as string | null }));
+vi.mock('next/headers', () => ({
+  headers: async () => new Headers(roleClaim.value ? { 'x-role': roleClaim.value } : {}),
+}));
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(() => (globalThis as unknown as { __mockSupabase: unknown }).__mockSupabase),
@@ -353,18 +359,18 @@ describe('public RSC pages', () => {
 });
 
 describe('admin RSC pages', () => {
-  it('admin layout redirects when logged out', async () => {
-    setAuthUser(null);
+  it('admin layout redirects when no role claim (fail-closed)', async () => {
+    roleClaim.value = null;
     await expect(AdminLayout({ children: null })).rejects.toThrow(/NEXT_REDIRECT__\/login/);
   });
 
-  it('admin layout redirects non-staff to home', async () => {
-    setProfileRole('member');
-    await expect(AdminLayout({ children: null })).rejects.toThrow(/NEXT_REDIRECT__\//);
+  it('admin layout redirects non-staff claim (fail-closed ke /login)', async () => {
+    roleClaim.value = 'member';
+    await expect(AdminLayout({ children: null })).rejects.toThrow(/NEXT_REDIRECT__\/login/);
   });
 
-  it('admin layout renders for staff', async () => {
-    setProfileRole('admin');
+  it('admin layout renders for staff claim (tanpa query profiles)', async () => {
+    roleClaim.value = 'admin';
     const el = await AdminLayout({ children: null });
     expect(el).toBeTruthy();
   });
