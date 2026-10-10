@@ -3,11 +3,7 @@ import { revalidatePath, revalidateTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { requireStaff, jsonError } from '@/lib/supabase/auth';
 import { THEMES } from '@/lib/themes';
-import {
-  isAllowedLinkUrl,
-  sanitizeContentPayload,
-  validateContentFields,
-} from '@/lib/validation';
+import { isAllowedLinkUrl, sanitizeContentPayload, validateContentFields } from '@/lib/validation';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
 /**
@@ -122,6 +118,16 @@ export async function PUT(req: Request) {
   sanitizeContentPayload('settings', payload);
   const capErr = validateContentFields('settings', payload);
   if (capErr) return jsonError('VALIDATION', capErr, 422);
+  // logo/favicon dirender sebagai src/href publik (Image, <link rel=icon>, manifest)
+  // — tolak skema berbahaya (javascript:/data:/blob:/file:) dan protocol-relative.
+  // Syarat sengaja longgar (boleh https host mana pun) mengikuti placeholder form
+  // "https://…/logo.png"; jangan pakai isAllowedImageUrl (itu hanya *.supabase.co).
+  for (const f of ['logo_url', 'favicon_url'] as const) {
+    const v = payload[f];
+    if (v != null && v !== '' && !isAllowedLinkUrl(v)) {
+      return jsonError('VALIDATION', `${f} harus URL http(s), path relatif, atau kosong.`, 422);
+    }
+  }
   // Fase 1 (layout-only): tema dikunci di endpoint umum — ADDITIVE guard,
   // perilaku field non-tema tidak berubah.
   {

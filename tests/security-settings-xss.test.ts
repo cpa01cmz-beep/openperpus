@@ -131,6 +131,36 @@ describe('PUT /api/settings socials URL scheme guard (#52 review #1)', () => {
   });
 });
 
+describe('PUT /api/settings logo/favicon URL scheme guard (#52 review #2)', () => {
+  it('menolak logo_url/favicon_url dengan skema javascript:/data: (422)', async () => {
+    for (const bad of ['javascript:alert(1)', 'data:text/html,<script>x</script>', '//evil.com']) {
+      const logo = await SET_PUT(
+        jsonReq('PUT', '/api/settings', { name: 'Perpus Aman', logo_url: bad })
+      );
+      expect(logo.status, `logo_url=${bad} must be 422`).toBe(422);
+      const favicon = await SET_PUT(
+        jsonReq('PUT', '/api/settings', { name: 'Perpus Aman', favicon_url: bad })
+      );
+      expect(favicon.status, `favicon_url=${bad} must be 422`).toBe(422);
+    }
+  });
+
+  it('menerima https host bebas, path relatif, dan null (regresi input valid)', async () => {
+    const res = await SET_PUT(
+      jsonReq('PUT', '/api/settings', {
+        name: 'Perpus Aman',
+        logo_url: 'https://cdn.example.com/logo.png',
+        favicon_url: '/favicon.ico',
+      })
+    );
+    expect(res.status).toBe(200);
+    const nulled = await SET_PUT(
+      jsonReq('PUT', '/api/settings', { name: 'Perpus Aman', logo_url: null })
+    );
+    expect(nulled.status).toBe(200);
+  });
+});
+
 describe('audit sink JSON-LD publik (#52)', () => {
   it('sink JSON-LD dengan data dinamis meng-escape <', () => {
     const dynamicSinks = [
