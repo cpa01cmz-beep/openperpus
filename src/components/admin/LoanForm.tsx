@@ -3,8 +3,17 @@
 import { useMemo, useState } from 'react';
 import Button from '@/components/ui/Button';
 import SearchCombobox, { type SearchOption } from './SearchCombobox';
+import { evaluateLoanEligibility } from '@/lib/loan-eligibility';
 
-export type Option = { id: string; label: string; sub?: string };
+export type Option = {
+  id: string;
+  label: string;
+  sub?: string;
+  /* Agregat kelayakan checkout dari GET /api/members (isu #56). */
+  fines_total?: number | null;
+  overdue_loans?: number | null;
+  active_loans?: number | null;
+};
 
 export default function LoanForm({
   members,
@@ -35,12 +44,26 @@ export default function LoanForm({
     books.find((b) => b.id === bookId) ??
     (bookExtra && bookExtra.id === bookId ? bookExtra : undefined);
 
+  // Isu #56: blokir pra-submit bila anggota tidak layak checkout (denda belum
+  // lunas / terlambat / batas pinjaman aktif) — cermin aturan API yang sama.
+  const memberBlock = useMemo(() => {
+    const m = members.find((x) => x.id === memberId);
+    if (!m) return null;
+    const verdict = evaluateLoanEligibility({
+      activeLoans: Number(m.active_loans ?? 0),
+      overdueLoans: Number(m.overdue_loans ?? 0),
+      openFines: Number(m.fines_total ?? 0),
+    });
+    return verdict.eligible ? null : verdict;
+  }, [memberId, members]);
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErr('');
     setMsg('');
     if (!memberId) return setErr('Pilih anggota.');
     if (!bookId) return setErr('Pilih buku.');
+    if (memberBlock) return setErr(memberBlock.message);
     if (selectedBook && (selectedBook.stock ?? 1) <= 0) return setErr('Stok buku habis.');
     setLoading(true);
     try {
@@ -79,6 +102,11 @@ export default function LoanForm({
       {msg && (
         <p role="status" className="rounded-lg bg-green-50 px-3 py-2 text-sm text-green-700">
           {msg}
+        </p>
+      )}
+      {memberBlock && (
+        <p role="alert" className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          {memberBlock.message}
         </p>
       )}
       <label className="grid gap-1 text-sm font-medium">
@@ -131,7 +159,7 @@ export default function LoanForm({
           onChange={(e) => setNotes(e.target.value)}
         />
       </div>
-      <Button type="submit" loading={loading}>
+      <Button type="submit" loading={loading} disabled={!!memberBlock}>
         Catat Peminjaman
       </Button>
     </form>

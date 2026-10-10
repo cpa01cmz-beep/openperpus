@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireStaff, jsonError, addDaysISO, parsePaging } from '@/lib/supabase/auth';
 import { returnLoan, extendLoan, getFineRate } from '@/lib/loans-return';
+import { checkMemberLoanEligibility } from '@/lib/loan-eligibility';
 import { sanitizeIlike } from '@/lib/search';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 import {
@@ -24,7 +25,8 @@ import {
  *   status=overdue ≡ overdue=1 → definisi turunan yang sama.
  *   Response memuat is_overdue + effective_status per baris.
  * POST /api/loans { member_id, book_id, borrowed_at?, due_at?, notes? }
- *   -> due auto +14 hari, stok_available -1 (guard >0)
+ *   -> gate kelayakan anggota (#56): denda belum lunas / pinjaman terlambat /
+ *      batas pinjaman aktif -> 409; due auto +14 hari, stok_available -1 (guard >0)
  * PUT /api/loans?id= { action:"return", returned_at?, notes? }
  *   -> denda otomatis tarif library_settings/hari (default Rp1000) + stok +1 + row fines bila denda >0
  * PUT /api/loans?id= { action:"extend", days? } -> due_at += N hari (1..90).
@@ -169,6 +171,17 @@ export async function POST(req: Request) {
   if (!member) return jsonError('NOT_FOUND', 'Anggota tidak ditemukan.', 404);
   if ((member as { status: string }).status !== 'active') {
     return jsonError('VALIDATION', 'Anggota tidak aktif (suspended/expired/pending).', 422);
+  }
+
+  // Isu #56: gate kelayakan lengkap — denda belum lunas / pinjaman terlambat /
+  // batas pinjaman aktif (library_settings.max_active_loans). Fail-closed:
+  // verifikasi gagal -> 500, bukan checkout lolos diam-diam.
+  const eligibility = await checkMemberLoanEligibility(supabase, member_id);
+  if (!eligibility.eligible) {
+    if (eligibility.status === 500) log.error('loans.eligibility_check_failed', { member_id });
+    return jsonError(eligibility.code, eligibility.message, eligibility.status, {
+      requestId: log.requestId,
+    });
   }
 
   // IDEMPOTENCY (pre-check murah; otoritatif di checkout_loan 0015 -> 25001/409):

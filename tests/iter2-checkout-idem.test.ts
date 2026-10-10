@@ -61,6 +61,8 @@ function setLoansMock(opts: { activeLoans: { id: string }[] }) {
     auth: { getUser: async () => ({ data: { user: { id: 'U-ADMIN' } }, error: null }) },
     from,
     rpc: async (...a: unknown[]) => {
+      // Isu #56: gate kelayakan memanggil get_fines_total sebelum checkout.
+      if (a[0] === 'get_fines_total') return { data: 0, error: null };
       rpcCalls.push(a);
       return { data: { id: 'L-1' }, error: null };
     },
