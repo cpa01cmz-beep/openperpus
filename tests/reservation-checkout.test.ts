@@ -1,9 +1,10 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 
-// US-02: Reservasi → Pinjam 1-klik (orkestrasi client 2-call).
-// Urutan: POST /api/loans dulu, HANYA jika 201 lanjut PUT /api/reservations completed.
-// Jika POST gagal: tampilkan message server persis + JANGAN ubah reservasi.
-// Kompensasi: tidak ada rollback loan jika PUT gagal (dokumentasi di helper).
+// US-02 v2 (issue #73): Reservasi -> Pinjam jadi SATU panggilan atomik.
+// POST /api/reservations/{id}/checkout -> RPC checkout_reservation_tx
+// (migrasi 0024): lock reservasi+buku, gate kelayakan, insert loan, update
+// reservasi completed dalam satu transaksi. Tidak ada lagi 2-call
+// (POST /api/loans + PUT completed) yang bisa gagal separuh.
 
 import { checkoutReservation, clearCheckoutInflight } from '@/lib/reservation-checkout';
 
@@ -22,80 +23,94 @@ function mockFetch(scenarios: Array<{ status: number; body: unknown }>) {
 }
 
 const RES_ID = '11111111-1111-4111-8111-111111111111';
-const MEMBER_ID = '22222222-2222-4222-8222-222222222222';
-const BOOK_ID = '33333333-3333-4333-8333-333333333333';
 
 beforeEach(() => {
   clearCheckoutInflight();
 });
 
-describe('US-02 reservation-checkout', () => {
-  it('happy: ready → POST /api/loans 201 (due+14h) lalu PUT completed 200', async () => {
-    const borrowed = new Date('2026-01-01T00:00:00.000Z');
-    const due = new Date(borrowed.getTime() + 14 * 24 * 3600 * 1000);
-    const { fn, calls } = mockFetch([
-      { status: 201, body: { data: { id: 'loan-1', due_at: due.toISOString() } } },
-      { status: 200, body: { data: { id: RES_ID, status: 'completed' } } },
-    ]);
-    const res = await checkoutReservation(
-      { fetchLike: fn },
-      { reservationId: RES_ID, memberId: MEMBER_ID, bookId: BOOK_ID }
-    );
-    expect(calls.length).toBe(2);
-    expect(calls[0]!.url).toBe('/api/loans');
-    expect(JSON.parse(String(calls[0]!.init?.body)).book_id).toBe(BOOK_ID);
-    expect(calls[1]!.url).toBe(`/api/reservations?id=${RES_ID}`);
-    expect(JSON.parse(String(calls[1]!.init?.body)).status).toBe('completed');
-    expect((res.loan as { id: string }).id).toBe('loan-1');
-    // due+14 hari persis
-    expect(new Date((res.loan as { due_at: string }).due_at).toISOString()).toBe(due.toISOString());
-    expect((res.reservation as { status: string }).status).toBe('completed');
-  });
-
-  it("edge stok 0 → 409 'Stok buku habis.' + reservasi tetap ready (PUT tidak dipanggil)", async () => {
+describe('US-02 v2 reservation-checkout (atomik 1-call)', () => {
+  it('happy: POST /api/reservations/{id}/checkout 201 -> loan + reservation completed', async () => {
     const { fn, calls } = mockFetch([
       {
-        status: 409,
-        body: { error: { code: 'CONFLICT', message: 'Stok buku habis.' } },
-      },
-    ]);
-    await expect(
-      checkoutReservation(
-        { fetchLike: fn },
-        { reservationId: RES_ID, memberId: MEMBER_ID, bookId: BOOK_ID }
-      )
-    ).rejects.toThrow('Stok buku habis.');
-    expect(calls.length).toBe(1);
-    expect(calls[0]!.url).toBe('/api/loans');
-  });
-
-  it("edge suspended → 422 'Anggota tidak aktif (suspended/expired/pending).'", async () => {
-    const { fn, calls } = mockFetch([
-      {
-        status: 422,
+        status: 201,
         body: {
-          error: {
-            code: 'VALIDATION',
-            message: 'Anggota tidak aktif (suspended/expired/pending).',
+          data: {
+            loan: { id: 'loan-1', status: 'borrowed' },
+            reservation: { id: RES_ID, status: 'completed', loan_id: 'loan-1' },
           },
         },
       },
     ]);
-    await expect(
-      checkoutReservation(
-        { fetchLike: fn },
-        { reservationId: RES_ID, memberId: MEMBER_ID, bookId: BOOK_ID }
-      )
-    ).rejects.toThrow('Anggota tidak aktif (suspended/expired/pending).');
+    const res = await checkoutReservation({ fetchLike: fn }, { reservationId: RES_ID });
+    expect(calls.length).toBe(1);
+    expect(calls[0]!.url).toBe(`/api/reservations/${RES_ID}/checkout`);
+    expect(calls[0]!.init?.method).toBe('POST');
+    expect((res.loan as { id: string }).id).toBe('loan-1');
+    expect((res.reservation as { status: string }).status).toBe('completed');
+    // member/book tidak lagi dikirim dari klien - server resolve dari reservasi.
+    expect(JSON.parse(String(calls[0]!.init?.body))).toEqual({});
+  });
+
+  it("edge stok 0 -> 409 'Stok buku habis.' dilempar (rollback DB, reservasi tak tersentuh)", async () => {
+    const { fn, calls } = mockFetch([
+      { status: 409, body: { error: { code: 'CONFLICT', message: 'Stok buku habis.' } } },
+    ]);
+    await expect(checkoutReservation({ fetchLike: fn }, { reservationId: RES_ID })).rejects.toThrow(
+      'Stok buku habis.'
+    );
     expect(calls.length).toBe(1);
   });
 
-  it('edge double-klik → hanya 1 loan (klik kedua diabaikan saat in-flight)', async () => {
-    const { fn, calls } = mockFetch([
-      { status: 201, body: { data: { id: 'loan-1' } } },
-      { status: 200, body: { data: { id: RES_ID, status: 'completed' } } },
+  it("edge gate kelayakan -> 409 'Anggota memiliki tagihan denda belum lunas.'", async () => {
+    const { fn } = mockFetch([
+      {
+        status: 409,
+        body: {
+          error: { code: 'CONFLICT', message: 'Anggota memiliki tagihan denda belum lunas.' },
+        },
+      },
     ]);
-    const input = { reservationId: RES_ID, memberId: MEMBER_ID, bookId: BOOK_ID };
+    await expect(checkoutReservation({ fetchLike: fn }, { reservationId: RES_ID })).rejects.toThrow(
+      'Anggota memiliki tagihan denda belum lunas.'
+    );
+  });
+
+  it("edge reservasi belum ready -> 409 'Reservasi belum siap diambil (status bukan ready).'", async () => {
+    const { fn } = mockFetch([
+      {
+        status: 409,
+        body: {
+          error: { code: 'CONFLICT', message: 'Reservasi belum siap diambil (status bukan ready).' },
+        },
+      },
+    ]);
+    await expect(checkoutReservation({ fetchLike: fn }, { reservationId: RES_ID })).rejects.toThrow(
+      'Reservasi belum siap diambil'
+    );
+  });
+
+  it('edge migrasi 0024 belum jalan -> 500 dengan pesan deploy migrasi', async () => {
+    const { fn } = mockFetch([
+      {
+        status: 500,
+        body: {
+          error: {
+            code: 'SAVE_FAILED',
+            message: 'Fungsi checkout_reservation_tx belum terdeploy. Jalankan migrasi 0024.',
+          },
+        },
+      },
+    ]);
+    await expect(checkoutReservation({ fetchLike: fn }, { reservationId: RES_ID })).rejects.toThrow(
+      'checkout_reservation_tx belum terdeploy'
+    );
+  });
+
+  it('edge double-klik -> hanya 1 checkout (klik kedua diabaikan saat in-flight)', async () => {
+    const { fn, calls } = mockFetch([
+      { status: 201, body: { data: { loan: { id: 'loan-1' }, reservation: { id: RES_ID } } } },
+    ]);
+    const input = { reservationId: RES_ID };
     const [a, b] = await Promise.allSettled([
       checkoutReservation({ fetchLike: fn }, input),
       checkoutReservation({ fetchLike: fn }, input),
@@ -108,22 +123,15 @@ describe('US-02 reservation-checkout', () => {
     ).length;
     expect(fulfilled).toBe(2);
     expect(skipped).toBe(1);
-    expect(calls.filter((c) => c.url === '/api/loans').length).toBe(1);
+    expect(calls.length).toBe(1);
   });
 
-  it('kompensasi: PUT completed gagal → error dilempar + loan TIDAK di-rollback', async () => {
+  it('retry aman: transaksi DB atomik - klien tak pernah kirim DELETE/kompensasi', async () => {
     const { fn, calls } = mockFetch([
-      { status: 201, body: { data: { id: 'loan-9' } } },
-      { status: 500, body: { error: { message: 'Gagal mengupdate reservasi.' } } },
+      { status: 201, body: { data: { loan: { id: 'loan-7' }, reservation: { id: RES_ID } } } },
     ]);
-    await expect(
-      checkoutReservation(
-        { fetchLike: fn },
-        { reservationId: RES_ID, memberId: MEMBER_ID, bookId: BOOK_ID }
-      )
-    ).rejects.toThrow('Gagal mengupdate reservasi.');
-    // loan tetap ada (1 POST), tidak ada DELETE rollback
-    expect(calls.filter((c) => c.url === '/api/loans').length).toBe(1);
+    await checkoutReservation({ fetchLike: fn }, { reservationId: RES_ID });
     expect(calls.some((c) => (c.init?.method ?? '').toUpperCase() === 'DELETE')).toBe(false);
+    expect(calls.filter((c) => c.url.includes('/checkout')).length).toBe(1);
   });
 });

@@ -155,6 +155,24 @@
 
 - POST anggota: `{book_id}` → `menunggu`. Cancel: `PATCH /api/reservations/[id] {status:"batal"}`.
 
+### `POST /api/reservations/[id]/checkout` — pustakawan+ (atomik, issue #73)
+
+- Satu panggilan untuk menutup reservasi `ready` → `completed`: RPC
+  `checkout_reservation_tx` (migrasi 0024) mengunci reservasi + buku
+  (`FOR UPDATE`), jalankan gate stok + kelayakan anggota (#56), insert loan,
+  kurangi stok, dan set `completed` + `loan_id` dalam **satu transaksi**.
+  Gagal di titik mana pun = rollback penuh (tidak ada loan yatim / reservasi
+  separuh selesai). Retry aman: panggilan ulang pada reservasi yang sudah
+  `completed` + `loan_id` mengembalikan hasil lama.
+- Body opsional: `{borrowed_at?, due_at?, notes?}` (default tempo +14 hari).
+- 201 → `{ data: { loan, reservation } }`. 409 → stok habis / anggota sudah
+  meminjam buku ini / tagihan denda belum lunas / pinjaman terlambat / batas
+  pinjaman aktif / reservasi belum `ready`. 422 → anggota tidak aktif /
+  parameter tanggal tidak valid. 404 → data tidak ditemukan.
+- `PUT /api/reservations/[id] {status}` **tidak lagi menerima** `completed`
+  (422) — status itu hanya bisa dicapai lewat endpoint checkout ini.
+  Transisi PUT yang berlaku: `pending→ready`, `*→cancelled/expired`.
+
 ### `GET /api/fines?member_id=&status=` + `POST /api/fines/[id]/pay {metode}` — anggota baca miliknya; bayar hanya pustakawan+.
 
 ## 6. Articles (artikel/berita/event)

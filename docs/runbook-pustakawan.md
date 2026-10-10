@@ -79,14 +79,16 @@ plus `cancelled` (batal) dan `expired` (kedaluwarsa).
 
 1. Anggota membuat reservasi dari katalog publik (status `pending`).
 2. Saat buku tersedia, klik **Setujui (siap diambil)** → `ready`.
-3. Anggota datang mengambil: klik **Pinjamkan** (1-klik) — server membuat loan
-   lebih dulu, lalu menutup reservasi `completed`. Bila pembuatan loan gagal,
-   reservasi **tidak** berubah (pesan error server tampil apa adanya).
+3. Anggota datang mengambil: klik **Pinjamkan** — endpoint checkout atomik
+   `POST /api/reservations/[id]/checkout` (RPC `checkout_reservation_tx`,
+   migrasi 0024) membuat loan **dan** menutup reservasi `completed` dalam satu
+   transaksi DB. Gagal di titik mana pun = rollback penuh; klik ganda/retry
+   aman (idempoten). Tombol "Selesaikan" tanpa loan sudah dihapus.
 4. Batal: **Batalkan** → `cancelled`. Kedaluwarsa → `expired`.
 
 > API: `PUT /api/reservations?id=<uuid> {status}` (state-machine dijaga server:
-> hanya `pending→ready`, `ready→completed`, `pending→completed`,
-> `*→cancelled/expired`).
+> hanya `pending→ready`, `*→cancelled/expired`). `completed` **tidak** bisa
+> lewat PUT — hanya via checkout atomik di atas (issue #73).
 
 ### 2.6 Opname stok — `/admin/buku`
 
