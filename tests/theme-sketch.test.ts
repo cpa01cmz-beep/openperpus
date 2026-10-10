@@ -7,7 +7,7 @@ const root = process.cwd();
 const read = (p: string) => fs.readFileSync(path.join(root, p), 'utf8');
 
 function sketchBlock(css: string): string {
-  const start = css.indexOf('[data-theme="sketch"]');
+  const start = css.search(/\[data-theme=["']sketch["']\]/);
   expect(start, 'globals.css must have [data-theme="sketch"] block').toBeGreaterThanOrEqual(0);
   const next = css.indexOf('[data-theme=', start + 1);
   return css.slice(start, next === -1 ? undefined : next);
@@ -71,9 +71,9 @@ describe('T-SKETCH: globals.css sketch block mirrors tokens', () => {
 
   it('offset shadows + wobbly radii + section spacing', () => {
     const block = sketchBlock(read('src/app/globals.css'));
-    expect(block).toMatch(/--shadow-sm:\s*1px 2px 0 0 #2A2620/);
-    expect(block).toMatch(/--shadow-md:\s*3px 3px 0 0 #2A2620/);
-    expect(block).toMatch(/--shadow-lg:\s*5px 6px 0 0 #2A2620/);
+    expect(block).toMatch(/--shadow-sm:\s*1px 2px 0 0 #2A2620/i);
+    expect(block).toMatch(/--shadow-md:\s*3px 3px 0 0 #2A2620/i);
+    expect(block).toMatch(/--shadow-lg:\s*5px 6px 0 0 #2A2620/i);
     expect(block).toMatch(/--spacing-section:\s*5rem/);
   });
 });

@@ -13,7 +13,7 @@ import { getTheme } from '@/lib/themes';
 const SPLIT_HERO = path.resolve(process.cwd(), 'src/components/hero/variants/SplitHero.tsx');
 const TOP_BAR = path.resolve(
   process.cwd(),
-  'src/components/layout/variants/headers/TopBarHeader.tsx',
+  'src/components/layout/variants/headers/TopBarHeader.tsx'
 );
 const GLOBALS = path.resolve(process.cwd(), 'src/app/globals.css');
 
@@ -22,7 +22,7 @@ function read(p: string): string {
 }
 
 function oceanBlock(css: string): string {
-  const start = css.indexOf('[data-theme="ocean"]');
+  const start = css.search(/\[data-theme=["']ocean["']\]/);
   expect(start, 'globals.css must have [data-theme="ocean"] block').toBeGreaterThanOrEqual(0);
   const end = css.indexOf('}', css.indexOf('--spacing-card', start));
   return css.slice(start, end + 1);
@@ -90,7 +90,7 @@ describe('T-OCEAN: SplitHero ocean-tide airy editorial', () => {
     const src = read(SPLIT_HERO);
     expect(src, 'SplitHero must use font-heading (Fraunces)').toContain('font-heading');
     expect(src, 'SplitHero must use wide tracking for editorial eyebrow/heading').toMatch(
-      /tracking-\[0\.1[89]em\]|tracking-\[0\.2\d?em\]|tracking-wide|tracking-widest/,
+      /tracking-\[0\.1[89]em\]|tracking-\[0\.2\d?em\]|tracking-wide|tracking-widest/
     );
     // Wide editorial scale: must reach 5xl at some breakpoint, not stop at 4xl.
     expect(src, 'SplitHero heading must hit wide editorial scale (text-5xl)').toMatch(/text-5xl/);
@@ -101,7 +101,7 @@ describe('T-OCEAN: TopBarHeader ocean-wave airy editorial', () => {
   it('teal block + coral CTA + radius-lg var', () => {
     const src = read(TOP_BAR);
     expect(src, 'TopBarHeader must render teal block (bg-brand-strong)').toContain(
-      'bg-brand-strong',
+      'bg-brand-strong'
     );
     expect(src, 'TopBarHeader CTA must be coral (bg-accent)').toContain('bg-accent');
     expect(src, 'TopBarHeader must use radius-lg var').toContain('rounded-[var(--radius-lg)]');
@@ -111,7 +111,7 @@ describe('T-OCEAN: TopBarHeader ocean-wave airy editorial', () => {
     const src = read(TOP_BAR);
     expect(src, 'TopBarHeader must use font-heading (Fraunces)').toContain('font-heading');
     expect(src, 'TopBarHeader must use editorial tracking').toMatch(
-      /tracking-|tracking-wide|tracking-tight/,
+      /tracking-|tracking-wide|tracking-tight/
     );
   });
 });

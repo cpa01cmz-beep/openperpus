@@ -34,7 +34,7 @@
   --brand-soft: #ecfdf5;
   --brand-strong: #065f46;
   --accent: #f59e0b;
-  --accent-soft: #fffbeb;
+  --accent-soft: #fef3c7;
   --surface: #ffffff;
   --ink: #0f172a;
   --heading: #065f46;
@@ -52,11 +52,11 @@
 }
 
 [data-theme='midnight'] {
-  --brand: #1e3a5f;
-  --brand-soft: #2a4365;
-  --brand-strong: #060d1a;
+  --brand: #6ba3d6;
+  --brand-soft: #3d5a80;
+  --brand-strong: #98c4e8;
   --accent: #d4af37;
-  --accent-soft: #2a2415;
+  --accent-soft: #3d3518;
   --surface: #0b1220;
   --ink: #e9eef6;
   --heading: #e9eef6;
@@ -161,8 +161,9 @@
   --spacing-card: 1.75rem;
 }
 
-/* Sketch notebook texture: faint ruled lines + paper grain on cream surface. */
-[data-theme='sketch'] body {
+/* Sketch notebook texture: faint ruled lines + paper grain on cream surface.
+   Single layer via .ornament-ruled-paper on <html> (root); body inherits texture. */
+.ornament-ruled-paper {
   background-image: repeating-linear-gradient(
     to bottom,
     transparent 0,
@@ -171,8 +172,8 @@
     rgb(42 38 32 / 0.055) 28px
   );
 }
-[data-theme='sketch'] ::selection {
-  background: #fde8d7;
+.ornament-ruled-paper ::selection {
+  background: var(--accent-soft);
 }
 
 html {

@@ -178,7 +178,11 @@ Browser → middleware.ts (refresh session + role gate staff) → admin/layout.t
 
 ## 8. Tema Premium Elegant, Mobile-First
 
-- Token warna via CSS variables yang diisi dari `settings.theme` JSON (`{primary:'#1B4332', accent:'#C9A227', font:'Playfair Display+Inter'}`) — Tailwind `primary`/`accent` map ke `var()`. Default fallback bila settings kosong.
+- Registry `src/lib/themes.ts`: 6 preset `THEMES` (`emerald`, `midnight`, `paper`, `brutalist`, `ocean`, `sketch`). Tiap `ThemeDef` = `tokens` (8 hex: `brand`, `brand-soft`, `brand-strong`, `accent`, `accent-soft`, `surface`, `ink`, `heading`) + `fonts` + `radius` + `shadow` + `spacing` + `layout` (`headerVariant`/`heroVariant`/`footerVariant`/`homepageSections`) + `ornament` (`none`|`ruled-paper`) + `version: 1`. Default/fallback `emerald` via `getTheme()`; `DEFAULT_THEME='emerald'`.
+- Famili `src/lib/theme-compat.ts` (`THEME_FAMILIES`): `formal` (emerald/ocean/midnight/paper), `hard` (brutalist), `hand` (sketch). Matriks `ALLOWED_LAYOUT` membatasi variant header/hero/footer yang kompatibel per famili; `isCompatible()` fail-closed, `fallbackVariant()` kembali ke variant bawaan tema. Famili tak dikenal → `formal`.
+- Fase 1 — tema dikunci, hanya layout: `tokens`/`fonts`/`radius`/`shadow`/`spacing` ditolak API dengan 422. Override valid hanya `{layout:{headerVariant?,heroVariant?,footerVariant?,homepageSections?}}` (maks 7 section, `order` int 0–50, ≤8000 char) — validasi strict di `src/lib/theme-overrides.ts` (`ThemeOverridesLayoutSchema`), sanitasi lenient di jalur render (`sanitizeLayoutOverrides`).
+- Render: `getEffectiveTheme(baseId, rawOverrides)` / `getEffectiveThemeFromSettings(settings)` = clone base + terapkan override layout yang kompatibel (inkompatibel → fallback bawaan; tak pernah mutasi `THEMES`; `NULL` → clone base). `layout.tsx` (`app/` + `app/(public)/`) menambahkan class `ornament-ruled-paper` bila `effective.ornament==='ruled-paper'` (saat ini hanya `sketch`).
+- Invalidasi tema: `PUT /api/settings/theme` (admin-only) → `revalidateTag('settings','max')` + `revalidatePath('/')` agar tema baru langsung ter-render.
 - Layout: navbar sticky blur + drawer mobile; hero slider 16:9 → kartu buku grid 2 kolom (mobile) → 5 kolom (desktop); footer kaya (alamat, jam operasional JSON dirender, sosmed JSON icons).
 - Aksesibilitas: kontras ≥4.5, focus ring, alt cover = judul buku. Lighthouse target ≥90 mobile.
 

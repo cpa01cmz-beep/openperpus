@@ -15,7 +15,7 @@ import {
 import './globals.css';
 import { getSiteUrl } from '@/lib/site';
 import { getLibrarySettings } from '@/lib/settings';
-import { getTheme } from '@/lib/themes';
+import { getEffectiveThemeFromSettings } from '@/lib/theme-overrides';
 
 /* A11Y-CONTRAST-AUDIT (note only — design tokens untouched):
  * midnight (ink #E9EEF6 on surface #0B1220 ≈ 15.2:1) and ocean
@@ -157,13 +157,13 @@ export const metadata: Metadata = {
 
 export async function generateViewport(): Promise<Viewport> {
   const settings = await getLibrarySettings();
-  const theme = getTheme(settings.active_theme ?? 'emerald');
-  return { themeColor: theme.tokens.brand, width: 'device-width', initialScale: 1 };
+  const effective = getEffectiveThemeFromSettings(settings);
+  return { themeColor: effective.tokens.brand, width: 'device-width', initialScale: 1 };
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const settings = await getLibrarySettings();
-  const theme = getTheme(settings.active_theme ?? 'emerald');
+  const theme = getEffectiveThemeFromSettings(settings);
   const t = theme.tokens;
   const themeStyle = {
     '--brand': t.brand,
@@ -192,7 +192,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       lang="id"
       data-theme={theme.id}
       style={themeStyle}
-      className={fontVariablesForTheme(theme.id)}
+      className={
+        fontVariablesForTheme(theme.id) +
+        (theme.ornament === 'ruled-paper' ? ' ornament-ruled-paper' : '')
+      }
     >
       <head>
         {remote ? (

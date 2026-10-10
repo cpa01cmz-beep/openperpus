@@ -97,6 +97,18 @@ export async function PUT(req: Request) {
   }
 
   const payload = normalizeSettings(body as Record<string, unknown>);
+  // Fase 1 (layout-only): tema dikunci di endpoint umum — ADDITIVE guard,
+  // perilaku field non-tema tidak berubah.
+  {
+    const rawBody = body as Record<string, unknown>;
+    if ('active_theme' in rawBody || 'theme_overrides' in rawBody) {
+      return jsonError(
+        'HINT_USE_THEME_ENDPOINT',
+        'Pengaturan tema terkunci di endpoint ini — gunakan PUT /api/settings/theme.',
+        422
+      );
+    }
+  }
   if (typeof payload.name === 'string' && payload.name.trim().length < 3) {
     return jsonError('VALIDATION', 'Nama perpustakaan minimal 3 karakter.', 422);
   }

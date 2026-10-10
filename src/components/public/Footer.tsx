@@ -1,4 +1,4 @@
-import { getTheme } from '@/lib/themes';
+import { getEffectiveTheme } from '@/lib/theme-overrides';
 import { resolveFooterVariant } from '@/components/layout/variants/registry';
 import type { LibrarySettings, NavItem } from '@/lib/types';
 
@@ -14,7 +14,10 @@ export default function Footer({
   /** Menu CMS dari tabel menus (fetchFooterMenus). Fallback ke FOOTER_LINKS di varian. */
   menus?: NavItem[];
 }) {
-  const theme = getTheme(themeId ?? settings.active_theme ?? 'emerald');
+  const theme = getEffectiveTheme(
+    themeId ?? settings.active_theme ?? 'emerald',
+    (settings as { theme_overrides?: unknown })?.theme_overrides ?? null
+  );
   const Foot = resolveFooterVariant(theme.layout.footerVariant);
   return <Foot settings={settings} menus={menus} />;
 }

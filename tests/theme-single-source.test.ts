@@ -73,7 +73,7 @@ describe('T-SS-DEDUPE :root does not duplicate emerald', () => {
   };
 
   const themeBlock = (css: string, id: string) => {
-    const m = css.match(new RegExp(`\\[data-theme="${id}"\\]\\s*\\{([\\s\\S]*?)\\}`));
+    const m = css.match(new RegExp(`\\[data-theme=["']${id}["']\\]\\s*\\{([\\s\\S]*?)\\}`));
     return m ? m[1]! : '';
   };
 
