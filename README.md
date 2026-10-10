@@ -155,8 +155,9 @@ SET role = 'admin'
 WHERE id = (SELECT id FROM auth.users WHERE email = 'email-kamu@contoh.com');
 ALTER TABLE public.profiles ENABLE TRIGGER trg_strip_profiles_role;
 COMMIT;
--- verifikasi: trg_strip_profiles_role harus 'O' (enabled)
-SELECT tgname, tgenabled FROM pg_trigger WHERE tgrelid = 'public.profiles'::regclass;
+-- verifikasi: trg_strip_profiles_role harus 'O' (enabled) + role sudah admin
+SELECT tgname, tgenabled FROM pg_trigger WHERE tgrelid = 'public.profiles'::regclass AND tgname = 'trg_strip_profiles_role';
+SELECT role FROM public.profiles WHERE id = (SELECT id FROM auth.users WHERE email = 'email-kamu@contoh.com');
 ```
 
    > Pastikan email sudah terdaftar (selesaikan langkah 1 dulu) — email yang tidak
