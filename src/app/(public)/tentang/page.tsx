@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { BookOpenText, Eye, ListChecks, MapPin } from 'lucide-react';
 import { fetchPage, fetchSettings } from '@/lib/books';
+import { getOgImage, getSiteName } from '@/lib/settings';
 import { getSiteUrl } from '@/lib/site';
 import Breadcrumb from '@/components/public/Breadcrumb';
 
@@ -8,10 +9,11 @@ export const revalidate = 60;
 
 export async function generateMetadata(): Promise<Metadata> {
   const s = await fetchSettings();
-  const siteName = s.name ?? 'Perpustakaan';
+  const siteName = getSiteName(s);
   const title = `Tentang — ${siteName}`;
   const description = s.seo_desc ?? `Profil, visi, dan misi ${siteName}.`;
   const canonical = `${getSiteUrl()}/tentang`;
+  const ogImage = getOgImage(s);
   return {
     title,
     description,
@@ -23,13 +25,13 @@ export async function generateMetadata(): Promise<Metadata> {
       locale: 'id_ID',
       url: canonical,
       siteName,
-      images: [{ url: '/og-default.jpg', width: 1200, height: 630, alt: title }],
+      images: [{ url: ogImage, width: 1200, height: 630, alt: title }],
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
-      images: ['/og-default.jpg'],
+      images: [ogImage],
     },
   };
 }
@@ -37,7 +39,7 @@ export async function generateMetadata(): Promise<Metadata> {
 /** Tentang: gabungan tabel pages (slug 'tentang') + library_settings (visi/misi/about). */
 export default async function TentangPage() {
   const [settings, page] = await Promise.all([fetchSettings(), fetchPage('tentang')]);
-  const siteName = settings.name ?? 'Perpustakaan Digital';
+  const siteName = getSiteName(settings);
 
   const missionItems = (settings.mission ?? '')
     .split(/\r?\n/)

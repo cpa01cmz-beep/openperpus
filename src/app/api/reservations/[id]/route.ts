@@ -104,7 +104,8 @@ async function updateById(req: Request, id: string) {
       st === 'cancelled' ||
       st === 'expired' ||
       (from === 'pending' && st === 'ready') ||
-      (from === 'ready' && st === 'completed');
+      (from === 'ready' && st === 'completed') ||
+      (from === 'pending' && st === 'completed');
     if (!allowed) {
       return jsonError('VALIDATION', `Transisi status ${from}->${st} tidak diizinkan.`, 422);
     }

@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
+import { errMsg } from '@/lib/admin-errors';
 
 /** Kolom canonical migrasi 0001 (library_settings). */
 export type SettingsRow = {
@@ -37,12 +38,6 @@ function parseMaybeJSON(s: string): unknown {
   } catch {
     return t;
   }
-}
-
-function errMsg(json: unknown): string {
-  const err = (json as { error?: { message?: string } | string } | null | undefined)?.error;
-  if (!err) return 'Gagal menyimpan.';
-  return typeof err === 'string' ? err : (err.message ?? 'Gagal menyimpan.');
 }
 
 export default function SettingsForm({ initial }: { initial: SettingsRow }) {
@@ -112,7 +107,7 @@ export default function SettingsForm({ initial }: { initial: SettingsRow }) {
         body: JSON.stringify(payload),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(errMsg(json));
+      if (!res.ok) throw new Error(errMsg(json, 'Gagal menyimpan.'));
       setMsg('Pengaturan berhasil disimpan.');
     } catch (e) {
       setErr((e as Error).message);

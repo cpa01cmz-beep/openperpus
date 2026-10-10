@@ -26,6 +26,14 @@ export type LibrarySettings = {
   seo_desc: string | null;
   announcement: string | null;
   active_theme: string;
+  fine_per_day: number | null;
+};
+
+/** Satu item navigasi publik — diisi dari tabel menus, fallback ke LINKS. */
+export type NavItem = {
+  href: string;
+  label: string;
+  target?: '_self' | '_blank';
 };
 
 export type OperationalHour = {
@@ -134,6 +142,8 @@ export type PageDoc = {
   title: string;
   content_md: string | null;
   excerpt: string | null;
+  show_in_menu: boolean | null;
+  is_active: boolean | null;
   updated_at?: string | null;
 };
 
@@ -146,17 +156,14 @@ export type FetchBooksOpts = {
 
 export const FALLBACK_SETTINGS: LibrarySettings = {
   id: 1,
-  name: 'Perpustakaan Digital',
-  tagline: 'Membaca, Meminjam, Tumbuh Bersama',
+  name: null,
+  tagline: null,
   logo_url: null,
   favicon_url: null,
-  address: 'Alamat perpustakaan akan tampil di sini setelah diisi admin.',
+  address: null,
   phone: null,
   email: null,
-  operational_hours: [
-    { day: 'Senin – Jumat', open: '08:00', close: '16:00' },
-    { day: 'Sabtu', open: '09:00', close: '12:00' },
-  ],
+  operational_hours: [],
   socials: {},
   welcome_text: null,
   vision: null,
@@ -166,6 +173,7 @@ export const FALLBACK_SETTINGS: LibrarySettings = {
   seo_desc: null,
   announcement: null,
   active_theme: 'emerald',
+  fine_per_day: null,
 };
 
 /* ---------- formatter domain buku: kanonis di domain-format.ts (murni, tanpa I/O).

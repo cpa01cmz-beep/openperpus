@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft, Calendar, Eye } from 'lucide-react';
 import { fetchArticleBySlug, fetchArticles, fetchSettings } from '@/lib/books';
+import { getOgImage, getSiteName } from '@/lib/settings';
 import { coverSrc } from '@/lib/cover';
 import { getSiteUrl } from '@/lib/site';
 import Breadcrumb from '@/components/public/Breadcrumb';
@@ -16,11 +17,11 @@ export async function generateMetadata({ params }: Props) {
   const a = await fetchArticleBySlug(slug);
   if (!a) return { title: 'Berita tidak ditemukan' };
   const s = await fetchSettings();
-  const siteName = s.name ?? 'Perpustakaan';
+  const siteName = getSiteName(s);
   const title = `${a.title} — ${siteName}`;
   const description = a.excerpt ?? a.title;
   const url = `${getSiteUrl()}/berita/${slug}`;
-  const image = coverSrc(a.cover_url, 640) ?? a.cover_url ?? '/og-default.jpg';
+  const image = coverSrc(a.cover_url, 640) ?? a.cover_url ?? getOgImage(s);
   return {
     title,
     description,
@@ -48,7 +49,7 @@ export default async function BeritaDetailPage({ params }: Props) {
   const cover = coverSrc(article.cover_url, 960) ?? article.cover_url;
   const settings = await fetchSettings();
   const siteUrl = getSiteUrl();
-  const orgName = settings.name ?? 'Perpustakaan';
+  const orgName = getSiteName(settings);
 
   const jsonLd = {
     '@context': 'https://schema.org',

@@ -2,14 +2,16 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { BookOpenText } from 'lucide-react';
 import type { FooterVariantProps } from '../types';
+import type { NavItem } from '@/lib/types';
 import { FOOTER_LINKS } from '../shared';
 
 /**
  * MinimalFooter — single centered column: brand, tagline, inline links, copyright.
  * Structural variant for paper-colophon / midnight slim. Same var tokens.
  */
-export default function MinimalFooter({ settings }: FooterVariantProps) {
+export default function MinimalFooter({ settings, menus }: FooterVariantProps) {
   const name = settings.name ?? 'Perpustakaan Digital';
+  const footerLinks: NavItem[] = menus && menus.length > 0 ? menus : FOOTER_LINKS;
 
   return (
     <footer
@@ -45,10 +47,12 @@ export default function MinimalFooter({ settings }: FooterVariantProps) {
         ) : null}
         <nav aria-label="Tautan cepat">
           <ul className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-sm">
-            {FOOTER_LINKS.map((l) => (
+            {footerLinks.map((l) => (
               <li key={l.href}>
                 <Link
                   href={l.href}
+                  target={l.target === '_blank' ? '_blank' : undefined}
+                  rel={l.target === '_blank' ? 'noreferrer noopener' : undefined}
                   className="rounded text-[var(--ink)] opacity-70 transition hover:opacity-100 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
                   {l.label}

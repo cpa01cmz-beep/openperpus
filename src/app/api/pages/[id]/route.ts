@@ -10,7 +10,27 @@ type Ctx = { params: Promise<{ id: string }> };
  * GET /api/pages/[id] — publik bila is_active (staf boleh semua).
  * PUT /api/pages/[id] — pustakawan+
  * DELETE /api/pages/[id] — admin
+ * Slug reserved (RESERVED_SLUGS) ditolak 422 agar tak menabrak rute sistem.
  */
+
+export const RESERVED_SLUGS = [
+  'tentang',
+  'layanan',
+  'kontak',
+  'faq',
+  'berita',
+  'katalog',
+  'buku',
+  'halaman',
+  'denda',
+  'reservasi-saya',
+  'login',
+  'daftar',
+  'admin',
+  'api',
+] as const;
+
+const STATIC_REVALIDATE_SLUGS = ['tentang', 'layanan', 'kontak', 'faq'] as const;
 
 function parseActive(v: unknown, def = true): boolean {
   if (v === undefined || v === null || v === '') return def;
@@ -64,6 +84,14 @@ function revalidatePages(slug?: string | null): string[] {
       done.push(`/halaman/${slug}`);
     } catch {
       /* abaikan */
+    }
+    if ((STATIC_REVALIDATE_SLUGS as readonly string[]).includes(slug)) {
+      try {
+        revalidatePath(`/${slug}`);
+        done.push(`/${slug}`);
+      } catch {
+        /* abaikan */
+      }
     }
   }
   return done;
@@ -139,6 +167,16 @@ export async function PUT(req: Request, { params }: Ctx) {
   }
   if (Object.keys(payload).length === 0)
     return jsonError('VALIDATION', 'Tidak ada field yang diupdate.', 422);
+  if (
+    payload.slug !== undefined &&
+    (RESERVED_SLUGS as readonly string[]).includes(String(payload.slug))
+  ) {
+    return jsonError(
+      'VALIDATION',
+      `Slug "${String(payload.slug)}" dipakai rute sistem, pilih slug lain.`,
+      422
+    );
+  }
 
   const { data, error } = await supabase
     .from('pages')

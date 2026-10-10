@@ -10,7 +10,13 @@ import { apiList, onAdd, onToggle, onDelete } from '@/lib/konten-api';
 
 type Tab = 'pages' | 'faqs' | 'testimonials';
 
-type PageItem = { id: string; slug: string; title: string; is_active: boolean };
+type PageItem = {
+  id: string;
+  slug: string;
+  title: string;
+  is_active: boolean;
+  show_in_menu?: boolean;
+};
 type Faq = {
   id: string;
   question: string;
@@ -71,7 +77,7 @@ export default function KontenPage() {
     (kind: Tab, body: Record<string, unknown>) =>
       onAdd(kind, body, {
         onMissing: (k) => setMissing((m) => ({ ...m, [k]: true })),
-        onError: (m) => alert(m),
+        onError: (m) => setError(m),
         onSuccess: load,
       }),
     [load]
@@ -81,7 +87,7 @@ export default function KontenPage() {
     (kind: Tab, id: string, is_active: boolean) =>
       onToggle(kind, id, is_active, {
         onMissing: (k) => setMissing((m) => ({ ...m, [k]: true })),
-        onError: (m) => alert(m),
+        onError: (m) => setError(m),
         onSuccess: load,
       }),
     [load]
@@ -91,7 +97,7 @@ export default function KontenPage() {
     (kind: Tab, id: string) =>
       onDelete(kind, id, {
         onMissing: (k) => setMissing((m) => ({ ...m, [k]: true })),
-        onError: (m) => alert(m),
+        onError: (m) => setError(m),
         onSuccess: load,
       }),
     [load]

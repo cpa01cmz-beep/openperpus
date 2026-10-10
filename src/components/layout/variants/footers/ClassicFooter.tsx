@@ -2,17 +2,19 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { BookOpenText, Clock, Mail, MapPin, MessageCircle, Phone } from 'lucide-react';
 import type { FooterVariantProps } from '../types';
+import type { NavItem } from '@/lib/types';
 import { FOOTER_LINKS, SOCIAL_ICON, hourLabel } from '../shared';
 
 /**
  * ClassicFooter — emerald default. 4-column grid: identity, contact,
  * hours, quick links. 1:1 preserve of the original Footer markup.
  */
-export default function ClassicFooter({ settings }: FooterVariantProps) {
+export default function ClassicFooter({ settings, menus }: FooterVariantProps) {
   const name = settings.name ?? 'Perpustakaan Digital';
   const socials = settings.socials ?? {};
   const hours = Array.isArray(settings.operational_hours) ? settings.operational_hours : [];
   const socialEntries = Object.entries(socials).filter(([, v]) => !!v?.trim?.());
+  const footerLinks: NavItem[] = menus && menus.length > 0 ? menus : FOOTER_LINKS;
 
   return (
     <footer
@@ -133,10 +135,12 @@ export default function ClassicFooter({ settings }: FooterVariantProps) {
         <nav aria-label="Tautan cepat">
           <h2 className="text-sm font-bold uppercase tracking-wider text-accent">Jelajah</h2>
           <ul className="mt-3 space-y-2 text-sm">
-            {FOOTER_LINKS.map((l) => (
+            {footerLinks.map((l) => (
               <li key={l.href}>
                 <Link
                   href={l.href}
+                  target={l.target === '_blank' ? '_blank' : undefined}
+                  rel={l.target === '_blank' ? 'noreferrer noopener' : undefined}
                   className="rounded-[var(--radius-sm)] transition hover:text-[var(--surface)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   {l.label}

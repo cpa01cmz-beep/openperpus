@@ -149,7 +149,8 @@ describe('S-roi10 daftar anggota mandiri', () => {
 
   it('REGISTER-02 email duplikat -> 409 CONFLICT', async () => {
     const POST = await getPOST();
-    setRegisterMock({ existingProfile: { id: 'existing-id' } });
+    // profiles tidak punya kolom email — duplikat terdeteksi via signUp Supabase.
+    setRegisterMock({ signUpError: { message: 'already registered' } });
     const res = await POST(postReq('http://localhost/api/register', validBody));
     expect(res.status, 'RED: duplicate email must be 409').toBe(409);
     const j = (await res.json()) as { code?: string; error?: { code?: string } };

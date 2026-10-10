@@ -34,12 +34,21 @@ async function writeLog(
 
 export async function GET(req: Request) {
   const log = createLogger(requestIdFromHeaders(req.headers));
-  const guard = await requireStaff();
-  if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
-  const { supabase } = guard as { supabase: ReturnType<typeof createClient> };
-
   const { sp, page, perPage, q, from, to } = parsePaging(req.url, 10);
   const status = (sp.get('status') ?? '').trim();
+  const all = (sp.get('all') ?? '').trim();
+
+  // Publik bila ?status= kosong atau published; draft/archived atau ?all=1 butuh staf.
+  // RLS tetap jaring pengaman.
+  const needsStaff = all === '1' || (status !== '' && status !== 'published');
+  let supabase: ReturnType<typeof createClient>;
+  if (needsStaff) {
+    const guard = await requireStaff();
+    if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
+    supabase = (guard as { supabase: ReturnType<typeof createClient> }).supabase;
+  } else {
+    supabase = createClient();
+  }
 
   let query = supabase
     .from('articles')
@@ -54,6 +63,7 @@ export async function GET(req: Request) {
     if (clean) query = query.or(`title.ilike.%${clean}%,excerpt.ilike.%${clean}%`);
   }
   if (status) query = query.eq('status', status);
+  else query = query.eq('status', 'published');
 
   const { data, error, count } = await query;
   if (error) {

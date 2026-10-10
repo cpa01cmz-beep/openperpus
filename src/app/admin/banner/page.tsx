@@ -6,6 +6,7 @@ import DataTable from '@/components/admin/DataTable';
 import Pagination from '@/components/ui/Pagination';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import { errMsg } from '@/lib/admin-errors';
 
 type Banner = {
   id: string;
@@ -14,12 +15,6 @@ type Banner = {
   sort_order: number;
   is_active: boolean;
 };
-
-function errMsg(json: unknown): string {
-  const err = (json as { error?: { message?: string } | string } | null | undefined)?.error;
-  if (!err) return 'Gagal.';
-  return typeof err === 'string' ? err : (err.message ?? 'Gagal.');
-}
 
 export default function BannerPage() {
   const [rows, setRows] = useState<Banner[]>([]);

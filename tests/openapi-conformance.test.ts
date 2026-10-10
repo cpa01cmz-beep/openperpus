@@ -219,10 +219,12 @@ function usedErrorCodes(): Set<string> {
 }
 
 describe('openapi path/method parity', () => {
-  it('mirrors all 31 route modules in both directions', () => {
+  it('mirrors all 33 route modules in both directions', () => {
     const routePaths = new Set(ROUTE_FILES.map(specPathOf));
     const specPaths = new Set(Object.keys(SPEC.paths));
-    expect(ROUTE_FILES).toHaveLength(31);
+    // Wave2 menambah 2 modul route (/api/services + /api/services/{id});
+    // angka ini detektor perubahan, bukan kunci perilaku — ikut bertambah.
+    expect(ROUTE_FILES).toHaveLength(33);
     expect([...routePaths].filter((p) => !specPaths.has(p))).toEqual([]);
     expect([...specPaths].filter((p) => !routePaths.has(p))).toEqual([]);
   });

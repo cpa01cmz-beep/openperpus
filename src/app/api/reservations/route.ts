@@ -224,7 +224,8 @@ export async function PUT(req: Request) {
     if (!isStaff && st !== 'cancelled')
       return jsonError('FORBIDDEN', 'Anggota hanya boleh membatalkan reservasi.', 403);
     payload.status = st;
-    // State-machine gate: pending->ready, ready->completed, any->cancelled/expired.
+    // State-machine gate: pending->ready, ready->completed, pending->completed (1-klik staf),
+    // any->cancelled/expired.
     const from = c.status;
     const to = st as string;
     const allowed =
@@ -232,7 +233,8 @@ export async function PUT(req: Request) {
       to === 'cancelled' ||
       to === 'expired' ||
       (from === 'pending' && to === 'ready') ||
-      (from === 'ready' && to === 'completed');
+      (from === 'ready' && to === 'completed') ||
+      (from === 'pending' && to === 'completed');
     if (!allowed) {
       return jsonError('VALIDATION', `Transisi status ${from}->${to} tidak diizinkan.`, 422);
     }

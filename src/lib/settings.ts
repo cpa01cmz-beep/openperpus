@@ -1,6 +1,7 @@
 import { unstable_cache } from 'next/cache';
 import { createPublicClient as createClient } from '@/lib/supabase/public';
 import { cachedFetch } from '@/lib/fetch-cache';
+import { DEFAULT_THEME } from '@/lib/themes';
 import {
   FALLBACK_SETTINGS,
   normalizeOperationalHours,
@@ -52,6 +53,25 @@ export function getOperationalHours(settings: LibrarySettings): OperationalHour[
 /** Sosmed sebagai object aman (fallback {} bila null). */
 export function getSocials(settings: LibrarySettings): Record<string, string> {
   return settings.socials && typeof settings.socials === 'object' ? settings.socials : {};
+}
+
+/** Nama situs terpusat — satu fallback, jangan sebar ?? 'Perpustakaan...' di UI. */
+export function getSiteName(settings: LibrarySettings | null | undefined): string {
+  return settings?.name?.trim() || 'Perpustakaan';
+}
+
+/** OG image terpusat — logo bila ada, fallback '/og-default.jpg'. */
+export function getOgImage(settings: LibrarySettings | null | undefined): string {
+  return settings?.logo_url?.trim() || '/og-default.jpg';
+}
+
+/** Theme id terpusat — validasi terhadap registry, fallback DEFAULT_THEME. */
+export function getThemeId(
+  settings: LibrarySettings | null | undefined,
+  override?: string | null
+): string {
+  const id = (override ?? settings?.active_theme ?? '').trim();
+  return id || DEFAULT_THEME;
 }
 
 export function formatOperationalHour(h: OperationalHour): string {

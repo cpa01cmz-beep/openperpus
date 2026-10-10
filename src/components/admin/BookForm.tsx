@@ -5,6 +5,7 @@ import { useState } from 'react';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import UploadInput from './UploadInput';
+import { errMsg } from '@/lib/admin-errors';
 
 /** Option lists for dropdowns (fetched server-side in tambah/edit pages). */
 export type CategoryOption = { id: string; name: string };
@@ -30,12 +31,6 @@ export type BookInitial = {
   featured?: boolean;
   is_active?: boolean;
 };
-
-function errMsg(json: unknown): string {
-  const err = (json as { error?: { message?: string } | string } | null | undefined)?.error;
-  if (!err) return 'Gagal menyimpan buku.';
-  return typeof err === 'string' ? err : (err.message ?? 'Gagal menyimpan buku.');
-}
 
 export default function BookForm({
   initial,
@@ -107,7 +102,7 @@ export default function BookForm({
         body: JSON.stringify(payload),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(errMsg(json));
+      if (!res.ok) throw new Error(errMsg(json, 'Gagal menyimpan buku.'));
       router.push('/admin/buku');
       router.refresh();
     } catch (e) {

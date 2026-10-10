@@ -13,7 +13,27 @@ import { createLogger, requestIdFromHeaders } from '@/lib/logger';
  * DELETE /api/pages?id= — admin
  * Kolom migrasi 0001 (+0004 show_in_menu): slug UNIQUE, title, content_md, excerpt,
  * seo_title, seo_desc, is_active, show_in_menu.
+ * Slug reserved (RESERVED_SLUGS) ditolak 422 agar tak menabrak rute sistem.
  */
+
+export const RESERVED_SLUGS = [
+  'tentang',
+  'layanan',
+  'kontak',
+  'faq',
+  'berita',
+  'katalog',
+  'buku',
+  'halaman',
+  'denda',
+  'reservasi-saya',
+  'login',
+  'daftar',
+  'admin',
+  'api',
+] as const;
+
+const STATIC_REVALIDATE_SLUGS = ['tentang', 'layanan', 'kontak', 'faq'] as const;
 
 function parseActive(v: unknown, def = true): boolean {
   if (v === undefined || v === null || v === '') return def;
@@ -67,6 +87,14 @@ function revalidatePages(slug?: string | null): string[] {
       done.push(`/halaman/${slug}`);
     } catch {
       /* abaikan */
+    }
+    if ((STATIC_REVALIDATE_SLUGS as readonly string[]).includes(slug)) {
+      try {
+        revalidatePath(`/${slug}`);
+        done.push(`/${slug}`);
+      } catch {
+        /* abaikan */
+      }
     }
   }
   return done;
@@ -154,6 +182,9 @@ export async function POST(req: Request) {
   const slug =
     typeof body.slug === 'string' && body.slug.trim() ? slugify(body.slug) : slugify(title);
   if (!slug) return jsonError('VALIDATION', 'slug tidak valid.', 422);
+  if ((RESERVED_SLUGS as readonly string[]).includes(slug)) {
+    return jsonError('VALIDATION', `Slug "${slug}" dipakai rute sistem, pilih slug lain.`, 422);
+  }
 
   const showRaw = body.show_in_menu ?? body.tampil_di_menu;
 
@@ -243,6 +274,16 @@ export async function PUT(req: Request) {
   }
   if (Object.keys(payload).length === 0)
     return jsonError('VALIDATION', 'Tidak ada field yang diupdate.', 422);
+  if (
+    payload.slug !== undefined &&
+    (RESERVED_SLUGS as readonly string[]).includes(String(payload.slug))
+  ) {
+    return jsonError(
+      'VALIDATION',
+      `Slug "${String(payload.slug)}" dipakai rute sistem, pilih slug lain.`,
+      422
+    );
+  }
 
   const { data, error } = await supabase
     .from('pages')

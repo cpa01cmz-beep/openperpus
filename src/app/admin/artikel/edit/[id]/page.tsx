@@ -3,15 +3,10 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { errMsg } from '@/lib/admin-errors';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
-
-function errMsg(json: unknown): string {
-  const err = (json as { error?: { message?: string } | string } | null | undefined)?.error;
-  if (!err) return 'Gagal menyimpan artikel.';
-  return typeof err === 'string' ? err : (err.message ?? 'Gagal menyimpan artikel.');
-}
 
 export default function EditArtikelPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -69,7 +64,7 @@ export default function EditArtikelPage({ params }: { params: { id: string } }) 
         body: JSON.stringify(form),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(errMsg(json));
+      if (!res.ok) throw new Error(errMsg(json, 'Gagal menyimpan artikel.'));
       router.push('/admin/artikel');
       router.refresh();
     } catch (e) {

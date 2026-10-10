@@ -3,12 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { THEMES, getTheme, themes } from '@/lib/themes';
-
-function errMsg(json: unknown): string {
-  const err = (json as { error?: { message?: string } | string } | null | undefined)?.error;
-  if (!err) return 'Gagal menyimpan tema.';
-  return typeof err === 'string' ? err : (err.message ?? 'Gagal menyimpan tema.');
-}
+import { errMsg } from '@/lib/admin-errors';
 
 export default function ThemeSwitcher({ current }: { current: string }) {
   const router = useRouter();
@@ -33,7 +28,7 @@ export default function ThemeSwitcher({ current }: { current: string }) {
         body: JSON.stringify({ active_theme: id }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(errMsg(json));
+      if (!res.ok) throw new Error(errMsg(json, 'Gagal menyimpan tema.'));
       setActive(id);
       setMsg(`Tema "${getTheme(id).name}" aktif.`);
       router.refresh();

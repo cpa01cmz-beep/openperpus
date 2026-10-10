@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { HeaderVariantProps } from '../types';
+import type { NavItem } from '@/lib/types';
 import { LINKS, LogoMark } from '../shared';
 import NavLink from './NavLink';
 import { resolveLogoSrc } from '../types';
@@ -16,6 +17,7 @@ export default function SketchHeader({
   settings,
   logo_url,
   logoUrl,
+  menus,
 }: HeaderVariantProps) {
   const logoSrc = resolveLogoSrc({ logo_url, logoUrl }) ?? settings?.logo_url ?? null;
   const name = siteName || settings?.name || 'Perpustakaan Digital';
@@ -52,11 +54,12 @@ export default function SketchHeader({
 
         {/* desktop */}
         <ul className="hidden items-center gap-1 md:flex">
-          {LINKS.map((l) => (
+          {(menus && menus.length > 0 ? menus : LINKS).map((l) => (
             <li key={l.href} className="odd:-rotate-1 even:rotate-1">
               <NavLink
                 href={l.href}
                 label={l.label}
+                target={(l as NavItem).target}
                 className="rounded-[var(--radius-md)] border border-transparent px-3 py-2 font-heading text-lg font-semibold text-[var(--ink)] transition hover:-rotate-1 hover:border-[var(--ink)]/30 hover:bg-brand-soft hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 activeClassName="border-[var(--ink)]/30 bg-brand-soft text-brand"
               />
@@ -85,11 +88,12 @@ export default function SketchHeader({
         className="hidden border-t-2 border-dashed border-[var(--ink)]/20 bg-[var(--surface)] md:hidden"
       >
         <ul className="mx-auto w-full max-w-[var(--container)] space-y-1 px-4 py-3 sm:px-6">
-          {LINKS.map((l, i) => (
+          {(menus && menus.length > 0 ? menus : LINKS).map((l, i) => (
             <li key={l.href} className={i % 2 === 0 ? '-rotate-[0.5deg]' : 'rotate-[0.5deg]'}>
               <NavLink
                 href={l.href}
                 label={l.label}
+                target={(l as NavItem).target}
                 className="block rounded-[var(--radius-md)] border border-[var(--ink)]/15 bg-[var(--surface)] px-3 py-2.5 font-heading text-lg text-[var(--ink)] shadow-[var(--shadow-sm)] transition hover:bg-brand-soft hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 activeClassName="bg-brand-soft text-brand"
               />

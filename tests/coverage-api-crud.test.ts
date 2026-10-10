@@ -619,8 +619,11 @@ describe('/api/articles', () => {
     setTable('articles', { list: { data: [{ id: 'a1', title: 'Berita' }], count: 1 } });
     expect((await ART_GET(req('/api/articles'))).status).toBe(200);
     expect((await ART_GET(req('/api/articles?q=berita&status=published'))).status).toBe(200);
+    // Publik: daftar published tanpa login (RLS menegakkan status=published).
     setAuthUser(null);
-    expect((await ART_GET(req('/api/articles'))).status).toBe(401);
+    expect((await ART_GET(req('/api/articles'))).status).toBe(200);
+    // Varian staf (draft) tetap butuh login.
+    expect((await ART_GET(req('/api/articles?status=draft'))).status).toBe(401);
     setAuthUser({ id: 'user-1' });
     setTable('articles', { list: { data: null, error: { message: 'x' } } });
     expect((await ART_GET(req('/api/articles'))).status).toBe(500);
@@ -1017,8 +1020,10 @@ describe('/api/register', () => {
     ).toBe(422);
   });
 
-  it('duplicate profile -> 409', async () => {
-    setTable('profiles', { single: { data: { id: 'existing' } } });
+  it('duplicate email via signup -> 409', async () => {
+    // profiles tidak punya kolom email (0001_core.sql) — duplikat terdeteksi
+    // via signUp Supabase, bukan via cek profiles.email.
+    setSignUpResult({ data: { user: null }, error: { message: 'already registered' } });
     const res = await REG_POST(
       jsonReq('POST', '/api/register', { nama: 'Budi', email: 'budi@mail.id', password: 'secret1' })
     );

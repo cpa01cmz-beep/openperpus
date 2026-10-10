@@ -6,6 +6,7 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Pagination from '@/components/ui/Pagination';
 import { sanitizeIlike } from '@/lib/search';
+import { errMsg } from '@/lib/admin-errors';
 
 type Member = {
   id: string;
@@ -18,12 +19,6 @@ type Member = {
 };
 
 type PickOption = { user_id: string; label: string; sub: string };
-
-function errMsg(json: unknown): string {
-  const err = (json as { error?: { message?: string } | string } | null | undefined)?.error;
-  if (!err) return 'Gagal.';
-  return typeof err === 'string' ? err : (err.message ?? 'Gagal.');
-}
 
 export default function AnggotaPage() {
   const [rows, setRows] = useState<Member[]>([]);

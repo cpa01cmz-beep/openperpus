@@ -3,17 +3,14 @@
  * Diekstrak verbatim dari page.tsx (behavior-preserving).
  * Mengembalikan true bila sukses, false bila gagal/dibatalkan.
  */
+import { errMsg } from '@/lib/admin-errors';
 
 export type KontenTab = 'pages' | 'faqs' | 'testimonials';
 
+export { errMsg };
+
 type ApiListResult<T> =
   { missing: true; rows: T[]; totalPages: 1 } | { missing: false; rows: T[]; totalPages: number };
-
-export function errMsg(json: unknown): string {
-  const err = (json as { error?: { message?: string } | string } | null | undefined)?.error;
-  if (!err) return 'Gagal.';
-  return typeof err === 'string' ? err : (err.message ?? 'Gagal.');
-}
 
 export async function apiList<T>(path: string, page = 1): Promise<ApiListResult<T>> {
   const q = new URLSearchParams({ page: String(page), per_page: '10' });

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import CatalogExplorer from '@/components/public/CatalogExplorer';
 import { fetchBooksPaged, fetchCategories, fetchSettings } from '@/lib/books';
+import { getOgImage, getSiteName } from '@/lib/settings';
 import { getSiteUrl } from '@/lib/site';
 import Breadcrumb from '@/components/public/Breadcrumb';
 
@@ -14,10 +15,12 @@ export async function generateMetadata({
   const s = await fetchSettings();
   const sp = (await searchParams) ?? {};
   const siteUrl = getSiteUrl();
-  const title = `Katalog Buku — ${s.name ?? 'Perpustakaan'}`;
-  const description = `Telusuri koleksi ${s.name ?? 'perpustakaan'} berdasarkan judul, penulis, kategori, dan ketersediaan.`;
+  const siteName = getSiteName(s);
+  const title = `Katalog Buku — ${siteName}`;
+  const description = `Telusuri koleksi ${siteName} berdasarkan judul, penulis, kategori, dan ketersediaan.`;
   const canonical = `${siteUrl}/katalog`;
   const hasParams = Boolean(sp.q || sp.page || sp.sort || sp.kategori || sp.tersedia);
+  const ogImage = getOgImage(s);
   return {
     title,
     description,
@@ -29,10 +32,10 @@ export async function generateMetadata({
       type: 'website',
       locale: 'id_ID',
       url: canonical,
-      siteName: s.name ?? 'Perpustakaan',
-      images: [{ url: '/og-default.jpg', width: 1200, height: 630, alt: title }],
+      siteName,
+      images: [{ url: ogImage, width: 1200, height: 630, alt: title }],
     },
-    twitter: { card: 'summary_large_image', title, description, images: ['/og-default.jpg'] },
+    twitter: { card: 'summary_large_image', title, description, images: [ogImage] },
   };
 }
 
@@ -46,7 +49,11 @@ type SearchParams = {
 };
 
 /** Katalog: server-paginated via searchParams page/per_page (<=24 baris/halaman). */
-export default async function KatalogPage({ searchParams }: { searchParams?: Promise<SearchParams> }) {
+export default async function KatalogPage({
+  searchParams,
+}: {
+  searchParams?: Promise<SearchParams>;
+}) {
   const sp = (await searchParams) ?? {};
   const page = Math.max(1, Number(sp.page ?? 1) || 1);
   const perPage = Math.min(48, Math.max(1, Number(sp.per_page ?? 24) || 24));

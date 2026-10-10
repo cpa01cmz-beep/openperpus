@@ -9,6 +9,7 @@ import StatsBar from '@/components/public/StatsBar';
 import BookCard from '@/components/public/BookCard';
 import TestimonialCard from '@/components/public/TestimonialCard';
 import { getTheme } from '@/lib/themes';
+import { getOgImage, getSiteName } from '@/lib/settings';
 import {
   fetchArticles,
   fetchBanners,
@@ -28,10 +29,12 @@ export const revalidate = 60;
 
 export async function generateMetadata(): Promise<Metadata> {
   const s = await fetchSettings();
-  const title = s.seo_title ?? `${s.name ?? 'Perpustakaan Digital'} — Beranda`;
+  const siteName = getSiteName(s);
+  const title = s.seo_title ?? `${siteName} — Beranda`;
   const description =
     s.seo_desc ?? s.tagline ?? 'Jelajahi katalog, berita, dan layanan perpustakaan.';
   const siteUrl = getSiteUrl();
+  const ogImage = getOgImage(s);
   return {
     title,
     description,
@@ -42,10 +45,10 @@ export async function generateMetadata(): Promise<Metadata> {
       type: 'website',
       locale: 'id_ID',
       url: siteUrl,
-      siteName: s.name ?? 'Perpustakaan Digital',
-      images: [{ url: '/og-default.jpg', width: 1200, height: 630, alt: title }],
+      siteName,
+      images: [{ url: ogImage, width: 1200, height: 630, alt: title }],
     },
-    twitter: { card: 'summary_large_image', title, description, images: ['/og-default.jpg'] },
+    twitter: { card: 'summary_large_image', title, description, images: [ogImage] },
   };
 }
 
@@ -62,7 +65,7 @@ export default async function PublicHomePage() {
       fetchStats(),
     ]);
 
-  const siteName = settings.name ?? 'Perpustakaan Digital';
+  const siteName = getSiteName(settings);
   const fallbackFeatured = featured.length > 0 ? featured : fallbackBooks;
   const lcpImage = banners[0]?.image_url ?? null;
 

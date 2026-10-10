@@ -1,7 +1,8 @@
 import Image from 'next/image';
 import { BookOpenText, Facebook, Instagram, MessageCircle, Music2, Youtube } from 'lucide-react';
 
-/** Single source of truth for primary nav — menu behavior stays identical across variants. */
+/** Fallback bila tabel menus kosong/belum diisi — BUKAN sumber utama.
+ * Navigasi live berasal dari fetchHeaderMenus()/fetchFooterMenus() (src/lib/menus.ts). */
 export const LINKS = [
   { href: '/', label: 'Beranda' },
   { href: '/katalog', label: 'Katalog' },
@@ -14,7 +15,7 @@ export const LINKS = [
   { href: '/denda', label: 'Denda Saya' },
 ];
 
-/** Quick links reused by every footer variant. */
+/** Fallback footer bila tabel menus kosong — sumber utama: fetchFooterMenus(). */
 export const FOOTER_LINKS = [
   { href: '/katalog', label: 'Katalog Buku' },
   { href: '/berita', label: 'Berita & Artikel' },

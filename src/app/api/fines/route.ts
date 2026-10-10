@@ -7,8 +7,8 @@ import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 /**
  * GET /api/fines?member_id=&status=&page=&per_page=
  *   — anggota: otomatis miliknya (member_id diabaikan); pustakawan+: semua/filter.
- * POST /api/fines { loan_id?, member_id, amount, notes? } -> admin/librarian
- *   — denda manual (di luar denda otomatis return); audit fines.create best-effort.
+ * POST /api/fines { loan_id, member_id, amount, notes? } -> admin/librarian
+ *   — denda manual tetap wajib terikat loan (loan_id NOT NULL); audit fines.create best-effort.
  * Kolom migrasi 0001: loan_id, member_id, amount, paid_amount, status
  * unpaid|partial|paid|waived, issued_at, paid_at, notes.
  * Bayar via POST /api/fines/[id]/pay (pustakawan+).
@@ -81,19 +81,25 @@ export async function POST(req: Request) {
 
   const member_id = body.member_id as string;
   if (!isUuid(member_id)) return jsonError('VALIDATION', 'member_id harus UUID valid.', 422);
-  const loan_id = body.loan_id as string | undefined;
-  if (loan_id !== undefined && loan_id !== null && loan_id !== '' && !isUuid(loan_id)) {
-    return jsonError('VALIDATION', 'loan_id harus UUID valid.', 422);
+  const loan_id = body.loan_id as string;
+  if (!isUuid(loan_id)) {
+    return jsonError('VALIDATION', 'loan_id wajib UUID valid.', 422);
   }
   const amount = Number(body.amount ?? body.nominal);
   if (!Number.isFinite(amount) || amount <= 0) {
     return jsonError('VALIDATION', 'amount/nominal harus angka > 0.', 422);
   }
+  const notesRaw = body.notes as string | null | undefined;
+  if (notesRaw !== undefined && notesRaw !== null && notesRaw !== '') {
+    if (typeof notesRaw !== 'string') return jsonError('VALIDATION', 'notes harus string.', 422);
+    if (notesRaw.length > 2000)
+      return jsonError('VALIDATION', 'notes maksimal 2000 karakter.', 422);
+  }
 
   const { data, error } = await supabase
     .from('fines')
     .insert({
-      loan_id: loan_id || null,
+      loan_id,
       member_id,
       amount,
       paid_amount: 0,

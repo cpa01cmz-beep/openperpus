@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { HeaderVariantProps } from '../types';
+import type { NavItem } from '@/lib/types';
 import { LINKS, LogoMark } from '../shared';
 import NavLink from './NavLink';
 import { resolveLogoSrc } from '../types';
@@ -15,6 +16,7 @@ export default function SplitHeader({
   settings,
   logo_url,
   logoUrl,
+  menus,
 }: HeaderVariantProps) {
   const logoSrc = resolveLogoSrc({ logo_url, logoUrl }) ?? settings?.logo_url ?? null;
   const name = siteName || settings?.name || 'Perpustakaan Digital';
@@ -54,11 +56,12 @@ export default function SplitHeader({
       {/* desktop: split nav strip */}
       <nav aria-label="Main navigation" className="hidden border-t border-[var(--ink)]/10 lg:block">
         <ul className="mx-auto flex w-full max-w-[var(--container)] items-center justify-between px-4 sm:px-6 lg:px-8">
-          {LINKS.map((l) => (
+          {(menus && menus.length > 0 ? menus : LINKS).map((l) => (
             <li key={l.href} className="flex-1">
               <NavLink
                 href={l.href}
                 label={l.label}
+                target={(l as NavItem).target}
                 className="block rounded-[var(--radius-md)] px-3 py-2.5 text-center text-sm font-medium text-[var(--ink)] transition hover:bg-brand-soft hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 activeClassName="bg-brand-soft text-brand"
               />
@@ -72,11 +75,12 @@ export default function SplitHeader({
         className="hidden border-t border-[var(--ink)]/10 bg-[var(--surface)] lg:hidden"
       >
         <ul className="mx-auto w-full max-w-[var(--container)] space-y-1 px-4 py-3 sm:px-6">
-          {LINKS.map((l) => (
+          {(menus && menus.length > 0 ? menus : LINKS).map((l) => (
             <li key={l.href}>
               <NavLink
                 href={l.href}
                 label={l.label}
+                target={(l as NavItem).target}
                 className="block rounded-[var(--radius-md)] px-3 py-2.5 text-sm font-medium text-[var(--ink)] transition hover:bg-brand-soft hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 activeClassName="bg-brand-soft text-brand"
               />

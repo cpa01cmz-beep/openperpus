@@ -7,29 +7,25 @@ import Input from '@/components/ui/Input';
 import Pagination from '@/components/ui/Pagination';
 import { errMsg } from '@/lib/admin-errors';
 
-type Menu = {
+type ServiceRow = {
   id: string;
-  label: string;
-  url: string;
-  position: string;
+  title: string;
+  description: string | null;
+  icon: string;
   sort_order: number;
   is_active: boolean;
-  target?: string | null;
-  parent_id?: string | null;
 };
 
-export default function MenuPage() {
-  const [rows, setRows] = useState<Menu[]>([]);
+const ICON_OPTIONS = ['book', 'catalog', 'users', 'clock', 'info', 'star'] as const;
+
+const EMPTY_FORM = { title: '', description: '', icon: 'book', sort_order: '0' };
+
+export default function LayananAdminPage() {
+  const [rows, setRows] = useState<ServiceRow[]>([]);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [form, setForm] = useState({
-    label: '',
-    url: '',
-    position: 'header',
-    target: '_self',
-    sort_order: '0',
-  });
+  const [form, setForm] = useState(EMPTY_FORM);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formError, setFormError] = useState('');
   const [actionError, setActionError] = useState('');
@@ -37,9 +33,9 @@ export default function MenuPage() {
 
   const load = useCallback(async () => {
     const q = new URLSearchParams({ all: '1', page: String(page), per_page: '50', q: search });
-    const res = await fetch(`/api/menus?${q}`);
+    const res = await fetch(`/api/services?${q}`);
     const json = (await res.json()) as {
-      data?: Menu[];
+      data?: ServiceRow[];
       pagination?: { totalPages?: number };
       meta?: { totalPages?: number };
     };
@@ -58,12 +54,12 @@ export default function MenuPage() {
     e.preventDefault();
     setFormError('');
     setActionError('');
-    if (!form.label.trim()) {
-      setFormError('Label menu wajib diisi.');
+    if (!form.title.trim()) {
+      setFormError('Judul layanan wajib diisi.');
       return;
     }
-    if (!form.url.trim()) {
-      setFormError('URL menu wajib diisi.');
+    if (!form.description.trim()) {
+      setFormError('Deskripsi layanan wajib diisi.');
       return;
     }
     const sortOrder = Number(form.sort_order);
@@ -74,26 +70,25 @@ export default function MenuPage() {
     setLoading(true);
     try {
       const payload = {
-        label: form.label.trim(),
-        url: form.url.trim(),
-        position: form.position,
-        target: form.target,
+        title: form.title.trim(),
+        description: form.description.trim(),
+        icon: form.icon,
         sort_order: sortOrder,
       };
       const res = editingId
-        ? await fetch(`/api/menus?id=${editingId}`, {
+        ? await fetch(`/api/services?id=${editingId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
           })
-        : await fetch('/api/menus', {
+        : await fetch('/api/services', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
           });
       const json = await res.json();
       if (!res.ok) throw new Error(errMsg(json));
-      setForm({ label: '', url: '', position: 'header', target: '_self', sort_order: '0' });
+      setForm(EMPTY_FORM);
       setEditingId(null);
       load();
     } catch (e) {
@@ -103,13 +98,12 @@ export default function MenuPage() {
     }
   }
 
-  function onEdit(row: Menu) {
+  function onEdit(row: ServiceRow) {
     setEditingId(row.id);
     setForm({
-      label: row.label,
-      url: row.url,
-      position: row.position,
-      target: row.target === '_blank' ? '_blank' : '_self',
+      title: row.title,
+      description: row.description ?? '',
+      icon: ICON_OPTIONS.includes(row.icon as (typeof ICON_OPTIONS)[number]) ? row.icon : 'book',
       sort_order: String(row.sort_order ?? 0),
     });
     setFormError('');
@@ -117,13 +111,13 @@ export default function MenuPage() {
 
   function onCancelEdit() {
     setEditingId(null);
-    setForm({ label: '', url: '', position: 'header', target: '_self', sort_order: '0' });
+    setForm(EMPTY_FORM);
     setFormError('');
   }
 
-  async function onToggle(row: Menu) {
+  async function onToggle(row: ServiceRow) {
     setActionError('');
-    const res = await fetch(`/api/menus?id=${row.id}`, {
+    const res = await fetch(`/api/services?id=${row.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ is_active: !row.is_active }),
@@ -137,9 +131,9 @@ export default function MenuPage() {
   }
 
   async function onDelete(id: string) {
-    if (!confirm('Hapus menu ini?')) return;
+    if (!confirm('Hapus layanan ini?')) return;
     setActionError('');
-    const res = await fetch(`/api/menus?id=${id}`, { method: 'DELETE' });
+    const res = await fetch(`/api/services?id=${id}`, { method: 'DELETE' });
     const json = await res.json();
     if (!res.ok) {
       setActionError(errMsg(json));
@@ -151,10 +145,10 @@ export default function MenuPage() {
   return (
     <div className="grid gap-4">
       <div>
-        <h1 className="text-2xl font-bold">Menu</h1>
+        <h1 className="text-2xl font-bold">Layanan</h1>
         <p className="text-sm text-slate-500">
-          Kelola menu navigasi situs (label, URL, posisi, target, urutan, status aktif). Menu aktif
-          langsung tampil di navigasi publik.
+          Kelola kartu layanan (judul, deskripsi, ikon, urutan, status aktif). Kartu langsung tampil
+          di halaman /layanan publik.
         </p>
       </div>
       <form
@@ -163,60 +157,45 @@ export default function MenuPage() {
       >
         <div className="min-w-[180px] flex-1">
           <Input
-            id="menu-label"
-            label="Label menu"
-            placeholder="Label menu*"
-            value={form.label}
-            onChange={(e) => setForm({ ...form, label: e.target.value })}
+            id="layanan-title"
+            label="Judul layanan"
+            placeholder="Judul layanan*"
+            value={form.title}
+            onChange={(e) => setForm({ ...form, title: e.target.value })}
           />
         </div>
-        <div className="min-w-[200px] flex-1">
+        <div className="min-w-[240px] flex-1">
           <Input
-            id="menu-url"
-            label="URL / link"
-            placeholder="URL / link*"
-            value={form.url}
-            onChange={(e) => setForm({ ...form, url: e.target.value })}
+            id="layanan-description"
+            label="Deskripsi"
+            placeholder="Deskripsi layanan*"
+            value={form.description}
+            onChange={(e) => setForm({ ...form, description: e.target.value })}
           />
         </div>
         <div className="grid gap-1">
           <label
-            htmlFor="menu-position"
+            htmlFor="layanan-icon"
             className="mb-1.5 block text-sm font-semibold text-slate-700"
           >
-            Posisi
+            Ikon
           </label>
           <select
-            id="menu-position"
-            value={form.position}
-            onChange={(e) => setForm({ ...form, position: e.target.value })}
+            id="layanan-icon"
+            value={form.icon}
+            onChange={(e) => setForm({ ...form, icon: e.target.value })}
             className="h-11 min-h-[44px] rounded-md border border-slate-200 bg-white px-4 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
           >
-            <option value="header">header</option>
-            <option value="footer">footer</option>
-            <option value="sidebar">sidebar</option>
-          </select>
-        </div>
-        <div className="grid gap-1">
-          <label
-            htmlFor="menu-target"
-            className="mb-1.5 block text-sm font-semibold text-slate-700"
-          >
-            Target
-          </label>
-          <select
-            id="menu-target"
-            value={form.target}
-            onChange={(e) => setForm({ ...form, target: e.target.value })}
-            className="h-11 min-h-[44px] rounded-md border border-slate-200 bg-white px-4 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
-          >
-            <option value="_self">_self (tab sama)</option>
-            <option value="_blank">_blank (tab baru)</option>
+            {ICON_OPTIONS.map((opt) => (
+              <option key={opt} value={opt}>
+                {opt}
+              </option>
+            ))}
           </select>
         </div>
         <div className="w-28">
           <Input
-            id="menu-sort"
+            id="layanan-sort"
             label="Urutan"
             placeholder="0"
             inputMode="numeric"
@@ -240,9 +219,9 @@ export default function MenuPage() {
       </form>
       <div className="w-full max-w-sm">
         <Input
-          id="menu-search"
-          label="Cari menu"
-          placeholder="Cari label / URL…"
+          id="layanan-search"
+          label="Cari layanan"
+          placeholder="Cari judul / deskripsi…"
           value={search}
           onChange={(e) => {
             setPage(1);
@@ -255,25 +234,28 @@ export default function MenuPage() {
           {actionError}
         </p>
       )}
-      <DataTable<Menu>
-        caption={`Daftar menu halaman ${page} dari ${totalPages}`}
+      <DataTable<ServiceRow>
+        caption={`Daftar layanan halaman ${page} dari ${totalPages}`}
         columns={[
           {
-            key: 'label',
-            header: 'Label',
-            render: (r) => <span className="font-medium">{r.label}</span>,
+            key: 'title',
+            header: 'Judul',
+            render: (r) => <span className="font-medium">{r.title}</span>,
           },
-          { key: 'url', header: 'URL' },
-          { key: 'position', header: 'Posisi' },
+          {
+            key: 'description',
+            header: 'Deskripsi',
+            render: (r) => (
+              <span className="line-clamp-2 max-w-md text-sm text-slate-600">
+                {r.description ?? '-'}
+              </span>
+            ),
+          },
+          { key: 'icon', header: 'Ikon' },
           {
             key: 'sort_order',
             header: 'Urutan',
             render: (r) => <span className="tabular-nums">{r.sort_order}</span>,
-          },
-          {
-            key: 'target',
-            header: 'Target',
-            render: (r) => <span>{r.target ?? '_self'}</span>,
           },
           {
             key: 'is_active',
@@ -282,7 +264,7 @@ export default function MenuPage() {
               <button
                 type="button"
                 onClick={() => onToggle(r)}
-                aria-label={`Ubah status menu ${r.label}`}
+                aria-label={`Ubah status layanan ${r.title}`}
                 aria-pressed={r.is_active}
                 className="inline-flex min-h-[44px] items-center rounded-full border px-3 text-xs hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
@@ -298,7 +280,7 @@ export default function MenuPage() {
                 <button
                   type="button"
                   onClick={() => onEdit(r)}
-                  aria-label={`Ubah menu ${r.label}`}
+                  aria-label={`Ubah layanan ${r.title}`}
                   className="inline-flex min-h-[44px] items-center text-slate-700 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
                   Ubah
@@ -306,7 +288,7 @@ export default function MenuPage() {
                 <button
                   type="button"
                   onClick={() => onDelete(r.id)}
-                  aria-label={`Hapus menu ${r.label}`}
+                  aria-label={`Hapus layanan ${r.title}`}
                   className="inline-flex min-h-[44px] items-center text-red-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
                   Hapus

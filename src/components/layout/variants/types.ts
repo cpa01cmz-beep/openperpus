@@ -1,4 +1,4 @@
-import type { LibrarySettings } from '@/lib/types';
+import type { LibrarySettings, NavItem } from '@/lib/types';
 
 /** Props every header variant must accept (registry contract). */
 export type HeaderVariantProps = {
@@ -9,6 +9,8 @@ export type HeaderVariantProps = {
   /** camelCase alias kept for Navbar compat. */
   logoUrl?: string | null;
   settings?: LibrarySettings;
+  /** Menu CMS (tabel menus). Bila kosong/undefined, pakai fallback LINKS. */
+  menus?: NavItem[];
 };
 
 /** Props every footer variant must accept (registry contract). */
@@ -17,6 +19,8 @@ export type FooterVariantProps = {
   siteName?: string | null;
   tagline?: string | null;
   logo_url?: string | null;
+  /** Menu CMS (tabel menus). Bila kosong/undefined, pakai fallback FOOTER_LINKS. */
+  menus?: NavItem[];
 };
 
 /** Resolve the effective logo src from either prop spelling. */

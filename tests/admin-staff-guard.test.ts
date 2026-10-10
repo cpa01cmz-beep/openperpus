@@ -94,6 +94,12 @@ import {
   DELETE as testimonialsDELETE,
 } from '@/app/api/testimonials/route';
 import {
+  POST as servicesPOST,
+  PUT as servicesPUT,
+  DELETE as servicesDELETE,
+} from '@/app/api/services/route';
+import { PUT as serviceByIdPUT, DELETE as serviceByIdDELETE } from '@/app/api/services/[id]/route';
+import {
   PUT as testimonialByIdPUT,
   DELETE as testimonialByIdDELETE,
 } from '@/app/api/testimonials/[id]/route';
@@ -102,6 +108,9 @@ type Case = { name: string; run: () => Promise<Response> };
 
 const ID = '11111111-1111-4111-8111-111111111111';
 const CTX = { params: { id: ID } };
+// Wave2 services/[id] memakai Next16 async params (Promise) — CTX lama
+// (objek biasa) tak lolos tsc untuk handler ini.
+const SVC_CTX = { params: Promise.resolve({ id: ID }) };
 const req = (url = 'http://localhost/api/x'): Request => new Request(url);
 
 // Generic Supabase query-chain mock: builder methods return the chain,
@@ -149,7 +158,6 @@ function setSession(user: { id: string } | null, role: string | null): void {
 }
 
 const adminOnly: Case[] = [
-  { name: 'GET /api/articles', run: () => articlesGET(req()) },
   { name: 'POST /api/articles', run: () => articlesPOST(req()) },
   { name: 'PUT /api/articles', run: () => articlesPUT(req()) },
   { name: 'DELETE /api/articles', run: () => articlesDELETE(req()) },
@@ -184,10 +192,12 @@ const adminOnly: Case[] = [
   { name: 'POST /api/racks', run: () => racksPOST(req()) },
   { name: 'PUT /api/racks', run: () => racksPUT(req()) },
   { name: 'DELETE /api/racks', run: () => racksDELETE(req()) },
+  { name: 'POST /api/services', run: () => servicesPOST(req()) },
+  { name: 'PUT /api/services', run: () => servicesPUT(req()) },
+  { name: 'DELETE /api/services', run: () => servicesDELETE(req()) },
   { name: 'PUT /api/settings', run: () => settingsPUT(req()) },
   { name: 'PUT /api/testimonials', run: () => testimonialsPUT(req()) },
   { name: 'DELETE /api/testimonials', run: () => testimonialsDELETE(req()) },
-  { name: 'GET /api/books/[id]', run: () => bookByIdGET(req(), CTX) },
   { name: 'PUT /api/books/[id]', run: () => bookByIdPUT(req(), CTX) },
   { name: 'DELETE /api/books/[id]', run: () => bookByIdDELETE(req(), CTX) },
   { name: 'PUT /api/categories/[id]', run: () => categoryByIdPUT(req(), CTX) },
@@ -203,6 +213,8 @@ const adminOnly: Case[] = [
   { name: 'DELETE /api/pages/[id]', run: () => pageByIdDELETE(req(), CTX) },
   { name: 'PUT /api/racks/[id]', run: () => rackByIdPUT(req(), CTX) },
   { name: 'DELETE /api/racks/[id]', run: () => rackByIdDELETE(req(), CTX) },
+  { name: 'PUT /api/services/[id]', run: () => serviceByIdPUT(req(), SVC_CTX) },
+  { name: 'DELETE /api/services/[id]', run: () => serviceByIdDELETE(req(), SVC_CTX) },
   { name: 'PUT /api/testimonials/[id]', run: () => testimonialByIdPUT(req(), CTX) },
   { name: 'DELETE /api/testimonials/[id]', run: () => testimonialByIdDELETE(req(), CTX) },
 ];
@@ -273,10 +285,12 @@ function scanAdminOnlyHandlers(): string[] {
 }
 
 describe('issue #25 — unified staff authorization (Gherkin: non-staff → 403 everywhere)', () => {
-  it('matrix covers exactly the 56 admin-only handlers found in src/app/api', () => {
+  it('matrix covers exactly the 59 admin-only handlers found in src/app/api', () => {
     const scanned = scanAdminOnlyHandlers();
     const covered = adminOnly.map((c) => c.name).sort();
-    expect(covered.length, 'matrix must declare 56 admin-only endpoint+method pairs').toBe(56);
+    // Wave2: +5 handler services (POST/PUT/DELETE koleksi + PUT/DELETE [id]);
+    // GET koleksi/[id] publik-dengan-elevasi, benar tak masuk matrix.
+    expect(covered.length, 'matrix must declare 59 admin-only endpoint+method pairs').toBe(59);
     expect(covered, 'matrix missing admin-only handlers present in src/app/api').toEqual(scanned);
   });
 
@@ -315,7 +329,7 @@ describe('issue #25 — unified staff authorization (Gherkin: non-staff → 403 
 
   it('profil hilang → 403 (fail-closed, bukan fail-open)', async () => {
     setSession({ id: 'U-NO-PROFILE' }, null);
-    const res = await articlesGET(req());
+    const res = await bannersGET(req());
     expect(res.status).toBe(403);
   });
 

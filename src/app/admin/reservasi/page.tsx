@@ -6,6 +6,7 @@ import StatCard from '@/components/admin/StatCard';
 import Pagination from '@/components/ui/Pagination';
 import { checkoutReservation } from '@/lib/reservation-checkout';
 import { findExpiredCandidates, sweepExpiredReservations } from '@/lib/reservation-sweep';
+import { errMsg } from '@/lib/admin-errors';
 
 type Reservation = {
   id: string;
@@ -20,12 +21,6 @@ type Reservation = {
 };
 
 const STATUS_OPTS = ['', 'pending', 'ready', 'completed', 'cancelled', 'expired'];
-
-function errMsg(json: unknown): string {
-  const err = (json as { error?: { message?: string } | string } | null | undefined)?.error;
-  if (!err) return 'Gagal.';
-  return typeof err === 'string' ? err : (err.message ?? 'Gagal.');
-}
 
 export default function ReservasiPage() {
   const [rows, setRows] = useState<Reservation[]>([]);

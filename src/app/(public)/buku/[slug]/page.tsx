@@ -1,5 +1,6 @@
 import { notFound, permanentRedirect } from 'next/navigation';
 import { fetchBookBySlug, fetchSettings } from '@/lib/books';
+import { getOgImage, getSiteName } from '@/lib/settings';
 import { getSiteUrl } from '@/lib/site';
 
 export const revalidate = 60;
@@ -10,11 +11,11 @@ export async function generateMetadata({ params }: Props) {
   const { slug } = await params;
   const [book, settings] = await Promise.all([fetchBookBySlug(slug), fetchSettings()]);
   if (!book) return { title: 'Buku tidak ditemukan' };
-  const siteName = settings.name ?? 'Perpustakaan';
+  const siteName = getSiteName(settings);
   const title = `${book.title} — ${siteName}`;
   const description = book.description?.slice(0, 160) ?? `Detail buku ${book.title}.`;
   const url = `${getSiteUrl()}/katalog/${slug}`;
-  const image = book.cover_url ?? '/og-default.jpg';
+  const image = book.cover_url ?? getOgImage(settings);
   return {
     title,
     description,

@@ -4,6 +4,24 @@ import { getSiteUrl } from '@/lib/site';
 
 export const revalidate = 3600;
 
+/** Slug rute sistem — halaman dinamis dengan slug ini tak didaftarkan agar tak duplikat rute statis. */
+const RESERVED_SLUGS = [
+  'tentang',
+  'layanan',
+  'kontak',
+  'faq',
+  'berita',
+  'katalog',
+  'buku',
+  'halaman',
+  'denda',
+  'reservasi-saya',
+  'login',
+  'daftar',
+  'admin',
+  'api',
+] as const;
+
 /** Sitemap: halaman statis + slug buku & artikel published. Gagal fetch → fallback []. */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = getSiteUrl();
@@ -47,7 +65,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         priority: 0.6,
       }));
     const pageUrls: MetadataRoute.Sitemap = (pages ?? [])
-      .filter((p) => p.slug)
+      .filter((p) => p.slug && !(RESERVED_SLUGS as readonly string[]).includes(p.slug))
       .map((p) => ({
         url: `${base}/halaman/${p.slug}`,
         lastModified: p.updated_at ? new Date(p.updated_at) : now,
