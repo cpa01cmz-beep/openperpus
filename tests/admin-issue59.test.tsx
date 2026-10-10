@@ -339,7 +339,9 @@ describe('#59 kontrak sumber (cover upload + ekspor + 3 halaman)', () => {
     const src = read('src/components/admin/ExportCsvButton.tsx');
     expect(src).toMatch(/Ekspor halaman ini/);
     expect(src).not.toMatch(/Ekspor CSV/);
-    expect(src, 'filename pakai tanggal ISO').toMatch(/toISOString\(\)\.slice\(0, 10\)/);
+    expect(src, 'filename pakai tanggal lokal YYYY-MM-DD').toMatch(
+      /toLocaleDateString\('sv-SE'\)/
+    );
   });
 
   it('buku/anggota/peminjaman: load punya catch + error state role=alert', () => {

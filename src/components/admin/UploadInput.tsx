@@ -10,6 +10,9 @@ const MAX_SIZE = 10485760; // 10MB — matches supabase/migrations/0004_storage.
 // S-sec-rls: svg REJECTED (stored-XSS vector) — keep jpeg/png/webp/gif/pdf only.
 // Client-only check is bypassable; server guard lives in
 // supabase/migrations/0007_storage_guard.sql (bucket mime list w/o svg).
+// KNOWN LIMITATION: `file.type` berasal dari ekstensi (mudah dipalsukan);
+// upgrade path bila perlu: validasi magic-byte (header PNG/JPEG/GIF/WebP/PDF)
+// di sini — server/storage tetap guard otoritatif.
 export const ALLOWED_MIME = [
   'image/jpeg',
   'image/png',

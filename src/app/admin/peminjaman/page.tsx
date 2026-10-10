@@ -50,6 +50,9 @@ export default function PeminjamanPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pendingReturn, setPendingReturn] = useState<string | null>(null);
   const [finePerDay, setFinePerDay] = useState(1000);
+  // State terpisah dari `error`: pesan tarif default non-fatal tidak boleh
+  // ditimpa/dihapus oleh load() berikutnya (dan sebaliknya).
+  const [fineNotice, setFineNotice] = useState('');
   useEffect(() => {
     fetch('/api/settings')
       .then((r) => {
@@ -60,7 +63,7 @@ export default function PeminjamanPage() {
         const v = Number(j.data?.fine_per_day);
         if (Number.isFinite(v) && v > 0) setFinePerDay(v);
       })
-      .catch((e: Error) => setError(e.message));
+      .catch((e: Error) => setFineNotice(e.message));
   }, []);
   const [pendingExtend, setPendingExtend] = useState<string | null>(null);
   const [extendDays, setExtendDays] = useState('7');
@@ -347,6 +350,11 @@ export default function PeminjamanPage() {
         <p role="alert" className="text-sm text-red-600">
           {optionsError} Opsi anggota/buku mungkin kosong — klik &quot;Muat ulang&quot; untuk
           mencoba lagi.
+        </p>
+      )}
+      {fineNotice && (
+        <p role="alert" className="text-sm text-red-600">
+          {fineNotice}
         </p>
       )}
       <LoanForm members={members} books={books} />

@@ -319,7 +319,7 @@ export default function BookForm({
           value={form.cover_url ?? ''}
           onUploaded={(url) => set('cover_url', url)}
           folder="covers"
-          accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
+          accept="image/jpeg,image/png,image/webp,image/gif"
           label="Upload cover"
         />
       </div>
