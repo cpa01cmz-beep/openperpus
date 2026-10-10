@@ -155,7 +155,10 @@ GRANT EXECUTE ON FUNCTION public.get_overdue_count() TO authenticated;
 -- ----------------------------------------------------------------------------
 -- 8. Index pendukung agregat dashboard (filter borrowed_at / due_at+status)
 -- ----------------------------------------------------------------------------
+-- ponytail: original ((borrowed_at::date)) is STABLE (timezone-dependent), rejected by PG
+-- as non-IMMUTABLE for index expressions. AT TIME ZONE 'UTC' is immutable; Supabase
+-- sessions default to UTC so borrowed_at::date queries still match this index.
 CREATE INDEX IF NOT EXISTS idx_loans_borrowed_date
-  ON public.loans ((borrowed_at::date));
+  ON public.loans (((borrowed_at AT TIME ZONE 'UTC')::date));
 CREATE INDEX IF NOT EXISTS idx_loans_status_due
   ON public.loans (status, due_at);

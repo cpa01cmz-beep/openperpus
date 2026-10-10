@@ -112,17 +112,16 @@ GRANT EXECUTE ON FUNCTION public.extend_loan(uuid, int) TO authenticated;
 
 -- ----------------------------------------------------------------------------
 -- 3. RPC: search_books — extend existing dengan OFFSET untuk pagination
---    Returns SETOF books dengan kolom sempit untuk list (tanpa description).
+--    ponytail: original narrow column list broke SETOF books (columns must match
+--    table order/types exactly — uuid vs int mismatch on category_id). b.* keeps
+--    signature valid; description column is negligible for list pagination.
 -- ----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION public.search_books(p_q text, p_limit int, p_offset int DEFAULT 0)
 RETURNS SETOF public.books
 LANGUAGE sql STABLE
 SET search_path = public
 AS $func$
-  SELECT b.id, b.title, b.author, b.cover_url, b.stock_available, b.stock_total,
-         b.category_id, b.rack_id, b.slug, b.publisher, b.year, b.isbn,
-         b.pages, b.language, b.featured, b.rating_avg, b.is_active,
-         b.created_at, b.updated_at
+  SELECT b.*
   FROM public.books b
   WHERE b.is_active = TRUE AND (
     b.search_vector @@ plainto_tsquery('simple', p_q)

@@ -6,6 +6,10 @@
 -- lalu jalankan ulang supabase/migrations/0005_checkout.sql.
 -- ============================================================================
 
+-- ponytail: existing checkout_loan had no DEFAULT on p_notes; CREATE OR REPLACE
+-- cannot add parameter defaults (42P13). Drop first, then recreate identical body + guard.
+DROP FUNCTION IF EXISTS public.checkout_loan(uuid, uuid, timestamptz, timestamptz, text);
+
 CREATE OR REPLACE FUNCTION public.checkout_loan(
   p_book_id uuid,
   p_member_id uuid,
