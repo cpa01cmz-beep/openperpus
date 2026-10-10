@@ -215,6 +215,10 @@ export default function AnggotaPage() {
     next: 'active' | 'suspended';
   } | null>(null);
 
+  function onSetStatus(id: string, code: string, next: 'active' | 'suspended') {
+    setPendingStatus({ id, code, next });
+  }
+
   async function confirmSetStatus() {
     const p = pendingStatus;
     if (!p) return;
@@ -520,9 +524,7 @@ export default function AnggotaPage() {
                 {r.status === 'active' ? (
                   <button
                     type="button"
-                    onClick={() =>
-                      setPendingStatus({ id: r.id, code: r.member_code, next: 'suspended' })
-                    }
+                    onClick={() => onSetStatus(r.id, r.member_code, 'suspended')}
                     aria-label={`Suspend anggota ${r.member_code}`}
                     className="inline-flex min-h-[44px] items-center text-amber-700 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                   >
@@ -531,9 +533,7 @@ export default function AnggotaPage() {
                 ) : (
                   <button
                     type="button"
-                    onClick={() =>
-                      setPendingStatus({ id: r.id, code: r.member_code, next: 'active' })
-                    }
+                    onClick={() => onSetStatus(r.id, r.member_code, 'active')}
                     aria-label={`Aktifkan anggota ${r.member_code}`}
                     className="inline-flex min-h-[44px] items-center text-green-700 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                   >
