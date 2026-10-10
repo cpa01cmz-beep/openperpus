@@ -7,6 +7,7 @@ import { getOgImage, getSiteName } from '@/lib/settings';
 import { fetchHeaderMenus, fetchFooterMenus } from '@/lib/menus';
 import { getSiteUrl } from '@/lib/site';
 import { getEffectiveThemeFromSettings } from '@/lib/theme-overrides';
+import { escapeJsonLd } from '@/lib/validation';
 
 export const revalidate = 60;
 
@@ -76,7 +77,9 @@ export default async function PublicLayout({ children }: { children: React.React
     <div className="flex min-h-dvh flex-col">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{
+          __html: escapeJsonLd(jsonLd),
+        }}
       />
       <Navbar
         siteName={siteName}

@@ -15,8 +15,10 @@ export type { SafeParseResult } from './validation/book';
 export {
   CONTENT_LIMITS,
   type ContentEntity,
+  escapeJsonLd,
   sanitizeHtmlContent,
   isAllowedImageUrl,
+  isAllowedLinkUrl,
   validateContentFields,
   sanitizeContentPayload,
 } from './validation/content';

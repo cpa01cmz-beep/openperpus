@@ -3,6 +3,7 @@ import { revalidatePath, revalidateTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { requireStaff, jsonError } from '@/lib/supabase/auth';
 import { THEMES } from '@/lib/themes';
+import { isAllowedLinkUrl, sanitizeContentPayload, validateContentFields } from '@/lib/validation';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
 /**
@@ -97,8 +98,8 @@ export async function PUT(req: Request) {
   }
 
   const payload = normalizeSettings(body as Record<string, unknown>);
-  // Fase 1 (layout-only): tema dikunci di endpoint umum — ADDITIVE guard,
-  // perilaku field non-tema tidak berubah.
+  // Fase 1 (layout-only): tema dikunci di endpoint umum — cek DULU agar kontrak
+  // HINT_USE_THEME_ENDPOINT utuh walau field lain ikut invalid.
   {
     const rawBody = body as Record<string, unknown>;
     if ('active_theme' in rawBody || 'theme_overrides' in rawBody) {
@@ -107,6 +108,36 @@ export async function PUT(req: Request) {
         'Pengaturan tema terkunci di endpoint ini — gunakan PUT /api/settings/theme.',
         422
       );
+    }
+  }
+  // socials dirender sebagai href publik — tolak skema berbahaya (javascript:/data:/dst).
+  if ('socials' in payload && payload.socials != null) {
+    const soc = payload.socials;
+    if (typeof soc !== 'object' || Array.isArray(soc)) {
+      return jsonError('VALIDATION', 'socials harus object.', 422);
+    }
+    for (const [k, v] of Object.entries(soc as Record<string, unknown>)) {
+      if (v == null) continue;
+      if (typeof v !== 'string' || !isAllowedLinkUrl(v)) {
+        return jsonError(
+          'VALIDATION',
+          `socials.${k} harus URL http(s), mailto, tel, atau sms yang valid.`,
+          422
+        );
+      }
+    }
+  }
+  sanitizeContentPayload('settings', payload);
+  const capErr = validateContentFields('settings', payload);
+  if (capErr) return jsonError('VALIDATION', capErr, 422);
+  // logo/favicon dirender sebagai src/href publik (Image, <link rel=icon>, manifest)
+  // — tolak skema berbahaya (javascript:/data:/blob:/file:) dan protocol-relative.
+  // Syarat sengaja longgar (boleh https host mana pun) mengikuti placeholder form
+  // "https://…/logo.png"; jangan pakai isAllowedImageUrl (itu hanya *.supabase.co).
+  for (const f of ['logo_url', 'favicon_url'] as const) {
+    const v = payload[f];
+    if (v != null && v !== '' && !isAllowedLinkUrl(v)) {
+      return jsonError('VALIDATION', `${f} harus URL http(s), path relatif, atau kosong.`, 422);
     }
   }
   if (typeof payload.name === 'string' && payload.name.trim().length < 3) {

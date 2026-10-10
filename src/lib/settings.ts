@@ -2,6 +2,7 @@ import { unstable_cache } from 'next/cache';
 import { createPublicClient as createClient } from '@/lib/supabase/public';
 import { cachedFetch } from '@/lib/fetch-cache';
 import { DEFAULT_THEME } from '@/lib/themes';
+import { isAllowedLinkUrl } from '@/lib/validation/content';
 import {
   FALLBACK_SETTINGS,
   normalizeOperationalHours,
@@ -50,9 +51,12 @@ export function getOperationalHours(settings: LibrarySettings): OperationalHour[
   return normalizeOperationalHours(settings.operational_hours);
 }
 
-/** Sosmed sebagai object aman (fallback {} bila null). */
+/** Sosmed sebagai object aman (fallback {} bila null; skema berbahaya dibuang). */
 export function getSocials(settings: LibrarySettings): Record<string, string> {
-  return settings.socials && typeof settings.socials === 'object' ? settings.socials : {};
+  const raw = settings.socials && typeof settings.socials === 'object' ? settings.socials : {};
+  return Object.fromEntries(
+    Object.entries(raw).filter(([, v]) => typeof v === 'string' && isAllowedLinkUrl(v))
+  );
 }
 
 /** Nama situs terpusat — satu fallback, jangan sebar ?? 'Perpustakaan...' di UI. */

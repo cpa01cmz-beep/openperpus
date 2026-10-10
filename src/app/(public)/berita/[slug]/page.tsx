@@ -6,6 +6,7 @@ import { fetchArticleBySlug, fetchArticles, fetchSettings } from '@/lib/books';
 import { getOgImage, getSiteName } from '@/lib/settings';
 import { coverSrc } from '@/lib/cover';
 import { getSiteUrl } from '@/lib/site';
+import { escapeJsonLd } from '@/lib/validation';
 import Breadcrumb from '@/components/public/Breadcrumb';
 
 export const revalidate = 60;
@@ -91,7 +92,9 @@ export default async function BeritaDetailPage({ params }: Props) {
     <div className="mx-auto max-w-3xl space-y-6">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{
+          __html: escapeJsonLd(jsonLd),
+        }}
       />
       <Breadcrumb
         items={[

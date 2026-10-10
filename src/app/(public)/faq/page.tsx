@@ -7,6 +7,7 @@ import { fetchSettings } from '@/lib/books';
 import { getOgImage, getSiteName } from '@/lib/settings';
 import { getSiteUrl } from '@/lib/site';
 import { createClient } from '@/lib/supabase/server';
+import { escapeJsonLd } from '@/lib/validation';
 import Breadcrumb from '@/components/public/Breadcrumb';
 
 const FaqAccordion = dynamic(() => import('@/components/public/FaqAccordion'), {
@@ -116,7 +117,9 @@ export default async function FaqPage() {
     <div className="space-y-6">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+        dangerouslySetInnerHTML={{
+          __html: escapeJsonLd(faqJsonLd),
+        }}
       />
       <Breadcrumb items={[{ label: 'Beranda', href: '/' }, { label: 'FAQ' }]} />
       <header>

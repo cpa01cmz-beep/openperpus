@@ -20,6 +20,7 @@ import { fetchBookBySlug, fetchBooks, fetchSettings, ratingNumber, stockState } 
 import { getOgImage, getSiteName } from '@/lib/settings';
 import { coverSrc } from '@/lib/cover';
 import { getSiteUrl } from '@/lib/site';
+import { escapeJsonLd } from '@/lib/validation';
 
 export const revalidate = 60;
 
@@ -152,7 +153,9 @@ export default async function BookDetailPage({ params }: Props) {
     <div className="space-y-8">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{
+          __html: escapeJsonLd(jsonLd),
+        }}
       />
       <Breadcrumb
         items={[

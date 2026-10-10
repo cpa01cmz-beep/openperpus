@@ -157,7 +157,48 @@ export function validateContentFields(entity: ContentEntity, fields: FieldMap): 
 }
 
 /**
+ * Escape `<` untuk payload JSON-LD di `dangerouslySetInnerHTML` — satu-satunya
+ * penahan breakout `</script>` dari data dinamis (settings/buku). Satu helper
+ * agar grep/refactor menemukan semua sink; jangan inline `.replace` per file.
+ */
+export function escapeJsonLd(value: unknown): string {
+  return (JSON.stringify(value) ?? 'null').replace(/</g, '\\u003c');
+}
+
+/**
+ * Guard skema URL untuk field link (mis. socials settings) yang dirender
+ * sebagai `href`. Nilai berskema wajib https:/http:/mailto:/tel:/sms: —
+ * javascript:, data:, vbscript:, file: dan skema tak dikenal ditolak. Nilai
+ * tanpa skema (nomor telepon mis. socials.whatsapp, path relatif) dibiarkan
+ * agar kompatibel dengan data yang ada. Protocol-relative (//evil), tab/newline
+ * antar karakter skema, dan C0 control/DEL di mana pun (browser membuangnya
+ * saat parse URL — WHATWG — sehingga guard lolos tapi render jadi `javascript:`)
+ * ditolak fail-closed. String kosong = true.
+ */
+export function isAllowedLinkUrl(url: unknown): boolean {
+  if (typeof url !== 'string') return false;
+  // Browser membuang tab/newline di mana pun + C0 control/spasi di kedua ujung
+  // saat parse URL — fail-closed: tolak bila masih ada C0/DEL agar
+  // "<C0>javascript:..." tak lolos guard tapi jadi javascript: saat render.
+  const noTabNl = url.replace(/[\t\n\r]/g, '');
+  if (/[\x00-\x1F\x7F]/.test(noTabNl)) return false;
+  const cleaned = noTabNl.replace(/^[\x20]+|[\x20]+$/g, '');
+  if (cleaned === '') return true;
+  if (cleaned.startsWith('//')) return false;
+  const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(cleaned)?.[1]?.toLowerCase();
+  if (!scheme) return true; // tanpa skema — bukan vektor skema-XSS
+  return (
+    scheme === 'https' ||
+    scheme === 'http' ||
+    scheme === 'mailto' ||
+    scheme === 'tel' ||
+    scheme === 'sms'
+  );
+}
+
+/**
  * Sanitasi in-place untuk field HTML bebas pada payload yang sudah dinormalisasi.
+ * Untuk entity 'settings' juga memfilter nilai socials ber-skema berbahaya.
  * Mengembalikan payload yang sama (mutasi dangkal) demi call-site minimal.
  */
 export function sanitizeContentPayload(entity: ContentEntity, payload: FieldMap): FieldMap {
@@ -171,6 +212,14 @@ export function sanitizeContentPayload(entity: ContentEntity, payload: FieldMap)
     if (typeof payload[field] === 'string') {
       payload[field] = sanitizeHtmlContent(payload[field]);
     }
+  }
+  if (entity === 'settings' && payload.socials && typeof payload.socials === 'object') {
+    const soc = payload.socials as Record<string, unknown>;
+    payload.socials = Object.fromEntries(
+      Object.entries(soc).filter(
+        ([, v]) => v == null || (typeof v === 'string' && isAllowedLinkUrl(v))
+      )
+    );
   }
   return payload;
 }
