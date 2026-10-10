@@ -8,12 +8,12 @@ import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
 /**
  * GET /api/testimonials?page=&per_page=&q= — publik (hanya is_active).
- *   Staf: ?all=1 untuk lihat semua (termasuk nonaktif/menunggu moderasi). ?id= untuk satu testimoni.
+ *   Staf: ?all=1 untuk lihat semua (termasuk nonaktif/menunggu moderasi).
  * POST /api/testimonials — ANON dibolehkan (form publik) tapi dipaksa is_active=false
  *   untuk moderasi staf (lihat migrasi 0004_content.sql); staf boleh set is_active/sort_order.
  *   Body {name|nama, role|peran?, content|isi, avatar_url|foto?, rating?, sort_order|urutan?, is_active?}
- * PUT /api/testimonials?id= — pustakawan+ (termasuk approve moderasi via is_active)
- * DELETE /api/testimonials?id= — admin
+ * PUT /api/testimonials/{id} — pustakawan+ (termasuk approve moderasi via is_active) — issue #54: ?id= dihapus
+ * DELETE /api/testimonials/{id} — admin
  * Kolom migrasi 0001: name, role, content, avatar_url, rating 1-5, sort_order, is_active.
  */
 
@@ -300,112 +300,4 @@ export async function POST(req: Request) {
     name,
   });
   return NextResponse.json({ data, revalidated: revalidateTestimonials() }, { status: 201 });
-}
-
-export async function PUT(req: Request) {
-  const log = createLogger(requestIdFromHeaders(req.headers));
-  const guard = await requireStaff(['admin', 'librarian']);
-  if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
-  const { supabase, user } = guard as {
-    supabase: ReturnType<typeof createClient>;
-    user: { id: string };
-  };
-
-  const id = new URL(req.url).searchParams.get('id');
-  if (!id) return jsonError('VALIDATION', 'Parameter ?id= wajib.', 400);
-
-  let body: Record<string, unknown>;
-  try {
-    body = (await req.json()) as Record<string, unknown>;
-  } catch {
-    return jsonError('INVALID_JSON', 'Body JSON tidak valid.', 400);
-  }
-
-  const payload: Record<string, unknown> = {};
-  if (body.name !== undefined || body.nama !== undefined) {
-    const name = String(body.name ?? body.nama ?? '').trim();
-    if (!name) return jsonError('VALIDATION', 'name/nama tidak boleh kosong.', 422);
-    payload.name = name;
-  }
-  if (body.role !== undefined || body.peran !== undefined) {
-    payload.role = (body.role ?? body.peran) as string | null;
-  }
-  if (
-    body.content !== undefined ||
-    body.isi !== undefined ||
-    body.testimoni !== undefined ||
-    body.pesan !== undefined
-  ) {
-    const content = String(body.content ?? body.isi ?? body.testimoni ?? body.pesan ?? '').trim();
-    if (!content) return jsonError('VALIDATION', 'content/isi tidak boleh kosong.', 422);
-    payload.content = content;
-  }
-  if (
-    body.avatar_url !== undefined ||
-    body.foto !== undefined ||
-    body.image_url !== undefined ||
-    body.gambar_url !== undefined
-  ) {
-    payload.avatar_url = (body.avatar_url ?? body.foto ?? body.image_url ?? body.gambar_url) as
-      string | null;
-  }
-  if (body.rating !== undefined) {
-    const rating = toInt(body.rating, 5);
-    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
-      return jsonError('VALIDATION', 'rating harus bilangan bulat 1-5.', 422);
-    }
-    payload.rating = rating;
-  }
-  if (body.sort_order !== undefined || body.urutan !== undefined) {
-    const sort_order = toInt(body.sort_order ?? body.urutan, 0);
-    if (!Number.isInteger(sort_order))
-      return jsonError('VALIDATION', 'sort_order/urutan harus bilangan bulat.', 422);
-    payload.sort_order = sort_order;
-  }
-  if (body.is_active !== undefined) payload.is_active = Boolean(body.is_active);
-  if (Object.keys(payload).length === 0)
-    return jsonError('VALIDATION', 'Tidak ada field yang diupdate.', 422);
-
-  const { data, error } = await supabase
-    .from('testimonials')
-    .update(payload)
-    .eq('id', id)
-    .select()
-    .single();
-  if (error) {
-    log.error('testimonials.save_failed', { detail: error.message });
-    return jsonError('SAVE_FAILED', 'Gagal mengupdate testimoni.', 500, {
-      requestId: log.requestId,
-    });
-  }
-
-  await writeLog(supabase, user?.id, 'testimonials.update', id, payload);
-  return NextResponse.json({ data, revalidated: revalidateTestimonials() });
-}
-
-export async function DELETE(req: Request) {
-  const log = createLogger(requestIdFromHeaders(req.headers));
-  const guard = await requireStaff(['admin']);
-  if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
-  const { supabase, user } = guard as {
-    supabase: ReturnType<typeof createClient>;
-    user: { id: string };
-  };
-
-  const id = new URL(req.url).searchParams.get('id');
-  if (!id) return jsonError('VALIDATION', 'Parameter ?id= wajib.', 400);
-
-  const { error } = await supabase.from('testimonials').delete().eq('id', id);
-  if (error) {
-    log.error('testimonials.delete_failed', { detail: error.message });
-    return jsonError('DELETE_FAILED', 'Gagal menghapus testimoni.', 500, {
-      requestId: log.requestId,
-    });
-  }
-
-  await writeLog(supabase, user?.id, 'testimonials.delete', id);
-  return NextResponse.json({
-    message: 'Testimoni dihapus.',
-    revalidated: revalidateTestimonials(),
-  });
 }

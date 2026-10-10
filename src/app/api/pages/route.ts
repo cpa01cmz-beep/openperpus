@@ -7,10 +7,10 @@ import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
 /**
  * GET /api/pages?page=&per_page=&q= — publik (hanya is_active).
- *   Staf: ?all=1 untuk lihat semua (termasuk nonaktif). ?id= untuk satu halaman.
+ *   Staf: ?all=1 untuk lihat semua (termasuk nonaktif).
  * POST /api/pages — pustakawan+ {title|judul, slug?, content_md|konten, excerpt|ringkasan?, seo_title?, seo_desc?, is_active|status?, show_in_menu?}
- * PUT /api/pages?id= — pustakawan+
- * DELETE /api/pages?id= — admin
+ * PUT /api/pages/{id} — pustakawan+ (satu transport ID, issue #54: ?id= dihapus)
+ * DELETE /api/pages/{id} — admin
  * Kolom migrasi 0001 (+0004 show_in_menu): slug UNIQUE, title, content_md, excerpt,
  * seo_title, seo_desc, is_active, show_in_menu.
  * Slug reserved (RESERVED_SLUGS) ditolak 422 agar tak menabrak rute sistem.
@@ -218,122 +218,4 @@ export async function POST(req: Request) {
     { data, revalidated: revalidatePages((data as { slug: string }).slug) },
     { status: 201 }
   );
-}
-
-export async function PUT(req: Request) {
-  const log = createLogger(requestIdFromHeaders(req.headers));
-  const guard = await requireStaff(['admin', 'librarian']);
-  if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
-  const { supabase, user } = guard as {
-    supabase: ReturnType<typeof createClient>;
-    user: { id: string };
-  };
-
-  const id = new URL(req.url).searchParams.get('id');
-  if (!id) return jsonError('VALIDATION', 'Parameter ?id= wajib.', 400);
-
-  let body: Record<string, unknown>;
-  try {
-    body = (await req.json()) as Record<string, unknown>;
-  } catch {
-    return jsonError('INVALID_JSON', 'Body JSON tidak valid.', 400);
-  }
-
-  const payload: Record<string, unknown> = {};
-  if (body.title !== undefined || body.judul !== undefined) {
-    const title = String(body.title ?? body.judul ?? '').trim();
-    if (!title) return jsonError('VALIDATION', 'title/judul tidak boleh kosong.', 422);
-    payload.title = title;
-    payload.slug =
-      typeof body.slug === 'string' && body.slug.trim() ? slugify(body.slug) : slugify(title);
-  } else if (typeof body.slug === 'string' && body.slug.trim()) {
-    payload.slug = slugify(body.slug);
-  }
-  if (
-    body.content_md !== undefined ||
-    body.konten !== undefined ||
-    body.content !== undefined ||
-    body.isi !== undefined
-  ) {
-    const content_md = String(
-      body.content_md ?? body.konten ?? body.content ?? body.isi ?? ''
-    ).trim();
-    if (!content_md) return jsonError('VALIDATION', 'content_md/konten tidak boleh kosong.', 422);
-    payload.content_md = content_md;
-  }
-  if (body.excerpt !== undefined || body.ringkasan !== undefined)
-    payload.excerpt = (body.excerpt ?? body.ringkasan) as string | null;
-  if (body.seo_title !== undefined) payload.seo_title = body.seo_title as string | null;
-  if (body.seo_desc !== undefined) payload.seo_desc = body.seo_desc as string | null;
-  if (body.is_active !== undefined || body.status !== undefined || body.aktif !== undefined) {
-    payload.is_active = parseActive(body.is_active ?? body.status ?? body.aktif, true);
-  }
-  if (body.show_in_menu !== undefined || body.tampil_di_menu !== undefined) {
-    payload.show_in_menu = Boolean(body.show_in_menu ?? body.tampil_di_menu);
-  }
-  if (Object.keys(payload).length === 0)
-    return jsonError('VALIDATION', 'Tidak ada field yang diupdate.', 422);
-  if (
-    payload.slug !== undefined &&
-    (RESERVED_SLUGS as readonly string[]).includes(String(payload.slug))
-  ) {
-    return jsonError(
-      'VALIDATION',
-      `Slug "${String(payload.slug)}" dipakai rute sistem, pilih slug lain.`,
-      422
-    );
-  }
-
-  const { data, error } = await supabase
-    .from('pages')
-    .update(payload)
-    .eq('id', id)
-    .select()
-    .single();
-  if (error) {
-    if ((error as { code?: string }).code === '23505') {
-      log.warn('pages.conflict', { detail: error.message });
-      return jsonError('CONFLICT', 'Slug halaman sudah dipakai.', 409, {
-        requestId: log.requestId,
-      });
-    }
-    log.error('pages.save_failed', { detail: error.message });
-    return jsonError('SAVE_FAILED', 'Gagal mengupdate halaman.', 500, { requestId: log.requestId });
-  }
-
-  await writeLog(supabase, user?.id, 'pages.update', id, payload);
-  return NextResponse.json({
-    data,
-    revalidated: revalidatePages((data as { slug?: string })?.slug),
-  });
-}
-
-export async function DELETE(req: Request) {
-  const log = createLogger(requestIdFromHeaders(req.headers));
-  const guard = await requireStaff(['admin']);
-  if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
-  const { supabase, user } = guard as {
-    supabase: ReturnType<typeof createClient>;
-    user: { id: string };
-  };
-
-  const id = new URL(req.url).searchParams.get('id');
-  if (!id) return jsonError('VALIDATION', 'Parameter ?id= wajib.', 400);
-
-  // Ambil slug dulu agar path /halaman/[slug] bisa di-revalidate.
-  const { data: cur } = await supabase.from('pages').select('slug').eq('id', id).single();
-
-  const { error } = await supabase.from('pages').delete().eq('id', id);
-  if (error) {
-    log.error('pages.delete_failed', { detail: error.message });
-    return jsonError('DELETE_FAILED', 'Gagal menghapus halaman.', 500, {
-      requestId: log.requestId,
-    });
-  }
-
-  await writeLog(supabase, user?.id, 'pages.delete', id);
-  return NextResponse.json({
-    message: 'Halaman dihapus.',
-    revalidated: revalidatePages((cur as { slug?: string } | null)?.slug),
-  });
 }

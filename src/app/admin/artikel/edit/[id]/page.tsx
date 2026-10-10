@@ -58,7 +58,7 @@ export default function EditArtikelPage({ params }: { params: { id: string } }) 
     if (!form.title.trim() || !form.content_md.trim()) return setErr('Judul & konten wajib.');
     setSaving(true);
     try {
-      const res = await fetch(`/api/articles?id=${params.id}`, {
+      const res = await fetch(`/api/articles/${params.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),

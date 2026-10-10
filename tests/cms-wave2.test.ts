@@ -22,7 +22,8 @@ import {
 } from './helpers/supabase-mock';
 
 import { GET as SVC_GET, POST as SVC_POST } from '@/app/api/services/route';
-import { POST as PAGE_POST, PUT as PAGE_PUT } from '@/app/api/pages/route';
+import { POST as PAGE_POST } from '@/app/api/pages/route';
+import { PUT as PAGE_ID_PUT } from '@/app/api/pages/[id]/route';
 import { toNavItems } from '@/lib/menus';
 
 function readSrc(rel: string): string {
@@ -110,8 +111,12 @@ describe('wave2: pages reserved slug', () => {
   });
 
   it("PUT slug 'kontak' -> 422", async () => {
-    const res = await PAGE_PUT(
-      jsonReq('PUT', '/api/pages?id=p1', { title: 'Judul Aman', slug: 'kontak' })
+    const res = await PAGE_ID_PUT(
+      jsonReq('PUT', '/api/pages/11111111-1111-4111-8111-111111111111', {
+        title: 'Judul Aman',
+        slug: 'kontak',
+      }),
+      { params: { id: '11111111-1111-4111-8111-111111111111' } }
     );
     expect(res.status).toBe(422);
     const j = (await res.json()) as { error: { message: string } };

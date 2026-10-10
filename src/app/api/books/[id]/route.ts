@@ -15,7 +15,8 @@ export async function GET(_req: Request, { params }: Ctx) {
   const log = createLogger(requestIdFromHeaders(_req.headers));
   // Publik: RLS menegakkan (anon hanya is_active=true). Tidak ada guard staf.
   const supabase = createClient();
-
+  // #54: id path WAJIB UUID — tolak 400 lebih awal, bukan string sembaran ke query.
+  if (!isUuid(id)) return jsonError('VALIDATION', 'ID buku tidak valid (harus UUID).', 400);
   const { data, error } = await supabase
     .from('books')
     .select('*, categories(id,name,slug), racks(code,name,location)')
@@ -37,6 +38,8 @@ export async function PUT(req: Request, { params }: Ctx) {
     supabase: ReturnType<typeof createClient>;
     user: { id: string };
   };
+  // #54: id path WAJIB UUID — tolak 400 lebih awal, bukan string sembaran ke query.
+  if (!isUuid(id)) return jsonError('VALIDATION', 'ID buku tidak valid (harus UUID).', 400);
 
   let body: Record<string, unknown>;
   try {
@@ -133,6 +136,8 @@ export async function DELETE(_req: Request, { params }: Ctx) {
     supabase: ReturnType<typeof createClient>;
     user: { id: string };
   };
+  // #54: id path WAJIB UUID — tolak 400 lebih awal, bukan string sembaran ke query.
+  if (!isUuid(id)) return jsonError('VALIDATION', 'ID buku tidak valid (harus UUID).', 400);
 
   // Guard: tolak bila ada loan aktif (borrowed/overdue) — kolom migrasi.
   const { count } = await supabase

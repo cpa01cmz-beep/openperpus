@@ -98,8 +98,9 @@ export type CancelInput = { id: string };
 
 /**
  * AC2: batal 1-klik milik sendiri.
- * PUT /api/reservations?id= {status:'cancelled'} — server menulis
+ * PUT /api/reservations/{id} {status:'cancelled'} — server menulis
  * activity_logs "reservations.cancelled" via writeLog.
+ * Satu transport ID (issue #54): id di path REST, bukan ?id=.
  */
 export async function cancelMyReservation(deps: Deps, input: CancelInput): Promise<MyReservation> {
   const id = input.id?.trim();
@@ -108,7 +109,7 @@ export async function cancelMyReservation(deps: Deps, input: CancelInput): Promi
   }
   let res: { ok: boolean; status: number; json: () => Promise<unknown> };
   try {
-    res = await deps.fetchLike(`/api/reservations?id=${encodeURIComponent(id)}`, {
+    res = await deps.fetchLike(`/api/reservations/${encodeURIComponent(id)}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status: 'cancelled' }),

@@ -81,7 +81,7 @@ export default function RakPage() {
 
   async function onToggle(row: Rack) {
     setActionError('');
-    const res = await fetch(`/api/racks?id=${row.id}`, {
+    const res = await fetch(`/api/racks/${row.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ is_active: !row.is_active }),
@@ -97,7 +97,7 @@ export default function RakPage() {
   async function onDelete(id: string) {
     if (!confirm('Hapus rak ini?')) return;
     setActionError('');
-    const res = await fetch(`/api/racks?id=${id}`, { method: 'DELETE' });
+    const res = await fetch(`/api/racks/${id}`, { method: 'DELETE' });
     const json = await res.json();
     if (!res.ok) {
       setActionError(errMsg(json));

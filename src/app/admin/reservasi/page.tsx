@@ -101,7 +101,7 @@ export default function ReservasiPage() {
     if (!confirm(`Yakin ${label} reservasi ini?`)) return;
     setActingId(id);
     try {
-      const res = await fetch(`/api/reservations?id=${id}`, {
+      const res = await fetch(`/api/reservations/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: next }),

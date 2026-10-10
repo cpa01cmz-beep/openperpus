@@ -2,8 +2,9 @@ import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-// Reservation gate unified: [id] route + collection route mengizinkan
-// pending->ready, any->cancelled/expired. Issue #73: status='completed'
+// Reservation gate: route [id] mengizinkan pending->ready, any->cancelled/expired.
+// Transport ?id= di koleksi dihapus (issue #54) — tulis hanya via path /{id}.
+// Issue #73: status='completed'
 // DITOLAK via PUT (422) — hanya lewat checkout atomik
 // POST /api/reservations/{id}/checkout (RPC checkout_reservation_tx,
 // migrasi 0024) yang membuat loan + completed dalam satu transaksi.
@@ -20,7 +21,6 @@ vi.mock('next/cache', () => ({
 }));
 
 import { PUT as BY_ID_PUT } from '@/app/api/reservations/[id]/route';
-import { PUT as COLLECTION_PUT } from '@/app/api/reservations/route';
 import { PUT as BOOK_PUT } from '@/app/api/books/[id]/route';
 
 const RES_ID = '11111111-1111-4111-8111-111111111111';
@@ -94,37 +94,6 @@ function setByIdMock(status: string, seen: Record<string, unknown>[]) {
   setGlobal({ ...staffAuth(), from });
 }
 
-// Mock untuk getSession() di collection route: bentuk identik.
-function setCollectionMock(status: string, seen: Record<string, unknown>[]) {
-  const cur = { id: RES_ID, member_id: MID, status };
-  const from = vi.fn((table: string) => {
-    if (table === 'profiles')
-      return {
-        select: () => ({
-          eq: () => ({ maybeSingle: async () => ({ data: { role: 'admin' }, error: null }) }),
-        }),
-      };
-    if (table === 'members')
-      return {
-        select: () => ({
-          eq: () => ({ maybeSingle: async () => ({ data: { id: MID }, error: null }) }),
-        }),
-      };
-    if (table === 'reservations') return updaterChain(cur, { ...cur });
-    if (table === 'activity_logs')
-      return {
-        insert: async (p: Record<string, unknown>) => {
-          seen.push(p);
-          return { error: null };
-        },
-      };
-    return {
-      select: () => ({ eq: () => ({ single: async () => ({ data: null, error: null }) }) }),
-    };
-  });
-  setGlobal({ ...staffAuth(), from });
-}
-
 function setBookMock(seen: Record<string, unknown>[]) {
   const cur = { id: BID, title: 'Lama', slug: 'lama' };
   const from = vi.fn((table: string) => {
@@ -153,7 +122,7 @@ beforeEach(() => {
   vi.restoreAllMocks();
 });
 
-describe('reservation gate unified ([id] + collection)', () => {
+describe('reservation gate ([id] — satu transport ID, issue #54)', () => {
   it('[id] PUT pending->completed DITOLAK 422 (issue #73: hanya via checkout atomik)', async () => {
     const seen: Record<string, unknown>[] = [];
     setByIdMock('pending', seen);
@@ -201,6 +170,18 @@ describe('reservation gate unified ([id] + collection)', () => {
     expect((seen[0] as { action: string }).action).toBe('reservations.ready');
   });
 
+  it('[id] PUT id non-UUID DITOLAK 400 sebelum query (issue #54)', async () => {
+    const seen: Record<string, unknown>[] = [];
+    setByIdMock('pending', seen);
+    const res = await BY_ID_PUT(
+      putReq('http://localhost/api/reservations/bukan-uuid', { status: 'ready' }),
+      { params: { id: 'bukan-uuid' } }
+    );
+    if (!res) throw new Error('expected response');
+    expect(res.status).toBe(400);
+    expect(seen.length).toBe(0);
+  });
+
   it('[id] PUT ready->cancelled lolos 200 (any->cancelled)', async () => {
     setByIdMock('ready', []);
     const res = await BY_ID_PUT(
@@ -211,26 +192,6 @@ describe('reservation gate unified ([id] + collection)', () => {
     );
     if (!res) throw new Error('expected response');
     expect(res.status).toBe(200);
-  });
-
-  it('collection PUT pending->completed DITOLAK 422 (issue #73)', async () => {
-    const seen: Record<string, unknown>[] = [];
-    setCollectionMock('pending', seen);
-    const res = await COLLECTION_PUT(
-      putReq(`http://localhost/api/reservations?id=${RES_ID}`, { status: 'completed' })
-    );
-    expect(res.status).toBe(422);
-    expect(seen.length).toBe(0);
-  });
-
-  it('collection PUT ready->completed DITOLAK 422 (issue #73)', async () => {
-    const seen: Record<string, unknown>[] = [];
-    setCollectionMock('ready', seen);
-    const res = await COLLECTION_PUT(
-      putReq(`http://localhost/api/reservations?id=${RES_ID}`, { status: 'completed' })
-    );
-    expect(res.status).toBe(422);
-    expect(seen.length).toBe(0);
   });
 });
 

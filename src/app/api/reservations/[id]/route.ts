@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { jsonError } from '@/lib/supabase/auth';
+import { isUuid } from '@/lib/api-utils';
 import { getSession } from '@/lib/session';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
@@ -51,7 +52,12 @@ async function scoped(id: string) {
   const s = await getSession();
   if ('errorResponse' in s) return { errorResponse: s.errorResponse };
   const { supabase, userId, role, isStaff, memberId } = s.session;
-
+  // #54: id path WAJIB UUID — tolak 400 lebih awal (GET/PUT/PATCH/DELETE lewat sini).
+  if (!isUuid(id)) {
+    return {
+      errorResponse: jsonError('VALIDATION', 'ID reservasi tidak valid (harus UUID).', 400),
+    };
+  }
   const { data: cur } = await supabase
     .from('reservations')
     .select('*, books(id,title,slug)')
