@@ -95,10 +95,12 @@ describe('T-MIDNIGHT midnight luxury-dark', () => {
     const css = read('src/app/globals.css');
     const block = themeBlock(css, 'midnight');
     expect(block.length > 0, 'globals.css must keep [data-theme=midnight] block').toBe(true);
-    expect(block.includes('--surface: #0B1220'), 'midnight block must set --surface: #0B1220').toBe(
+    // CSS hex is case-insensitive — compare lowercased on both sides.
+    const lc = block.toLowerCase();
+    expect(lc.includes('--surface: #0b1220'), 'midnight block must set --surface: #0B1220').toBe(
       true
     );
-    expect(block.includes('--accent: #D4AF37'), 'midnight block must set --accent: #D4AF37').toBe(
+    expect(lc.includes('--accent: #d4af37'), 'midnight block must set --accent: #D4AF37').toBe(
       true
     );
     expect(block.includes('var(--font-cormorant)'), 'midnight block must wire Cormorant var').toBe(

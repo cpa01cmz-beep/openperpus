@@ -4,6 +4,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 
 (globalThis as unknown as { React: unknown }).React = React;
 
+vi.mock('server-only', () => ({}));
+
 vi.mock('next/link', () => ({
   default: ({ href, children, ...rest }: Record<string, unknown>) =>
     React.createElement(
