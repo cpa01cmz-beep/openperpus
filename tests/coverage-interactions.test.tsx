@@ -618,7 +618,7 @@ describe('admin list page interactions', () => {
       () => expect(fetchMock.mock.calls.some((c) => String(c[0]).includes('q=AG-1'))).toBe(true),
       { timeout: 2500 }
     );
-    // Pinjamkan (1-klik checkout) lewat dialog inline — bukan confirm() native
+    // Pinjamkan (checkout atomik #92) lewat dialog inline — bukan confirm() native
     const checkoutBtn = await screen.findByRole(
       'button',
       { name: /pinjamkan/i },
@@ -632,7 +632,7 @@ describe('admin list page interactions', () => {
         expect(
           fetchMock.mock.calls.some(
             (c) =>
-              String(c[0]).includes('/api/loans') &&
+              String(c[0]).includes('/api/reservations/r1/checkout') &&
               (c[1] as RequestInit | undefined)?.method === 'POST'
           )
         ).toBe(true),
