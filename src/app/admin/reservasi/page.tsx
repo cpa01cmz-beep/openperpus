@@ -69,7 +69,6 @@ export default function ReservasiPage() {
       const json = (await res.json()) as {
         data?: Reservation[];
         pagination?: { totalPages?: number };
-        meta?: { totalPages?: number };
       };
       if (!res.ok) throw new Error(errMsg(json));
       setApiMissing(false);
