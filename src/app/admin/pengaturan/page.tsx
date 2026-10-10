@@ -2,7 +2,8 @@ import SettingsForm from '@/components/admin/SettingsFormLazy';
 import { createClient } from '@/lib/supabase/server';
 import ThemeSwitcher from '@/components/admin/ThemeSwitcher';
 import LayoutPicker from '@/components/admin/LayoutPicker';
-import LayoutPreview, { buildDraft } from '@/components/admin/LayoutPreview';
+import LayoutPreview from '@/components/admin/LayoutPreview';
+import { buildDraft } from '@/lib/layout-draft';
 import type { SettingsRow } from '@/components/admin/SettingsForm';
 
 export const dynamic = 'force-dynamic';

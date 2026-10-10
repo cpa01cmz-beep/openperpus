@@ -21,7 +21,7 @@ import {
   VARIANT_LABELS_ID,
   buildDraft,
   type LayoutDraft,
-} from './LayoutPreview';
+} from '@/lib/layout-draft';
 
 type InitialOverrides = {
   layout?: Record<string, unknown>;
