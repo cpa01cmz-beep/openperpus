@@ -81,7 +81,7 @@ export default function MenuPage() {
         sort_order: sortOrder,
       };
       const res = editingId
-        ? await fetch(`/api/menus?id=${editingId}`, {
+        ? await fetch(`/api/menus/${editingId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload),
@@ -123,7 +123,7 @@ export default function MenuPage() {
 
   async function onToggle(row: Menu) {
     setActionError('');
-    const res = await fetch(`/api/menus?id=${row.id}`, {
+    const res = await fetch(`/api/menus/${row.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ is_active: !row.is_active }),
@@ -139,7 +139,7 @@ export default function MenuPage() {
   async function onDelete(id: string) {
     if (!confirm('Hapus menu ini?')) return;
     setActionError('');
-    const res = await fetch(`/api/menus?id=${id}`, { method: 'DELETE' });
+    const res = await fetch(`/api/menus/${id}`, { method: 'DELETE' });
     const json = await res.json();
     if (!res.ok) {
       setActionError(errMsg(json));

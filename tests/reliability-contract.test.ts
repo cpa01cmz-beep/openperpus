@@ -213,7 +213,9 @@ function setResMockDuplicate() {
 
 // --- fines pay mock ---
 function setPayMock(fine: Record<string, unknown>) {
-  const db: Record<string, Record<string, unknown>> = { 'F-1': { ...fine, id: 'F-1' } };
+  const db: Record<string, Record<string, unknown>> = {
+    'aaaaaaaa-0000-4000-8000-000000000001': { ...fine, id: 'aaaaaaaa-0000-4000-8000-000000000001' },
+  };
   setGlobal({
     auth: { getUser: async () => ({ data: { user: { id: 'U-LIB' } }, error: null }) },
     from: vi.fn((table: string) => {
@@ -357,9 +359,14 @@ describe('S-reliability error contract {code,message}', () => {
 
   it('fines pay already paid -> 409 CONFLICT exact', async () => {
     setPayMock({ member_id: MID, loan_id: 'L-1', amount: 5000, paid_amount: 5000, status: 'paid' });
-    const res = await PAY_POST(postReq('http://localhost/api/fines/F-1/pay', { method: 'cash' }), {
-      params: { id: 'F-1' },
-    });
+    const res = await PAY_POST(
+      postReq('http://localhost/api/fines/aaaaaaaa-0000-4000-8000-000000000001/pay', {
+        method: 'cash',
+      }),
+      {
+        params: { id: 'aaaaaaaa-0000-4000-8000-000000000001' },
+      }
+    );
     expect(res.status).toBe(409);
     const j = (await res.json()) as { error: { code: string } };
     expect(j.error.code).toBe('CONFLICT');
@@ -374,8 +381,11 @@ describe('S-reliability error contract {code,message}', () => {
       status: 'partial',
     });
     const res = await PAY_POST(
-      postReq('http://localhost/api/fines/F-1/pay', { method: 'qris', amount: 5000 }),
-      { params: { id: 'F-1' } }
+      postReq('http://localhost/api/fines/aaaaaaaa-0000-4000-8000-000000000001/pay', {
+        method: 'qris',
+        amount: 5000,
+      }),
+      { params: { id: 'aaaaaaaa-0000-4000-8000-000000000001' } }
     );
     expect(res.status).toBe(422);
     const j = (await res.json()) as { error: { code: string; message: string } };

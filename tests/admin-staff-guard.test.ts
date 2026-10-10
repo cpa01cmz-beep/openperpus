@@ -20,90 +20,44 @@ vi.mock('next/cache', () => ({
 // agar impor route /api/settings/theme dapat dimuat tanpa Next.js runtime.
 vi.mock('server-only', () => ({}));
 
-import {
-  GET as articlesGET,
-  POST as articlesPOST,
-  PUT as articlesPUT,
-  DELETE as articlesDELETE,
-} from '@/app/api/articles/route';
-import {
-  GET as bannersGET,
-  POST as bannersPOST,
-  PUT as bannersPUT,
-  DELETE as bannersDELETE,
-} from '@/app/api/banners/route';
+import { GET as articlesGET, POST as articlesPOST } from '@/app/api/articles/route';
+import { PUT as articleByIdPUT, DELETE as articleByIdDELETE } from '@/app/api/articles/[id]/route';
+import { GET as bannersGET, POST as bannersPOST } from '@/app/api/banners/route';
+import { PUT as bannerByIdPUT, DELETE as bannerByIdDELETE } from '@/app/api/banners/[id]/route';
 import { POST as booksPOST, PUT as booksPUT, DELETE as booksDELETE } from '@/app/api/books/route';
 import {
   GET as bookByIdGET,
   PUT as bookByIdPUT,
   DELETE as bookByIdDELETE,
 } from '@/app/api/books/[id]/route';
-import {
-  GET as categoriesGET,
-  POST as categoriesPOST,
-  PUT as categoriesPUT,
-  DELETE as categoriesDELETE,
-} from '@/app/api/categories/route';
+import { GET as categoriesGET, POST as categoriesPOST } from '@/app/api/categories/route';
 import {
   PUT as categoryByIdPUT,
   DELETE as categoryByIdDELETE,
 } from '@/app/api/categories/[id]/route';
-import {
-  GET as faqsGET,
-  POST as faqsPOST,
-  PUT as faqsPUT,
-  DELETE as faqsDELETE,
-} from '@/app/api/faqs/route';
+import { GET as faqsGET, POST as faqsPOST } from '@/app/api/faqs/route';
 import { PUT as faqByIdPUT, DELETE as faqByIdDELETE } from '@/app/api/faqs/[id]/route';
 import { POST as finesPOST } from '@/app/api/fines/route';
-import {
-  GET as loansGET,
-  POST as loansPOST,
-  PUT as loansPUT,
-  DELETE as loansDELETE,
-} from '@/app/api/loans/route';
+import { GET as loansGET, POST as loansPOST } from '@/app/api/loans/route';
 import { PUT as loanByIdPUT, DELETE as loanByIdDELETE } from '@/app/api/loans/[id]/route';
 import { POST as loanReturnPOST } from '@/app/api/loans/[id]/return/route';
+import { GET as membersGET, POST as membersPOST } from '@/app/api/members/route';
 import {
-  GET as membersGET,
-  POST as membersPOST,
-  PUT as membersPUT,
-  DELETE as membersDELETE,
-} from '@/app/api/members/route';
-import {
-  GET as menusGET,
-  POST as menusPOST,
-  PUT as menusPUT,
-  DELETE as menusDELETE,
-} from '@/app/api/menus/route';
+  GET as memberByIdGET,
+  PUT as memberByIdPUT,
+  DELETE as memberByIdDELETE,
+} from '@/app/api/members/[id]/route';
+import { GET as menusGET, POST as menusPOST } from '@/app/api/menus/route';
 import { PUT as menuByIdPUT, DELETE as menuByIdDELETE } from '@/app/api/menus/[id]/route';
-import {
-  GET as pagesGET,
-  POST as pagesPOST,
-  PUT as pagesPUT,
-  DELETE as pagesDELETE,
-} from '@/app/api/pages/route';
+import { GET as pagesGET, POST as pagesPOST } from '@/app/api/pages/route';
 import { PUT as pageByIdPUT, DELETE as pageByIdDELETE } from '@/app/api/pages/[id]/route';
-import {
-  GET as racksGET,
-  POST as racksPOST,
-  PUT as racksPUT,
-  DELETE as racksDELETE,
-} from '@/app/api/racks/route';
+import { GET as racksGET, POST as racksPOST } from '@/app/api/racks/route';
 import { PUT as rackByIdPUT, DELETE as rackByIdDELETE } from '@/app/api/racks/[id]/route';
 import { POST as reservationCheckoutPOST } from '@/app/api/reservations/[id]/checkout/route';
 import { PUT as settingsPUT } from '@/app/api/settings/route';
 import { PUT as settingsThemePUT } from '@/app/api/settings/theme/route';
-import {
-  GET as testimonialsGET,
-  PUT as testimonialsPUT,
-  DELETE as testimonialsDELETE,
-} from '@/app/api/testimonials/route';
-import {
-  POST as servicesPOST,
-  PUT as servicesPUT,
-  DELETE as servicesDELETE,
-} from '@/app/api/services/route';
+import { GET as testimonialsGET } from '@/app/api/testimonials/route';
+import { POST as servicesPOST } from '@/app/api/services/route';
 import { PUT as serviceByIdPUT, DELETE as serviceByIdDELETE } from '@/app/api/services/[id]/route';
 import {
   PUT as testimonialByIdPUT,
@@ -165,46 +119,31 @@ function setSession(user: { id: string } | null, role: string | null): void {
 
 const adminOnly: Case[] = [
   { name: 'POST /api/articles', run: () => articlesPOST(req()) },
-  { name: 'PUT /api/articles', run: () => articlesPUT(req()) },
-  { name: 'DELETE /api/articles', run: () => articlesDELETE(req()) },
   { name: 'GET /api/banners', run: () => bannersGET(req()) },
   { name: 'POST /api/banners', run: () => bannersPOST(req()) },
-  { name: 'PUT /api/banners', run: () => bannersPUT(req()) },
-  { name: 'DELETE /api/banners', run: () => bannersDELETE(req()) },
   { name: 'POST /api/books', run: () => booksPOST(req()) },
   { name: 'PUT /api/books', run: () => booksPUT(req()) },
   { name: 'DELETE /api/books', run: () => booksDELETE(req()) },
   { name: 'POST /api/categories', run: () => categoriesPOST(req()) },
-  { name: 'PUT /api/categories', run: () => categoriesPUT(req()) },
-  { name: 'DELETE /api/categories', run: () => categoriesDELETE(req()) },
   { name: 'POST /api/faqs', run: () => faqsPOST(req()) },
-  { name: 'PUT /api/faqs', run: () => faqsPUT(req()) },
-  { name: 'DELETE /api/faqs', run: () => faqsDELETE(req()) },
   { name: 'POST /api/fines', run: () => finesPOST(req()) },
   { name: 'GET /api/loans', run: () => loansGET(req()) },
   { name: 'POST /api/loans', run: () => loansPOST(req()) },
-  { name: 'PUT /api/loans', run: () => loansPUT(req()) },
-  { name: 'DELETE /api/loans', run: () => loansDELETE(req()) },
   { name: 'GET /api/members', run: () => membersGET(req()) },
   { name: 'POST /api/members', run: () => membersPOST(req()) },
-  { name: 'PUT /api/members', run: () => membersPUT(req()) },
-  { name: 'DELETE /api/members', run: () => membersDELETE(req()) },
   { name: 'POST /api/menus', run: () => menusPOST(req()) },
-  { name: 'PUT /api/menus', run: () => menusPUT(req()) },
-  { name: 'DELETE /api/menus', run: () => menusDELETE(req()) },
   { name: 'POST /api/pages', run: () => pagesPOST(req()) },
-  { name: 'PUT /api/pages', run: () => pagesPUT(req()) },
-  { name: 'DELETE /api/pages', run: () => pagesDELETE(req()) },
   { name: 'POST /api/racks', run: () => racksPOST(req()) },
-  { name: 'PUT /api/racks', run: () => racksPUT(req()) },
-  { name: 'DELETE /api/racks', run: () => racksDELETE(req()) },
   { name: 'POST /api/services', run: () => servicesPOST(req()) },
-  { name: 'PUT /api/services', run: () => servicesPUT(req()) },
-  { name: 'DELETE /api/services', run: () => servicesDELETE(req()) },
   { name: 'PUT /api/settings', run: () => settingsPUT(req()) },
   { name: 'PUT /api/settings/theme', run: () => settingsThemePUT(req()) },
-  { name: 'PUT /api/testimonials', run: () => testimonialsPUT(req()) },
-  { name: 'DELETE /api/testimonials', run: () => testimonialsDELETE(req()) },
+  { name: 'GET /api/members/[id]', run: () => memberByIdGET(req(), CTX) },
+  { name: 'PUT /api/members/[id]', run: () => memberByIdPUT(req(), SVC_CTX) },
+  { name: 'DELETE /api/members/[id]', run: () => memberByIdDELETE(req(), SVC_CTX) },
+  { name: 'PUT /api/articles/[id]', run: () => articleByIdPUT(req(), SVC_CTX) },
+  { name: 'DELETE /api/articles/[id]', run: () => articleByIdDELETE(req(), SVC_CTX) },
+  { name: 'PUT /api/banners/[id]', run: () => bannerByIdPUT(req(), SVC_CTX) },
+  { name: 'DELETE /api/banners/[id]', run: () => bannerByIdDELETE(req(), SVC_CTX) },
   { name: 'PUT /api/books/[id]', run: () => bookByIdPUT(req(), CTX) },
   { name: 'DELETE /api/books/[id]', run: () => bookByIdDELETE(req(), CTX) },
   { name: 'PUT /api/categories/[id]', run: () => categoryByIdPUT(req(), CTX) },
@@ -221,7 +160,10 @@ const adminOnly: Case[] = [
   { name: 'PUT /api/racks/[id]', run: () => rackByIdPUT(req(), CTX) },
   { name: 'DELETE /api/racks/[id]', run: () => rackByIdDELETE(req(), CTX) },
   { name: 'PUT /api/services/[id]', run: () => serviceByIdPUT(req(), SVC_CTX) },
-  { name: 'POST /api/reservations/[id]/checkout', run: () => reservationCheckoutPOST(req(), SVC_CTX) },
+  {
+    name: 'POST /api/reservations/[id]/checkout',
+    run: () => reservationCheckoutPOST(req(), SVC_CTX),
+  },
   { name: 'DELETE /api/services/[id]', run: () => serviceByIdDELETE(req(), SVC_CTX) },
   { name: 'PUT /api/testimonials/[id]', run: () => testimonialByIdPUT(req(), CTX) },
   { name: 'DELETE /api/testimonials/[id]', run: () => testimonialByIdDELETE(req(), CTX) },
@@ -296,11 +238,15 @@ describe('issue #25 — unified staff authorization (Gherkin: non-staff → 403 
   it('matrix covers exactly the 61 admin-only handlers found in src/app/api', () => {
     const scanned = scanAdminOnlyHandlers();
     const covered = adminOnly.map((c) => c.name).sort();
-    // Wave2: +5 handler services (POST/PUT/DELETE koleksi + PUT/DELETE [id]);
+    // Wave2: +5 handler services (POST koleksi + PUT/DELETE [id]);
     // GET koleksi/[id] publik-dengan-elevasi, benar tak masuk matrix.
     // Fase 1 tema: +1 PUT /api/settings/theme (admin-only, layout-only).
     // Issue #73: +1 POST /api/reservations/[id]/checkout (checkout atomik).
-    expect(covered.length, 'matrix must declare 61 admin-only endpoint+method pairs').toBe(61);
+    // Issue #54: tulis single-resource HANYA via [id] — koleksi PUT/DELETE
+    // (22 pair) keluar matrix, diganti GET/PUT/DELETE /api/{members,articles,
+    // banners}/[id] (7 pair admin-only; GET articles/banners [id] publik-dengan-
+    // elevasi seperti taxonomy lain).
+    expect(covered.length, 'matrix must declare 46 admin-only endpoint+method pairs').toBe(46);
     expect(covered, 'matrix missing admin-only handlers present in src/app/api').toEqual(scanned);
   });
 

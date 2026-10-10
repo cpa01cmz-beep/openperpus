@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { requireStaff, jsonError } from '@/lib/supabase/auth';
+import { isUuid } from '@/lib/api-utils';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -19,13 +20,6 @@ function toInt(v: unknown, def: number): number {
   if (v === undefined || v === null || v === '') return def;
   const n = Number(v);
   return Number.isInteger(n) ? n : NaN;
-}
-
-function isUuid(v: unknown): boolean {
-  return (
-    typeof v === 'string' &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)
-  );
 }
 
 async function writeLog(
@@ -69,6 +63,8 @@ export async function GET(_req: Request, { params }: Ctx) {
   const { id } = await params;
   const log = createLogger(requestIdFromHeaders(_req.headers));
   const supabase = createClient();
+  // #54: id path WAJIB UUID — tolak 400 lebih awal, bukan string sembaran ke query.
+  if (!isUuid(id)) return jsonError('VALIDATION', 'ID menu tidak valid (harus UUID).', 400);
   const { data, error } = await supabase.from('menus').select('*').eq('id', id).single();
   if (error || !data) {
     log.warn('menus.id.not_found', { detail: error?.message ?? 'not-found' });
@@ -93,6 +89,8 @@ export async function PUT(req: Request, { params }: Ctx) {
     supabase: ReturnType<typeof createClient>;
     user: { id: string };
   };
+  // #54: id path WAJIB UUID — tolak 400 lebih awal, bukan string sembaran ke query.
+  if (!isUuid(id)) return jsonError('VALIDATION', 'ID menu tidak valid (harus UUID).', 400);
 
   let body: Record<string, unknown>;
   try {
@@ -170,6 +168,8 @@ export async function DELETE(_req: Request, { params }: Ctx) {
     supabase: ReturnType<typeof createClient>;
     user: { id: string };
   };
+  // #54: id path WAJIB UUID — tolak 400 lebih awal, bukan string sembaran ke query.
+  if (!isUuid(id)) return jsonError('VALIDATION', 'ID menu tidak valid (harus UUID).', 400);
 
   const { count } = await supabase
     .from('menus')

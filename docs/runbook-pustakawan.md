@@ -51,7 +51,7 @@ laporkan lewat issue baru.
 4. Notifikasi hijau menampilkan nominal denda yang terbentuk.
 5. Baris berubah menjadi `returned`; kini alihkan ke alur **Bayar denda**.
 
-> API: `PUT /api/loans?id=<uuid> {action:"return"}`.
+> API: `PUT /api/loans/{id} {action:"return"}`.
 > Sudah `returned`/`lost` → `409` (idempoten secara alami).
 
 ### 2.3 Perpanjang pinjaman
@@ -59,7 +59,7 @@ laporkan lewat issue baru.
 Tombol **Perpanjang** → pilih 3/7/14/30 hari → tempo mundur sejauh itu.
 Hanya untuk status `borrowed`/`overdue`; yang sudah dikembalikan → `409`.
 
-> API: `PUT /api/loans?id=<uuid> {action:"extend", days}`.
+> API: `PUT /api/loans/{id} {action:"extend", days}`.
 
 ### 2.4 Bayar denda — `/admin/denda`
 
@@ -86,7 +86,7 @@ plus `cancelled` (batal) dan `expired` (kedaluwarsa).
    aman (idempoten). Tombol "Selesaikan" tanpa loan sudah dihapus.
 4. Batal: **Batalkan** → `cancelled`. Kedaluwarsa → `expired`.
 
-> API: `PUT /api/reservations?id=<uuid> {status}` (state-machine dijaga server:
+> API: `PUT /api/reservations/{id} {status}` (state-machine dijaga server:
 > hanya `pending→ready`, `*→cancelled/expired`). `completed` **tidak** bisa
 > lewat PUT — hanya via checkout atomik di atas (issue #73).
 
@@ -169,10 +169,10 @@ Status pinjaman: `borrowed`=dipinjam · `overdue`=terlambat · `returned`=kembal
 | Buku                 | `GET/POST/PUT/DELETE /api/books`, `GET/PUT/DELETE /api/books/[id]`                              | `title`, `author`, `publisher`, `stock_total`, `stock_available`                        | `judul`, `penulis`, `penerbit`, `total_copy`, `tersedia`                                                 |
 | Kategori             | `GET/POST /api/categories`, `PUT/DELETE …/[id]`                                                 | `name`, `description`, `icon`                                                           | `nama`, `deskripsi`, `icon`                                                                              |
 | Rak                  | `GET/POST /api/racks`, `PUT/DELETE …/[id]`                                                      | `code`, `location`, `description`                                                       | `kode`, `lantai`, `keterangan`                                                                           |
-| Anggota              | `GET/POST /api/members`, `PUT/DELETE /api/members?id=`                                          | `member_code`, `phone`, `address`, `status active/suspended/expired/pending`            | `no_anggota`, `telepon`, `alamat`, `aktif/nonaktif/blokir`                                               |
-| Peminjaman           | `GET/POST/PUT/DELETE /api/loans`, `POST /api/loans/[id]/return`                                 | `borrowed_at`, `due_at`, `returned_at`, `fine_amount`, `borrowed/overdue/returned/lost` | `tanggal_pinjam`, `tanggal_jatuh_tempo`, `tanggal_kembali`, `denda`, `dipinjam/terlambat/kembali/hilang` |
+| Anggota              | `GET/POST /api/members`, `GET/PUT/DELETE /api/members/[id]`                                     | `member_code`, `phone`, `address`, `status active/suspended/expired/pending`            | `no_anggota`, `telepon`, `alamat`, `aktif/nonaktif/blokir`                                               |
+| Peminjaman           | `GET/POST /api/loans`, `GET/PUT/DELETE /api/loans/[id]`, `POST /api/loans/[id]/return`          | `borrowed_at`, `due_at`, `returned_at`, `fine_amount`, `borrowed/overdue/returned/lost` | `tanggal_pinjam`, `tanggal_jatuh_tempo`, `tanggal_kembali`, `denda`, `dipinjam/terlambat/kembali/hilang` |
 | Reservasi            | `GET/POST /api/reservations`, `PUT/DELETE …/[id]`                                               | `pending/ready/completed/cancelled/expired`, `reserved_at`, `expires_at`                | `menunggu/siap_diambil/selesai/batal`, `tanggal_reservasi`, `tanggal_kadaluarsa`                         |
-| Denda                | `GET/POST /api/fines`, `PUT/DELETE …/[id]`, `POST …/[id]/pay`                                   | `amount`, `paid_amount`, `unpaid/partial/paid/waived`, `paid_at`, `metode`              | `jumlah`, `belum_bayar/lunas/dihapus`, `dibayar_at`                                                      |
+| Denda                | `GET/POST /api/fines`, `GET …/[id]`, `POST …/[id]/pay`                                          | `amount`, `paid_amount`, `unpaid/partial/paid/waived`, `paid_at`, `metode`              | `jumlah`, `belum_bayar/lunas/dihapus`, `dibayar_at`                                                      |
 | Artikel              | `GET/POST /api/articles`, `PUT/DELETE …/[id]`                                                   | `title`, `type`, `excerpt`, `content`, `status draft/published/archived`                | `judul`, `tipe`, `ringkasan`, `konten`, `draft/published/arsip`                                          |
 | Banner               | `GET/POST /api/banners`, `PUT/DELETE …/[id]`                                                    | `image_url`, `link_url`, `order`, `is_active`                                           | `gambar_url`, `link_url`, `urutan`, `is_active`                                                          |
 | Halaman              | `GET/POST /api/pages`, `PUT/DELETE …/[id]`                                                      | `title`, `slug`, `content`, `show_in_menu`                                              | `judul`, `slug`, `konten`, `show_in_menu`                                                                |

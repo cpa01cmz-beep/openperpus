@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { requireStaff, jsonError } from '@/lib/supabase/auth';
+import { isUuid } from '@/lib/api-utils';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -31,13 +32,6 @@ type CheckoutResult = {
   idempotent?: boolean;
 };
 
-function isUuid(v: unknown): boolean {
-  return (
-    typeof v === 'string' &&
-    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(v)
-  );
-}
-
 function revalidated(): string[] {
   const done: string[] = [];
   try {
@@ -62,7 +56,8 @@ export async function POST(req: Request, { params }: Ctx) {
   const { supabase } = guard as { supabase: ReturnType<typeof createClient> };
 
   const { id } = await params;
-  if (!isUuid(id)) return jsonError('VALIDATION', 'id reservasi harus UUID valid.', 422);
+  // #54: id path WAJIB UUID — tolak 400 lebih awal, bukan string sembaran ke query.
+  if (!isUuid(id)) return jsonError('VALIDATION', 'ID reservasi tidak valid (harus UUID).', 400);
 
   let body: Record<string, unknown> = {};
   try {
@@ -141,7 +136,10 @@ export async function POST(req: Request, { params }: Ctx) {
 
   const out = (data ?? {}) as CheckoutResult;
   return NextResponse.json(
-    { data: { loan: out.loan ?? null, reservation: out.reservation ?? null }, revalidated: revalidated() },
+    {
+      data: { loan: out.loan ?? null, reservation: out.reservation ?? null },
+      revalidated: revalidated(),
+    },
     { status: 201, headers: { 'Cache-Control': 'no-store' } }
   );
 }

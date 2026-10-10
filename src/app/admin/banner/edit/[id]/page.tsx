@@ -54,7 +54,7 @@ export default function EditBannerPage({ params }: { params: { id: string } }) {
     if (!form.title.trim() || !form.image_url.trim()) return setErr('Judul & image_url wajib.');
     setSaving(true);
     try {
-      const res = await fetch(`/api/banners?id=${params.id}`, {
+      const res = await fetch(`/api/banners/${params.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...form, sort_order: Number(form.sort_order) }),

@@ -219,7 +219,7 @@ export default function PeminjamanPage() {
     setPendingReturn(null);
     setError('');
     try {
-      const res = await fetch(`/api/loans?id=${id}`, {
+      const res = await fetch(`/api/loans/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'return' }),
@@ -245,7 +245,7 @@ export default function PeminjamanPage() {
     setError('');
     try {
       const days = Number(extendDays);
-      const res = await fetch(`/api/loans?id=${id}`, {
+      const res = await fetch(`/api/loans/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'extend', days }),

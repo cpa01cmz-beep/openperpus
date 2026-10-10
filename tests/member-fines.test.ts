@@ -146,23 +146,28 @@ describe('US-03 member fines — lihat + bayar sendiri', () => {
     setMock({ userId: 'U-M1', role: 'member', ownMemberId: 'M-1', fines: [] });
   });
 
-  it('anggota melihat denda milik sendiri (GET ?status=unpaid → 200 berisi F-1 Rp5000, tanpa milik orang lain)', async () => {
+  it('anggota melihat denda milik sendiri (GET ?status=unpaid → 200 berisi aaaaaaaa-0000-4000-8000-000000000001 Rp5000, tanpa milik orang lain)', async () => {
     setMock({
       userId: 'U-M1',
       role: 'member',
       ownMemberId: 'M-1',
       fines: [
-        fineRow({ id: 'F-1', member_id: 'M-1', amount: 5000 }),
-        fineRow({ id: 'F-9', member_id: 'M-2', amount: 9000 }),
+        fineRow({ id: 'aaaaaaaa-0000-4000-8000-000000000001', member_id: 'M-1', amount: 5000 }),
+        fineRow({ id: 'aaaaaaaa-0000-4000-8000-000000000009', member_id: 'M-2', amount: 9000 }),
       ],
     });
     const res = await GET(getReq('http://localhost/api/fines?status=unpaid'));
     expect(res.status).toBe(200);
     const json = (await res.json()) as { data: FineRow[] };
     const ids = (json.data ?? []).map((r) => r.id);
-    expect(ids, 'anggota harus melihat F-1 miliknya').toContain('F-1');
-    expect(ids, 'denda milik orang lain (F-9) tidak boleh bocor').not.toContain('F-9');
-    const f1 = (json.data ?? []).find((r) => r.id === 'F-1');
+    expect(ids, 'anggota harus melihat aaaaaaaa-0000-4000-8000-000000000001 miliknya').toContain(
+      'aaaaaaaa-0000-4000-8000-000000000001'
+    );
+    expect(
+      ids,
+      'denda milik orang lain (aaaaaaaa-0000-4000-8000-000000000009) tidak boleh bocor'
+    ).not.toContain('aaaaaaaa-0000-4000-8000-000000000009');
+    const f1 = (json.data ?? []).find((r) => r.id === 'aaaaaaaa-0000-4000-8000-000000000001');
     expect(Number(f1?.amount)).toBe(5000);
   });
 
@@ -172,10 +177,18 @@ describe('US-03 member fines — lihat + bayar sendiri', () => {
       role: 'member',
       ownMemberId: 'M-1',
       fines: [
-        fineRow({ id: 'F-1', member_id: 'M-1', amount: 5000, paid_amount: 0, status: 'unpaid' }),
+        fineRow({
+          id: 'aaaaaaaa-0000-4000-8000-000000000001',
+          member_id: 'M-1',
+          amount: 5000,
+          paid_amount: 0,
+          status: 'unpaid',
+        }),
       ],
     });
-    const res = await PAY(payReq('F-1', { method: 'qris' }), { params: { id: 'F-1' } });
+    const res = await PAY(payReq('aaaaaaaa-0000-4000-8000-000000000001', { method: 'qris' }), {
+      params: { id: 'aaaaaaaa-0000-4000-8000-000000000001' },
+    });
     expect(res.status, 'pemilik harus bisa membayar milik sendiri').toBe(200);
     const json = (await res.json()) as { data: FineRow };
     expect(json.data.status).toBe('paid');
@@ -188,12 +201,21 @@ describe('US-03 member fines — lihat + bayar sendiri', () => {
       role: 'member',
       ownMemberId: 'M-1',
       fines: [
-        fineRow({ id: 'F-1', member_id: 'M-1', amount: 5000, paid_amount: 0, status: 'unpaid' }),
+        fineRow({
+          id: 'aaaaaaaa-0000-4000-8000-000000000001',
+          member_id: 'M-1',
+          amount: 5000,
+          paid_amount: 0,
+          status: 'unpaid',
+        }),
       ],
     });
-    const res = await PAY(payReq('F-1', { method: 'qris', amount: 2000 }), {
-      params: { id: 'F-1' },
-    });
+    const res = await PAY(
+      payReq('aaaaaaaa-0000-4000-8000-000000000001', { method: 'qris', amount: 2000 }),
+      {
+        params: { id: 'aaaaaaaa-0000-4000-8000-000000000001' },
+      }
+    );
     expect(res.status).toBe(200);
     const json = (await res.json()) as { data: FineRow };
     expect(json.data.status).toBe('partial');
@@ -208,7 +230,7 @@ describe('US-03 member fines — lihat + bayar sendiri', () => {
       ownMemberId: 'M-1',
       fines: [
         fineRow({
-          id: 'F-1',
+          id: 'aaaaaaaa-0000-4000-8000-000000000001',
           member_id: 'M-1',
           amount: 5000,
           paid_amount: 2000,
@@ -216,9 +238,12 @@ describe('US-03 member fines — lihat + bayar sendiri', () => {
         }),
       ],
     });
-    const res = await PAY(payReq('F-1', { method: 'qris', amount: 5000 }), {
-      params: { id: 'F-1' },
-    });
+    const res = await PAY(
+      payReq('aaaaaaaa-0000-4000-8000-000000000001', { method: 'qris', amount: 5000 }),
+      {
+        params: { id: 'aaaaaaaa-0000-4000-8000-000000000001' },
+      }
+    );
     expect(res.status).toBe(422);
     const json = (await res.json()) as { error: { message: string } };
     expect(json.error.message).toBe('Nominal melebihi sisa denda (3000).');
@@ -230,23 +255,42 @@ describe('US-03 member fines — lihat + bayar sendiri', () => {
       role: 'member',
       ownMemberId: 'M-1',
       fines: [
-        fineRow({ id: 'F-1', member_id: 'M-1', amount: 5000, paid_amount: 0, status: 'unpaid' }),
+        fineRow({
+          id: 'aaaaaaaa-0000-4000-8000-000000000001',
+          member_id: 'M-1',
+          amount: 5000,
+          paid_amount: 0,
+          status: 'unpaid',
+        }),
       ],
     });
-    const first = await PAY(payReq('F-1', { method: 'qris' }), { params: { id: 'F-1' } });
+    const first = await PAY(payReq('aaaaaaaa-0000-4000-8000-000000000001', { method: 'qris' }), {
+      params: { id: 'aaaaaaaa-0000-4000-8000-000000000001' },
+    });
     expect(first.status).toBe(200);
-    const second = await PAY(payReq('F-1', { method: 'qris' }), { params: { id: 'F-1' } });
+    const second = await PAY(payReq('aaaaaaaa-0000-4000-8000-000000000001', { method: 'qris' }), {
+      params: { id: 'aaaaaaaa-0000-4000-8000-000000000001' },
+    });
     expect(second.status, 'bayar kedua atas denda yang sudah lunas harus 409').toBe(409);
   });
 
-  it('M-1 membayar F-9 milik M-2 → 403/404', async () => {
+  it('M-1 membayar aaaaaaaa-0000-4000-8000-000000000009 milik M-2 → 403/404', async () => {
     setMock({
       userId: 'U-M1',
       role: 'member',
       ownMemberId: 'M-1',
-      fines: [fineRow({ id: 'F-9', member_id: 'M-2', amount: 9000, status: 'unpaid' })],
+      fines: [
+        fineRow({
+          id: 'aaaaaaaa-0000-4000-8000-000000000009',
+          member_id: 'M-2',
+          amount: 9000,
+          status: 'unpaid',
+        }),
+      ],
     });
-    const res = await PAY(payReq('F-9', { method: 'qris' }), { params: { id: 'F-9' } });
+    const res = await PAY(payReq('aaaaaaaa-0000-4000-8000-000000000009', { method: 'qris' }), {
+      params: { id: 'aaaaaaaa-0000-4000-8000-000000000009' },
+    });
     expect([403, 404], 'anggota tidak boleh membayar denda orang lain').toContain(res.status);
   });
 
@@ -255,9 +299,18 @@ describe('US-03 member fines — lihat + bayar sendiri', () => {
       userId: 'U-LIB',
       role: 'librarian',
       ownMemberId: null,
-      fines: [fineRow({ id: 'F-9', member_id: 'M-2', amount: 9000, status: 'unpaid' })],
+      fines: [
+        fineRow({
+          id: 'aaaaaaaa-0000-4000-8000-000000000009',
+          member_id: 'M-2',
+          amount: 9000,
+          status: 'unpaid',
+        }),
+      ],
     });
-    const res = await PAY(payReq('F-9', { metode: 'tunai' }), { params: { id: 'F-9' } });
+    const res = await PAY(payReq('aaaaaaaa-0000-4000-8000-000000000009', { metode: 'tunai' }), {
+      params: { id: 'aaaaaaaa-0000-4000-8000-000000000009' },
+    });
     expect(res.status, 'petugas harus tetap bisa memproses denda').toBe(200);
     const json = (await res.json()) as { data: FineRow };
     expect(json.data.status).toBe('paid');

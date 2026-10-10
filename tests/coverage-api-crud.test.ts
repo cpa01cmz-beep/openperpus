@@ -26,58 +26,17 @@ import {
   errCode,
 } from './helpers/supabase-mock';
 
-import {
-  GET as CAT_GET,
-  POST as CAT_POST,
-  PUT as CAT_PUT,
-  DELETE as CAT_DEL,
-} from '@/app/api/categories/route';
-import {
-  GET as RACK_GET,
-  POST as RACK_POST,
-  PUT as RACK_PUT,
-  DELETE as RACK_DEL,
-} from '@/app/api/racks/route';
-import {
-  GET as MENU_GET,
-  POST as MENU_POST,
-  PUT as MENU_PUT,
-  DELETE as MENU_DEL,
-} from '@/app/api/menus/route';
-import {
-  GET as PAGE_GET,
-  POST as PAGE_POST,
-  PUT as PAGE_PUT,
-  DELETE as PAGE_DEL,
-} from '@/app/api/pages/route';
-import {
-  GET as FAQ_GET,
-  POST as FAQ_POST,
-  PUT as FAQ_PUT,
-  DELETE as FAQ_DEL,
-} from '@/app/api/faqs/route';
-import {
-  GET as BAN_GET,
-  POST as BAN_POST,
-  PUT as BAN_PUT,
-  DELETE as BAN_DEL,
-} from '@/app/api/banners/route';
-import {
-  GET as ART_GET,
-  POST as ART_POST,
-  PUT as ART_PUT,
-  DELETE as ART_DEL,
-} from '@/app/api/articles/route';
-import {
-  GET as MEM_GET,
-  POST as MEM_POST,
-  PUT as MEM_PUT,
-  DELETE as MEM_DEL,
-} from '@/app/api/members/route';
+import { GET as CAT_GET, POST as CAT_POST } from '@/app/api/categories/route';
+import { GET as RACK_GET, POST as RACK_POST } from '@/app/api/racks/route';
+import { GET as MENU_GET, POST as MENU_POST } from '@/app/api/menus/route';
+import { GET as PAGE_GET, POST as PAGE_POST } from '@/app/api/pages/route';
+import { GET as FAQ_GET, POST as FAQ_POST } from '@/app/api/faqs/route';
+import { GET as BAN_GET, POST as BAN_POST } from '@/app/api/banners/route';
+import { GET as ART_GET, POST as ART_POST } from '@/app/api/articles/route';
+import { GET as MEM_GET, POST as MEM_POST } from '@/app/api/members/route';
 import {
   GET as TST_GET,
   POST as TST_POST,
-  PUT as TST_PUT,
   resetTestimonialRateLimit,
 } from '@/app/api/testimonials/route';
 import { GET as SET_GET, PUT as SET_PUT } from '@/app/api/settings/route';
@@ -174,59 +133,6 @@ describe('POST/PUT/DELETE /api/categories', () => {
     expect(res.status).toBe(500);
     expect(await errCode(res)).toBe('SAVE_FAILED');
   });
-
-  it('PUT without id -> 400', async () => {
-    const res = await CAT_PUT(jsonReq('PUT', '/api/categories', { name: 'X' }));
-    expect(res.status).toBe(400);
-  });
-
-  it('PUT invalid json -> 400', async () => {
-    const res = await CAT_PUT(badJsonReq('PUT', '/api/categories?id=c1'));
-    expect(res.status).toBe(400);
-  });
-
-  it('PUT empty name -> 422', async () => {
-    const res = await CAT_PUT(jsonReq('PUT', '/api/categories?id=c1', { name: '   ' }));
-    expect(res.status).toBe(422);
-  });
-
-  it('PUT success 200', async () => {
-    const res = await CAT_PUT(
-      jsonReq('PUT', '/api/categories?id=c1', { nama: 'Sastra', is_active: false, sort_order: '2' })
-    );
-    expect(res.status).toBe(200);
-  });
-
-  it('PUT conflict -> 409', async () => {
-    setTable('categories', { update: { data: null, error: { message: 'dup', code: '23505' } } });
-    const res = await CAT_PUT(jsonReq('PUT', '/api/categories?id=c1', { name: 'Sastra' }));
-    expect(res.status).toBe(409);
-  });
-
-  it('DELETE without id -> 400', async () => {
-    const res = await CAT_DEL(req('/api/categories', { method: 'DELETE' }));
-    expect(res.status).toBe(400);
-  });
-
-  it('DELETE in use -> 409', async () => {
-    setTable('books', { count: 3 });
-    const res = await CAT_DEL(req('/api/categories?id=c1', { method: 'DELETE' }));
-    expect(res.status).toBe(409);
-  });
-
-  it('DELETE success -> 200', async () => {
-    const res = await CAT_DEL(req('/api/categories?id=c1', { method: 'DELETE' }));
-    expect(res.status).toBe(200);
-    const j = (await res.json()) as { message: string };
-    expect(j.message).toContain('dihapus');
-  });
-
-  it('DELETE failure -> 500', async () => {
-    setTable('categories', { delete: { data: null, error: { message: 'db' } } });
-    const res = await CAT_DEL(req('/api/categories?id=c1', { method: 'DELETE' }));
-    expect(res.status).toBe(500);
-    expect(await errCode(res)).toBe('DELETE_FAILED');
-  });
 });
 
 describe('/api/racks', () => {
@@ -284,38 +190,6 @@ describe('/api/racks', () => {
     expect(
       (await RACK_POST(jsonReq('POST', '/api/racks', { code: 'A1', name: 'Rak' }))).status
     ).toBe(409);
-  });
-
-  it('PUT without id -> 400 / invalid json -> 400', async () => {
-    expect((await RACK_PUT(jsonReq('PUT', '/api/racks', { name: 'X' }))).status).toBe(400);
-    expect((await RACK_PUT(badJsonReq('PUT', '/api/racks?id=r1'))).status).toBe(400);
-  });
-
-  it('PUT empty code -> 422', async () => {
-    const res = await RACK_PUT(jsonReq('PUT', '/api/racks?id=r1', { code: ' ' }));
-    expect(res.status).toBe(422);
-  });
-
-  it('PUT success 200', async () => {
-    const res = await RACK_PUT(
-      jsonReq('PUT', '/api/racks?id=r1', { name: 'Rak B', capacity: '10', location: null })
-    );
-    expect(res.status).toBe(200);
-  });
-
-  it('PUT conflict -> 409', async () => {
-    setTable('racks', { update: { data: null, error: { message: 'dup', code: '23505' } } });
-    expect((await RACK_PUT(jsonReq('PUT', '/api/racks?id=r1', { name: 'B' }))).status).toBe(409);
-  });
-
-  it('DELETE without id -> 400; in use -> 409; success -> 200; failure -> 500', async () => {
-    expect((await RACK_DEL(req('/api/racks', { method: 'DELETE' }))).status).toBe(400);
-    setTable('books', { count: 2 });
-    expect((await RACK_DEL(req('/api/racks?id=r1', { method: 'DELETE' }))).status).toBe(409);
-    setTable('books', { count: 0 });
-    expect((await RACK_DEL(req('/api/racks?id=r1', { method: 'DELETE' }))).status).toBe(200);
-    setTable('racks', { delete: { data: null, error: { message: 'db' } } });
-    expect((await RACK_DEL(req('/api/racks?id=r1', { method: 'DELETE' }))).status).toBe(500);
   });
 });
 
@@ -395,45 +269,6 @@ describe('/api/menus', () => {
       500
     );
   });
-
-  it('PUT guard ids/json/validation/success', async () => {
-    expect((await MENU_PUT(jsonReq('PUT', '/api/menus', { label: 'X' }))).status).toBe(400);
-    expect((await MENU_PUT(badJsonReq('PUT', '/api/menus?id=m1'))).status).toBe(400);
-    expect((await MENU_PUT(jsonReq('PUT', '/api/menus?id=m1', { label: ' ' }))).status).toBe(422);
-    expect((await MENU_PUT(jsonReq('PUT', '/api/menus?id=m1', { url: '' }))).status).toBe(422);
-    expect((await MENU_PUT(jsonReq('PUT', '/api/menus?id=m1', { position: 'nope' }))).status).toBe(
-      422
-    );
-    expect((await MENU_PUT(jsonReq('PUT', '/api/menus?id=m1', { target: '_self2' }))).status).toBe(
-      422
-    );
-    expect((await MENU_PUT(jsonReq('PUT', '/api/menus?id=m1', { parent_id: 'bad' }))).status).toBe(
-      422
-    );
-    expect((await MENU_PUT(jsonReq('PUT', '/api/menus?id=m1', { parent_id: 'm1' }))).status).toBe(
-      422
-    );
-    const ok = await MENU_PUT(
-      jsonReq('PUT', '/api/menus?id=m1', { label: 'Beranda Baru', sort_order: '2' })
-    );
-    expect(ok.status).toBe(200);
-    setTable('menus', { update: { data: null, error: { message: 'db' } } });
-    const failed = await MENU_PUT(jsonReq('PUT', '/api/menus?id=m1', { label: 'X' }));
-    expect(failed.status).toBe(500);
-    expect(await errCode(failed)).toBe('SAVE_FAILED');
-    setTable('menus', { update: { data: null, error: { message: 'db' } } });
-    expect((await MENU_PUT(jsonReq('PUT', '/api/menus?id=m1', { label: 'X' }))).status).toBe(500);
-  });
-
-  it('DELETE without id / has children / success / failure', async () => {
-    expect((await MENU_DEL(req('/api/menus', { method: 'DELETE' }))).status).toBe(400);
-    setTable('menus', { count: 2 });
-    expect((await MENU_DEL(req('/api/menus?id=m1', { method: 'DELETE' }))).status).toBe(409);
-    setTable('menus', { count: 0 });
-    expect((await MENU_DEL(req('/api/menus?id=m1', { method: 'DELETE' }))).status).toBe(200);
-    setTable('menus', { delete: { data: null, error: { message: 'db' } } });
-    expect((await MENU_DEL(req('/api/menus?id=m1', { method: 'DELETE' }))).status).toBe(500);
-  });
 });
 
 describe('/api/pages', () => {
@@ -477,30 +312,6 @@ describe('/api/pages', () => {
       (await PAGE_POST(jsonReq('POST', '/api/pages', { title: 'J', content_md: 'I' }))).status
     ).toBe(500);
   });
-
-  it('PUT guards and success', async () => {
-    expect((await PAGE_PUT(jsonReq('PUT', '/api/pages', { title: 'X' }))).status).toBe(400);
-    expect((await PAGE_PUT(badJsonReq('PUT', '/api/pages?id=p1'))).status).toBe(400);
-    expect((await PAGE_PUT(jsonReq('PUT', '/api/pages?id=p1', { title: ' ' }))).status).toBe(422);
-    expect((await PAGE_PUT(jsonReq('PUT', '/api/pages?id=p1', { content_md: '' }))).status).toBe(
-      422
-    );
-    expect((await PAGE_PUT(jsonReq('PUT', '/api/pages?id=p1', {}))).status).toBe(422);
-    const ok = await PAGE_PUT(
-      jsonReq('PUT', '/api/pages?id=p1', { judul: 'Baru', seo_title: 'SEO' })
-    );
-    expect(ok.status).toBe(200);
-    setTable('pages', { update: { data: null, error: { message: 'dup', code: '23505' } } });
-    expect((await PAGE_PUT(jsonReq('PUT', '/api/pages?id=p1', { title: 'X' }))).status).toBe(409);
-  });
-
-  it('DELETE id/success/failure', async () => {
-    expect((await PAGE_DEL(req('/api/pages', { method: 'DELETE' }))).status).toBe(400);
-    setTable('pages', { single: { data: { id: 'p1', slug: 'baru' } } });
-    expect((await PAGE_DEL(req('/api/pages?id=p1', { method: 'DELETE' }))).status).toBe(200);
-    setTable('pages', { delete: { data: null, error: { message: 'db' } } });
-    expect((await PAGE_DEL(req('/api/pages?id=p1', { method: 'DELETE' }))).status).toBe(500);
-  });
 });
 
 describe('/api/faqs', () => {
@@ -535,29 +346,6 @@ describe('/api/faqs', () => {
     expect(
       (await FAQ_POST(jsonReq('POST', '/api/faqs', { question: 'Q', answer: 'A' }))).status
     ).toBe(500);
-  });
-
-  it('PUT guards/success', async () => {
-    expect((await FAQ_PUT(jsonReq('PUT', '/api/faqs', { question: 'Q' }))).status).toBe(400);
-    expect((await FAQ_PUT(badJsonReq('PUT', '/api/faqs?id=f1'))).status).toBe(400);
-    expect((await FAQ_PUT(jsonReq('PUT', '/api/faqs?id=f1', { question: ' ' }))).status).toBe(422);
-    expect((await FAQ_PUT(jsonReq('PUT', '/api/faqs?id=f1', { answer: '' }))).status).toBe(422);
-    expect((await FAQ_PUT(jsonReq('PUT', '/api/faqs?id=f1', {}))).status).toBe(422);
-    const ok = await FAQ_PUT(
-      jsonReq('PUT', '/api/faqs?id=f1', { pertanyaan: 'Q baru', urutan: '3' })
-    );
-    expect(ok.status).toBe(200);
-    setTable('faqs', { update: { data: null, error: { message: 'db' } } });
-    const failed = await FAQ_PUT(jsonReq('PUT', '/api/faqs?id=f1', { question: 'Q' }));
-    expect(failed.status).toBe(500);
-    expect(await errCode(failed)).toBe('SAVE_FAILED');
-  });
-
-  it('DELETE success/failure', async () => {
-    expect((await FAQ_DEL(req('/api/faqs', { method: 'DELETE' }))).status).toBe(400);
-    expect((await FAQ_DEL(req('/api/faqs?id=f1', { method: 'DELETE' }))).status).toBe(200);
-    setTable('faqs', { delete: { data: null, error: { message: 'db' } } });
-    expect((await FAQ_DEL(req('/api/faqs?id=f1', { method: 'DELETE' }))).status).toBe(500);
   });
 });
 
@@ -594,27 +382,6 @@ describe('/api/banners', () => {
     expect(
       (await BAN_POST(jsonReq('POST', '/api/banners', { title: 'P', image_url: '/x.png' }))).status
     ).toBe(500);
-  });
-
-  it('PUT id/json/success', async () => {
-    expect((await BAN_PUT(jsonReq('PUT', '/api/banners', { title: 'X' }))).status).toBe(400);
-    expect((await BAN_PUT(badJsonReq('PUT', '/api/banners?id=b1'))).status).toBe(400);
-    const ok = await BAN_PUT(
-      jsonReq('PUT', '/api/banners?id=b1', {
-        title: 'Promo2',
-        subtitle: 'S2',
-        link: '/faq',
-        sort_order: '2',
-      })
-    );
-    expect(ok.status).toBe(200);
-  });
-
-  it('DELETE id/success/failure', async () => {
-    expect((await BAN_DEL(req('/api/banners', { method: 'DELETE' }))).status).toBe(400);
-    expect((await BAN_DEL(req('/api/banners?id=b1', { method: 'DELETE' }))).status).toBe(200);
-    setTable('banners', { delete: { data: null, error: { message: 'db' } } });
-    expect((await BAN_DEL(req('/api/banners?id=b1', { method: 'DELETE' }))).status).toBe(500);
   });
 });
 
@@ -664,30 +431,6 @@ describe('/api/articles', () => {
     expect(
       (await ART_POST(jsonReq('POST', '/api/articles', { title: 'J', content_md: 'I' }))).status
     ).toBe(500);
-  });
-
-  it('PUT guards/success', async () => {
-    expect((await ART_PUT(jsonReq('PUT', '/api/articles', { title: 'X' }))).status).toBe(400);
-    expect((await ART_PUT(badJsonReq('PUT', '/api/articles?id=a1'))).status).toBe(400);
-    const ok = await ART_PUT(
-      jsonReq('PUT', '/api/articles?id=a1', {
-        title: 'Berita Edit',
-        excerpt: 'Ringkas',
-        status: 'draft',
-      })
-    );
-    expect(ok.status).toBe(200);
-    setTable('articles', { update: { data: null, error: { message: 'db' } } });
-    const failed = await ART_PUT(jsonReq('PUT', '/api/articles?id=a1', { title: 'X' }));
-    expect(failed.status).toBe(500);
-    expect(await errCode(failed)).toBe('SAVE_FAILED');
-  });
-
-  it('DELETE id/success/failure', async () => {
-    expect((await ART_DEL(req('/api/articles', { method: 'DELETE' }))).status).toBe(400);
-    expect((await ART_DEL(req('/api/articles?id=a1', { method: 'DELETE' }))).status).toBe(200);
-    setTable('articles', { delete: { data: null, error: { message: 'db' } } });
-    expect((await ART_DEL(req('/api/articles?id=a1', { method: 'DELETE' }))).status).toBe(500);
   });
 });
 
@@ -753,35 +496,6 @@ describe('/api/members', () => {
         )
       ).status
     ).toBe(500);
-  });
-
-  it('PUT id/json/status/success', async () => {
-    expect((await MEM_PUT(jsonReq('PUT', '/api/members', { phone: '1' }))).status).toBe(400);
-    expect((await MEM_PUT(badJsonReq('PUT', '/api/members?id=m1'))).status).toBe(400);
-    expect((await MEM_PUT(jsonReq('PUT', '/api/members?id=m1', { status: 'ghost' }))).status).toBe(
-      422
-    );
-    const ok = await MEM_PUT(
-      jsonReq('PUT', '/api/members?id=m1', {
-        phone: '0813',
-        alamat: 'Jl. A',
-        status: 'suspended',
-        member_code: 'AG-2',
-      })
-    );
-    expect(ok.status).toBe(200);
-    setTable('members', { update: { data: null, error: { message: 'db' } } });
-    expect((await MEM_PUT(jsonReq('PUT', '/api/members?id=m1', { phone: '1' }))).status).toBe(500);
-  });
-
-  it('DELETE id/active-loans-conflict/success/failure', async () => {
-    expect((await MEM_DEL(req('/api/members', { method: 'DELETE' }))).status).toBe(400);
-    setTable('loans', { count: 1 });
-    expect((await MEM_DEL(req('/api/members?id=m1', { method: 'DELETE' }))).status).toBe(409);
-    setTable('loans', { count: 0 });
-    expect((await MEM_DEL(req('/api/members?id=m1', { method: 'DELETE' }))).status).toBe(200);
-    setTable('members', { delete: { data: null, error: { message: 'db' } } });
-    expect((await MEM_DEL(req('/api/members?id=m1', { method: 'DELETE' }))).status).toBe(500);
   });
 });
 
@@ -887,36 +601,6 @@ describe('/api/testimonials', () => {
     expect(blocked.status).toBe(429);
     expect(await errCode(blocked)).toBe('RATE_LIMITED');
     expect(blocked.headers.get('Retry-After')).toBeTruthy();
-  });
-
-  it('PUT id/json/success', async () => {
-    expect((await TST_PUT(jsonReq('PUT', '/api/testimonials', { name: 'X' }))).status).toBe(400);
-    expect((await TST_PUT(badJsonReq('PUT', '/api/testimonials?id=t1'))).status).toBe(400);
-    expect((await TST_PUT(jsonReq('PUT', '/api/testimonials?id=t1', { name: ' ' }))).status).toBe(
-      422
-    );
-    expect((await TST_PUT(jsonReq('PUT', '/api/testimonials?id=t1', { content: '' }))).status).toBe(
-      422
-    );
-    expect((await TST_PUT(jsonReq('PUT', '/api/testimonials?id=t1', { rating: 99 }))).status).toBe(
-      422
-    );
-    expect((await TST_PUT(jsonReq('PUT', '/api/testimonials?id=t1', { urutan: 'x' }))).status).toBe(
-      422
-    );
-    const ok = await TST_PUT(
-      jsonReq('PUT', '/api/testimonials?id=t1', {
-        name: 'Andi Edit',
-        content: 'Baru',
-        rating: '4',
-        is_active: 'true',
-      })
-    );
-    expect(ok.status).toBe(200);
-    setTable('testimonials', { update: { data: null, error: { message: 'db' } } });
-    const failed = await TST_PUT(jsonReq('PUT', '/api/testimonials?id=t1', { name: 'X' }));
-    expect(failed.status).toBe(500);
-    expect(await errCode(failed)).toBe('SAVE_FAILED');
   });
 });
 

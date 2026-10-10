@@ -219,13 +219,14 @@ function usedErrorCodes(): Set<string> {
 }
 
 describe('openapi path/method parity', () => {
-  it('mirrors all 35 route modules in both directions', () => {
+  it('mirrors all 38 route modules in both directions', () => {
     const routePaths = new Set(ROUTE_FILES.map(specPathOf));
     const specPaths = new Set(Object.keys(SPEC.paths));
     // Wave2 menambah 2 modul route (/api/services + /api/services/{id}),
     // issue #73 menambah /api/reservations/{id}/checkout;
+    // issue #54 menambah /api/{members,articles,banners}/[id];
     // angka ini detektor perubahan, bukan kunci perilaku — ikut bertambah.
-    expect(ROUTE_FILES).toHaveLength(35);
+    expect(ROUTE_FILES).toHaveLength(38);
     expect([...routePaths].filter((p) => !specPaths.has(p))).toEqual([]);
     expect([...specPaths].filter((p) => !routePaths.has(p))).toEqual([]);
   });
@@ -402,13 +403,14 @@ describe('banner contract', () => {
 });
 
 describe('loans PUT contract', () => {
-  it('accepts action: extend|return like the handler dispatches', () => {
-    for (const p of ['/api/loans', '/api/loans/{id}']) {
-      const schema = requestJsonSchema(op(p, 'put'));
-      expect(requiredOf(schema)).toContain('action');
-      expect(propsOf(schema)['action']?.['enum']).toEqual(['extend', 'return']);
-    }
-    const src = readSrc('src/app/api/loans/route.ts');
+  it('accepts action: extend|return like the handler dispatches (issue #54: hanya [id])', () => {
+    const schema = requestJsonSchema(op('/api/loans/{id}', 'put'));
+    expect(requiredOf(schema)).toContain('action');
+    expect(propsOf(schema)['action']?.['enum']).toEqual(['extend', 'return']);
+    // Koleksi hanya GET/POST — tulis single-resource hanya via path [id].
+    expect(SPEC.paths['/api/loans']?.['put']).toBeUndefined();
+    expect(SPEC.paths['/api/loans']?.['delete']).toBeUndefined();
+    const src = readSrc('src/app/api/loans/[id]/route.ts');
     expect(src).toContain("body.action === 'extend'");
     expect(src).toContain("body.action !== 'return'");
   });

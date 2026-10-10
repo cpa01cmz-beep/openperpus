@@ -7,10 +7,10 @@ import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
 /**
  * GET /api/services?page=&per_page=&q= — publik (hanya is_active).
- *   Staf: ?all=1 untuk lihat semua (termasuk nonaktif). ?id= untuk satu layanan.
+ *   Staf: ?all=1 untuk lihat semua (termasuk nonaktif).
  * POST /api/services — pustakawan+ {title|nama, description|deskripsi?, icon?, sort_order|urutan?, is_active?}
- * PUT /api/services?id= — pustakawan+
- * DELETE /api/services?id= — admin
+ * PUT /api/services/{id} — pustakawan+ (satu transport ID, issue #54: ?id= dihapus)
+ * DELETE /api/services/{id} — admin
  * Kolom migrasi 0021: title, description, icon book|catalog|users|clock|info|star,
  * sort_order, is_active.
  */
@@ -169,88 +169,4 @@ export async function POST(req: Request) {
 
   await writeLog(supabase, user?.id, 'services.create', (data as { id: string }).id, { title });
   return NextResponse.json({ data, revalidated: revalidateServices() }, { status: 201 });
-}
-
-export async function PUT(req: Request) {
-  const log = createLogger(requestIdFromHeaders(req.headers));
-  const guard = await requireStaff(['admin', 'librarian']);
-  if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
-  const { supabase, user } = guard as {
-    supabase: ReturnType<typeof createClient>;
-    user: { id: string };
-  };
-
-  const id = new URL(req.url).searchParams.get('id');
-  if (!id) return jsonError('VALIDATION', 'Parameter ?id= wajib.', 400);
-
-  let body: Record<string, unknown>;
-  try {
-    body = (await req.json()) as Record<string, unknown>;
-  } catch {
-    return jsonError('INVALID_JSON', 'Body JSON tidak valid.', 400);
-  }
-
-  const payload: Record<string, unknown> = {};
-  if (body.title !== undefined || body.nama !== undefined) {
-    const title = String(body.title ?? body.nama ?? '').trim();
-    if (!title) return jsonError('VALIDATION', 'title/nama tidak boleh kosong.', 422);
-    payload.title = title;
-  }
-  if (body.description !== undefined || body.deskripsi !== undefined) {
-    payload.description = String(body.description ?? body.deskripsi ?? '').trim();
-  }
-  if (body.icon !== undefined) {
-    const icon = String(body.icon ?? '').trim();
-    if (!(ICONS as readonly string[]).includes(icon)) {
-      return jsonError('VALIDATION', 'icon harus: book|catalog|users|clock|info|star.', 422);
-    }
-    payload.icon = icon;
-  }
-  if (body.sort_order !== undefined || body.urutan !== undefined) {
-    const sort_order = toInt(body.sort_order ?? body.urutan, 0);
-    if (!Number.isInteger(sort_order))
-      return jsonError('VALIDATION', 'sort_order/urutan harus bilangan bulat.', 422);
-    payload.sort_order = sort_order;
-  }
-  if (body.is_active !== undefined) payload.is_active = Boolean(body.is_active);
-  if (Object.keys(payload).length === 0)
-    return jsonError('VALIDATION', 'Tidak ada field yang diupdate.', 422);
-
-  const { data, error } = await supabase
-    .from('services')
-    .update(payload)
-    .eq('id', id)
-    .select()
-    .single();
-  if (error) {
-    log.error('services.save_failed', { detail: error.message });
-    return jsonError('SAVE_FAILED', 'Gagal mengupdate layanan.', 500, { requestId: log.requestId });
-  }
-
-  await writeLog(supabase, user?.id, 'services.update', id, payload);
-  return NextResponse.json({ data, revalidated: revalidateServices() });
-}
-
-export async function DELETE(req: Request) {
-  const log = createLogger(requestIdFromHeaders(req.headers));
-  const guard = await requireStaff(['admin']);
-  if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
-  const { supabase, user } = guard as {
-    supabase: ReturnType<typeof createClient>;
-    user: { id: string };
-  };
-
-  const id = new URL(req.url).searchParams.get('id');
-  if (!id) return jsonError('VALIDATION', 'Parameter ?id= wajib.', 400);
-
-  const { error } = await supabase.from('services').delete().eq('id', id);
-  if (error) {
-    log.error('services.delete_failed', { detail: error.message });
-    return jsonError('DELETE_FAILED', 'Gagal menghapus layanan.', 500, {
-      requestId: log.requestId,
-    });
-  }
-
-  await writeLog(supabase, user?.id, 'services.delete', id);
-  return NextResponse.json({ message: 'Layanan dihapus.', revalidated: revalidateServices() });
 }

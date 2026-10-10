@@ -64,7 +64,7 @@ export default function ArtikelPage() {
 
   async function onDelete(id: string) {
     if (!confirm('Hapus artikel?')) return;
-    const res = await fetch(`/api/articles?id=${id}`, { method: 'DELETE' });
+    const res = await fetch(`/api/articles/${id}`, { method: 'DELETE' });
     const json = await res.json();
     if (!res.ok) return alert(errMsg(json));
     load();

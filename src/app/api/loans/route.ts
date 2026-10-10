@@ -1,16 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireStaff, jsonError, addDaysISO, parsePaging } from '@/lib/supabase/auth';
-import { returnLoan, extendLoan, getFineRate } from '@/lib/loans-return';
+import { getFineRate } from '@/lib/loans-return';
 import { checkMemberLoanEligibility } from '@/lib/loan-eligibility';
 import { sanitizeIlike } from '@/lib/search';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
-import {
-  ACTIVE_LOAN_STATUSES,
-  isActiveLoanStatus,
-  isLoanStatus,
-  loansListFilter,
-} from '@/lib/loans-overdue';
+import { ACTIVE_LOAN_STATUSES, isLoanStatus, loansListFilter } from '@/lib/loans-overdue';
 
 /**
  * Sirkulasi — kolom mengikuti migrasi 0001 (loans):
@@ -27,14 +22,16 @@ import {
  * POST /api/loans { member_id, book_id, borrowed_at?, due_at?, notes? }
  *   -> gate kelayakan anggota (#56): denda belum lunas / pinjaman terlambat /
  *      batas pinjaman aktif -> 409; due auto +14 hari, stok_available -1 (guard >0)
- * PUT /api/loans?id= { action:"return", returned_at?, notes? }
+ * PUT /api/loans/{id} { action:"return", returned_at?, notes? }
  *   -> denda otomatis tarif library_settings/hari (default Rp1000) + stok +1 + row fines bila denda >0
- * PUT /api/loans?id= { action:"extend", days? } -> due_at += N hari (1..90).
+ * PUT /api/loans/{id} { action:"extend", days? } -> due_at += N hari (1..90).
  * STATE-MACHINE (transisi legal, ilegal -> 409/422):
  *   return: borrowed|overdue -> returned|lost (sudah returned/lost -> 409).
  *   extend: borrowed|overdue -> due_at baru (sudah returned/lost -> 409).
  *   completed/cancelled/expired bukan status loan — ditolak 422.
- * DELETE /api/loans?id= (admin, hanya yang sudah returned/lost)
+ * DELETE /api/loans/{id} (admin, hanya yang sudah returned/lost)
+ * Satu transport ID (issue #54): return/extend/delete hanya via path REST
+ * /api/loans/[id]; varian ?id= di koleksi dihapus.
  */
 
 function isUuid(v: unknown): boolean {
@@ -307,74 +304,4 @@ export async function POST(req: Request) {
     /* best-effort */
   }
   return NextResponse.json({ data }, { status: 201 });
-}
-
-export async function PUT(req: Request) {
-  const guard = await requireStaff(['admin', 'librarian']);
-  if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
-  const { supabase, user } = guard as {
-    supabase: ReturnType<typeof createClient>;
-    user: { id: string };
-  };
-
-  const id = new URL(req.url).searchParams.get('id');
-  if (!id) return jsonError('VALIDATION', 'Parameter ?id= wajib.', 400);
-
-  let body: Record<string, unknown>;
-  try {
-    body = (await req.json()) as Record<string, unknown>;
-  } catch {
-    return jsonError('INVALID_JSON', 'Body JSON tidak valid.', 400);
-  }
-  if (body.action === 'extend') {
-    // S-roi7 single-source: delegasi ke extendLoan (guard 409 + due_at shift + audit).
-    return extendLoan({
-      supabase,
-      id,
-      userId: user?.id ?? null,
-      days: body.days as number | undefined,
-    });
-  }
-  if (body.action !== 'return') return jsonError('VALIDATION', "Kirim { action: 'return' }.", 422);
-
-  // S-roi3 single-source: delegasi ke returnLoan (pemilik 409 + calcFine + clamp + fines + audit).
-  return returnLoan({
-    supabase,
-    id,
-    userId: user?.id ?? null,
-    returnedAt: body.returned_at as string | undefined,
-    notes: typeof body.notes === 'string' ? body.notes : undefined,
-  });
-}
-
-export async function DELETE(req: Request) {
-  const log = createLogger(requestIdFromHeaders(req.headers));
-  const guard = await requireStaff(['admin']);
-  if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
-  const { supabase, user } = guard as {
-    supabase: ReturnType<typeof createClient>;
-    user: { id: string };
-  };
-
-  const id = new URL(req.url).searchParams.get('id');
-  if (!id) return jsonError('VALIDATION', 'Parameter ?id= wajib.', 400);
-
-  const { data: loan } = await supabase.from('loans').select('status').eq('id', id).single();
-  if (!loan) return jsonError('NOT_FOUND', 'Peminjaman tidak ditemukan.', 404);
-  // Berjalan = belum returned/lost (termasuk turunan terlambat) — helper bersama.
-  if (isActiveLoanStatus((loan as { status: string }).status)) {
-    return jsonError('CONFLICT', 'Tidak bisa hapus peminjaman berjalan. Kembalikan dulu.', 409);
-  }
-
-  const { error } = await supabase.from('loans').delete().eq('id', id);
-  if (error) {
-    log.error('loans.delete_failed', { detail: error.message });
-    return jsonError('DELETE_FAILED', 'Gagal menghapus peminjaman.', 500, {
-      requestId: log.requestId,
-    });
-  }
-  try {
-    await writeLog(supabase, user?.id, 'loans.delete', id);
-  } catch {}
-  return NextResponse.json({ message: 'Peminjaman dihapus.' });
 }

@@ -7,10 +7,10 @@ import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
 /**
  * GET /api/faqs?page=&per_page=&q=&category= — publik (hanya is_active).
- *   Staf: ?all=1 untuk lihat semua (termasuk nonaktif). ?id= untuk satu FAQ.
+ *   Staf: ?all=1 untuk lihat semua (termasuk nonaktif).
  * POST /api/faqs — pustakawan+ {question|pertanyaan, answer|jawaban, category|kategori?, sort_order|urutan?, is_active?}
- * PUT /api/faqs?id= — pustakawan+
- * DELETE /api/faqs?id= — admin
+ * PUT /api/faqs/{id} — pustakawan+ (satu transport ID, issue #54: ?id= dihapus)
+ * DELETE /api/faqs/{id} — admin
  * Kolom migrasi 0001: question, answer, category, sort_order, is_active.
  */
 
@@ -158,84 +158,4 @@ export async function POST(req: Request) {
 
   await writeLog(supabase, user?.id, 'faqs.create', (data as { id: string }).id, { question });
   return NextResponse.json({ data, revalidated: revalidateFaqs() }, { status: 201 });
-}
-
-export async function PUT(req: Request) {
-  const log = createLogger(requestIdFromHeaders(req.headers));
-  const guard = await requireStaff(['admin', 'librarian']);
-  if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
-  const { supabase, user } = guard as {
-    supabase: ReturnType<typeof createClient>;
-    user: { id: string };
-  };
-
-  const id = new URL(req.url).searchParams.get('id');
-  if (!id) return jsonError('VALIDATION', 'Parameter ?id= wajib.', 400);
-
-  let body: Record<string, unknown>;
-  try {
-    body = (await req.json()) as Record<string, unknown>;
-  } catch {
-    return jsonError('INVALID_JSON', 'Body JSON tidak valid.', 400);
-  }
-
-  const payload: Record<string, unknown> = {};
-  if (body.question !== undefined || body.pertanyaan !== undefined) {
-    const question = String(body.question ?? body.pertanyaan ?? '').trim();
-    if (!question) return jsonError('VALIDATION', 'question/pertanyaan tidak boleh kosong.', 422);
-    payload.question = question;
-  }
-  if (body.answer !== undefined || body.jawaban !== undefined) {
-    const answer = String(body.answer ?? body.jawaban ?? '').trim();
-    if (!answer) return jsonError('VALIDATION', 'answer/jawaban tidak boleh kosong.', 422);
-    payload.answer = answer;
-  }
-  if (body.category !== undefined || body.kategori !== undefined) {
-    payload.category = (body.category ?? body.kategori) as string | null;
-  }
-  if (body.sort_order !== undefined || body.urutan !== undefined) {
-    const sort_order = toInt(body.sort_order ?? body.urutan, 0);
-    if (!Number.isInteger(sort_order))
-      return jsonError('VALIDATION', 'sort_order/urutan harus bilangan bulat.', 422);
-    payload.sort_order = sort_order;
-  }
-  if (body.is_active !== undefined) payload.is_active = Boolean(body.is_active);
-  if (Object.keys(payload).length === 0)
-    return jsonError('VALIDATION', 'Tidak ada field yang diupdate.', 422);
-
-  const { data, error } = await supabase
-    .from('faqs')
-    .update(payload)
-    .eq('id', id)
-    .select()
-    .single();
-  if (error) {
-    log.error('faqs.save_failed', { detail: error.message });
-    return jsonError('SAVE_FAILED', 'Gagal mengupdate FAQ.', 500, { requestId: log.requestId });
-  }
-
-  await writeLog(supabase, user?.id, 'faqs.update', id, payload);
-  return NextResponse.json({ data, revalidated: revalidateFaqs() });
-}
-
-export async function DELETE(req: Request) {
-  const log = createLogger(requestIdFromHeaders(req.headers));
-  const guard = await requireStaff(['admin']);
-  if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
-  const { supabase, user } = guard as {
-    supabase: ReturnType<typeof createClient>;
-    user: { id: string };
-  };
-
-  const id = new URL(req.url).searchParams.get('id');
-  if (!id) return jsonError('VALIDATION', 'Parameter ?id= wajib.', 400);
-
-  const { error } = await supabase.from('faqs').delete().eq('id', id);
-  if (error) {
-    log.error('faqs.delete_failed', { detail: error.message });
-    return jsonError('DELETE_FAILED', 'Gagal menghapus FAQ.', 500, { requestId: log.requestId });
-  }
-
-  await writeLog(supabase, user?.id, 'faqs.delete', id);
-  return NextResponse.json({ message: 'FAQ dihapus.', revalidated: revalidateFaqs() });
 }
