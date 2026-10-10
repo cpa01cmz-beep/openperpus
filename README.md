@@ -151,4 +151,11 @@ npm test
 
 Suite utama (T-S1..T-S4): `tests/api/books-crud.test.ts`, `tests/katalog-pagination.test.ts`, `tests/loans-stock-fine.test.ts`, `tests/rls-escalation.test.ts`. Suite admin: `admin-bookform`, `admin-taxonomy`, `admin-edits`. Ada juga `placeholder.test.ts` sebagai smoke test.
 
+> Gate kualitas ada di GitHub Actions (typecheck, lint, unit+components, playwright-list) — jangan jalankan test suite penuh di lokal; cukup `npm run check` (typecheck + lint) sebelum push, lalu pantau `gh pr checks`.
+
+### Panduan onboarding
+
+- [`docs/onboarding-dev.md`](docs/onboarding-dev.md) — setup dev 15 menit, akun admin pertama, troubleshooting (RLS 403, redirect URL, wrangler secret), dan smoke test checklist (mulai dari `curl /api/settings` di `docs/api-contract.md`).
+- [`docs/runbook-pustakawan.md`](docs/runbook-pustakawan.md) — alur harian pustakawan (pinjam, kembali+denda, bayar, reservasi, opname, anggota/buku) + tabel istilah ID↔EN lengkap + checklist 10 langkah.
+
 # Cloudflare build trigger
