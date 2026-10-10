@@ -151,6 +151,20 @@
 - RLS: anggota SELECT miliknya; pustakawan+admin full.
 - Trigger `loan_checkout`: tolak bila member cap `maks_pinjam` tercapai / status blokir / copy tak tersedia; set copy `dipinjam`. Trigger `loan_return`: set copy `tersedia`, hitung `denda = max(0, kembali - tempo) * denda_per_hari`, insert ke `fines`.
 
+### Status terlambat — TURUNAN, bukan kolom (issue #57)
+
+Kolom `loans.status` memuat enum `borrowed|returned|overdue|lost` (CHECK `0001_core.sql:152`), tetapi **aplikasi tidak pernah menulis `overdue`**: checkout menulis `borrowed`, pengembalian menulis `returned`/`lost`. Definisi terlambat selalu dihitung:
+
+```sql
+-- satu sumber kebenaran; dipakai API, dashboard, dan RPC 0017
+status IN ('borrowed','overdue') AND due_at < NOW()
+```
+
+- Tidak ada cron/backfill `borrowed → overdue`; kolom `overdue` hanya kompatibilitas baris lama.
+- UI menampilkan status efektif (`effective_status` / `effectiveLoanStatus()`), sehingga satu loan punya satu status di dashboard, halaman peminjaman, dan denda.
+- Kontrak query: `GET /api/loans?status=overdue` ≡ `?overdue=1` ≡ tombol "Terlambat saja" di admin.
+- Index pendukung: `idx_loans_status` + filter `due_at` (lihat "Index Wajib").
+
 ## 8. reservations (antrean)
 
 | Kolom                | Tipe                                                                       |
