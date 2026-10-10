@@ -116,7 +116,9 @@ export default async function FaqPage() {
     <div className="space-y-6">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(faqJsonLd).replace(/</g, '\\u003c'),
+        }}
       />
       <Breadcrumb items={[{ label: 'Beranda', href: '/' }, { label: 'FAQ' }]} />
       <header>

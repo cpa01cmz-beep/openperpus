@@ -109,7 +109,7 @@ export default async function KatalogPage({
                 ],
               },
             ],
-          }),
+          }).replace(/</g, '\\u003c'),
         }}
       />
       <Breadcrumb items={[{ label: 'Beranda', href: '/' }, { label: 'Katalog' }]} />

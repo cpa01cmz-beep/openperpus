@@ -76,7 +76,9 @@ export default async function PublicLayout({ children }: { children: React.React
     <div className="flex min-h-dvh flex-col">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c'),
+        }}
       />
       <Navbar
         siteName={siteName}

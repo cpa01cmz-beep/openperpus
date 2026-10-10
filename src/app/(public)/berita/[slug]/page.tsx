@@ -91,7 +91,9 @@ export default async function BeritaDetailPage({ params }: Props) {
     <div className="mx-auto max-w-3xl space-y-6">
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c'),
+        }}
       />
       <Breadcrumb
         items={[

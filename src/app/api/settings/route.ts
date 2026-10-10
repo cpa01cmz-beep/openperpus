@@ -3,6 +3,7 @@ import { revalidatePath, revalidateTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { requireStaff, jsonError } from '@/lib/supabase/auth';
 import { THEMES } from '@/lib/themes';
+import { sanitizeContentPayload, validateContentFields } from '@/lib/validation';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
 /**
@@ -97,6 +98,9 @@ export async function PUT(req: Request) {
   }
 
   const payload = normalizeSettings(body as Record<string, unknown>);
+  sanitizeContentPayload('settings', payload);
+  const capErr = validateContentFields('settings', payload);
+  if (capErr) return jsonError('VALIDATION', capErr, 422);
   // Fase 1 (layout-only): tema dikunci di endpoint umum — ADDITIVE guard,
   // perilaku field non-tema tidak berubah.
   {
