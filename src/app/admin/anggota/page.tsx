@@ -58,7 +58,7 @@ export default function AnggotaPage() {
       };
       if (!res.ok) throw new Error(errMsg(json, 'Gagal memuat anggota.'));
       setRows(json.data ?? []);
-      setTotalPages(json.pagination?.totalPages ?? json.meta?.totalPages ?? 1);
+      setTotalPages(json.pagination?.totalPages ?? 1);
     } catch (e) {
       setLoadError((e as Error).message);
     }

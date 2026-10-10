@@ -113,7 +113,7 @@ export default function DendaSayaPage() {
       if (!res.ok) throw new Error(errMsg(json));
       setNeedLogin(false);
       setRows(json.data ?? []);
-      setTotalPages(json.pagination?.totalPages ?? json.meta?.totalPages ?? 1);
+      setTotalPages(json.pagination?.totalPages ?? 1);
     } catch (e) {
       setError((e as Error).message);
     } finally {

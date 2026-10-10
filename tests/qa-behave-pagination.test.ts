@@ -57,21 +57,25 @@ describe('QA-BEHAVE katalog pagination', () => {
     expect(res.status).toBe(200);
     const j = (await res.json()) as {
       data: unknown[];
-      meta: { page: number; per_page: number; total: number };
+      pagination: { page: number; limit: number; total: number; totalPages: number };
     };
     expect(j.data.length).toBe(10);
-    expect(j.meta.page).toBe(2);
-    expect(j.meta.per_page).toBe(10);
-    expect(j.meta.total).toBe(35);
+    expect(j.pagination.page).toBe(2);
+    expect(j.pagination.limit).toBe(10);
+    expect(j.pagination.total).toBe(35);
+    expect(j.pagination.totalPages).toBe(4);
+    // #61: satu bentuk envelope — meta lama tidak lagi dikirim.
+    expect((j as Record<string, unknown>).meta).toBeUndefined();
   });
 
-  it('PAGE-02 tanpa param -> default per_page + meta konsisten', async () => {
+  it('PAGE-02 tanpa param -> default per_page + pagination konsisten', async () => {
     setBooksMock(35);
     const res = await BOOKS_GET(new Request('http://localhost/api/books'));
     expect(res.status).toBe(200);
-    const j = (await res.json()) as { data: unknown[]; meta: { total: number } };
+    const j = (await res.json()) as { data: unknown[]; pagination: { total: number } };
     expect(j.data.length).toBeGreaterThan(0);
     expect(j.data.length).toBeLessThanOrEqual(35);
-    expect(j.meta.total).toBe(35);
+    expect(j.pagination.total).toBe(35);
+    expect((j as Record<string, unknown>).meta).toBeUndefined();
   });
 });

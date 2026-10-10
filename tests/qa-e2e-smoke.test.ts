@@ -26,7 +26,7 @@ function jreq(url: string, method: string, body?: unknown) {
 }
 
 describe('QA-E2E-SMOKE rantai sirkulasi', () => {
-  it('SMOKE-01 katalog publik 200 + meta konsisten', async () => {
+  it('SMOKE-01 katalog publik 200 + pagination konsisten', async () => {
     const rows = [{ id: BID, title: 'Buku A', stock_available: 2, stock_total: 3 }];
     const from = vi.fn(() => {
       const c: Record<string, unknown> = {};
@@ -49,9 +49,9 @@ describe('QA-E2E-SMOKE rantai sirkulasi', () => {
     };
     const res = await BOOKS_GET(new Request('http://localhost/api/books?page=1&per_page=10'));
     expect(res.status).toBe(200);
-    const j = (await res.json()) as { data: { id: string }[]; meta: { total: number } };
+    const j = (await res.json()) as { data: { id: string }[]; pagination: { total: number } };
     expect(j.data[0]?.id).toBe(BID);
-    expect(j.meta.total).toBe(1);
+    expect(j.pagination.total).toBe(1);
   });
 
   it('SMOKE-02 reservasi -> pinjam -> kembali (handler chain, state mock)', async () => {

@@ -40,7 +40,7 @@ export default function BannerPage() {
     };
     if (res.ok) {
       setRows(json.data ?? []);
-      setTotalPages(json.pagination?.totalPages ?? json.meta?.totalPages ?? 1);
+      setTotalPages(json.pagination?.totalPages ?? 1);
     }
   }, [sort, order, page]);
 

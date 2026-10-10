@@ -1,16 +1,25 @@
 # API Contract — `/api/*` (REST)
 
-> Basis: Next.js Route Handlers + Supabase server client. Semua response JSON. Auth via Supabase session cookie. Lihat `docs/architecture.md §4` untuk roles.
+> Basis: Next.js Route Handlers + Supabase server client. Semua response JSON. Auth via Supabase session cookie. Lihat `docs/architecture.md §4` untuk roles. Spesifikasi mesin: `openapi.yaml` (dites bidireksional oleh `tests/openapi-conformance.test.ts`).
 
 ## Konvensi Global
 
 - **Base:** `/api/<resource>` + `/api/<resource>/[id]`.
 - **Auth header:** cookie session (browser). Non-browser pakai `Authorization: Bearer <supabase_jwt>`.
-- **Format sukses:** `{ "data": <object|array>, "meta"?: { "page":1,"per_page":20,"total":123 } }`
-- **Format error:** `{ "error": { "code":"FORBIDDEN", "message":"..." } }` + HTTP status tepat (400/401/403/404/409/422/500).
-- **Pagination:** `?page=1&per_page=20&q=&sort=&order=asc|desc`. Default `per_page=20`, maks 100.
-- **Cache:** GET publik kirim `Cache-Control: s-maxage=300`; GET admin `no-store`. Mutasi balas dengan `revalidated: ["tag/path"]`.
-- **Validasi:** Zod di tiap route; 422 + field errors bila gagal.
+- **Format sukses:** `{ "data": <object|array> }` — endpoint list **selalu** membawa envelope pagination:
+  `{ "data": [...], "pagination": { "page": 1, "limit": 20, "total": 123, "totalPages": 7 } }`.
+  Envelope `meta` (`page/per_page/total`) sudah **dihapus** (issue #61) — jangan tambal fallback ganda di klien.
+- **Format error:** `{ "error": { "code":"FORBIDDEN", "message":"..." }, "details"?: {...} }` + HTTP status tepat (400/401/403/404/409/422/500).
+- **Pagination:** `?page=1&per_page=20`. `per_page` 1–100 (`limit` alias kompatibilitas). Default per route:
+
+  | Default | Route                                                                                                                                             |
+  | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | 10      | `/api/books`, `/api/loans`, `/api/members`, `/api/banners`, `/api/articles`                                                                       |
+  | 20      | `/api/categories`, `/api/racks`, `/api/faqs`, `/api/services`, `/api/pages`, `/api/menus`, `/api/testimonials`, `/api/reservations`, `/api/fines` |
+
+- **Nama field kanonis = bahasa Inggris** (`title`, `author`, `status`, `book_id`, ...). Beberapa route masih **menerima alias Indonesia** pada body (`judul|title`, `penulis|author`, `nama|name`, `batal|cancelled`) untuk kompatibilitas klien lama — alias ini tidak lagi didokumentasikan sebagai kontrak dan akan dibekukan (issue #71).
+- **Transport ID:** `PUT/DELETE` memakai `?id=<uuid>` (boleh koma untuk bulk). `GET /api/<resource>/[id]` menerima id **atau** slug bila resource punya slug.
+- **Cache:** GET publik `/api/books` kirim `Cache-Control: public, s-maxage=300, stale-while-revalidate=60`; GET admin `no-store`. Mutasi memanggil `revalidateTag` (mis. `books`, `settings`, `max`).
 
 ---
 
@@ -18,7 +27,7 @@
 
 ### `GET /api/settings` — publik (whitelist)
 
-- Auth: anon boleh. Kembalikan field publik SAJA (tanpa `updated_by` internal bila sensitif — di sini aman, tetap whitelist).
+- Auth: anon boleh. Kembalikan field publik saja.
 - Response `200`:
 
 ```json
@@ -37,7 +46,6 @@
 - Body: subset field di atas + upload dilakukan terpisah ke Storage lalu kirim URL. **Kunci tema (`active_theme`, `theme_overrides`) DITOLAK di sini** → `422 {error:{code:"HINT_USE_THEME_ENDPOINT"}}` dengan pesan "gunakan PUT /api/settings/theme".
 - Validasi: `nama_perpus` min 3, `email` format, `jam_operasional` array `{hari,buka,tutup}`, `sosmed` object string URL/username.
 - Efek: `revalidateTag('settings')` + `revalidatePath('/')`. Tulis `activity_logs`.
-- Response: `{ "data": {...}, "revalidated":["settings","/"] }`
 
 ### `PUT /api/settings/theme` — admin only, layout-only (Fase 1: tema dikunci)
 
@@ -61,67 +69,128 @@
 
 ## 2. Books (OPAC + admin)
 
-### `GET /api/books?page=&per_page=&q=&kategori=&rak=&tersedia=1&featured=1&sort=terbaru`
+### `GET /api/books?page=&per_page=&q=&kategori=&rak=&tersedia=1&featured=1`
 
-- Publik. `q` = FTS judul/penulis/penerbit/isbn. `tersedia=1` → hanya yang `tersedia>0` (via view `books_with_stock`).
-- Item:
+- Publik (RLS `is_active=true` menjaga; `Cache-Control: s-maxage=300`).
+- `q` = full-text + trigram via RPC `search_books(p_q, p_limit=100)` (judul/penulis/penerbit/isbn).
+- `tersedia=1` → filter kolom `stock_available > 0` (bukan view — `books_with_stock` sudah tidak ada).
+- Urut `created_at desc`. Count `estimated` (bukan `exact`).
+- Item (kolom kanonis EN + embed):
 
 ```json
 {
   "id": "uuid",
-  "judul": "...",
-  "slug": "...",
-  "penulis": "...",
-  "penerbit": "...",
-  "tahun": 2023,
-  "cover_url": "...",
-  "category": { "id": "...", "nama": "..." },
-  "rack": { "kode": "R-A1" },
-  "total_copy": 5,
-  "tersedia": 2,
-  "is_featured": false
+  "title": "Laskar Pelangi",
+  "slug": "laskar-pelangi",
+  "author": "Andrea Hirata",
+  "publisher": "Bentang Pustaka",
+  "year": 2005,
+  "isbn": "979-3062-79-9",
+  "cover_url": "https://...",
+  "pages": 534,
+  "language": "id",
+  "stock_total": 5,
+  "stock_available": 2,
+  "featured": false,
+  "rating_avg": 4.8,
+  "created_at": "2026-01-01T00:00:00Z",
+  "updated_at": "2026-01-01T00:00:00Z",
+  "categories": { "id": "uuid", "name": "Fiksi", "slug": "fiksi" },
+  "racks": { "code": "R-A1", "name": "Rak Fiksi", "location": "Lantai 1" }
 }
 ```
 
-### `GET /api/books/[id|slug]`
+- Hasil kosong (mis. `q` tidak match) tetap `200` dengan `pagination.total = 0`.
 
-- Publik. Detail + `copies:[{kode_eksemplar,status}]` (hanya status, tanpa info member).
+### `GET /api/books/{id|slug}` — publik
 
-### `POST /api/books` — pustakawan+
+- Detail + embed `categories`, `racks`. `404` bila tidak ada / tidak aktif.
 
-- Body: `{judul, penulis, penerbit?, tahun?, isbn?, category_id?, rack_id?, deskripsi?, cover_url?, jumlah_halaman?, bahasa?, is_featured?, copies?: [{kode_eksemplar,kondisi}] }`
-- Efek: buat book + copies (transaksi), `revalidateTag('books')`, log.
-- `201 {data: book}` / `409` bila isbn/slug bentrok.
+### `POST /api/books` — pustakawan+ (admin/librarian)
 
-### `PUT /api/books/[id]` — pustakawan+ (hapus cover lama bila `cover_url` berubah)
+- Body kanonis (alias Indonesia di dalam kurung masih diterima):
 
-### `DELETE /api/books/[id]` — admin only (tolak `409` bila ada loan aktif)
+```json
+{
+  "title": "...",
+  "author": "...",
+  "publisher": "...",
+  "isbn": "...",
+  "year": 2024,
+  "category_id": "uuid",
+  "rack_id": "uuid",
+  "description": "...",
+  "cover_url": "...",
+  "pdf_url": "...",
+  "pages": 120,
+  "language": "id",
+  "stock_total": 3,
+  "stock_available": 3,
+  "featured": true,
+  "is_active": true
+}
+```
+
+(`judul|title`, `penulis|author`, `penerbit|publisher`, `tahun|year`, `deskripsi|description`, `jumlah_halaman|pages`, `bahasa|language`, `category|category_id`, `shelf|rack_id`)
+
+- Satu baris buku per panggilan (tidak ada pembuatan `copies` — tabel eksemplar tidak dipakai OPAC saat ini).
+- `stock_available` default = `stock_total`. Bila keduanya dikirim: `0 <= stock_available <= stock_total`, integer.
+- Efek: `revalidateTag('books','max')`, log `books.create`.
+- `201 {data: book}` / `409` bila slug/ISBN bentrok (`CONFLICT`) / `422 VALIDATION`.
+
+### `PUT /api/books/{id}` — pustakawan+
+
+- Update sebagian kolom + guard silang `stock_available <= stock_total` (dibaca nilai lama DB).
+- Efek: `revalidateTag('books','max')`, log `books.update`.
+
+### `PUT /api/books` (tanpa id) — stock opname massal
+
+- Body: `{ "action": "stock_opname", "items": [{ "id": "uuid", "stock_total": 5, "stock_available": 4 }] }` (maks 100 item).
+- Buku dengan loan `borrowed|overdue` dan baris invalid (non-integer/negatif/available>total) **dilewati** dengan `reason`.
+- `200 {data: {updated: string[], skipped: [{id, reason}]}}` + log `books.stock_opname`.
+
+### `DELETE /api/books?id=<uuid>[,<uuid>...]` — pustakawan+ (admin/librarian)
+
+- Bulk delete dengan koma. Buku yang punya loan `borrowed|overdue` **dilewati**.
+- `200 {data: {deleted: string[], skipped: string[]}}` + log `books.delete`.
 
 ## 3. Categories & Racks
 
-### `GET /api/categories` / `GET /api/racks` — publik (untuk filter OPAC)
+### `GET /api/categories` / `GET /api/racks` — publik (filter OPAC)
 
-- Response array `{id,nama,slug,kode,jumlah_buku?}`.
+- Kolom penuh tabel (`select('*')`), urut `created_at desc`. `?all=1` memerlukan session staf (lihat baris non-aktif juga).
+- categories: `{id, name, slug, description?, cover_url?, ...}`; racks: `{id, code, name, location?, ...}`.
 
-### `POST /api/categories` — pustakawan+ `{nama, deskripsi?, icon?}` → slug auto.
+### `POST /api/categories` / `POST /api/racks` — pustakawan+
 
-### `PUT/DELETE /api/categories/[id]` — pustakawan+/admin (DELETE → `409` bila dipakai buku).
+- categories `{name (nama), description? (deskripsi), icon?/cover_url?}` → slug auto.
+- racks `{code (kode), name (nama), location? (keterangan|lantai)}` → slug auto.
 
-- Racks pola identik: `{kode, nama, lantai?, keterangan?}`.
+### `PUT/DELETE /api/categories/{id}` / `PUT/DELETE /api/racks/{id}` — pustakawan+/admin
+
+- DELETE → `409 CONFLICT` bila masih dipakai buku.
 
 ## 4. Members
 
-### `GET /api/members?page=&q=&status=` — pustakawan+ (`q` = nama/no_anggota).
+### `GET /api/members?page=&q=&status=&all=1` — pustakawan+
 
-### `GET /api/members/[id]` — pustakawan+; anggota hanya miliknya (`403` bila bukan).
+- `q` mencari di profil/`member_code`, `status` ∈ `active|suspended|expired|pending` (nilai lain → `422`). `?all=1` menyertakan non-aktif.
+- Item: kolom `members.*` + embed `profiles(id, full_name)`; urut `created_at desc`.
 
-- Sertakan ringkasan: `{pinjaman_aktif: n, denda_belum_bayar: rp, riwayat: [...]}`.
+### `GET /api/members/{id}` — pustakawan+; anggota hanya miliknya (`403` bila bukan).
 
-### `POST /api/members` — pustakawan+ `{nama, email?, telepon?, alamat?, foto_url?}` → `no_anggota` auto.
+### `POST /api/members` — pustakawan+
 
-### `PUT /api/members/[id]` — pustakawan+ (role TIDAK di sini).
+- Body: `{user_id (profiles.id), member_code? (no_anggota; auto `AG-YYYYMM-XXXX` bila kosong), phone? (telepon), address? (alamat), status? (default active)}`.
+- `404` bila `profiles` tidak ada; `409 CONFLICT` bila `member_code`/`user_id` sudah dipakai; `422` status/format salah.
 
-### `PUT /api/members/[id]/role` — admin only `{role: admin|pustakawan|anggota}`.
+### `PUT /api/members?id=<uuid>` — pustakawan+ (role TIDAK di sini)
+
+### `DELETE /api/members?id=<uuid>` — admin only
+
+- `409 CONFLICT` bila anggota masih punya loan `borrowed|overdue`. (Retensi arsip loan/denda historis: lihat issue #75.)
+
+### `PUT /api/members/{id}/role` — admin only `{role: admin|pustakawan|anggota}`.
 
 ## 5. Loans / Reservations / Fines (sirkulasi)
 
@@ -131,69 +200,113 @@
 
 - `?status=` menerima `borrowed|returned|overdue|lost` (nilai lain → `422 VALIDATION`).
 - `?status=overdue` dan `?overdue=1` adalah **satu** filter yang sama (definisi turunan) — keduanya tidak mungkin beda hasil dengan tombol "Terlambat saja" di admin.
-- Setiap baris membawa `is_overdue` (boolean), `effective_status` (`overdue` bila turunan terlambat, selain itu nilai kolom `status`), dan `fine_preview` (estimasi denda, tarif `library_settings.fine_per_day`).
+- Setiap baris = kolom `loans.*` + embed `members(id,member_code)`, `books(id,title,slug)` + field turunan:
+  - `is_overdue` (boolean),
+  - `effective_status` (`overdue` bila turunan terlambat, selain itu nilai kolom `status`),
+  - `fine_preview` (estimasi denda = hari telat × tarif `library_settings.fine_per_day`, fallback `FINE_PER_DAY`).
 - Semua pembaca memakai `src/lib/loans-overdue.ts`; di sisi DB definisi yang sama dimakai `get_overdue_count` (migrasi 0012) dan `get_dashboard_stats` (0017).
 
 ### `POST /api/loans` (checkout) — pustakawan+
 
 ```json
-{ "member_id": "uuid", "copy_id": "uuid" }
+{ "member_id": "uuid", "book_id": "uuid", "notes": "...", "borrowed_at": "...", "due_at": "..." }
 ```
 
-- Server hitung `tanggal_jatuh_tempo = today + lama_pinjam_hari`. Tolak `422` bila: member blokir / cap tercapai / copy tak tersedia / sudah dipinjam.
-- `201 {data: loan}` + copy→`dipinjam`.
+- `book_id` (bukan `copy_id`); stok dipegang kolom `books.stock_available`.
+- Gate kelayakan anggota (issue #56, fail-closed — gagal verifikasi → 500, bukan checkout lolos): status harus `active`; lalu
+  `409 MEMBER_HAS_FINES` (tagihan belum lunas) / `409 MEMBER_OVERDUE` (pinjaman terlambat) / `409 MEMBER_LOAN_LIMIT` (batas pinjaman aktif `library_settings.max_active_loans`).
+- Idempoten: satu pasangan (buku, anggota) hanya 1 loan aktif → retry aman (409 `CONFLICT` "sudah meminjam buku ini").
+- Checkout atomik via RPC `checkout_loan` (migrasi 0005/0015: row lock + decrement stok + insert 1 transaksi). Stok habis / buku hilang → `409 CONFLICT`.
+- Default `borrowed_at = now`, `due_at = borrowed_at + 14 hari` (masih hardcode — memakai `library_settings.lama_pinjam_hari` diissue #74).
+- `201 {data: loan}` + log `loans.create`.
 
-### `POST /api/loans/[id]/return` — pustakawan+
+### `PUT /api/loans?id=<uuid>` — pustakawan+
+
+- `{ "action": "extend", "days": 7 }` → perpanjang tempo. Limit perpanjangan dihitung dari `activity_logs` (`src/lib/extendLoan.ts`).
+- `{ "action": "return", "returned_at": "..." }` → pengembalian sederhana (kondisi selalu `baik`).
+- `200 {data: ...}` + log `loans.extend`/`loans.return`.
+
+### `POST /api/loans/{id}/return` — pustakawan+ (kondisi eksplisit)
 
 ```json
-{ "tanggal_kembali": "2026-09-16", "kondisi": "baik|rusak|hilang" }
+{ "kondisi": "baik|rusak|hilang", "returned_at": "...", "notes": "..." }
 ```
 
-- Server hitung denda, buat row `fines` bila >0, copy→`tersedia` (atau `rusak/hilang`).
+- `kondisi` absen = simple return (sama seperti `PUT action=return`). Diteruskan ke RPC `return_loan(p_kondisi)` (migrasi 0011) yang menghitung denda telat, membuat row `fines` bila >0, dan menyesuaikan stok sesuai kondisi.
+- Response: `{ data: {...}, meta: { fine, kondisi, book_id } }` + log `loans.return`.
 
-### `GET/POST /api/reservations` — anggota (miliknya) + pustakawan+
+### `DELETE /api/loans?id=<uuid>` — admin only (hanya loan `returned`/`lost`)
 
-- POST anggota: `{book_id}` → `menunggu`. Cancel: `PATCH /api/reservations/[id] {status:"batal"}`.
+### `GET/POST /api/reservations` — anggota (miliknya) + pustakawan (semua)
 
-### `POST /api/reservations/[id]/checkout` — pustakawan+ (atomik, issue #73)
+- GET filter: `?status=&book_id=&member_id=` + pagination; embed `books(id,title,slug)`, `members(id,member_code)`. Status enum DB: `pending|ready|completed|cancelled|expired`.
+- POST anggota: `{book_id, expires_at?, notes?}` → `pending`. `expires_at` opsional (harus di masa depan). Staff boleh menambah `member_id` (peminjaman atas nama anggota).
+- `201 {data: reservation, revalidated: [...]}` + log `reservations.create`.
 
-- Satu panggilan untuk menutup reservasi `ready` → `completed`: RPC
-  `checkout_reservation_tx` (migrasi 0024) mengunci reservasi + buku
-  (`FOR UPDATE`), jalankan gate stok + kelayakan anggota (#56), insert loan,
-  kurangi stok, dan set `completed` + `loan_id` dalam **satu transaksi**.
-  Gagal di titik mana pun = rollback penuh (tidak ada loan yatim / reservasi
-  separuh selesai). Retry aman: panggilan ulang pada reservasi yang sudah
-  `completed` + `loan_id` mengembalikan hasil lama.
+### `PUT /api/reservations?id=<uuid>` — pemilik reservasi / pustakawan+
+
+- `{status: "batal"|"cancelled"}` (alias) untuk membatalkan; staf dapat `pending → ready` dan mengubah `expires_at`. Non-staf tidak boleh set `ready`.
+- **Tidak lagi menerima `completed`** (422) — status itu hanya lewat endpoint checkout.
+
+### `POST /api/reservations/{id}/checkout` — pustakawan+ (atomik, issue #73)
+
+- Satu panggilan untuk menutup reservasi `ready` → `completed`: RPC `checkout_reservation_tx` (migrasi 0024) mengunci reservasi + buku (`FOR UPDATE`), menjalankan gate stok + kelayakan anggota (#56), insert loan, mengurangi stok, dan set `completed` + `loan_id` dalam **satu transaksi**.
+- Gagal di titik mana pun = rollback penuh (tidak ada loan yatim / reservasi separuh selesai). Retry aman: panggilan ulang pada reservasi yang sudah `completed` + `loan_id` mengembalikan hasil lama.
 - Body opsional: `{borrowed_at?, due_at?, notes?}` (default tempo +14 hari).
-- 201 → `{ data: { loan, reservation } }`. 409 → stok habis / anggota sudah
-  meminjam buku ini / tagihan denda belum lunas / pinjaman terlambat / batas
-  pinjaman aktif / reservasi belum `ready`. 422 → anggota tidak aktif /
-  parameter tanggal tidak valid. 404 → data tidak ditemukan.
-- `PUT /api/reservations/[id] {status}` **tidak lagi menerima** `completed`
-  (422) — status itu hanya bisa dicapai lewat endpoint checkout ini.
-  Transisi PUT yang berlaku: `pending→ready`, `*→cancelled/expired`.
+- `201` → `{ data: { loan, reservation } }`. `409` → stok habis / anggota sudah meminjam buku ini / tagihan denda belum lunas / pinjaman terlambat / batas pinjaman aktif / reservasi belum `ready`. `422` → anggota tidak aktif / parameter tanggal tidak valid. `404` → data tidak ditemukan.
 
-### `GET /api/fines?member_id=&status=` + `POST /api/fines/[id]/pay {metode}` — anggota baca miliknya; bayar hanya pustakawan+.
+### `DELETE /api/reservations?id=<uuid>` — pemilik / pustakawan+ (dengan guard status)
+
+### `GET /api/fines?member_id=&status=&page=&per_page=` — anggota baca miliknya; staf baca semua.
+
+- `?status=` ∈ `unpaid|partial|paid|waived` (nilai lain → `422`). Embed `loans(id,book_id,due_at,status)`, `members(id,member_code)`.
+- Kolom: `loan_id, member_id, amount, paid_amount, status, notes, issued_at, ...`.
+
+### `POST /api/fines` / `PUT /api/fines?id=<uuid>` — pustakawan+ (terbitkan/ubah denda manual)
+
+### `POST /api/fines/{id}/pay` — pustakawan+
+
+- Body: `{amount?, metode?: cash|transfer|... (alias: method|payment_method|nominal), notes?}`.
+- Menyimpan `paid_amount` + status menjadi `paid`/`partial`. Pembayaran **belum** punya tabel receipts bernomor — lihat issue #72.
+- `200 {data: fine}` + log `fines.pay`.
+
+### `DELETE /api/fines?id=<uuid>` — admin only
 
 ## 6. Articles (artikel/berita/event)
 
-### `GET /api/articles?tipe=&q=&page=` — publik hanya `published` (admin: `?status=draft` perlu role).
+### `GET /api/articles?q=&status=&tipe=&category=&page=` — publik hanya `published` (staf: `?status=draft|archived` melihat semua)
 
-### `GET /api/articles/[slug]` — publik (published) / staff (semua).
+- Urut `published_at desc` (fallback `created_at`). Item: `{id, title, slug, excerpt, content_md, status, category, cover_url, author_id, published_at, views, created_at, updated_at}`.
+- `status` enum: `draft|published|archived`.
 
-### `POST /api/articles` — pustakawan+ `{judul, tipe, ringkasan?, konten, gambar_url?, status?, published_at?}` → slug auto + unik.
+### `GET /api/articles/{slug}` — publik (published) / staf (semua).
 
-### `PUT/DELETE /api/articles/[id]` — pustakawan+/admin. DELETE → arsip dulu (soft) kecuali admin hard-delete.
+### `POST /api/articles` — pustakawan+
 
-## 7. Banners (+ pages/menus/testimonials/faqs — pola sama)
+- Body kanonis: `{title, content_md, excerpt?, category?, cover_url?, status?, published_at?}` (alias: `judul`, `konten|content`, `ringkasan`, `gambar_url`).
+- `201 {data: article}` / `409 CONFLICT` slug bentrok / `422 VALIDATION`. `status=published` otomatis mengisi `published_at`.
 
-### `GET /api/banners` — publik hanya `is_active` + dalam jadwal; admin `?all=1`.
+### `PUT/DELETE /api/articles?id=<uuid>` — pustakawan+/admin. DELETE = hapus baris + log.
 
-### `POST /api/banners` — admin only `{judul?, subjudul?, gambar_url, link_url?, urutan?, is_active?, mulai_at?, selesai_at?}`.
+## 7. Banners (+ pages/menus/services/testimonials/faqs — pola sama)
 
-### `PUT/DELETE /api/banners/[id]` — admin only. Hapus file Storage lama bila gambar diganti.
+Semua list memakai envelope pagination tunggal (§Konvensi). Body kanonis (alias Indonesia di kurung tetap diterima):
 
-- `pages/menus/testimonials/faqs`: GET publik (published/active), mutasi admin (faqs + testimonials-insert boleh pustakawan/anon-terbatas sesuai db-design).
+- **banners** `{title (judul), subtitle (subjudul), image_url (gambar_url), link (link_url), sort_order (urutan), is_active, starts_at?, ends_at?}` → `{id, title, subtitle, image_url, link, sort_order, is_active, created_at}`.
+- **pages** `{title (judul), content_md (konten|content|isi), slug?, excerpt (ringkasan), show_in_menu (tampil_di_menu), is_active (status|aktif)}`.
+- **menus** `{label (nama), url (link), position (posisi), target, sort_order (urutan), parent_id}`.
+- **services** `{title (nama), description (deskripsi), icon, sort_order (urutan)}`.
+- **testimonials** `{name (nama), content (isi|testimoni|pesan), role (peran), avatar_url (foto|image_url|gambar_url), sort_order (urutan)}`. Publik boleh kirim (dibatasi rate-limit + validasi konten); `sort_order` hanya untuk staf.
+- **faqs** `{question (pertanyaan), answer (jawaban), category (kategori), sort_order (urutan)}`.
+
+- GET publik: hanya baris `published`/`is_active` (banners: aktif + dalam jadwal); `?all=1` memerlukan staf.
+- Mutasi: admin (faqs + insert testimonials boleh pustakawan/anon-terbatas sesuai db-design).
+- PUT/DELETE: `?id=<uuid>`.
+
+## 8. Logs audit (BUKAN REST)
+
+- **`/api/logs` tidak ada** (memanggilnya = `404`). Halaman `/admin/logs` adalah React Server Component (`force-dynamic`, `revalidate = 0`) yang membaca tabel `activity_logs` **langsung** via Supabase server client (Privileged by RLS staf), memfilter `?action=&entity=&page=` dengan `PER_PAGE = 20`.
+- Menambah log hanya dari aplikasi (`writeLog` best-effort di server/lib). Jika logs perlu diekspos API, buat route baru + dokumentasikan di `openapi.yaml`.
 
 ---
 
@@ -202,5 +315,9 @@
 ```bash
 curl /api/settings
 curl "/api/books?q=laskar&tersedia=1&per_page=5"
-curl -X POST /api/loans -H 'Content-Type: application/json' -d '{"member_id":"...","copy_id":"..."}'
+curl -X POST /api/loans -H 'Content-Type: application/json' \
+  -d '{"member_id":"...","book_id":"..."}'
+curl -X POST /api/loans/<id>/return -H 'Content-Type: application/json' \
+  -d '{"kondisi":"rusak"}'
+curl -X POST /api/reservations/<id>/checkout -H 'Content-Type: application/json' -d '{}'
 ```
