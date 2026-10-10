@@ -13,7 +13,7 @@ async function fetchPagesUncached(limit = 100): Promise<PageDoc[]> {
     const supabase = createClient();
     const { data, error } = await supabase
       .from('pages')
-      .select('id,slug,title,content_md,excerpt,updated_at')
+      .select('id,slug,title,content_md,excerpt,show_in_menu,is_active,updated_at')
       .eq('is_active', true)
       .order('title', { ascending: true })
       .limit(limit);
@@ -33,7 +33,7 @@ async function fetchPageUncached(slug: string): Promise<PageDoc | null> {
     const supabase = createClient();
     const { data, error } = await supabase
       .from('pages')
-      .select('id,slug,title,content_md,excerpt,updated_at')
+      .select('id,slug,title,content_md,excerpt,show_in_menu,is_active,updated_at')
       .eq('slug', slug)
       .eq('is_active', true)
       .maybeSingle();
@@ -41,5 +41,25 @@ async function fetchPageUncached(slug: string): Promise<PageDoc | null> {
     return data as PageDoc;
   } catch {
     return null;
+  }
+}
+
+export async function fetchMenuPages(): Promise<Array<{ title: string; slug: string }>> {
+  return cachedFetch(() => fetchMenuPagesUncached(), ['pages-menu'], PAGES_TAG);
+}
+
+async function fetchMenuPagesUncached(): Promise<Array<{ title: string; slug: string }>> {
+  try {
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('pages')
+      .select('title,slug')
+      .eq('is_active', true)
+      .eq('show_in_menu', true)
+      .order('title', { ascending: true });
+    if (error) return [];
+    return (data ?? []) as Array<{ title: string; slug: string }>;
+  } catch {
+    return [];
   }
 }

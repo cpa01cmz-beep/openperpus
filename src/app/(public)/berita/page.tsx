@@ -3,6 +3,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowRight, Newspaper } from 'lucide-react';
 import { fetchArticles, fetchSettings } from '@/lib/books';
+import { getOgImage, getSiteName } from '@/lib/settings';
 import { coverSrc } from '@/lib/cover';
 import { getSiteUrl } from '@/lib/site';
 import Breadcrumb from '@/components/public/Breadcrumb';
@@ -11,10 +12,11 @@ export const revalidate = 60;
 
 export async function generateMetadata(): Promise<Metadata> {
   const s = await fetchSettings();
-  const siteName = s.name ?? 'Perpustakaan';
+  const siteName = getSiteName(s);
   const title = `Berita & Artikel — ${siteName}`;
   const description = `Kabar, kegiatan, dan artikel literasi dari ${siteName}.`;
   const canonical = `${getSiteUrl()}/berita`;
+  const ogImage = getOgImage(s);
   return {
     title,
     description,
@@ -26,13 +28,13 @@ export async function generateMetadata(): Promise<Metadata> {
       locale: 'id_ID',
       url: canonical,
       siteName,
-      images: [{ url: '/og-default.jpg', width: 1200, height: 630, alt: title }],
+      images: [{ url: ogImage, width: 1200, height: 630, alt: title }],
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
-      images: ['/og-default.jpg'],
+      images: [ogImage],
     },
   };
 }

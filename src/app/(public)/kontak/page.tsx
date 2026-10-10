@@ -13,6 +13,7 @@ import {
   Youtube,
 } from 'lucide-react';
 import { fetchBookBySlug, fetchPage, fetchSettings } from '@/lib/books';
+import { getOgImage, getSiteName } from '@/lib/settings';
 import { getSiteUrl } from '@/lib/site';
 import { sanitizeIlike } from '@/lib/search';
 import Breadcrumb from '@/components/public/Breadcrumb';
@@ -21,12 +22,13 @@ export const revalidate = 60;
 
 export async function generateMetadata(): Promise<Metadata> {
   const s = await fetchSettings();
-  const siteName = s.name ?? 'Perpustakaan';
+  const siteName = getSiteName(s);
   const title = `Kontak — ${siteName}`;
   const description = s.address
     ? `Hubungi ${siteName}: ${s.address}`
     : `Alamat, telepon, jam operasional, dan media sosial ${siteName}.`;
   const canonical = `${getSiteUrl()}/kontak`;
+  const ogImage = getOgImage(s);
   return {
     title,
     description,
@@ -38,13 +40,13 @@ export async function generateMetadata(): Promise<Metadata> {
       locale: 'id_ID',
       url: canonical,
       siteName,
-      images: [{ url: '/og-default.jpg', width: 1200, height: 630, alt: title }],
+      images: [{ url: ogImage, width: 1200, height: 630, alt: title }],
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
-      images: ['/og-default.jpg'],
+      images: [ogImage],
     },
   };
 }
@@ -78,7 +80,7 @@ export default async function KontakPage({
     fetchPage('kontak'),
     buku ? fetchBookBySlug(buku) : Promise.resolve(null),
   ]);
-  const siteName = settings.name ?? 'Perpustakaan Digital';
+  const siteName = getSiteName(settings);
   const rawWaNumber = settings.socials?.whatsapp?.trim() || settings.phone?.trim() || '';
   const waDigits = rawWaNumber.replace(/\D/g, '');
   const waHref =

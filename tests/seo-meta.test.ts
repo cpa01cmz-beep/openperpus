@@ -44,9 +44,12 @@ describe('S-seo-meta', () => {
     for (const p of [PUBLIC_LAYOUT, HOME_PAGE]) {
       const src = read(p);
       expect(src.includes('canonical'), `S-seo-meta RED: ${p} missing canonical`).toBe(true);
-      expect(src.includes('/og-default.jpg'), `S-seo-meta RED: ${p} missing OG fallback`).toBe(
-        true
-      );
+      // Wave2: fallback OG terpusat via helper getOgImage() (fallback-nya
+      // tetap '/og-default.jpg' di src/lib/settings.ts) — literal atau helper.
+      expect(
+        src.includes('/og-default.jpg') || src.includes('getOgImage'),
+        `S-seo-meta RED: ${p} missing OG fallback`
+      ).toBe(true);
     }
   });
 

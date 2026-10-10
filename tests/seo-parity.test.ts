@@ -93,8 +93,10 @@ describe('S-seo-parity metadata', () => {
     );
     expect(src.includes('openGraph'), `S-seo-parity RED: ${p} missing openGraph`).toBe(true);
     expect(src.includes('twitter'), `S-seo-parity RED: ${p} missing twitter`).toBe(true);
+    // Wave2: fallback OG terpusat via helper getOgImage() (fallback-nya
+    // tetap '/og-default.jpg' di src/lib/settings.ts) — literal atau helper.
     expect(
-      src.includes('/og-default.jpg'),
+      src.includes('/og-default.jpg') || src.includes('getOgImage'),
       `S-seo-parity RED: ${p} missing OG image fallback`
     ).toBe(true);
     expect(

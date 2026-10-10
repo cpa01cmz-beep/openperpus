@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import Breadcrumb from '@/components/public/Breadcrumb';
 import Modal from '@/components/ui/Modal';
+import { errMsg } from '@/lib/admin-errors';
 
 type Fine = {
   id: string;
@@ -18,12 +19,6 @@ type Fine = {
 
 const STATUS_OPTS = ['', 'unpaid', 'partial', 'paid', 'waived'];
 const METHOD_OPTS = ['tunai', 'transfer', 'qris'] as const;
-
-function errMsg(json: unknown): string {
-  const err = (json as { error?: { message?: string } | string } | null | undefined)?.error;
-  if (!err) return 'Gagal.';
-  return typeof err === 'string' ? err : (err.message ?? 'Gagal.');
-}
 
 const num = (v: number | string | null | undefined) => Number(v ?? 0) || 0;
 const fmtRp = (v: number | string | null | undefined) => `Rp${num(v).toLocaleString('id-ID')}`;
@@ -65,21 +60,19 @@ export default function DendaSayaPage() {
   useEffect(() => {
     import('@/lib/supabase/client').then(({ createClient }) => {
       const supabase = createClient();
-      supabase.auth
-        .getUser()
-        .then((res) => {
-          const user = res.data?.user;
-          if (user) {
-            supabase
-              .from('members')
-              .select('id')
-              .eq('user_id', user.id)
-              .maybeSingle()
-              .then((memRes) => {
-                if (memRes.data) setMemberId(memRes.data.id);
-              });
-          }
-        });
+      supabase.auth.getUser().then((res) => {
+        const user = res.data?.user;
+        if (user) {
+          supabase
+            .from('members')
+            .select('id')
+            .eq('user_id', user.id)
+            .maybeSingle()
+            .then((memRes) => {
+              if (memRes.data) setMemberId(memRes.data.id);
+            });
+        }
+      });
     });
   }, []);
 

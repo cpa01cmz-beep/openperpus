@@ -8,6 +8,7 @@ import ExportCsvButton from '@/components/admin/ExportCsvButton';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
 import Pagination from '@/components/ui/Pagination';
+import { errMsg } from '@/lib/admin-errors';
 
 const LoanForm = nextDynamic(() => import('@/components/admin/LoanForm'), {
   ssr: false,
@@ -25,12 +26,6 @@ type Loan = {
   members: { member_code: string } | null;
   books: { title: string } | null;
 };
-
-function errMsg(json: unknown): string {
-  const err = (json as { error?: { message?: string } | string } | null | undefined)?.error;
-  if (!err) return 'Gagal.';
-  return typeof err === 'string' ? err : (err.message ?? 'Gagal.');
-}
 
 export default function PeminjamanPage() {
   const [loans, setLoans] = useState<Loan[]>([]);

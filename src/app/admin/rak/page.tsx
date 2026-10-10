@@ -5,6 +5,7 @@ import DataTable from '@/components/admin/DataTable';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Pagination from '@/components/ui/Pagination';
+import { errMsg } from '@/lib/admin-errors';
 
 type Rack = {
   id: string;
@@ -14,12 +15,6 @@ type Rack = {
   capacity: number | null;
   is_active: boolean;
 };
-
-function errMsg(json: unknown): string {
-  const err = (json as { error?: { message?: string } | string } | null | undefined)?.error;
-  if (!err) return 'Gagal.';
-  return typeof err === 'string' ? err : (err.message ?? 'Gagal.');
-}
 
 export default function RakPage() {
   const [rows, setRows] = useState<Rack[]>([]);

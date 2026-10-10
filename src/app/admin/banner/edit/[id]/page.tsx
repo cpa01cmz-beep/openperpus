@@ -3,15 +3,10 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { errMsg } from '@/lib/admin-errors';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
-
-function errMsg(json: unknown): string {
-  const err = (json as { error?: { message?: string } | string } | null | undefined)?.error;
-  if (!err) return 'Gagal menyimpan banner.';
-  return typeof err === 'string' ? err : (err.message ?? 'Gagal menyimpan banner.');
-}
 
 export default function EditBannerPage({ params }: { params: { id: string } }) {
   const router = useRouter();
@@ -65,7 +60,7 @@ export default function EditBannerPage({ params }: { params: { id: string } }) {
         body: JSON.stringify({ ...form, sort_order: Number(form.sort_order) }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(errMsg(json));
+      if (!res.ok) throw new Error(errMsg(json, 'Gagal menyimpan banner.'));
       router.push('/admin/banner');
       router.refresh();
     } catch (e) {

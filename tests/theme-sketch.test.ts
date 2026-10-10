@@ -137,9 +137,10 @@ describe('T-SKETCH: SketchHeader + SketchFooter routing + tokens', () => {
 });
 
 describe('T-SKETCH: persistence + admin accept sketch', () => {
-  it('settings API allows sketch', () => {
+  it('settings API validates theme against THEMES registry (incl. sketch)', () => {
     const src = read('src/app/api/settings/route.ts');
-    expect(src).toContain("'sketch'");
+    expect(src).toContain('THEMES');
+    expect(read('src/lib/themes.ts')).toContain('sketch');
   });
 
   it('migration 0020 extends the CHECK constraint with sketch', () => {

@@ -155,7 +155,10 @@ describe('layer 3 — middleware staff gate /admin', () => {
 
   it('admin/layout.tsx tetap mempertahankan role check (defense-in-depth antar layer)', () => {
     const code = src('src/app/admin/layout.tsx');
-    expect(code).toMatch(/role !== "admin"/);
-    expect(code).toMatch(/role !== "librarian"/);
+    // Wave2: cek inline role!=="admin"/"librarian" diganti predikat kanonis
+    // isStaffRole() (semantik sama via normalizeRole, satu sumber dengan
+    // requireStaff) — tetap menolak non-staf, tetap fail-closed.
+    expect(code).toMatch(/isStaffRole|role !== "admin"/);
+    expect(code).toMatch(/isStaffRole|role !== "librarian"/);
   });
 });

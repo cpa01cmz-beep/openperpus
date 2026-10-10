@@ -17,6 +17,7 @@ const MENU = [
   { href: '/admin/banner', label: 'Banner' },
   { href: '/admin/konten', label: 'Konten' },
   { href: '/admin/menu', label: 'Menu' },
+  { href: '/admin/layanan', label: 'Layanan' },
   { href: '/admin/logs', label: 'Log Aktivitas' },
   { href: '/admin/pengaturan', label: 'Pengaturan' },
 ];

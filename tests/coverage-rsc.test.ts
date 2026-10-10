@@ -429,12 +429,19 @@ describe('admin RSC pages', () => {
 
 describe('metadata routes', () => {
   it('sitemap lists statics plus book/article/page slugs', async () => {
+    // Wave2: slug rute sistem (RESERVED_SLUGS) disaring dari sitemap agar
+    // halaman dinamis tak menduplikat rute statis — uji dengan slug
+    // non-reserved, dan pastikan slug reserved tersaring.
+    setTable('pages', {
+      list: { data: [{ ...PAGE_ROW, slug: 'profil-perpus' }], count: 1 },
+    });
     const sm = await sitemap();
     expect(Array.isArray(sm)).toBe(true);
     expect(sm.length).toBeGreaterThanOrEqual(7);
     expect(sm.some((e) => String(e.url).includes('/katalog/buku-a'))).toBe(true);
     expect(sm.some((e) => String(e.url).includes('/berita/artikel-perpus'))).toBe(true);
-    expect(sm.some((e) => String(e.url).includes('/halaman/tentang'))).toBe(true);
+    expect(sm.some((e) => String(e.url).includes('/halaman/profil-perpus'))).toBe(true);
+    expect(sm.some((e) => String(e.url).includes('/halaman/tentang'))).toBe(false);
   });
 
   it('robots disallows private areas', () => {
@@ -444,11 +451,14 @@ describe('metadata routes', () => {
     expect(r.sitemap).toContain('/sitemap.xml');
   });
 
-  it('manifest has identity + icons', () => {
-    const m = manifest();
-    expect(m.name).toBe('Perpustakaan');
+  it('manifest has identity + icons', async () => {
+    // Wave2: manifest dinamis (async) — nama/deskripsi/warna dari
+    // library_settings + active_theme. Seed: nama 'Perpustakaan Digital',
+    // active_theme 'midnight' (brand #6BA3D6).
+    const m = await manifest();
+    expect(m.name).toBe('Perpustakaan Digital');
     expect(m.start_url).toBe('/');
     expect(m.icons.length).toBeGreaterThanOrEqual(2);
-    expect(m.theme_color).toBe('#047857');
+    expect(m.theme_color).toBe('#6BA3D6');
   });
 });

@@ -257,9 +257,10 @@ paths:
           description: html
   /api/articles:
     get:
-      summary: List articles (staff)
+      summary: List articles (public published; draft/archived staff)
       security:
         - BearerAuth: []
+        - {}
       parameters:
         - $ref: '#/components/parameters/PageParam'
         - $ref: '#/components/parameters/PerPageParam'
@@ -450,9 +451,7 @@ paths:
           description: ok
   /api/books/{id}:
     get:
-      summary: Get book by id (staff)
-      security:
-        - BearerAuth: []
+      summary: Get book by id (public; RLS enforces active)
       responses:
         '200':
           description: ok
@@ -1084,6 +1083,62 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/services:
+    get:
+      summary: List services (public; ?all=1 staff elevation)
+      security:
+        - BearerAuth: []
+        - {}
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/PerPageParam'
+      responses:
+        '200':
+          description: ok
+    post:
+      summary: Create service (staff)
+      security:
+        - BearerAuth: []
+      responses:
+        '201':
+          description: created
+    put:
+      summary: Update service (staff, ?id=)
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: ok
+    delete:
+      summary: Delete service (admin, ?id=)
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: ok
+  /api/services/{id}:
+    get:
+      summary: Get service by id (public when active; staff otherwise)
+      security:
+        - BearerAuth: []
+        - {}
+      responses:
+        '200':
+          description: ok
+    put:
+      summary: Update service (staff)
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: ok
+    delete:
+      summary: Delete service (admin)
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: ok
   /api/settings:
     get:
       summary: Get library settings (public)

@@ -6,14 +6,9 @@ import DataTable from '@/components/admin/DataTable';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Pagination from '@/components/ui/Pagination';
+import { errMsg } from '@/lib/admin-errors';
 
 type Article = { id: string; title: string; slug: string; status: string };
-
-function errMsg(json: unknown): string {
-  const err = (json as { error?: { message?: string } | string } | null | undefined)?.error;
-  if (!err) return 'Gagal.';
-  return typeof err === 'string' ? err : (err.message ?? 'Gagal.');
-}
 
 export default function ArtikelPage() {
   const [rows, setRows] = useState<Article[]>([]);

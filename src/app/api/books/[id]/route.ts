@@ -13,9 +13,8 @@ const writeLog = createWriteLog('books');
 export async function GET(_req: Request, { params }: Ctx) {
   const { id } = await params;
   const log = createLogger(requestIdFromHeaders(_req.headers));
-  const guard = await requireStaff();
-  if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
-  const { supabase } = guard as { supabase: ReturnType<typeof createClient> };
+  // Publik: RLS menegakkan (anon hanya is_active=true). Tidak ada guard staf.
+  const supabase = createClient();
 
   const { data, error } = await supabase
     .from('books')

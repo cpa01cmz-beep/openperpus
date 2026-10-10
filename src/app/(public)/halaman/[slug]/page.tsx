@@ -3,6 +3,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { ArrowLeft } from 'lucide-react';
 import { fetchPage, fetchSettings } from '@/lib/books';
+import { getOgImage, getSiteName } from '@/lib/settings';
 import { getSiteUrl } from '@/lib/site';
 
 export const revalidate = 60;
@@ -12,12 +13,13 @@ type Props = { params: Promise<{ slug: string }> };
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
   const [settings, page] = await Promise.all([fetchSettings(), fetchPage(slug)]);
-  const siteName = settings.name ?? 'Perpustakaan';
+  const siteName = getSiteName(settings);
   const siteUrl = getSiteUrl();
   if (!page) return { title: `Halaman tidak ditemukan — ${siteName}` };
   const title = `${page.title} — ${siteName}`;
   const description = page.excerpt ?? `Halaman ${page.title} di ${siteName}.`;
   const canonical = `${siteUrl}/halaman/${slug}`;
+  const ogImage = getOgImage(settings);
   return {
     title,
     description,
@@ -29,13 +31,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       locale: 'id_ID',
       url: canonical,
       siteName,
-      images: [{ url: '/og-default.jpg', width: 1200, height: 630, alt: title }],
+      images: [{ url: ogImage, width: 1200, height: 630, alt: title }],
     },
     twitter: {
       card: 'summary_large_image',
       title,
       description,
-      images: ['/og-default.jpg'],
+      images: [ogImage],
     },
   };
 }

@@ -66,11 +66,17 @@ function okResponse(status = 200, headers: Record<string, string> = {}) {
 }
 
 describe('settings helpers', () => {
-  it('getOperationalHours normalizes fallback rows', () => {
+  it('getOperationalHours returns [] for neutral fallback (diisi admin)', () => {
     const hours = getOperationalHours(FALLBACK_SETTINGS);
     expect(Array.isArray(hours)).toBe(true);
-    expect(hours.length).toBeGreaterThan(0);
-    expect(hours[0]?.day).toBeTruthy();
+    expect(hours).toEqual([]);
+    // Normalisasi tetap bekerja untuk data CMS nyata.
+    expect(
+      getOperationalHours({
+        ...FALLBACK_SETTINGS,
+        operational_hours: [{ day: 'Senin', open: '08:00', close: '16:00' }],
+      })[0]?.day
+    ).toBe('Senin');
   });
 
   it('getSocials returns object or {} for null', () => {

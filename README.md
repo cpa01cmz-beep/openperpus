@@ -116,6 +116,12 @@ supabase/migrations/0012_perf.sql
 supabase/migrations/0013_pay_own_fine.sql
 supabase/migrations/0014_fine_rate.sql
 supabase/migrations/0015_checkout_active_guard.sql
+supabase/migrations/0016_articles_trgm.sql
+supabase/migrations/0017_dashboard_stats.sql
+supabase/migrations/0018_perf_fixes.sql
+supabase/migrations/0019_role_guard.sql
+supabase/migrations/0020_sketch_theme.sql
+supabase/migrations/0021_services.sql
 ```
 
 Catatan: penomoran unik dan berurutan (0010 dilewati, tidak dipakai). Jalankan semua sesuai urutan di atas.

@@ -54,12 +54,7 @@ export async function POST(req: Request) {
 
   const supabase = createClient();
 
-  const { data: dupProfile } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('email', email)
-    .single();
-  if (dupProfile) return jsonError('CONFLICT', 'email sudah terdaftar.', 409);
+  // Email duplikat mengandalkan signUp duplicate detection (profiles tidak punya kolom email).
 
   if (memberCode) {
     const { data: dupMember } = await supabase
@@ -84,7 +79,7 @@ export async function POST(req: Request) {
 
   const { error: profileError } = await supabase
     .from('profiles')
-    .insert({ id: user.id, email, full_name: nama, role: 'member' })
+    .insert({ id: user.id, full_name: nama, role: 'member' })
     .single();
   if (profileError) {
     if ((profileError as { code?: string }).code === '23505')

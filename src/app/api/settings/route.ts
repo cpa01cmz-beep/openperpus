@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { requireStaff, jsonError } from '@/lib/supabase/auth';
+import { THEMES } from '@/lib/themes';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
 /**
@@ -44,6 +45,7 @@ const ALLOWED: Record<string, string> = {
   misi: 'mission',
   seo_description: 'seo_desc',
   pengumuman: 'announcement',
+  denda_per_hari: 'fine_per_day',
 };
 
 function normalizeSettings(input: Record<string, unknown>): Record<string, unknown> {
@@ -118,12 +120,9 @@ export async function PUT(req: Request) {
     payload.active_theme !== ''
   ) {
     const theme = String(payload.active_theme);
-    if (!['emerald', 'midnight', 'paper', 'brutalist', 'ocean', 'sketch'].includes(theme)) {
-      return jsonError(
-        'VALIDATION',
-        'Tema tidak dikenal. Pilih emerald, midnight, paper, brutalist, ocean, atau sketch.',
-        422
-      );
+    if (!(theme in THEMES)) {
+      const valid = Object.keys(THEMES).join(', ');
+      return jsonError('VALIDATION', `Tema tidak dikenal. Pilih: ${valid}.`, 422);
     }
   }
 

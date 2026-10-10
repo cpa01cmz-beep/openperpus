@@ -1,15 +1,26 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { ArrowRight, BadgeCheck, BookMarked, Clock, LibraryBig, Users } from 'lucide-react';
+import { ArrowRight, BadgeCheck, BookMarked, Clock, LibraryBig, Star, Users } from 'lucide-react';
 import { fetchPage, fetchSettings } from '@/lib/books';
+import { fetchServices } from '@/lib/services';
+import { getSiteName } from '@/lib/settings';
 import { getSiteUrl } from '@/lib/site';
 import Breadcrumb from '@/components/public/Breadcrumb';
 
 export const revalidate = 60;
 
+const ICON_MAP: Record<string, typeof BookMarked> = {
+  book: BookMarked,
+  catalog: LibraryBig,
+  users: Users,
+  clock: Clock,
+  info: BadgeCheck,
+  star: Star,
+};
+
 export async function generateMetadata(): Promise<Metadata> {
   const s = await fetchSettings();
-  const siteName = s.name ?? 'Perpustakaan';
+  const siteName = getSiteName(s);
   const title = `Layanan — ${siteName}`;
   const description = `Layanan sirkulasi, keanggotaan, dan fasilitas ${siteName}.`;
   const canonical = `${getSiteUrl()}/layanan`;
@@ -35,33 +46,14 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-const DEFAULT_SERVICES = [
-  {
-    icon: BookMarked,
-    title: 'Peminjaman & Pengembalian',
-    desc: 'Pinjam koleksi fisik dengan kartu anggota. Perpanjang masa pinjam sebelum jatuh tempo agar terhindar dari denda.',
-  },
-  {
-    icon: LibraryBig,
-    title: 'Katalog Daring (OPAC)',
-    desc: 'Telusuri seluruh koleksi dari ponsel — cek ketersediaan, lokasi rak, dan status stok secara real-time.',
-  },
-  {
-    icon: Users,
-    title: 'Keanggotaan',
-    desc: 'Daftar menjadi anggota untuk meminjam, mereservasi buku, dan menerima kabar kegiatan literasi.',
-  },
-  {
-    icon: Clock,
-    title: 'Reservasi & Antrean',
-    desc: 'Buku yang sedang dipinjam bisa diantre. Anda akan dihubungi petugas saat eksemplar tersedia.',
-  },
-];
-
-/** Layanan: render dari pages (slug 'layanan') + kartu layanan + jam operasional dinamis. */
+/** Layanan: render dari pages (slug 'layanan') + kartu layanan dinamis + CTA peminjaman. */
 export default async function LayananPage() {
-  const [settings, page] = await Promise.all([fetchSettings(), fetchPage('layanan')]);
-  const siteName = settings.name ?? 'Perpustakaan Digital';
+  const [services, settings, page] = await Promise.all([
+    fetchServices(),
+    fetchSettings(),
+    fetchPage('layanan'),
+  ]);
+  const siteName = getSiteName(settings);
 
   return (
     <div className="space-y-6">
@@ -112,21 +104,30 @@ export default async function LayananPage() {
         <h2 id="daftar-layanan" className="sr-only">
           Daftar layanan
         </h2>
-        {DEFAULT_SERVICES.map((s) => (
-          <div
-            key={s.title}
-            className="rounded-lg border border-slate-100 bg-white p-5 shadow-sm transition hover:shadow-md sm:p-6"
-          >
-            <span
-              className="grid h-11 w-11 place-items-center rounded-lg bg-brand/10 text-brand"
-              aria-hidden="true"
-            >
-              <s.icon className="h-5 w-5" />
-            </span>
-            <h3 className="mt-3 font-heading text-lg font-bold text-brand-strong">{s.title}</h3>
-            <p className="mt-1.5 text-sm leading-relaxed text-slate-500">{s.desc}</p>
+        {services.length === 0 ? (
+          <div className="rounded-lg border border-slate-100 bg-white p-6 text-sm text-slate-500 shadow-sm sm:col-span-2 sm:p-8">
+            <p>Belum ada layanan yang tersedia saat ini.</p>
           </div>
-        ))}
+        ) : (
+          services.map((s) => {
+            const Icon = ICON_MAP[s.icon] ?? BadgeCheck;
+            return (
+              <div
+                key={s.id}
+                className="rounded-lg border border-slate-100 bg-white p-5 shadow-sm transition hover:shadow-md sm:p-6"
+              >
+                <span
+                  className="grid h-11 w-11 place-items-center rounded-lg bg-brand/10 text-brand"
+                  aria-hidden="true"
+                >
+                  <Icon className="h-5 w-5" />
+                </span>
+                <h3 className="mt-3 font-heading text-lg font-bold text-brand-strong">{s.title}</h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-slate-500">{s.description}</p>
+              </div>
+            );
+          })
+        )}
       </section>
 
       <section

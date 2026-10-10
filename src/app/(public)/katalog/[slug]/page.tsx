@@ -17,6 +17,7 @@ import Breadcrumb from '@/components/public/Breadcrumb';
 import ReserveButton from '@/components/public/ReserveButton';
 import WishlistButton from '@/components/public/WishlistButton';
 import { fetchBookBySlug, fetchBooks, fetchSettings, ratingNumber, stockState } from '@/lib/books';
+import { getOgImage, getSiteName } from '@/lib/settings';
 import { coverSrc } from '@/lib/cover';
 import { getSiteUrl } from '@/lib/site';
 
@@ -34,11 +35,11 @@ export async function generateMetadata({ params }: Props) {
   const { slug } = await params;
   const [book, settings] = await Promise.all([fetchBookBySlug(slug), fetchSettings()]);
   if (!book) return { title: 'Buku tidak ditemukan' };
-  const siteName = settings.name ?? 'Perpustakaan';
+  const siteName = getSiteName(settings);
   const title = `${book.title} — ${siteName}`;
   const description = book.description?.slice(0, 160) ?? `Detail buku ${book.title}.`;
   const url = `${getSiteUrl()}/katalog/${slug}`;
-  const ogImage = coverSrc(book.cover_url, 640) ?? '/og-default.jpg';
+  const ogImage = coverSrc(book.cover_url, 640) ?? getOgImage(settings);
   return {
     title,
     description,
@@ -65,9 +66,8 @@ export default async function BookDetailPage({ params }: Props) {
   const stock = stockState(book);
   const rating = ratingNumber(book.rating_avg);
   const available = (Number(book.stock_available) || 0) > 0;
-  const cover = coverSrc(book.cover_url, 560) ?? '/og-default.jpg';
-
   const settings = await fetchSettings();
+  const cover = coverSrc(book.cover_url, 560) ?? getOgImage(settings);
   const rawWa = settings.socials?.whatsapp?.trim() || settings.phone?.trim() || '';
   const waDigits = rawWa.replace(/\D/g, '');
   const waHref = waDigits
