@@ -115,13 +115,15 @@ describe('T-PAPER paper flat editorial', () => {
   it('paper editorial tokens: paper #FAF7F2, sage #6F7D6C, section 6rem airy', () => {
     const paper = THEMES['paper'];
     const tokens = paper!.tokens as Record<string, string>;
-    expect(tokens['surface']).toBe('#FAF7F2');
-    expect(tokens['brand']).toBe('#6F7D6C');
+    expect(tokens['surface'].toLowerCase()).toBe('#faf7f2');
+    expect(tokens['brand'].toLowerCase()).toBe('#6f7d6c');
     expect((paper!.spacing as Record<string, string>)['section']).toBe('6rem');
     const css = read('src/app/globals.css');
     const block = css.match(/\[data-theme=["']paper["']\]\s*\{([\s\S]*?)\}/)![1]!;
-    expect(block).toContain('--surface: #FAF7F2');
-    expect(block).toContain('--brand: #6F7D6C');
+    // CSS hex is case-insensitive — compare lowercased on both sides.
+    const lc = block.toLowerCase();
+    expect(lc).toContain('--surface: #faf7f2');
+    expect(lc).toContain('--brand: #6f7d6c');
     expect(block).toContain('--spacing-section: 6rem');
     expect(paper!.description).toMatch(/no gradients/i);
   });
