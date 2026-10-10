@@ -3,6 +3,7 @@ import { revalidatePath, revalidateTag } from 'next/cache';
 import { jsonError, parsePaging } from '@/lib/supabase/auth';
 import { isUuid, createWriteLog } from '@/lib/api-utils';
 import { checkMemberLoanEligibility } from '@/lib/loan-eligibility';
+import { resolveReservationExpiresAt } from '@/lib/reservation-expiry';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 import { getSession } from '@/lib/session';
 
@@ -140,14 +141,13 @@ export async function POST(req: Request) {
     });
   }
 
-  const expiresRaw = body.expires_at as string | undefined;
-  let expires_at: string | null = null;
-  if (expiresRaw) {
-    const d = new Date(expiresRaw);
-    if (Number.isNaN(d.getTime())) return jsonError('VALIDATION', 'expires_at tidak valid.', 422);
-    if (d.getTime() <= Date.now())
-      return jsonError('VALIDATION', 'expires_at harus di masa depan.', 422);
-    expires_at = d.toISOString();
+  // Isu #76 + migrasi 0026: tanpa expires_at → default +3 hari (kolom NOT NULL).
+  // Helper melempar pesan yang sama dengan gate 422 lama.
+  let expires_at: string;
+  try {
+    expires_at = resolveReservationExpiresAt(body.expires_at, new Date(Date.now()));
+  } catch (e) {
+    return jsonError('VALIDATION', (e as Error).message, 422);
   }
 
   const notesRaw = body.notes;

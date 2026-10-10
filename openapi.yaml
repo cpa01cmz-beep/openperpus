@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: OpenPerpus API
   version: 0.1.0
-  description: CMS Perpustakaan — 35 route handler (30 resource + health/readyz/docs/metrics/register). Deploy utama Vercel (ADR-002), Cloudflare Workers alternatif; preview lokal via `npm run dev` / `npm run cf:preview`. Enforced bidirectionally by tests/openapi-conformance.test.ts.
+  description: CMS Perpustakaan — 39 route modules (33 resource + health/readyz/docs/metrics/register + cron/sweep-reservations). Deploy utama Vercel (ADR-002), Cloudflare Workers alternatif; preview lokal via `npm run dev` / `npm run cf:preview`. Enforced bidirectionally by tests/openapi-conformance.test.ts.
 servers:
   - url: http://localhost:3000
     description: local
@@ -31,6 +31,8 @@ components:
                   CONFLICT,
                   UNAUTHORIZED,
                   FORBIDDEN,
+                  CRON_NOT_CONFIGURED,
+                  SWEEP_FAILED,
                   THEME_FORBIDDEN,
                   HINT_USE_THEME_ENDPOINT,
                   INTERNAL,
@@ -253,6 +255,24 @@ paths:
       responses:
         '200':
           description: html
+  /api/cron/sweep-reservations:
+    get:
+      summary: Vercel Cron harian — tandai reservasi pending/ready lewat expires_at sebagai expired via RPC sweep_expired_reservations (migrasi 0026, isu #76). Guard Bearer CRON_SECRET.
+      responses:
+        '200':
+          description: ok
+        '401':
+          description: Cron secret tidak valid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: CRON_NOT_CONFIGURED atau SWEEP_FAILED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/articles:
     get:
       summary: List articles (public published; draft/archived staff)
