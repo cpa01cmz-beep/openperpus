@@ -145,7 +145,7 @@ Browser → middleware.ts (refresh session + role gate staff) → admin/layout.t
 ## 4. Auth & Roles
 
 - **Provider:** Supabase Auth (email+password). Tabel `profiles(id UUID PK → auth.users(id), role CHECK IN ('admin','librarian','member'), full_name, avatar_url)`; app menormalisasi role DB → kanonis (`normalizeRole()`: `librarian→pustakawan`, `member→anggota`).
-- **Alur:** pendaftaran lewat `POST /api/register` membuat baris `profiles` (role `member`) + baris `members` (member_code otomatis, status `pending`) — tidak ada trigger `handle_new_user`. Promosi jadi `admin` lewat SQL Editor/psql/`service_role` (jalur tanpa `auth.uid()`, lihat README §Akun admin pertama); sesudah ada admin, perubahan role hanya boleh oleh admin (trigger 0019).
+- **Alur:** pendaftaran lewat `POST /api/register` membuat baris `profiles` (role `member`) + baris `members` (member_code otomatis, status `pending`) — tidak ada trigger `handle_new_user`. Promosi jadi `admin` lewat SQL Editor/psql/`service_role` **dengan menonaktifkan sementara trigger strip role `0003`** (tanpa itu UPDATE diam-diam di-revert; resep lengkap: README §Akun admin pertama). Tidak ada endpoint aplikasi yang mengubah `profiles.role`.
 - **Enforcement 3 lapis:**
   1. `middleware.ts` refresh session + redirect `/admin/*` tanpa session → `/login`; non-staff (role bukan admin|librarian) → `/` (fail-closed).
   2. `admin/layout.tsx` cek `profiles.role` + guard API `requireStaff()` (kanonis, berbasis `normalizeRole`) → 403 bila role tak cukup.
@@ -192,7 +192,7 @@ Browser → middleware.ts (refresh session + role gate staff) → admin/layout.t
 
 | Bucket           | Public?     | Isi                                                                                              | Aturan                                                                                                                                                                             |
 | ---------------- | ----------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `library-assets` | public read | cover buku (`books/{id}/cover.webp`), logo, favicon, banner slider, gambar artikel, foto anggota | anon SELECT; tulis hanya pustakawan+admin (foto anggota: user boleh tulis folder `auth.uid()` miliknya); batas 2MB, mimetype image/*; pakai transform `?width=400` untuk thumbnail |
+| `library-assets` | public read | cover buku (`books/{id}/cover.webp`), logo, favicon, banner slider, gambar artikel, foto anggota | anon SELECT; tulis hanya pustakawan+admin (foto anggota: user boleh tulis folder `auth.uid()` miliknya); batas 10MB, mimetype jpeg/png/webp/gif + pdf (svg ditolak 0007); pakai transform `?width=400` untuk thumbnail |
 
 - Upload via admin UI → Supabase Storage langsung (signed) lalu simpan `cover_url`/`logo_url` ke DB. Jangan proxy binary lewat Next route (boros Workers subrequest).
 - Cleanup: hapus file lama saat cover/logo diganti (worker wajib implement di PUT).

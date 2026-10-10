@@ -129,8 +129,10 @@ supabase/migrations/0021_services.sql
 supabase/migrations/0022_theme_overrides.sql
 ```
 
-Alternatif (tanpa paste manual): jalankan `supabase db push` dari root repo —
-migrasi terdeteksi otomatis dari folder `supabase/migrations` (lihat `supabase/README.md`).
+Alternatif (tanpa paste manual): `supabase db push` dari root repo — prasyarat:
+`supabase login` lalu `supabase link --project-ref <PROJECT_REF>`; bila CLI menolak
+prefix numerik `0001_*`, rename ke format `YYYYMMDDHHMMSS_*` (detail +
+cara pakai seed: `supabase/README.md`).
 
 Catatan: penomoran unik dan berurutan (0010 dilewati, tidak dipakai). Jalankan semua sesuai urutan di atas.
 
@@ -141,28 +143,37 @@ jadi akun admin pertama dibuat manual setelah signup:
 
 1. Daftar di `http://localhost:3000/daftar` (konfirmasi email bila diaktifkan di
    Supabase Dashboard → Authentication → Providers → Email), lalu login.
-2. Buka Supabase Dashboard → SQL Editor, jalankan (ganti email):
+2. Buka Supabase Dashboard → SQL Editor, jalankan dalam satu transaksi (ganti email):
 
 ```sql
+ALTER TABLE public.profiles DISABLE TRIGGER trg_strip_profiles_role;
 UPDATE public.profiles
 SET role = 'admin'
 WHERE id = (SELECT id FROM auth.users WHERE email = 'email-kamu@contoh.com');
+ALTER TABLE public.profiles ENABLE TRIGGER trg_strip_profiles_role;
 ```
 
-3. (Opsional) isi data awal perpus — nama, kategori, rak, buku contoh — dengan menjalankan
-   `supabase/seed.sql` (paste ke SQL Editor, atau `supabase db execute --file supabase/seed.sql`).
+   > Pastikan email sudah terdaftar (selesaikan langkah 1 dulu) — email yang tidak
+   > ditemukan = 0 baris ter-update, juga tanpa error (senyap).
 
-Kenapa SQL dan bukan lewat aplikasi: trigger `0019_role_guard.sql` menolak perubahan
-`profiles.role` oleh user ber-sesi yang bukan admin; jalur SQL Editor/psql/`service_role`
-(tanpa `auth.uid()`) dikecualikan — itu jalur seed/admin manual yang tepercaya.
-Setelah admin pertama ada, perubahan role berikutnya cukup lewat SQL serupa.
+3. (Opsional) isi data awal perpus — nama, kategori, rak, buku contoh — dengan menjalankan
+   `supabase/seed.sql` (paste ke SQL Editor, atau `supabase db query --file supabase/seed.sql`).
+
+Kenapa tidak cukup `UPDATE` polos: ada dua trigger di jalur itu. `0019_role_guard.sql`
+melewatkan aktor session-less (`auth.uid() IS NULL` — SQL Editor/psql/`service_role`),
+tapi `trg_strip_profiles_role` (`0003_hardening.sql`) **tidak**: untuk aktor non-staff
+ia diam-diam mengembalikan `role` ke nilai lama, sehingga `UPDATE` polos tampak sukses
+tapi hasilnya nol. Karena itu trigger strip dimatikan sementara di sekitar UPDATE.
+Catatan: di `src/` tidak ada endpoint yang mengubah `profiles.role` — setiap perubahan
+role lewat SQL Editor memakai urutan disable/enable yang sama.
 
 ## Storage bucket
 
 Upload sampul/gambar memakai bucket `library-assets` yang **dibuat otomatis** oleh
-`supabase/migrations/0004_storage.sql` (public read, tulis hanya staf, batas 2 MB image/*,
-policies di `0007_storage_guard.sql`). Tidak perlu membuat bucket manual di dashboard.
-Bila bucket terlanjur dihapus, jalankan ulang `0004_storage.sql`.
+`supabase/migrations/0004_storage.sql` (public read, tulis hanya staf, batas 10 MB
+jpeg/png/webp/gif + pdf — svg ditolak 0007; policies di `0007_storage_guard.sql`).
+Tidak perlu membuat bucket manual di dashboard. Bila bucket terlanjur dihapus,
+jalankan ulang `0004_storage.sql`.
 
 ## Verifikasi (smoke test)
 

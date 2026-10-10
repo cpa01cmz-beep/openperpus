@@ -82,7 +82,7 @@ Paste tiap file → Run, sesuai urutan. Perhatikan pesan sukses per file.
 
 ```powershell
 psql $env:DATABASE_URL -f supabase/seed.sql
-# atau: supabase db execute --file supabase/seed.sql
+# atau: supabase db query --file supabase/seed.sql
 ```
 
 Seed **idempotent** (aman dijalankan ulang): memakai
