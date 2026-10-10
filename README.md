@@ -58,7 +58,7 @@ Deploy utama: **Vercel** (ADR-002 — Workers free plan kena error 1102 resource
    | `SUPABASE_SERVICE_ROLE_KEY`     | service_role (server only)      |
    | `NEXT_PUBLIC_SITE_URL`          | `https://openperpus.cmz.web.id` |
    | `METRICS_TOKEN`                 | token acak untuk `/api/metrics` (opsional; mis. `openssl rand -hex 32`) |
-   | `SENTRY_DSN`                    | DSN Sentry (opsional; kosong = tracking nonaktif) |
+   | `SENTRY_DSN`                    | DSN Sentry — reserved, belum aktif (stub di `src/lib/observability.ts`; tanpa `@sentry/*`, set var saja tidak mengaktifkan tracking) |
 
 3. Tambah custom domain `openperpus.cmz.web.id` + DNS record di zone Cloudflare.
 4. Supabase Dashboard → Authentication → URL Configuration: tambahkan domain Vercel ke
@@ -173,7 +173,8 @@ Upload sampul/gambar memakai bucket `library-assets` yang **dibuat otomatis** ol
 `supabase/migrations/0004_storage.sql` (public read, tulis hanya staf, batas 10 MB
 jpeg/png/webp/gif + pdf — svg ditolak 0007; policies di `0007_storage_guard.sql`).
 Tidak perlu membuat bucket manual di dashboard. Bila bucket terlanjur dihapus,
-jalankan ulang `0004_storage.sql`.
+jalankan ulang `0004_storage.sql` lalu `0007_storage_guard.sql` — 0004 mengembalikan
+`image/svg+xml` ke daftar mime, 0007 men-strip-nya lagi (svg = vektor stored-XSS).
 
 ## Verifikasi (smoke test)
 

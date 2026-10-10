@@ -75,7 +75,7 @@ supabase migration list
 ```powershell
 $env:DATABASE_URL = "postgresql://postgres:<PASSWORD>@db.<REF>.supabase.co:5432/postgres"
 Get-ChildItem supabase/migrations/*.sql | Sort-Object Name | ForEach-Object {
-  psql $env:DATABASE_URL -f $_.FullName
+  psql $env:DATABASE_URL -v ON_ERROR_STOP=1 -f $_.FullName
 }
 ```
 
