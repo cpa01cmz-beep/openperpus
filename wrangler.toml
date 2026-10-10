@@ -1,5 +1,5 @@
 # Nama worker — ganti sesuai project di dashboard Cloudflare
-name = "webperpus-oc"
+name = "openperpus"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 
@@ -13,7 +13,7 @@ not_found_handling = "none"
 
 # Contoh env non-secret (secret pakai `wrangler secret put`)
 # [vars]
-# NEXT_PUBLIC_SITE_URL = "https://webperpus-oc.workers.dev"
+# NEXT_PUBLIC_SITE_URL = "https://openperpus.workers.dev"
 
 # Public env (NEXT_PUBLIC_* ikut ke client bundle — aman di-commit, bukan secret)
 # Anon key dirancang publik: semua akses data tetap dijaga RLS Supabase.
@@ -34,4 +34,4 @@ enabled = true
 
 # Staging environment — preview env vars only (no secrets)
 [env.staging]
-vars = { NEXT_PUBLIC_SITE_URL = "https://webperpus-oc-staging.workers.dev" }
+vars = { NEXT_PUBLIC_SITE_URL = "https://openperpus-staging.workers.dev" }
