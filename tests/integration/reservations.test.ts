@@ -66,7 +66,9 @@ describe('Integration: Reservations', () => {
     expect(data.status).toBe('ready');
   });
 
-  it('should complete reservation via checkout (ready -> completed)', async () => {
+  it('should complete reservation via atomic checkout RPC (ready -> completed + loan_id)', async () => {
+    // Issue #73: completed WAJIB punya loan_id — checkout lewat RPC atomik
+    // checkout_reservation_tx (migrasi 0024), bukan UPDATE status langsung.
     const { data: member } = await supabase
       .from('members')
       .select('id')
@@ -96,22 +98,22 @@ describe('Integration: Reservations', () => {
 
     if (!reservation) return;
 
-    const { data: loan } = await supabase.rpc('checkout_loan', {
-      p_book_id: book.id,
-      p_member_id: member.id,
+    const { data: checkout, error: rpcError } = await supabase.rpc('checkout_reservation_tx', {
+      p_reservation_id: reservation.id,
     });
+
+    expect(rpcError).toBeNull();
+    expect(checkout).toBeDefined();
 
     const { data, error } = await supabase
       .from('reservations')
-      .update({ status: 'completed', completed_at: new Date().toISOString() })
+      .select('status,loan_id')
       .eq('id', reservation.id)
-      .select()
       .single();
 
     expect(error).toBeNull();
     if (!data) return;
     expect(data.status).toBe('completed');
-    expect(data.completed_at).toBeDefined();
-    expect(loan).toBeDefined();
+    expect(data.loan_id).toBeDefined();
   });
 });

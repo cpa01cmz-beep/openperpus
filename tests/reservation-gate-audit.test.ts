@@ -3,8 +3,10 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 // Reservation gate unified: [id] route + collection route mengizinkan
-// pending->ready, pending->completed (staf, dipakai alur reservasi→pinjam
-// 1-klik setelah loan 201), ready->completed, any->cancelled/expired.
+// pending->ready, any->cancelled/expired. Issue #73: status='completed'
+// DITOLAK via PUT (422) — hanya lewat checkout atomik
+// POST /api/reservations/{id}/checkout (RPC checkout_reservation_tx,
+// migrasi 0024) yang membuat loan + completed dalam satu transaksi.
 // Books PUT/DELETE audit books.update/books.delete + logs filter UI
 // mencakup reservations.*, members.*, taxonomy.
 
@@ -152,7 +154,7 @@ beforeEach(() => {
 });
 
 describe('reservation gate unified ([id] + collection)', () => {
-  it('[id] PUT pending->completed lolos 200 (staf checkout 1-klik)', async () => {
+  it('[id] PUT pending->completed DITOLAK 422 (issue #73: hanya via checkout atomik)', async () => {
     const seen: Record<string, unknown>[] = [];
     setByIdMock('pending', seen);
     const res = await BY_ID_PUT(
@@ -162,9 +164,26 @@ describe('reservation gate unified ([id] + collection)', () => {
       }
     );
     if (!res) throw new Error('expected response');
-    expect(res.status).toBe(200);
-    expect(seen.length).toBe(1);
-    expect((seen[0] as { action: string }).action).toBe('reservations.completed');
+    expect(res.status).toBe(422);
+    const json = (await res.json()) as { error?: { code?: string; message?: string } };
+    expect(json.error?.code).toBe('VALIDATION');
+    expect(json.error?.message).toContain('/checkout');
+    // Transisi ilegal: tanpa update + tanpa audit log.
+    expect(seen.length).toBe(0);
+  });
+
+  it('[id] PUT ready->completed DITOLAK 422 (issue #73)', async () => {
+    const seen: Record<string, unknown>[] = [];
+    setByIdMock('ready', seen);
+    const res = await BY_ID_PUT(
+      putReq(`http://localhost/api/reservations/${RES_ID}`, { status: 'completed' }),
+      {
+        params: { id: RES_ID },
+      }
+    );
+    if (!res) throw new Error('expected response');
+    expect(res.status).toBe(422);
+    expect(seen.length).toBe(0);
   });
 
   it('[id] PUT pending->ready lolos 200 + audit reservations.ready', async () => {
@@ -194,25 +213,24 @@ describe('reservation gate unified ([id] + collection)', () => {
     expect(res.status).toBe(200);
   });
 
-  it('collection PUT pending->completed lolos 200 (staf checkout 1-klik)', async () => {
+  it('collection PUT pending->completed DITOLAK 422 (issue #73)', async () => {
     const seen: Record<string, unknown>[] = [];
     setCollectionMock('pending', seen);
     const res = await COLLECTION_PUT(
       putReq(`http://localhost/api/reservations?id=${RES_ID}`, { status: 'completed' })
     );
-    expect(res.status).toBe(200);
-    expect(seen.length).toBe(1);
-    expect((seen[0] as { action: string }).action).toBe('reservations.completed');
+    expect(res.status).toBe(422);
+    expect(seen.length).toBe(0);
   });
 
-  it('collection PUT ready->completed lolos 200', async () => {
+  it('collection PUT ready->completed DITOLAK 422 (issue #73)', async () => {
     const seen: Record<string, unknown>[] = [];
     setCollectionMock('ready', seen);
     const res = await COLLECTION_PUT(
       putReq(`http://localhost/api/reservations?id=${RES_ID}`, { status: 'completed' })
     );
-    expect(res.status).toBe(200);
-    expect((seen[0] as { action: string }).action).toBe('reservations.completed');
+    expect(res.status).toBe(422);
+    expect(seen.length).toBe(0);
   });
 });
 

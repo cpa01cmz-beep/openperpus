@@ -1172,6 +1172,73 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+  /api/reservations/{id}/checkout:
+    post:
+      summary: >-
+        Checkout reservation atomically (staff) — creates loan + marks reservation
+        completed in ONE transaction via RPC checkout_reservation_tx
+        (migration 0024). Replaces the old 2-call POST /api/loans + PUT
+        completed flow (issue #73). PUT status=completed is rejected (422).
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                borrowed_at:
+                  type: string
+                  format: date-time
+                due_at:
+                  type: string
+                  format: date-time
+                notes:
+                  type: string
+                  maxLength: 500
+      responses:
+        '201':
+          description: created — { data: { loan, reservation } }
+        '401':
+          description: Silakan login
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Butuh peran admin/librarian
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Reservasi/buku/anggota tidak ditemukan (NOT_FOUND)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: >-
+            CONFLICT: stok buku habis / anggota sudah meminjam buku ini /
+            tagihan denda belum lunas / pinjaman terlambat / batas pinjaman
+            aktif / reservasi belum ready
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: VALIDATION — id/borrowed_at/due_at/notes tidak valid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Fungsi checkout_reservation_tx belum terdeploy (jalankan migrasi 0024) / gagal simpan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/services:
     get:
       summary: List services (public; ?all=1 staff elevation)
