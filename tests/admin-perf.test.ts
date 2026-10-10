@@ -57,8 +57,8 @@ describe('S-admin-perf', () => {
     );
   });
 
-  it('(d) migration 0023 keeps chart sargable + supporting indexes', () => {
-    const mig = read('supabase/migrations/0023_dashboard_stats_rtt.sql');
+  it('(d) migration 0024 keeps chart sargable + supporting indexes', () => {
+    const mig = read('supabase/migrations/0024_dashboard_stats_rtt.sql');
     expect(mig, 'RED: chart bucket must use sargable borrowed_at range').toMatch(
       /borrowed_at\s*>=\s*\(d\.day::timestamp\)/
     );
@@ -73,15 +73,15 @@ describe('S-admin-perf', () => {
     );
   });
 
-  it('(e) RPC contract: RETURNS TABLE 0023 ⊇ StatsRow keys (rename kolom ketahuan)', () => {
-    const mig = read('supabase/migrations/0023_dashboard_stats_rtt.sql');
+  it('(e) RPC contract: RETURNS TABLE 0024 ⊇ StatsRow keys (rename kolom ketahuan)', () => {
+    const mig = read('supabase/migrations/0024_dashboard_stats_rtt.sql');
     const src = read('src/app/admin/page.tsx');
     // Parse blok RETURNS TABLE (...) — bukan toMatch lebar yang bisa dipenuhi komentar.
     const retBlock = mig.match(/RETURNS TABLE \(([\s\S]*?)^\)/m)?.[1] ?? '';
     const cols = [...retBlock.matchAll(/^\s{2}(\w+)\s+(BIGINT|NUMERIC|JSONB)/gm)].map((m) => m[1]);
     const statsBlock = src.match(/type StatsRow = \{([\s\S]*?)\n\s*\};/)?.[1] ?? '';
     const keys = [...statsBlock.matchAll(/^\s+(\w+):/gm)].map((m) => m[1]);
-    expect(cols.length, 'RED: parse RETURNS TABLE dari 0023 gagal').toBeGreaterThanOrEqual(7);
+    expect(cols.length, 'RED: parse RETURNS TABLE dari 0024 gagal').toBeGreaterThanOrEqual(7);
     expect(keys.length, 'RED: parse StatsRow dari page gagal').toBeGreaterThanOrEqual(7);
     expect(
       cols,
@@ -116,7 +116,7 @@ describe('S-admin-perf', () => {
   it('(g) deploy guard: signature v1 tanpa fines_open → tanpa tagihan + log', async () => {
     const err = vi.spyOn(console, 'error').mockImplementation(() => {});
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
-    // Migrasi 0023 belum jalan → PostgREST tetap balas v1 (5 kolom) tanpa error.
+    // Migrasi 0024 belum jalan → PostgREST tetap balas v1 (5 kolom) tanpa error.
     setRpc('get_dashboard_stats', {
       data: [
         {
