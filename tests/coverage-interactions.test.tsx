@@ -63,6 +63,7 @@ import BannerPage from '@/app/admin/banner/page';
 import ArtikelPage from '@/app/admin/artikel/page';
 import BukuAdminPage from '@/app/admin/buku/page';
 import AnggotaPage from '@/app/admin/anggota/page';
+import ReservasiAdminPage from '@/app/admin/reservasi/page';
 import PeminjamanPage from '@/app/admin/peminjaman/page';
 import KontenPage from '@/app/admin/konten/page';
 import DendaAdminPage from '@/app/admin/denda/page';
@@ -588,6 +589,59 @@ describe('admin list page interactions', () => {
         ).toBe(true),
       { timeout: 2500 }
     );
+  });
+
+  it('reservasi: search q + approve/checkout lewat dialog konfirmasi', async () => {
+    listRows = [
+      {
+        id: 'r1',
+        status: 'ready',
+        book_id: 'b1',
+        member_id: 'm1',
+        reserved_at: '2026-09-01T00:00:00Z',
+        expires_at: null,
+        notes: null,
+        members: { member_code: 'AG-1' },
+        books: { title: 'Buku A' },
+      },
+    ];
+    const view = render(<ReservasiAdminPage />);
+    await waitFor(
+      () => expect(screen.getByRole('heading', { level: 1, name: 'Reservasi' })).toBeTruthy(),
+      { timeout: 2500 }
+    );
+    // kotak pencarian mengirim parameter q (lintas relasi member_code/judul)
+    fireEvent.change(view.container.querySelector('#reservasi-search') as Element, {
+      target: { value: 'AG-1' },
+    });
+    await waitFor(
+      () => expect(fetchMock.mock.calls.some((c) => String(c[0]).includes('q=AG-1'))).toBe(true),
+      { timeout: 2500 }
+    );
+    // Pinjamkan (1-klik checkout) lewat dialog inline — bukan confirm() native
+    const checkoutBtn = await screen.findByRole(
+      'button',
+      { name: /pinjamkan/i },
+      { timeout: 2500 }
+    );
+    fireEvent.click(checkoutBtn);
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /ya, pinjamkan/i }));
+    await waitFor(
+      () =>
+        expect(
+          fetchMock.mock.calls.some(
+            (c) =>
+              String(c[0]).includes('/api/loans') &&
+              (c[1] as RequestInit | undefined)?.method === 'POST'
+          )
+        ).toBe(true),
+      { timeout: 2500 }
+    );
+    // pastikan tidak ada dialog native yang dipakai
+    expect(
+      (globalThis as unknown as { confirm: ReturnType<typeof vi.fn> }).confirm
+    ).not.toHaveBeenCalled();
   });
 
   it('buku: csv export + delete + bulk select', async () => {
