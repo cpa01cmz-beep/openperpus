@@ -4,13 +4,25 @@ import { requireStaff, jsonError, addDaysISO, parsePaging } from '@/lib/supabase
 import { returnLoan, extendLoan, getFineRate } from '@/lib/loans-return';
 import { sanitizeIlike } from '@/lib/search';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
+import {
+  ACTIVE_LOAN_STATUSES,
+  isActiveLoanStatus,
+  isLoanStatus,
+  loansListFilter,
+} from '@/lib/loans-overdue';
 
 /**
  * Sirkulasi — kolom mengikuti migrasi 0001 (loans):
  * book_id, member_id, borrowed_at, due_at, returned_at,
  * status: borrowed|returned|overdue|lost, fine_amount, notes.
  *
+ * STATUS TERLAMBAT = TURUNAN (issue #57): 'overdue' ⇔ status masih berjalan
+ * AND due_at < NOW(). Aplikasi tidak pernah menulis kolom status='overdue',
+ * jadi filter/kolom apa pun WAJIB lewat src/lib/loans-overdue.ts.
+ *
  * GET /api/loans?status=&member_id=&overdue=1&page=&per_page=
+ *   status=overdue ≡ overdue=1 → definisi turunan yang sama.
+ *   Response memuat is_overdue + effective_status per baris.
  * POST /api/loans { member_id, book_id, borrowed_at?, due_at?, notes? }
  *   -> due auto +14 hari, stok_available -1 (guard >0)
  * PUT /api/loans?id= { action:"return", returned_at?, notes? }
@@ -60,6 +72,14 @@ export async function GET(req: Request) {
   const status = (sp.get('status') ?? '').trim();
   const memberId = (sp.get('member_id') ?? '').trim();
   const overdue = sp.get('overdue');
+  // Kontrak status tunggal: nilai di luar enum ditolak 422 (bukan diam-diam
+  // mengembalikan list kosong) — status legal lihat src/lib/loans-overdue.ts.
+  if (status && !isLoanStatus(status)) {
+    return jsonError('VALIDATION', 'status harus: borrowed|returned|overdue|lost.', 422);
+  }
+  // status=overdue ≡ overdue=1 ≡ tombol "Terlambat saja" (definisi turunan).
+  const filter = loansListFilter({ status, overdue });
+  const nowIso = new Date().toISOString();
 
   // Tarif denda dari library_settings (fallback FINE_PER_DAY) — jangan hardcode 1000.
   // Telat pakai EPOCH/86400 (hari penuh); EXTRACT(DAY) salah utk telat >31 hari.
@@ -70,6 +90,7 @@ export async function GET(req: Request) {
     .select(
       '*, members(id,member_code), books(id,title,slug), ' +
         "CASE WHEN status IN ('borrowed','overdue') AND due_at < NOW() THEN true ELSE false END AS is_overdue, " +
+        "CASE WHEN status IN ('borrowed','overdue') AND due_at < NOW() THEN 'overdue' ELSE status END AS effective_status, " +
         "CASE WHEN status IN ('borrowed','overdue') AND due_at < NOW() " +
         `THEN GREATEST((EXTRACT(EPOCH FROM (NOW() - due_at)) / 86400)::int, 0) * ${fineRate} ELSE 0 END AS fine_preview`,
       { count: 'exact' }
@@ -77,10 +98,10 @@ export async function GET(req: Request) {
     .order('borrowed_at', { ascending: false })
     .range(from, to);
 
-  if (status) query = query.eq('status', status);
+  if (filter.status) query = query.eq('status', filter.status);
+  // Satu definisi terlambat: aktif (borrowed|overdue) + tempo lewat.
+  if (filter.overdue) query = query.in('status', [...ACTIVE_LOAN_STATUSES]).lt('due_at', nowIso);
   if (memberId) query = query.eq('member_id', memberId);
-  if (overdue === '1')
-    query = query.in('status', ['borrowed', 'overdue']).lt('due_at', new Date().toISOString());
   if (q) {
     const clean = sanitizeIlike(q);
     if (clean) query = query.ilike('notes', `%${clean}%`);
@@ -328,10 +349,8 @@ export async function DELETE(req: Request) {
 
   const { data: loan } = await supabase.from('loans').select('status').eq('id', id).single();
   if (!loan) return jsonError('NOT_FOUND', 'Peminjaman tidak ditemukan.', 404);
-  if (
-    (loan as { status: string }).status === 'borrowed' ||
-    (loan as { status: string }).status === 'overdue'
-  ) {
+  // Berjalan = belum returned/lost (termasuk turunan terlambat) — helper bersama.
+  if (isActiveLoanStatus((loan as { status: string }).status)) {
     return jsonError('CONFLICT', 'Tidak bisa hapus peminjaman berjalan. Kembalikan dulu.', 409);
   }
 

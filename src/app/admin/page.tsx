@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { calcFine } from '@/lib/finecalc';
 import { getFineRate } from '@/lib/loans-return';
+import { effectiveLoanStatus } from '@/lib/loans-overdue';
 import StatCard from '@/components/admin/StatCard';
 
 export const dynamic = 'force-dynamic';
@@ -179,26 +180,35 @@ export default async function AdminDashboard() {
               (r: {
                 id: string;
                 status: string;
+                due_at: string;
                 members: { member_code: string } | { member_code: string }[] | null;
                 books: { title: string } | { title: string }[] | null;
-              }) => (
-                <li
-                  key={r.id}
-                  className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2"
-                >
-                  <span className="truncate">
-                    {(Array.isArray(r.members)
-                      ? r.members[0]?.member_code
-                      : r.members?.member_code) ?? '?'}{' '}
-                    → {(Array.isArray(r.books) ? r.books[0]?.title : r.books?.title) ?? '?'}
-                  </span>
-                  <span
-                    className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${r.status === 'borrowed' || r.status === 'overdue' ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800'}`}
+              }) => {
+                // Definisi tunggal (issue #57): terlambat = turunan, bukan kolom.
+                const eff = effectiveLoanStatus(r);
+                return (
+                  <li
+                    key={r.id}
+                    className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2"
                   >
-                    {r.status}
-                  </span>
-                </li>
-              )
+                    <span className="truncate">
+                      {(Array.isArray(r.members)
+                        ? r.members[0]?.member_code
+                        : r.members?.member_code) ?? '?'}{' '}
+                      → {(Array.isArray(r.books) ? r.books[0]?.title : r.books?.title) ?? '?'}
+                    </span>
+                    <span
+                      className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${
+                        eff === 'borrowed' || eff === 'overdue'
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'bg-green-100 text-green-800'
+                      }`}
+                    >
+                      {eff}
+                    </span>
+                  </li>
+                );
+              }
             )}
           </ul>
         </section>

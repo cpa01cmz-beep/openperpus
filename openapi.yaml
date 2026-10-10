@@ -637,15 +637,86 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
   /api/loans:
     get:
-      summary: List loans (staff)
+      summary: List loans (staff; members see own)
       security:
         - BearerAuth: []
       parameters:
         - $ref: '#/components/parameters/PageParam'
         - $ref: '#/components/parameters/PerPageParam'
+        - name: status
+          in: query
+          description: >-
+            Column loans.status. 'overdue' is derived (still-active loan past
+            due_at < NOW()), never persisted — equivalent to overdue=1.
+          schema:
+            type: string
+            enum: [borrowed, returned, overdue, lost]
+        - name: overdue
+          in: query
+          description: >-
+            Derived late filter (single source of truth): status still active
+            AND due_at < NOW(). Same result as status=overdue and the admin
+            "Terlambat saja" toggle.
+          schema:
+            type: string
+            enum: ['1']
+        - name: member_id
+          in: query
+          description: Ignored for members (auto-scoped to own loans).
+          schema:
+            type: string
+            format: uuid
+        - name: q
+          in: query
+          description: Search in loan notes.
+          schema:
+            type: string
       responses:
         '200':
           description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data, meta, pagination]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        is_overdue:
+                          type: boolean
+                          description: Derived late flag (active loan past due_at).
+                        effective_status:
+                          type: string
+                          enum: [borrowed, overdue, returned, lost]
+                          description: Display status — 'overdue' when derived, else the status column.
+                        fine_preview:
+                          type: number
+                          description: Estimated fine at the configured per-day rate.
+                  meta:
+                    type: object
+                    required: [page, per_page, total]
+                    properties:
+                      page:
+                        type: integer
+                      per_page:
+                        type: integer
+                      total:
+                        type: integer
+                  pagination:
+                    type: object
+                    required: [page, limit, total, totalPages]
+                    properties:
+                      page:
+                        type: integer
+                      limit:
+                        type: integer
+                      total:
+                        type: integer
+                      totalPages:
+                        type: integer
     post:
       summary: Create loan (borrow, staff)
       security:
