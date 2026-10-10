@@ -135,8 +135,7 @@ function payReq(id: string, body: Record<string, unknown>) {
   });
 }
 
-const pageSrc = () =>
-  readFileSync(join(process.cwd(), 'src/app/(public)/denda/page.tsx'), 'utf8');
+const pageSrc = () => readFileSync(join(process.cwd(), 'src/app/(public)/denda/page.tsx'), 'utf8');
 
 describe('US-3 denda receipt — struk + riwayat lunas', () => {
   beforeEach(() => {
@@ -148,9 +147,18 @@ describe('US-3 denda receipt — struk + riwayat lunas', () => {
       userId: 'U-M1',
       role: 'member',
       ownMemberId: 'M-1',
-      fines: [fineRow({ id: 'F-1', member_id: 'M-1', amount: 5000, status: 'unpaid' })],
+      fines: [
+        fineRow({
+          id: 'bbbbbbbb-0000-4000-8000-000000000001',
+          member_id: 'M-1',
+          amount: 5000,
+          status: 'unpaid',
+        }),
+      ],
     });
-    const res = await PAY(payReq('F-1', { method: 'qris' }), { params: { id: 'F-1' } });
+    const res = await PAY(payReq('bbbbbbbb-0000-4000-8000-000000000001', { method: 'qris' }), {
+      params: { id: 'bbbbbbbb-0000-4000-8000-000000000001' },
+    });
     expect(res.status).toBe(200);
     const json = (await res.json()) as { data: FineRow };
     expect(json.data.status).toBe('paid');
@@ -165,11 +173,22 @@ describe('US-3 denda receipt — struk + riwayat lunas', () => {
       userId: 'U-M1',
       role: 'member',
       ownMemberId: 'M-1',
-      fines: [fineRow({ id: 'F-1', member_id: 'M-1', amount: 5000, status: 'unpaid' })],
+      fines: [
+        fineRow({
+          id: 'bbbbbbbb-0000-4000-8000-000000000001',
+          member_id: 'M-1',
+          amount: 5000,
+          status: 'unpaid',
+        }),
+      ],
     });
-    const first = await PAY(payReq('F-1', { method: 'qris' }), { params: { id: 'F-1' } });
+    const first = await PAY(payReq('bbbbbbbb-0000-4000-8000-000000000001', { method: 'qris' }), {
+      params: { id: 'bbbbbbbb-0000-4000-8000-000000000001' },
+    });
     expect(first.status).toBe(200);
-    const second = await PAY(payReq('F-1', { method: 'qris' }), { params: { id: 'F-1' } });
+    const second = await PAY(payReq('bbbbbbbb-0000-4000-8000-000000000001', { method: 'qris' }), {
+      params: { id: 'bbbbbbbb-0000-4000-8000-000000000001' },
+    });
     expect(second.status).toBe(409);
     const json = (await second.json()) as { error: { code?: string; message: string } };
     expect(json.error.message).toMatch(/Denda sudah lunas/);
