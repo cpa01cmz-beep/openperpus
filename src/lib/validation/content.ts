@@ -162,7 +162,7 @@ export function validateContentFields(entity: ContentEntity, fields: FieldMap): 
  * agar grep/refactor menemukan semua sink; jangan inline `.replace` per file.
  */
 export function escapeJsonLd(value: unknown): string {
-  return JSON.stringify(value).replace(/</g, '\\u003c');
+  return (JSON.stringify(value) ?? 'null').replace(/</g, '\\u003c');
 }
 
 /**

@@ -121,7 +121,7 @@ export async function PUT(req: Request) {
       if (typeof v !== 'string' || !isAllowedLinkUrl(v)) {
         return jsonError(
           'VALIDATION',
-          `socials.${k} harus URL http(s) atau mailto yang valid.`,
+          `socials.${k} harus URL http(s), mailto, tel, atau sms yang valid.`,
           422
         );
       }
