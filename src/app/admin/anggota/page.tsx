@@ -16,7 +16,13 @@ type Member = {
   address: string | null;
   status: string;
   profiles?: { full_name: string | null } | null;
+  /* Agregat kelayakan checkout dari GET /api/members (isu #56). */
+  fines_total?: number | null;
+  active_loans?: number | null;
+  overdue_loans?: number | null;
 };
+
+const fmtRp = (v: number | null | undefined) => `Rp${Number(v ?? 0).toLocaleString('id-ID')}`;
 
 type PickOption = { user_id: string; label: string; sub: string };
 
@@ -164,6 +170,22 @@ export default function AnggotaPage() {
       }
       return alert(errMsg(json));
     }
+    load();
+  }
+
+  // Isu #56: suspend/unsuspend langsung dari daftar — anggota bermasalah
+  // (berdenda/terlambat) langsung tidak lolos gate checkout pinjam/reservasi.
+  async function onSetStatus(id: string, code: string, next: 'active' | 'suspended') {
+    if (next === 'suspended' && !confirm(`Suspend anggota ${code}? Pinjam/reservasi akan ditolak.`))
+      return;
+    setActionError('');
+    const res = await fetch(`/api/members?id=${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: next }),
+    });
+    const json = await res.json();
+    if (!res.ok) return alert(errMsg(json));
     load();
   }
 
@@ -347,17 +369,75 @@ export default function AnggotaPage() {
           { key: 'phone', header: 'Telepon' },
           { key: 'status', header: 'Status', sortable: true },
           {
+            key: 'fines_total',
+            header: 'Tagihan',
+            render: (r) => {
+              const v = Number(r.fines_total ?? 0);
+              if (v <= 0) return <span className="text-slate-400">-</span>;
+              return (
+                <span
+                  aria-label={`Tagihan ${fmtRp(v)}`}
+                  className="inline-flex min-h-[24px] items-center rounded-full bg-amber-100 px-2 text-xs font-semibold text-amber-800"
+                >
+                  {fmtRp(v)}
+                </span>
+              );
+            },
+          },
+          {
+            key: 'active_loans',
+            header: 'Pinjam aktif',
+            render: (r) => Number(r.active_loans ?? 0),
+          },
+          {
+            key: 'overdue_loans',
+            header: 'Telat',
+            render: (r) => {
+              const v = Number(r.overdue_loans ?? 0);
+              if (v <= 0) return <span className="text-slate-400">-</span>;
+              return (
+                <span
+                  aria-label={`${v} peminjaman terlambat`}
+                  className="inline-flex min-h-[24px] items-center rounded-full bg-red-100 px-2 text-xs font-semibold text-red-700"
+                >
+                  {v}
+                </span>
+              );
+            },
+          },
+          {
             key: 'aksi',
             header: 'Aksi',
             render: (r) => (
-              <button
-                type="button"
-                onClick={() => onDelete(r.id, r.member_code)}
-                aria-label={`Hapus anggota ${r.member_code}`}
-                className="inline-flex min-h-[44px] items-center text-red-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-              >
-                Hapus
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                {r.status === 'active' ? (
+                  <button
+                    type="button"
+                    onClick={() => onSetStatus(r.id, r.member_code, 'suspended')}
+                    aria-label={`Suspend anggota ${r.member_code}`}
+                    className="inline-flex min-h-[44px] items-center text-amber-700 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  >
+                    Suspend
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => onSetStatus(r.id, r.member_code, 'active')}
+                    aria-label={`Aktifkan anggota ${r.member_code}`}
+                    className="inline-flex min-h-[44px] items-center text-green-700 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  >
+                    Aktifkan
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => onDelete(r.id, r.member_code)}
+                  aria-label={`Hapus anggota ${r.member_code}`}
+                  className="inline-flex min-h-[44px] items-center text-red-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                >
+                  Hapus
+                </button>
+              </div>
             ),
           },
         ]}
