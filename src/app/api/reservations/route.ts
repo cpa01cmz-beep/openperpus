@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { jsonError, parsePaging } from '@/lib/supabase/auth';
 import { isUuid, createWriteLog } from '@/lib/api-utils';
+import { checkMemberLoanEligibility } from '@/lib/loan-eligibility';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 import { getSession } from '@/lib/session';
 
@@ -10,6 +11,7 @@ import { getSession } from '@/lib/session';
  *   — anggota: otomatis miliknya (member_id diabaikan); pustakawan+: semua/filter.
  * POST /api/reservations {book_id, member_id?, notes?}
  *   — anggota: {book_id} -> pending (member_id miliknya); pustakawan+: boleh untuk member lain.
+ *   Gate kelayakan (#56): denda belum lunas / terlambat / batas pinjaman -> 409.
  * PUT /api/reservations?id= {status|notes} — batal: {status:"batal"|"cancelled"}
  * DELETE /api/reservations?id= — pemilik / pustakawan+ (hanya pending/cancelled/expired)
  *
@@ -109,9 +111,8 @@ export async function POST(req: Request) {
   if (!isUuid(book_id)) return jsonError('VALIDATION', 'book_id harus UUID valid.', 422);
 
   // Tentukan member pemilik reservasi.
-  let targetMember = memberId;
-  if (isStaff && isUuid(body.member_id)) targetMember = body.member_id as string;
-  if (!isUuid(targetMember)) {
+  const targetMember = isStaff && isUuid(body.member_id) ? (body.member_id as string) : memberId;
+  if (!targetMember || !isUuid(targetMember)) {
     return jsonError('VALIDATION', 'Akun belum terdaftar sebagai anggota (members kosong).', 422);
   }
 
@@ -132,6 +133,19 @@ export async function POST(req: Request) {
   if (!member) return jsonError('NOT_FOUND', 'Anggota tidak ditemukan.', 404);
   if ((member as { status: string }).status !== 'active') {
     return jsonError('VALIDATION', 'Anggota tidak aktif.', 422);
+  }
+
+  // Isu #56: gate kelayakan sama dengan POST /loans — anggota berdenda,
+  // terlambat, atau sudah di batas pinjaman aktif tidak boleh menahan buku.
+  const eligibility = await checkMemberLoanEligibility(supabase, targetMember);
+  if (!eligibility.eligible) {
+    if (eligibility.status === 500)
+      log.error('reservations.eligibility_check_failed', {
+        member_id: targetMember,
+      });
+    return jsonError(eligibility.code, eligibility.message, eligibility.status, {
+      requestId: log.requestId,
+    });
   }
 
   const expiresRaw = body.expires_at as string | undefined;
