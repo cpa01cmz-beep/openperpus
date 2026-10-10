@@ -79,7 +79,7 @@ describe('S-admin-perf', () => {
     // Parse blok RETURNS TABLE (...) — terima tipe apa pun agar kolom baru
     // bertipe lain (TEXT/TIMESTAMPTZ/INT8) tetap terdeteksi, bukan lolos diam-diam.
     const retBlock = mig.match(/RETURNS TABLE \(([\s\S]*?)^\)/m)?.[1] ?? '';
-    const cols = [...retBlock.matchAll(/^\s+(\w+)\s+[A-Z][A-Z0-9_]*(\([^)]*\))?/gm)].map(
+    const cols = [...retBlock.matchAll(/^\s+(\w+)\s+[\w."]+(\([^)]*\))?/gm)].map(
       (m) => m[1]
     );
     const statsBlock = src.match(/type StatsRow = \{([\s\S]*?)\n\s*\};/)?.[1] ?? '';
