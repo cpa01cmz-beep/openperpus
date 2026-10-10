@@ -230,22 +230,24 @@ describe('S-admin-audit2 alias+collective audit + dashboard bound', () => {
   });
 
   // --- (c) dashboard queries bounded ---
-  it('(c) dashboard loan queries are bounded (count-head or .limit())', () => {
+  it('(c) dashboard loan queries are bounded (get_dashboard_stats + .limit())', () => {
     const src = read('src/app/admin/page.tsx');
-    // All loan reads must be bounded: count-head (no rows) or explicit .limit().
+    // All loan reads must be bounded: explicit .limit().
     // Iteration 1 (2026-09-19): perf fix replaced unbounded activeLoans fetch
     // with count-exact-head + get_loans_per_day RPC; overdueQueue capped .limit(8).
+    // Iteration 2 (#58): aggregates move to 1-RTT get_dashboard_stats RPC
+    // (counts live in *_count columns); recent + overdueQueue stay capped .limit(8).
     expect(src.includes('id,due_at'), 'S-AUDIT2: overdueQueue select missing').toBe(true);
     expect(src, 'S-AUDIT2: overdueQueue must be capped with .limit(8)').toMatch(
       /\.limit\(\s*8\s*\)/
     );
     expect(
-      src.includes('count'),
-      'S-AUDIT2: dashboard must use count-exact-head for aggregates'
+      src.includes('overdue_count'),
+      'S-AUDIT2: dashboard must read aggregates from get_dashboard_stats *_count'
     ).toBe(true);
     expect(
-      src.includes('get_loans_per_day'),
-      'S-AUDIT2: dashboard chart must use grouped RPC, not unbounded fetch'
+      src.includes('get_dashboard_stats'),
+      'S-AUDIT2: dashboard chart must use get_dashboard_stats RPC, not unbounded fetch'
     ).toBe(true);
   });
 });

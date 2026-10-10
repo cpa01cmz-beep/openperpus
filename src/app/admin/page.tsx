@@ -1,7 +1,6 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
-import { calcFine } from '@/lib/finecalc';
-import { getFineRate } from '@/lib/loans-return';
+import { calcFine, FINE_PER_DAY } from '@/lib/finecalc';
 import { effectiveLoanStatus } from '@/lib/loans-overdue';
 import StatCard from '@/components/admin/StatCard';
 
@@ -10,26 +9,13 @@ export const revalidate = 0;
 
 export default async function AdminDashboard() {
   const supabase = createClient();
+  const now = new Date();
 
-  const [
-    { count: totalBooks },
-    { count: totalMembers },
-    { count: dipinjamCount },
-    { count: terlambatCount },
-    { data: recent },
-    { data: overdueQueue },
-  ] = await Promise.all([
-    supabase.from('books').select('id', { count: 'exact', head: true }),
-    supabase.from('members').select('id', { count: 'exact', head: true }),
-    supabase
-      .from('loans')
-      .select('id', { count: 'exact', head: true })
-      .in('status', ['borrowed', 'overdue']),
-    supabase
-      .from('loans')
-      .select('id', { count: 'exact', head: true })
-      .in('status', ['borrowed', 'overdue'])
-      .lt('due_at', new Date().toISOString()),
+  // #58: 3 query (dari ~8 RTT) — 1 RPC get_dashboard_stats (counts + chart +
+  // tarif denda + tagihan terbuka) + 2 list terbatas top-8.
+  // Fallback bucket limit-500 dihapus; chart datang dari RPC (sargable).
+  const [{ data: statsData }, { data: recent }, { data: overdueQueue }] = await Promise.all([
+    supabase.rpc('get_dashboard_stats', { p_days: 7 }),
     supabase
       .from('loans')
       .select('id,borrowed_at,due_at,status,fine_amount,members(id,member_code),books(title)')
@@ -39,53 +25,36 @@ export default async function AdminDashboard() {
       .from('loans')
       .select('id,due_at,status,fine_amount,members(id,member_code),books(title)')
       .in('status', ['borrowed', 'overdue'])
-      .lt('due_at', new Date().toISOString())
+      .lt('due_at', now.toISOString())
       .order('due_at', { ascending: true })
       .limit(8),
   ]);
 
-  const dipinjam = dipinjamCount ?? 0;
-  const now = new Date();
-  const terlambat = terlambatCount ?? 0;
-  const fineRate = await getFineRate(supabase);
+  type StatsRow = {
+    total_books: number | string | null;
+    total_members: number | string | null;
+    active_loans: number | string | null;
+    overdue_count: number | string | null;
+    loans_per_day: { day: string; total: number | string }[] | null;
+    fine_per_day: number | string | null;
+    fines_open: number | string | null;
+  };
+  const stats = ((Array.isArray(statsData) ? statsData[0] : statsData) ?? null) as StatsRow | null;
+  const num = (v: number | string | null | undefined, d = 0) => {
+    const x = Number(v);
+    return Number.isFinite(x) ? x : d;
+  };
+  const totalBooks = num(stats?.total_books);
+  const totalMembers = num(stats?.total_members);
+  const dipinjam = num(stats?.active_loans);
+  const terlambat = num(stats?.overdue_count);
+  const fineRate = num(stats?.fine_per_day, FINE_PER_DAY) || FINE_PER_DAY;
+  const finesOpen = num(stats?.fines_open);
 
-  let days: { label: string; count: number }[] = [];
-  try {
-    const { data: loansPerDay, error } = await supabase.rpc('get_loans_per_day', { p_days: 7 });
-    if (!error && loansPerDay) {
-      days = (loansPerDay as { day: string; total: number }[]).map((d) => ({
-        label: new Date(d.day).toLocaleDateString('id-ID', { weekday: 'short' }),
-        count: Number(d.total),
-      }));
-    }
-  } catch {
-    days = [];
-  }
-  if (days.length === 0) {
-    // Fallback chart: bucket 7 hari dari fetch loans ber-batas .limit(500)
-    // (hindari unbounded fetch bila RPC get_loans_per_day gagal/kosong).
-    const seed: { label: string; count: number }[] = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      seed.push({ label: d.toLocaleDateString('id-ID', { weekday: 'short' }), count: 0 });
-    }
-    const { data: weekLoans } = await supabase
-      .from('loans')
-      .select('borrowed_at')
-      .gte('borrowed_at', new Date(Date.now() - 7 * 86400000).toISOString())
-      .limit(500);
-    for (const l of (weekLoans ?? []) as { borrowed_at: string }[]) {
-      const key = new Date(l.borrowed_at).toDateString();
-      const slot = seed.find((_, i) => {
-        const dt = new Date();
-        dt.setDate(dt.getDate() - (6 - i));
-        return dt.toDateString() === key;
-      });
-      if (slot) slot.count++;
-    }
-    days = seed;
-  }
+  const days = (stats?.loans_per_day ?? []).map((d) => ({
+    label: new Date(d.day).toLocaleDateString('id-ID', { weekday: 'short' }),
+    count: Number(d.total),
+  }));
   const max = Math.max(1, ...days.map((d) => d.count));
 
   type OverdueRow = {
@@ -108,7 +77,7 @@ export default async function AdminDashboard() {
         <StatCard
           label="Terlambat"
           value={terlambat}
-          hint={`Denda Rp${fineRate.toLocaleString('id-ID')}/hari`}
+          hint={`Denda Rp${fineRate.toLocaleString('id-ID')}/hari · tagihan terbuka ${fmtRp(finesOpen)}`}
         />
       </div>
 

@@ -397,15 +397,30 @@ describe('admin RSC pages', () => {
   });
 
   it('dashboard renders stat cards with rpc chart data', async () => {
-    setRpc('get_loans_per_day', { data: [{ day: '2026-09-01', total: 4 }] });
+    setRpc('get_dashboard_stats', {
+      data: [
+        {
+          total_books: 1,
+          total_members: 2,
+          active_loans: 3,
+          overdue_count: 0,
+          loans_per_day: [{ day: '2026-09-01', total: 4 }],
+          fine_per_day: 1000,
+          fines_open: 2000,
+        },
+      ],
+    });
     const el = await AdminDashboard();
     const markup = renderToStaticMarkup(el as React.ReactElement);
     expect(markup).toContain('Total Buku');
     expect(markup).toContain('Perlu dikembalikan');
+    // #58: tarif + tagihan terbuka datang dari RPC (tanpa serial getFineRate).
+    expect(markup).toContain('Denda Rp1.000/hari');
+    expect(markup).toContain('tagihan terbuka Rp2.000');
   });
 
-  it('dashboard falls back to bucketed week query when rpc empty', async () => {
-    setRpc('get_loans_per_day', { data: [] });
+  it('dashboard renders empty queue when stats rpc returns no row', async () => {
+    setRpc('get_dashboard_stats', { data: [] });
     setTable('loans', { list: { data: [], count: 0 } });
     const el = await AdminDashboard();
     const markup = renderToStaticMarkup(el as React.ReactElement);
