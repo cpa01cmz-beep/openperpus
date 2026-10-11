@@ -6,7 +6,13 @@
  * Pembacaan daftar TIDAK lagi di sini: halaman konten memakai
  * src/hooks/useAdminList.ts seperti halaman admin lainnya (issue #62),
  * sehingga `apiList()` lokal dihapus dan tidak ada dua jalur baca.
+ *
+ * Issue #79: nol `alert()`/`confirm()` native (lihat #60/#72) — semua
+ * kegagalan lewat `opts.onMissing`/`opts.onError` lalu dirender inline
+ * (role=alert) oleh pemanggil. Konfirmasi hapus milik ConfirmModal
+ * di halaman, bukan di helper ini.
  */
+import { clientFetch } from '@/lib/api-client';
 import { errMsg } from '@/lib/admin-errors';
 
 export type KontenTab = 'pages' | 'faqs' | 'testimonials';
@@ -29,7 +35,7 @@ export async function onAdd(
   opts?: KontenMutateOpts
 ): Promise<boolean> {
   const path = pathForKind(kind);
-  const res = await fetch(path, {
+  const res = await clientFetch(path, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),
@@ -37,13 +43,11 @@ export async function onAdd(
   const json = await res.json().catch(() => ({}));
   if (res.status === 404) {
     opts?.onMissing?.(kind);
-    alert(`API ${path} belum tersedia di backend.`);
+    opts?.onError?.(`API ${path} belum tersedia di backend.`);
     return false;
   }
   if (!res.ok) {
-    const m = errMsg(json);
-    if (opts?.onError) opts.onError(m);
-    else alert(m);
+    opts?.onError?.(errMsg(json));
     return false;
   }
   opts?.onSuccess?.();
@@ -58,19 +62,18 @@ export async function onToggle(
 ): Promise<boolean> {
   const path = pathForKind(kind);
   // Satu transport ID (issue #54): PUT via path REST /{id}, bukan ?id=.
-  const res = await fetch(`${path}/${id}`, {
+  const res = await clientFetch(`${path}/${id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ is_active: !is_active }),
   });
   if (res.status === 404) {
     opts?.onMissing?.(kind);
-    alert(`API ${path} belum tersedia di backend.`);
+    opts?.onError?.(`API ${path} belum tersedia di backend.`);
     return false;
   }
   if (!res.ok) {
-    if (opts?.onError) opts.onError('Gagal update.');
-    else alert('Gagal update.');
+    opts?.onError?.('Gagal update.');
     return false;
   }
   opts?.onSuccess?.();
@@ -82,18 +85,16 @@ export async function onDelete(
   id: string,
   opts?: KontenMutateOpts
 ): Promise<boolean> {
-  if (!confirm('Hapus data ini?')) return false;
   const path = pathForKind(kind);
   // Satu transport ID (issue #54): DELETE via path REST /{id}, bukan ?id=.
-  const res = await fetch(`${path}/${id}`, { method: 'DELETE' });
+  const res = await clientFetch(`${path}/${id}`, { method: 'DELETE' });
   if (res.status === 404) {
     opts?.onMissing?.(kind);
-    alert(`API ${path} belum tersedia di backend.`);
+    opts?.onError?.(`API ${path} belum tersedia di backend.`);
     return false;
   }
   if (!res.ok) {
-    if (opts?.onError) opts.onError('Gagal menghapus.');
-    else alert('Gagal menghapus.');
+    opts?.onError?.('Gagal menghapus.');
     return false;
   }
   opts?.onSuccess?.();

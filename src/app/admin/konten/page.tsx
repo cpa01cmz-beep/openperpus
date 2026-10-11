@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Button from '@/components/ui/Button';
+import ConfirmModal from '@/components/admin/ConfirmModal';
 import Pagination from '@/components/ui/Pagination';
 import { useAdminList } from '@/hooks/useAdminList';
 import { PagesTab } from './PagesTab';
@@ -39,6 +40,8 @@ export default function KontenPage() {
   const [page, setPage] = useState(1);
   // State aksi tulis (bukan pemuatan): 404 per-tab + pesan error mutasi.
   const [actionError, setActionError] = useState('');
+  // Pengganti confirm() native: dialog konfirmasi hapus.
+  const [pendingDelete, setPendingDelete] = useState<{ kind: Tab; id: string } | null>(null);
   const [tabMissing, setTabMissing] = useState<Partial<Record<Tab, boolean>>>({});
 
   // #62: satu hook daftar dipakai ketiga tab — tidak lagi fetch tiga endpoint
@@ -118,14 +121,20 @@ export default function KontenPage() {
   );
 
   const handleDelete = useCallback(
-    (kind: Tab, id: string) =>
-      onDelete(kind, id, {
-        onMissing: (k) => setTabMissing((m) => ({ ...m, [k]: true })),
-        onError: (m) => setActionError(m),
-        onSuccess: load,
-      }),
-    [load]
+    (kind: Tab, id: string) => setPendingDelete({ kind, id }),
+    []
   );
+
+  const confirmDelete = useCallback(() => {
+    const p = pendingDelete;
+    if (!p) return;
+    setPendingDelete(null);
+    return onDelete(p.kind, p.id, {
+      onMissing: (k) => setTabMissing((m) => ({ ...m, [k]: true })),
+      onError: (m) => setActionError(m),
+      onSuccess: load,
+    });
+  }, [pendingDelete, load]);
 
   const missingPaths = [
     missing.pages && '/api/pages',
@@ -239,6 +248,16 @@ export default function KontenPage() {
           <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
         </>
       )}
+
+      <ConfirmModal
+        open={pendingDelete !== null}
+        onClose={() => setPendingDelete(null)}
+        onConfirm={() => void confirmDelete()}
+        title="Hapus konten"
+        confirmLabel="Ya, hapus"
+      >
+        <p>Hapus data ini?</p>
+      </ConfirmModal>
     </div>
   );
 }
