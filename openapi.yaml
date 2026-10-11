@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: OpenPerpus API
   version: 0.1.0
-  description: CMS Perpustakaan — 35 route handler (30 resource + health/readyz/docs/metrics/register). Deploy utama Vercel (ADR-002), Cloudflare Workers alternatif; preview lokal via `npm run dev` / `npm run cf:preview`. Enforced bidirectionally by tests/openapi-conformance.test.ts.
+  description: CMS Perpustakaan — 36 route handler (31 resource + health/readyz/docs/metrics/register). Deploy utama Vercel (ADR-002), Cloudflare Workers alternatif; preview lokal via `npm run dev` / `npm run cf:preview`. Enforced bidirectionally by tests/openapi-conformance.test.ts.
 servers:
   - url: http://localhost:3000
     description: local
@@ -1197,6 +1197,49 @@ paths:
       responses:
         '200':
           description: ok
+  /api/reports/export:
+    get:
+      summary: Export full dataset as CSV (staff; issue #78)
+      description: >-
+        Streams the ENTIRE table as CSV — bukan hanya baris halaman aktif —
+        untuk scope=books|loans|fines. Baris diambil per-chunk range() 1000
+        dan dialirkan ke klien; header Content-Disposition attachment +
+        UTF-8 BOM; audit best-effort reports.export. scope kosong/tak dikenal
+        -> 422 VALIDATION.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: scope
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [books, loans, fines]
+      responses:
+        '200':
+          description: CSV stream (text/csv; charset=utf-8, attachment)
+          content:
+            text/csv:
+              schema:
+                type: string
+        '401':
+          description: Silakan login
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: scope wajib books|loans|fines
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Gagal mengekspor data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/reservations:
     get:
       summary: List reservations (auth required; members scoped to own)
