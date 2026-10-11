@@ -55,7 +55,6 @@ export default function DendaSayaPage() {
   const list = useAdminList<Fine>({
     path: '/api/fines',
     params: { page: String(page), per_page: PER_PAGE, ...(status ? { status } : {}) },
-    noStore: true,
     errorMessage: 'Gagal memuat riwayat denda.',
   });
   const { rows, loading, denied: needLogin, totalPages, error: listError, reload: load } = list;

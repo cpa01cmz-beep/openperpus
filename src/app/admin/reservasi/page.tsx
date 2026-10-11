@@ -8,6 +8,7 @@ import FilterBar from '@/components/admin/FilterBar';
 import Pagination from '@/components/ui/Pagination';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { RESERVATION_STATUS } from '@/lib/enums';
+import { clientFetch } from '@/lib/api-client';
 import { checkoutReservation } from '@/lib/reservation-checkout';
 import { findExpiredCandidates, sweepExpiredReservations } from '@/lib/reservation-sweep';
 import { errMsg } from '@/lib/admin-errors';
@@ -59,7 +60,6 @@ export default function ReservasiPage() {
       ...(status ? { status } : {}),
       ...(search ? { q: search } : {}),
     },
-    noStore: true,
     errorMessage: 'Gagal memuat reservasi.',
   });
   const { rows, loading, missing: apiMissing, totalPages, error: listError, reload: load } = list;
@@ -96,7 +96,7 @@ export default function ReservasiPage() {
       const out = await checkoutReservation(
         {
           fetchLike: (url, init) =>
-            fetch(url, { ...(init ?? {}), cache: 'no-store' }) as unknown as Promise<{
+            clientFetch(url, { ...(init ?? {}), cache: 'no-store' }) as unknown as Promise<{
               ok: boolean;
               status: number;
               json: () => Promise<unknown>;
@@ -160,7 +160,7 @@ export default function ReservasiPage() {
       const out = await sweepExpiredReservations(
         {
           fetchLike: (url, init) =>
-            fetch(url, { ...(init ?? {}), cache: 'no-store' }) as unknown as Promise<{
+            clientFetch(url, { ...(init ?? {}), cache: 'no-store' }) as unknown as Promise<{
               ok: boolean;
               status: number;
               json: () => Promise<unknown>;

@@ -59,3 +59,13 @@ export async function fetchWithTimeout(
 
 /** Alias semantik untuk call-site UI (tetap fetch biasa + batas waktu). */
 export const clientFetch = fetchWithTimeout;
+
+/**
+ * GET daftar admin: selalu `cache: 'no-store'` + batas waktu.
+ * Satu-satunya jalur fetch daftar (dipakai `useAdminList`) — issue #79:
+ * data operasional tak boleh basi, jadi no-store dipusatkan di sini,
+ * bukan tersebar sebagai flag per halaman.
+ */
+export function listFetch(url: string, init?: RequestInit): Promise<Response> {
+  return fetchWithTimeout(url, { cache: 'no-store', ...init });
+}

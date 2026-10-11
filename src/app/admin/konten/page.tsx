@@ -47,19 +47,16 @@ export default function KontenPage() {
   const pagesList = useAdminList<PageItem>({
     path: '/api/pages',
     params: { page: String(page) },
-    noStore: true,
     errorMessage: 'Gagal memuat halaman.',
   });
   const faqsList = useAdminList<Faq>({
     path: '/api/faqs',
     params: { page: String(page) },
-    noStore: true,
     errorMessage: 'Gagal memuat FAQ.',
   });
   const testisList = useAdminList<Testimonial>({
     path: '/api/testimonials',
     params: { page: String(page) },
-    noStore: true,
     errorMessage: 'Gagal memuat testimoni.',
   });
 

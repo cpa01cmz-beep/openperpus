@@ -15,9 +15,16 @@
  *
  * Ukuran halaman tunggal: PER_PAGE di src/lib/pagination.ts.
  * Envelope: hanya { data, pagination } (kontrak #61).
+ *
+ * Issue #79: SEMUA daftar admin lewat hook ini (client + fetch) dengan
+ * `listFetch` (no-store + timeout terpusat di src/lib/api-client.ts).
+ * Satu-satunya pengecualian: admin/logs — RSC read-only langsung ke
+ * Supabase (server, bukan fetch klien) + `force-dynamic`/`revalidate = 0`,
+ * jadi tak pernah basi walau tanpa useAdminList.
  * ============================================================ */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { listFetch } from '@/lib/api-client';
 import { errMsg, messageOf } from '@/lib/admin-errors';
 import { PER_PAGE } from '@/lib/pagination';
 
@@ -31,7 +38,10 @@ export type UseAdminListOptions = {
   params?: ListParams;
   /** Tunda request (ms) — dipakai search-as-you-type. */
   debounceMs?: number;
-  /** Paksa cache: 'no-store' (data operasional yang tak boleh basi). */
+  /**
+   * Jangan dipakai lagi (issue #79): no-store kini selalu aktif via
+   * `listFetch` di dalam hook. Dibiarkan agar pemanggil lama tak pecah.
+   */
   noStore?: boolean;
   /** Pesan gagal khas halaman ini. */
   errorMessage?: string;
@@ -68,13 +78,7 @@ function toQueryParams(params: ListParams | undefined): URLSearchParams {
 }
 
 export function useAdminList<T>(options: UseAdminListOptions): AdminList<T> {
-  const {
-    path,
-    params,
-    debounceMs = 0,
-    noStore = false,
-    errorMessage = 'Gagal memuat data.',
-  } = options;
+  const { path, params, debounceMs = 0, errorMessage = 'Gagal memuat data.' } = options;
 
   // Kunci ketergantungan effect: nilai stabil meski objek `params`
   // dibuat ulang tiap render.
@@ -116,7 +120,7 @@ export function useAdminList<T>(options: UseAdminListOptions): AdminList<T> {
       const qs = toQueryParams(params);
       if (!qs.has('per_page')) qs.set('per_page', String(PER_PAGE));
       try {
-        const res = await fetch(`${path}?${qs}`, noStore ? { cache: 'no-store' } : undefined);
+        const res = await listFetch(`${path}?${qs}`);
         // Kontrak #61: satu envelope { data, pagination }. Fallback `meta`
         // sengaja TIDAK dibaca (tests/pagination-contract.test.ts).
         const json = (await res.json().catch(() => ({}))) as {
@@ -165,7 +169,7 @@ export function useAdminList<T>(options: UseAdminListOptions): AdminList<T> {
       if (timer) clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `params` dipakai via queryKey
-  }, [queryKey, path, noStore, errorMessage, debounceMs, nonce]);
+  }, [queryKey, path, errorMessage, debounceMs, nonce]);
 
   return { rows, loading, error, totalPages, missing, denied, reload, clearError };
 }

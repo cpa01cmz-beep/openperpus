@@ -135,7 +135,6 @@ export default function DendaPage() {
       ...(status ? { status } : {}),
       ...(search ? { q: search } : {}),
     },
-    noStore: true,
     errorMessage: 'Gagal memuat denda.',
   });
   const { rows, loading, missing: apiMissing, totalPages, error: listError, reload: load } = list;
