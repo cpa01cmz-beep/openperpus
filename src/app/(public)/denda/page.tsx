@@ -59,6 +59,9 @@ export default function DendaSayaPage() {
     errorMessage: 'Gagal memuat riwayat denda.',
   });
   const { rows, loading, denied: needLogin, totalPages, error: listError, reload: load } = list;
+  // Halaman ini sudah punya banner login khas untuk 401/403 (`needLogin`),
+  // jadi pesan error generic dari hook tidak diduplikasi untuk kasus itu.
+  const listErrorShown = needLogin ? '' : listError;
 
   // Fetch member ID for RPC call
   useEffect(() => {
@@ -353,12 +356,12 @@ export default function DendaSayaPage() {
           sebagai anggota untuk melihat denda Anda.
         </div>
       )}
-      {(listError || error) && (
+      {(listErrorShown || error) && (
         <div
           role="alert"
           className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
         >
-          {listError || error}
+          {listErrorShown || error}
         </div>
       )}
 
