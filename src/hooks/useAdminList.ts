@@ -16,7 +16,7 @@
  * Ukuran halaman tunggal: PER_PAGE di src/lib/pagination.ts.
  * ============================================================ */
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { errMsg } from '@/lib/admin-errors';
 import { PER_PAGE } from '@/lib/pagination';
 
@@ -79,10 +79,20 @@ export function useAdminList<T>(options: UseAdminListOptions): AdminList<T> {
   const [denied, setDenied] = useState(false);
   const [nonce, setNonce] = useState(0);
 
-  const reload = useCallback(() => setNonce((n) => n + 1), []);
+  // `reload()` dipakai setelah aksi tulis (bayar, hapus, tambah) dan harus
+  // menyegarkan daftar SEGERA — bukan tertunda debounce. Flag sekali-pakai:
+  // perubahan params biasa tetap ditunda.
+  const immediateRef = useRef(false);
+  const reload = useCallback(() => {
+    immediateRef.current = true;
+    setNonce((n) => n + 1);
+  }, []);
   const clearError = useCallback(() => setError(''), []);
 
   useEffect(() => {
+    // Ambil & langsung kosongkan: hanya pemanggilan reload() yang instan.
+    const immediate = immediateRef.current;
+    immediateRef.current = false;
     // Tandai effect mati: hasil request lama tak boleh menimpa state baru.
     let alive = true;
 
@@ -107,17 +117,18 @@ export function useAdminList<T>(options: UseAdminListOptions): AdminList<T> {
           }
           return;
         }
+        // Kontrak #61: satu envelope { data, pagination }. Fallback `meta`
+        // sengaja TIDAK dibaca (tests/pagination-contract.test.ts).
         const json = (await res.json().catch(() => ({}))) as {
           data?: T[];
           pagination?: { totalPages?: number };
-          meta?: { totalPages?: number };
         };
         if (!res.ok) throw new Error(errMsg(json, errorMessage));
         if (!alive) return;
         setMissing(false);
         setDenied(false);
         setRows(json.data ?? []);
-        setTotalPages(json.pagination?.totalPages ?? json.meta?.totalPages ?? 1);
+        setTotalPages(json.pagination?.totalPages ?? 1);
       } catch (e) {
         if (alive) setError((e as Error).message);
       } finally {
@@ -125,16 +136,16 @@ export function useAdminList<T>(options: UseAdminListOptions): AdminList<T> {
       }
     };
 
-    if (debounceMs > 0) {
-      const timer = setTimeout(() => void run(), debounceMs);
+    if (immediate || debounceMs <= 0) {
+      void run();
       return () => {
         alive = false;
-        clearTimeout(timer);
       };
     }
-    void run();
+    const timer = setTimeout(() => void run(), debounceMs);
     return () => {
       alive = false;
+      clearTimeout(timer);
     };
   }, [query, path, noStore, errorMessage, debounceMs, nonce]);
 
