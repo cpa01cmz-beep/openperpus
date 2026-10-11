@@ -30,7 +30,11 @@ const writeReportsLog = createWriteLog('reports');
  * - `scope` wajib; nilai lain -> 422 VALIDATION.
  * - Chunk pertama di-fetch SEBELUM stream dibuka supaya error DB tetap
  *   membalas 500 JSON; kegagalan chunk berikutnya mengakhiri stream
- *   (sudah di-log) karena header respons sudah terlanjur terkirim.
+ *   (sudah di-log + penanda TIDAK LENGKAP) karena header respons sudah
+ *   terlanjur terkirim.
+ * - Loop ekspor berjalan di `pull()` (bukan `start()`): chunk hanya ditarik
+ *   saat konsumen meminta, jadi CSV totaling tidak menumpuk di memori worker
+ *   untuk klien lambat.
  * - ORDER BY = kolom utama + tiebreaker unik `id` (wajib deterministik agar
  *   paginasi `range()` stabil), plus filter ruang lingkup per scope (books:
  *   hanya `is_active`) supaya ekspor selaras dengan tampilan aplikasi.
@@ -98,51 +102,58 @@ export async function GET(req: Request) {
   await writeReportsLog(supabase, user.id, 'reports.export', scope, { scope }, log.requestId);
 
   const encoder = new TextEncoder();
+  const limit = EXPORT_MAX_CHUNKS * EXPORT_CHUNK;
+  let headerSent = false;
+  let chunkIndex = 0;
+  let rows = first.rows;
+  let exported = 0;
+  // Loop dijalankan di `pull()`, BUKAN `start()` (review PR #105): stream hanya
+  // meminta chunk berikutnya ketika konsumen benar-benar mau, sehingga CSV
+  // tidak menumpuk habis-habisan di antrean memori worker untuk klien lambat.
+  // Chunk pertama tetap di-fetch sebelum respons dibuat (di atas), supaya error
+  // DB tetap membalas 500 JSON dan bukan stream rusak.
   const stream = new ReadableStream<Uint8Array>({
-    async start(controller) {
+    async pull(controller) {
       try {
-        controller.enqueue(encoder.encode(headerLine(def.headers)));
-        let rows = first.rows;
-        let exported = 0;
-        let truncated = false;
-        let failed = false;
-        const limit = EXPORT_MAX_CHUNKS * EXPORT_CHUNK;
-        for (let chunk = 0; ; chunk++) {
-          if (rows.length > 0) {
-            controller.enqueue(encoder.encode(rowsToCSV(rows.map(def.row)) + '\r\n'));
-            exported += rows.length;
-          }
-          if (rows.length < EXPORT_CHUNK) break; // tabel sudah habis
-          if (chunk + 1 >= EXPORT_MAX_CHUNKS) {
-            // Semua chunk yang diizinkan sudah terpakai dan chunk terakhir
-            // masih PENUH -> masih ada sisa. Ambil SATU chunk penentu (bukan
-            // membuangnya tanpa jejak seperti sebelumnya): kosong berarti data
-            // lengkap, ada isinya berarti ekspor ditandai TIDAK LENGKAP.
-            const probe = await fetchChunk(supabase, def, chunk + 1);
-            if ('error' in probe) {
-              log.error('reports.export_stream_failed', { scope, detail: probe.error });
-              failed = true;
-            } else if (probe.rows.length > 0) {
-              truncated = true;
-              log.warn('reports.export_truncated', { scope, exported, limit });
-            }
-            break;
-          }
-          const next = await fetchChunk(supabase, def, chunk + 1);
-          if ('error' in next) {
-            log.error('reports.export_stream_failed', { scope, detail: next.error });
-            failed = true;
-            break;
-          }
-          rows = next.rows;
+        if (!headerSent) {
+          headerSent = true;
+          controller.enqueue(encoder.encode(headerLine(def.headers)));
         }
-        // Kegagalan akhir stream TIDAK boleh menyamar jadi CSV rapi berstatus
-        // 200: header respons sudah terkirim, jadi penandanya masuk ke badan
-        // stream sebagai baris komentar (review PR #105).
-        if (truncated)
-          controller.enqueue(encoder.encode(EXPORT_INCOMPLETE.truncated(exported, limit) + '\r\n'));
-        if (failed) controller.enqueue(encoder.encode(EXPORT_INCOMPLETE.failed + '\r\n'));
-        controller.close();
+        if (rows.length > 0) {
+          controller.enqueue(encoder.encode(rowsToCSV(rows.map(def.row)) + '\r\n'));
+          exported += rows.length;
+        }
+        const marker = (note: string) => controller.enqueue(encoder.encode(note + '\r\n'));
+        if (rows.length < EXPORT_CHUNK) {
+          // Tabel sudah habis — tanpa penanda apa pun.
+          controller.close();
+          return;
+        }
+        if (chunkIndex + 1 >= EXPORT_MAX_CHUNKS) {
+          // Semua chunk yang diizinkan sudah terpakai dan chunk terakhir masih
+          // PENUH -> masih ada sisa. Ambil SATU chunk penentu (bukan
+          // membuangnya tanpa jejak seperti sebelumnya): kosong berarti data
+          // lengkap, ada isinya berarti ekspor ditandai TIDAK LENGKAP.
+          const probe = await fetchChunk(supabase, def, chunkIndex + 1);
+          if ('error' in probe) {
+            log.error('reports.export_stream_failed', { scope, detail: probe.error });
+            marker(EXPORT_INCOMPLETE.failed);
+          } else if (probe.rows.length > 0) {
+            log.warn('reports.export_truncated', { scope, exported, limit });
+            marker(EXPORT_INCOMPLETE.truncated(exported, limit));
+          }
+          controller.close();
+          return;
+        }
+        const next = await fetchChunk(supabase, def, chunkIndex + 1);
+        chunkIndex += 1;
+        if ('error' in next) {
+          log.error('reports.export_stream_failed', { scope, detail: next.error });
+          marker(EXPORT_INCOMPLETE.failed);
+          controller.close();
+          return;
+        }
+        rows = next.rows;
       } catch (e) {
         controller.error(e);
       }

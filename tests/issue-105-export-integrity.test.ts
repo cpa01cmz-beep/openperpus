@@ -1,4 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 // Review PR #105 — ekspor yang TIDAK lengkap tidak boleh tampak seperti CSV
 // rapi berstatus 200. Kasus yang ditutup di sini:
@@ -187,5 +189,16 @@ describe('#105 ekspor: kegagalan/truncation tidak menyamar jadi sukses', () => {
     expect((auditRows[0] as { metadata: { requestId?: string } }).metadata.requestId).toBe(
       'req-123'
     );
+  });
+});
+
+describe('#133 backpressure: loop ekspor di pull(), bukan start()', () => {
+  it('chunk hanya ditarik saat konsumen meminta (tidak di-enqueue penuh di start)', () => {
+    // Guard struktural: perilaku backpressure sulit diassert tanpa consumer
+    // sungguhan, tapi regresi ke `start()` (seluruh CSV di-enqueue sekaligus,
+    // menumpuk di memori worker untuk klien lambat) harus ketahuan.
+    const src = readFileSync(join(process.cwd(), 'src/app/api/reports/export/route.ts'), 'utf8');
+    expect(src, 'loop stream wajib di pull(), bukan start()').toContain('async pull(controller)');
+    expect(src, 'regresi ke start() = tanpa backpressure').not.toContain('async start(controller)');
   });
 });
