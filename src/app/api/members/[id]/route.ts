@@ -100,8 +100,17 @@ export async function DELETE(_req: Request, { params }: Ctx) {
     .in('status', ['borrowed', 'overdue']);
   if ((count ?? 0) > 0) return jsonError('CONFLICT', 'Anggota masih punya pinjaman berjalan.', 409);
 
+  const { count: history } = await supabase
+    .from('loans')
+    .select('id', { count: 'exact', head: true })
+    .eq('member_id', id);
+  if ((history ?? 0) > 0)
+    return jsonError('CONFLICT', 'Anggota masih punya riwayat peminjaman/denda.', 409);
+
   const { error } = await supabase.from('members').delete().eq('id', id);
   if (error) {
+    if ((error as { code?: string }).code === '23503')
+      return jsonError('CONFLICT', 'Anggota masih dirujuk riwayat peminjaman/denda.', 409);
     log.error('members.id.delete_failed', { detail: error.message });
     return jsonError('DELETE_FAILED', 'Gagal menghapus anggota.', 500, {
       requestId: log.requestId,

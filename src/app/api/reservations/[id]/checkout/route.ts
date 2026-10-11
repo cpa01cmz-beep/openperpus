@@ -112,6 +112,8 @@ export async function POST(req: Request, { params }: Ctx) {
       return jsonError('NOT_FOUND', msg || 'Data tidak ditemukan.', 404);
     if (code === '25001' || /sudah meminjam buku ini/i.test(msg))
       return jsonError('CONFLICT', 'Anggota sudah meminjam buku ini (loan aktif).', 409);
+    if (code === '23505' || /uq_loans_active|duplicate key/i.test(msg))
+      return jsonError('CONFLICT', 'Anggota sudah meminjam buku ini (loan aktif).', 409);
     if (code === '25000' || /Stok buku habis/i.test(msg))
       return jsonError('CONFLICT', 'Stok buku habis.', 409);
     if (code === '25002' || /tagihan denda/i.test(msg))
