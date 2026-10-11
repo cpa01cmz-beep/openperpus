@@ -144,6 +144,93 @@ describe('ExportCsvButton (#78/#133)', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
+  it('filename* ber-separator path dibersihkan — header tak menentukan path', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      okExport({
+        'content-disposition': "attachment; filename*=UTF-8''..%2F..%2Fbuku.csv",
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    render(<ExportCsvButton filename="buku.csv" headers={['ID']} rows={[['b1']]} scope="books" />);
+    fireEvent.click(exportAllButton());
+
+    await waitFor(() => expect(clickSpy).toHaveBeenCalledTimes(1));
+    const name = (clickSpy.mock.instances[0] as HTMLAnchorElement).download;
+    expect(name).toBe('....buku.csv');
+    expect(name).not.toContain('/');
+    expect(name).not.toContain('\\');
+  });
+
+  it('filename="…" biasa pun dibersihkan: separator & karakter kontrol dibuang', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      okExport({
+        'content-disposition': 'attachment; filename="laporan\npustakawan.csv"',
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    render(<ExportCsvButton filename="buku.csv" headers={['ID']} rows={[['b1']]} scope="books" />);
+    fireEvent.click(exportAllButton());
+
+    await waitFor(() => expect(clickSpy).toHaveBeenCalledTimes(1));
+    expect((clickSpy.mock.instances[0] as HTMLAnchorElement).download).toBe(
+      'laporanpustakawan.csv'
+    );
+  });
+
+  it('filename* tanpa akhiran .csv diabaikan — jatuh ke stempel lokal', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        okExport({ 'content-disposition': "attachment; filename*=UTF-8''buku.csv.exe" })
+      );
+    vi.stubGlobal('fetch', fetchMock);
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    render(<ExportCsvButton filename="buku.csv" headers={['ID']} rows={[['b1']]} scope="books" />);
+    fireEvent.click(exportAllButton());
+
+    await waitFor(() => expect(clickSpy).toHaveBeenCalledTimes(1));
+    expect((clickSpy.mock.instances[0] as HTMLAnchorElement).download).toMatch(
+      /^buku-\d{4}-\d{2}-\d{2}\.csv$/
+    );
+  });
+
+  it('filename* kosong setelah trim: kontrol jatuh ke filename="…" (bukan fallback)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      okExport({
+        'content-disposition': 'attachment; filename*=UTF-8\'\'%20; filename="buku-2026-10-11.csv"',
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    render(<ExportCsvButton filename="buku.csv" headers={['ID']} rows={[['b1']]} scope="books" />);
+    fireEvent.click(exportAllButton());
+
+    await waitFor(() => expect(clickSpy).toHaveBeenCalledTimes(1));
+    expect((clickSpy.mock.instances[0] as HTMLAnchorElement).download).toBe('buku-2026-10-11.csv');
+  });
+
+  it('filename* kosong tanpa filename="…" lain: fallback stempel lokal terpakai', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(okExport({ 'content-disposition': "attachment; filename*=UTF-8''%20" }));
+    vi.stubGlobal('fetch', fetchMock);
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    render(<ExportCsvButton filename="buku.csv" headers={['ID']} rows={[['b1']]} scope="books" />);
+    fireEvent.click(exportAllButton());
+
+    await waitFor(() => expect(clickSpy).toHaveBeenCalledTimes(1));
+    expect((clickSpy.mock.instances[0] as HTMLAnchorElement).download).toMatch(
+      /^buku-\d{4}-\d{2}-\d{2}\.csv$/
+    );
+  });
+
   it('401 sesi habis: dialihkan ke login?next=… tanpa mengunduh apa pun', async () => {
     const fetchMock = vi.fn().mockResolvedValue(errExport(401, 'UNAUTHORIZED', 'Silakan login.'));
     vi.stubGlobal('fetch', fetchMock);
@@ -209,6 +296,25 @@ describe('ExportCsvButton (#78/#133)', () => {
     await waitFor(() =>
       expect(screen.getByRole('alert')).toHaveTextContent('Gagal mengekspor seluruh data.')
     );
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
+  });
+
+  it('error dengan body JSON tanpa envelope {error}: pesan fallback tampil, bukan JSON mentah', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      headers: { get: () => null },
+      json: async () => ({ message: 'gagal di server' }),
+    } as unknown as Response);
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<ExportCsvButton filename="buku.csv" headers={['ID']} rows={[['b1']]} scope="books" />);
+    fireEvent.click(exportAllButton());
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent('Gagal mengekspor seluruh data.')
+    );
+    expect(screen.getByRole('alert')).not.toHaveTextContent('gagal di server');
     expect(URL.createObjectURL).not.toHaveBeenCalled();
   });
 

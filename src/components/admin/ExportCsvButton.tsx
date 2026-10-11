@@ -22,21 +22,45 @@ type Props = {
  * `filename*=UTF-8''…`. Fallback ke nama bertanggal klien bila header absen
  * atau tak terpakai; decodeURIComponent dijaga karena header dari jaringan
  * bisa mengandung percent-encoding rusak (URIError) — ekspor yang SUKSES
- * tidak boleh gagal gara-gara nama berkas.
+ * tidak boleh gagal gara-gara nama berkas. Nama dari header juga tidak
+ * dipercaya mentah: separator path + karakter kontrol dibuang dan akhiran
+ * `.csv` diwajibkan, jadi header tidak bisa menentukan path/ekstensi
+ * berkas yang disimpan pustakawan (sisa review #136).
  */
 function filenameFromHeader(header: string | null, fallback: string): string {
   const utf8 = header?.match(/filename\*=UTF-8''([^;]+)/i);
   if (utf8?.[1]) {
     try {
       const decoded = decodeURIComponent(utf8[1]).trim();
-      if (decoded) return decoded;
+      if (decoded) {
+        const safe = safeDownloadName(decoded);
+        if (safe) return safe;
+      }
     } catch {
       // percent-encoding rusak — jatuh ke bentuk lain di bawah.
     }
   }
   const match = header?.match(/filename="([^"]*)"|filename=([^;]+)/i);
-  const name = (match?.[1] ?? match?.[2])?.trim();
-  return name ? name : fallback;
+  const plain = safeDownloadName((match?.[1] ?? match?.[2])?.trim());
+  return plain ?? fallback;
+}
+
+/**
+ * Nama unduhan dari nilai header: buang karakter kontrol + separator path
+ * (`/`, `\`) dan wajibkan akhiran `.csv`. Null = nilai tidak layak pakai
+ * (kosong/whitespace/salah ekstensi) sehingga pemanggil jatuh ke fallback.
+ * Spasi & huruf non-ASCII tetap dipertahankan (`laporan pustakawan.csv`).
+ */
+function safeDownloadName(raw: string | undefined): string | null {
+  const name = (raw ?? '')
+    .split('')
+    .filter((ch) => {
+      const code = ch.charCodeAt(0);
+      return code > 0x1f && code !== 0x7f && ch !== '/' && ch !== '\\';
+    })
+    .join('')
+    .trim();
+  return name.toLowerCase().endsWith('.csv') ? name : null;
 }
 
 export default function ExportCsvButton({ filename, headers, rows, scope }: Props) {
