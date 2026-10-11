@@ -48,12 +48,15 @@ beforeEach(() => {
 });
 
 describe('issue #65 fines RLS + hardening', () => {
-  it('(a) migrasi 0028 cabut anon + guard is_staff untuk agregat NULL', () => {
-    const sql = read('supabase/migrations/0028_issue65_fines_rls.sql');
+  it('(a) migrasi 0029 cabut anon + guard is_staff untuk agregat NULL + owner untuk member', () => {
+    const sql = read('supabase/migrations/0029_issue65_fines_rls.sql');
     expect(sql).toMatch(/REVOKE[\s\S]*get_fines_total[\s\S]*FROM anon/i);
-    expect(sql).toMatch(/p_member_id IS NULL AND NOT public\.is_staff\(\)/);
-    expect(sql).toMatch(/REVOKE[\s\S]*search_books[\s\S]*FROM anon/i);
+    expect(sql).toMatch(/p_member_id IS NULL/);
+    expect(sql).toMatch(/public\.is_staff\(\)/);
+    expect(sql).toMatch(/members[\s\S]*user_id[\s\S]*auth\.uid\(\)/);
     expect(sql).toMatch(/GRANT EXECUTE ON FUNCTION public\.get_fines_total\(uuid\) TO authenticated/);
+    // search_books TETAP anon (katalog publik via anon key) — tidak dicabut di sini.
+    expect(sql).not.toMatch(/REVOKE[\s\S]*search_books/i);
   });
 
   it('(b) konstanta rate-limit READ_SENSITIVE 100/mnt + LOGIN 5/15mnt', async () => {
@@ -106,7 +109,7 @@ describe('issue #65 fines RLS + hardening', () => {
     expect(ok.status).toBe(200);
     const src = read('src/app/api/members/[id]/route.ts');
     const dups = src.match(/if \(!isUuid\(id\)\) return jsonError\('VALIDATION', 'ID anggota tidak valid/g) ?? [];
-    expect(dups.length).toBe(2);
+    expect(dups.length).toBe(3);
     expect(src).toContain('Hanya admin yang dapat mengubah member_code');
   });
 
