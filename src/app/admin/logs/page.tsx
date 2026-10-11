@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
+import { isAdminRole } from '@/lib/roles';
 import LogsTable from '@/components/admin/LogsTable';
 import Button from '@/components/ui/Button';
 import Pagination from '@/components/ui/Pagination';
@@ -36,7 +37,9 @@ export default async function LogsPage({
     : { data: null };
   const role = (profile as { role?: string } | null)?.role;
 
-  if (role !== 'admin') {
+  // Halaman audit khusus admin — predikat admin kanonis (issue #25),
+  // semantik sama dengan requireStaff(['admin']) di guard API.
+  if (!isAdminRole(role)) {
     return (
       <div className="grid gap-4">
         <h1 className="text-2xl font-bold">Log Aktivitas</h1>

@@ -14,6 +14,7 @@ import { useFineRate } from '@/hooks/useFineRate';
 import { errMsg } from '@/lib/admin-errors';
 import { formatRp, num } from '@/lib/format';
 import { PER_PAGE } from '@/lib/pagination';
+import { isAdminRole } from '@/lib/roles';
 
 type Payment = {
   id: string;
@@ -103,7 +104,9 @@ export default function DendaPage() {
           .maybeSingle()
           .then((p) => {
             const role = (p.data as { role?: string | null } | null)?.role ?? 'member';
-            setIsAdmin(role === 'admin');
+            // Predikat admin kanonis (issue #25) — untuk aturan
+            // approver ≠ pengaju di UI persetujuan pembebasan denda.
+            setIsAdmin(isAdminRole(role));
           });
       });
     });

@@ -12,21 +12,18 @@
  *   di src/lib/supabase/auth.ts — SATU-satunya guard role aplikasi.
  *   Guard duplikat kedua (nol pemanggil, bandingkan role di dua ruang
  *   semantik berbeda) DIHAPUS; kini `requireStaff` berdelegate ke
- *   `normalizeRole()` di file ini sehingga semua layer sepakat.
+ *   predikat kanonis (`normalizeRole`, `roleAllowed`) di src/lib/roles.ts
+ *   sehingga semua layer sepakat.
  */
 
 import { createClient } from '@/lib/supabase/server';
+import { type AppRole, normalizeRole } from '@/lib/roles';
 
-export type DbRole = 'admin' | 'librarian' | 'member';
-export type AppRole = 'admin' | 'pustakawan' | 'anggota';
-
-/** Normalisasi role DB/Indonesia -> kanonis Indonesia. Tak dikenal -> 'anggota'. */
-export function normalizeRole(role: string | null | undefined): AppRole {
-  if (role === 'admin') return 'admin';
-  if (role === 'librarian' || role === 'pustakawan') return 'pustakawan';
-  if (role === 'member' || role === 'anggota') return 'anggota';
-  return 'anggota';
-}
+// Re-export kanonis (issue #25): definisi role tinggal di src/lib/roles.ts —
+// modul tanpa dependensi yang bisa dipakai middleware edge, guard API,
+// halaman server, maupun komponen client.
+export { normalizeRole, isStaffRole, isAdminRole, roleAllowed, STAFF_ROLES } from '@/lib/roles';
+export type { DbRole, AppRole, StaffRole } from '@/lib/roles';
 
 export type SessionUser = {
   supabase: ReturnType<typeof createClient>;
