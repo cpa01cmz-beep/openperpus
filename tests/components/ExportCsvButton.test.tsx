@@ -144,7 +144,7 @@ describe('ExportCsvButton (#78/#133)', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
-  it('filename* ber-separator path dibersihkan — header tak menentukan path', async () => {
+  it('filename* ber-separator path dibersihkan — hanya basename, header tak menentukan path', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       okExport({
         'content-disposition': "attachment; filename*=UTF-8''..%2F..%2Fbuku.csv",
@@ -158,9 +158,27 @@ describe('ExportCsvButton (#78/#133)', () => {
 
     await waitFor(() => expect(clickSpy).toHaveBeenCalledTimes(1));
     const name = (clickSpy.mock.instances[0] as HTMLAnchorElement).download;
-    expect(name).toBe('....buku.csv');
+    expect(name).toBe('buku.csv');
     expect(name).not.toContain('/');
     expect(name).not.toContain('\\');
+    // Tanpa artefak dot-run ("....buku.csv") dari separator yang dibuang.
+    expect(name).not.toMatch(/\.\./);
+  });
+
+  it('filename* dot-run di depan dilipat — tanpa nama membingungkan', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        okExport({ 'content-disposition': "attachment; filename*=UTF-8''..%2F....buku.csv" })
+      );
+    vi.stubGlobal('fetch', fetchMock);
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    render(<ExportCsvButton filename="buku.csv" headers={['ID']} rows={[['b1']]} scope="books" />);
+    fireEvent.click(exportAllButton());
+
+    await waitFor(() => expect(clickSpy).toHaveBeenCalledTimes(1));
+    expect((clickSpy.mock.instances[0] as HTMLAnchorElement).download).toBe('buku.csv');
   });
 
   it('filename="…" biasa pun dibersihkan: separator & karakter kontrol dibuang', async () => {
