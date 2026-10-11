@@ -302,6 +302,12 @@ export default function LayananAdminPage() {
         ]}
         rows={rows}
         getRowKey={(r) => r.id}
+        emptyState={{
+          title: 'Belum ada layanan',
+          description: search
+            ? `Tidak ada layanan yang cocok dengan "${search}". Coba kata kunci lain.`
+            : 'Layanan yang ditambahkan tampil di halaman /layanan publik.',
+        }}
       />
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
 

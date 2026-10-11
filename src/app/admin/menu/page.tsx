@@ -330,6 +330,12 @@ export default function MenuPage() {
         ]}
         rows={rows}
         getRowKey={(r) => r.id}
+        emptyState={{
+          title: 'Belum ada menu',
+          description: search
+            ? `Tidak ada menu yang cocok dengan "${search}". Coba kata kunci lain.`
+            : 'Menu navigasi yang ditambahkan tampil di situs publik.',
+        }}
       />
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
 

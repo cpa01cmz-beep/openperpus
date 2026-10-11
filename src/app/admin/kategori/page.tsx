@@ -195,6 +195,12 @@ export default function KategoriPage() {
         ]}
         rows={rows}
         getRowKey={(r) => r.id}
+        emptyState={{
+          title: 'Belum ada kategori',
+          description: search
+            ? `Tidak ada kategori yang cocok dengan "${search}". Coba kata kunci lain.`
+            : 'Kategori buku akan muncul di sini.',
+        }}
       />
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
 

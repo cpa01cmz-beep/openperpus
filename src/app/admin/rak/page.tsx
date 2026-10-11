@@ -214,6 +214,12 @@ export default function RakPage() {
         ]}
         rows={rows}
         getRowKey={(r) => r.id}
+        emptyState={{
+          title: 'Belum ada rak',
+          description: search
+            ? `Tidak ada rak yang cocok dengan "${search}". Coba kata kunci lain.`
+            : 'Rak penyimpanan buku akan muncul di sini.',
+        }}
       />
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
 
