@@ -1174,7 +1174,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
         '409':
-          description: 'Anggota tidak layak checkout: MEMBER_HAS_FINES (tagihan belum lunas), MEMBER_OVERDUE (pinjaman terlambat), MEMBER_LOAN_LIMIT (batas pinjaman aktif), atau CONFLICT (reservasi pending ganda)'
+          description: 'Anggota tidak layak checkout: MEMBER_HAS_FINES (tagihan belum lunas), MEMBER_OVERDUE (pinjaman terlambat), MEMBER_LOAN_LIMIT (batas pinjaman aktif), CONFLICT (stok buku habis, stock_available 0 — ditolak server per issue #55), atau CONFLICT (reservasi pending ganda)'
           content:
             application/json:
               schema:
