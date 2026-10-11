@@ -93,7 +93,7 @@ Sistem CMS penuh, bukan fondasi saja.
 
 Admin (19 halaman di `src/app/admin/`, flat — tanpa Route Group): dashboard, buku (list/tambah/edit), anggota, peminjaman, reservasi, denda, kategori, rak, menu, konten, artikel (list/edit), banner (list/edit), layanan, logs, pengaturan.
 
-API (35 route handler, kontrak dua arah di `openapi.yaml` + `docs/api-contract.md`): 15 modul resource — books, categories, racks, members, loans (+return), reservations, fines (+pay), pages, faqs, testimonials, articles, banners, menus, services, settings (+`/settings/theme`) — plus health, readyz, docs, metrics, register.
+API (42 route handler, kontrak dua arah di `openapi.yaml` + `docs/api-contract.md`): 15 modul resource — books, categories, racks, members, loans (+`return`), reservations (+`checkout`), fines (+`pay`, `waive`, `waivers/[id]/decision`), pages, faqs, testimonials, articles, banners, menus, services, settings (+`/settings/theme`) — plus health, readyz, docs, metrics, register, `cron/sweep-reservations` (Vercel Cron, migrasi 0028), dan `reports/export`. Banyaknya modul dijaga test `tests/openapi-conformance.test.ts` (parity dua arah dengan spec).
 
 Publik (15 halaman): home, katalog (+detail), buku, berita (+detail), halaman dinamis, faq, layanan, tentang, kontak, denda, reservasi-saya (di `src/app/(public)/`), plus `login` dan `daftar`, serta `sitemap.ts`/`robots.ts`/`manifest.ts`.
 
@@ -132,6 +132,13 @@ supabase/migrations/0024_checkout_reservation_tx.sql
 supabase/migrations/0025_dashboard_stats_rtt.sql
 supabase/migrations/0026_loan_policy.sql
 supabase/migrations/0027_fines_sop.sql
+supabase/migrations/0028_issue67_fk_stock_fine.sql
+supabase/migrations/0028_reservation_expiry.sql
+supabase/migrations/0029_issue65_fines_rls.sql
+supabase/migrations/0030_issue75_soft_delete.sql
+supabase/migrations/0031_issue68_search_books_page.sql
+supabase/migrations/0032_issue75_stock_opname.sql
+supabase/migrations/0033_harden_stock_opname_tx.sql
 ```
 
 Alternatif (tanpa paste manual): `supabase db push` dari root repo — prasyarat:
@@ -139,7 +146,15 @@ Alternatif (tanpa paste manual): `supabase db push` dari root repo — prasyarat
 prefix numerik `0001_*`, rename ke format `YYYYMMDDHHMMSS_*` (detail +
 cara pakai seed: `supabase/README.md`).
 
-Catatan: penomoran unik dan berurutan (0010 dilewati, tidak dipakai). Jalankan semua sesuai urutan di atas.
+Catatan: 0010 dilewati (tidak dipakai). Sejak 0028 urutan kanonis = **urut nama
+file** (lexicographic — sama seperti `supabase db push` dan
+`Get-ChildItem | Sort-Object Name`): ada dua file ber-prefix `0028`
+(`0028_issue67_fk_stock_fine.sql` dan `0028_reservation_expiry.sql`) yang saling
+independen (satu FK RESTRICT, satu expiry reservasi), jadi tie-break nama file
+menjadikan jalur manual dan CLI menghasilkan skema yang identik. Daftar di atas
+urut nama file; `tests/docs-migration-parity.test.ts` menggagalkan CI bila ada
+file `supabase/migrations/*.sql` yang tidak terdaftar di sini, di
+`supabase/README.md`, atau di `docs/onboarding-dev.md`.
 
 ## Akun admin pertama
 

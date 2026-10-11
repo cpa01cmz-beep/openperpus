@@ -4,33 +4,43 @@
 
 ## Isi folder
 
-| File                                    | Fungsi                                                                                                    |
-| --------------------------------------- | --------------------------------------------------------------------------------------------------------- |
-| `migrations/0001_core.sql`              | Extension + 16 tabel + index + trigger `updated_at`                                                       |
-| `migrations/0002_rls.sql`               | `is_staff()/is_admin()` + enable RLS + policies                                                           |
-| `migrations/0003_hardening.sql`         | Hardening RLS/policies                                                                                    |
-| `migrations/0004_storage.sql`           | Bucket publik `library-assets` + policies `storage.objects`                                               |
-| `migrations/0005_checkout.sql`          | Checkout reservasi → loan                                                                                 |
-| `migrations/0006_content.sql`           | Tabel/polices konten (pages, FAQs, dsb.)                                                                  |
-| `migrations/0007_storage_guard.sql`     | Guard tambahan storage                                                                                    |
-| `migrations/0008_theme.sql`             | Tema/library settings                                                                                     |
-| `migrations/0009_drop_legacy_theme.sql` | Drop kolom/fungsi tema legacy                                                                             |
-| `migrations/0011_return_loan.sql`       | RPC return loan (atomic)                                                                                  |
-| `migrations/0012_perf.sql`              | Index & optimasi performa                                                                                 |
-| `migrations/0013_pay_own_fine.sql`      | RPC self-pay denda (owner)                                                                                |
-| `migrations/0014_fine_rate.sql`         | Tarif denda configurable                                                                                  |
-| `migrations/0015_checkout_active_guard.sql` | Guard double-POST checkout (idempotensi)                                                                |
-| `migrations/0016_articles_trgm.sql`     | Trigram GIN index pencarian artikel                                                                       |
-| `migrations/0017_dashboard_stats.sql`   | RPC agregat dashboard admin                                                                               |
-| `migrations/0018_perf_fixes.sql`        | 3 RPC agregat lanjutan                                                                                    |
-| `migrations/0019_role_guard.sql`        | Trigger guard eskalasi role profiles (hanya admin)                                                        |
-| `migrations/0020_sketch_theme.sql`      | Tema `sketch` (tema ke-6)                                                                                 |
-| `migrations/0021_services.sql`          | Tabel `services` (kartu Layanan)                                                                          |
-| `migrations/0022_theme_overrides.sql`   | Kolom `theme_overrides` (layout-only Fase 1)                                                              |
-| `migrations/0023_loan_eligibility.sql`  | Batas pinjaman aktif per anggota (gate checkout)                                                          |
-| `migrations/0024_checkout_reservation_tx.sql` | RPC checkout reservasi atomik (issue #73)                                                           |
-| `seed.sql`                              | Data awal (settings#1, 6 kategori, 3 rak, 8 buku, 3 banner, 3 artikel, 4 FAQ, 3 halaman, testimoni, menu) |
-| `config.toml` _(opsional)_              | Konfigurasi `supabase` CLI bila di-init                                                                   |
+| File                                            | Fungsi                                                                                                           |
+| ----------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `migrations/0001_core.sql`                      | Extension + 16 tabel + index + trigger `updated_at`                                                              |
+| `migrations/0002_rls.sql`                       | `is_staff()/is_admin()` + enable RLS + policies                                                                  |
+| `migrations/0003_hardening.sql`                 | Hardening RLS/policies                                                                                           |
+| `migrations/0004_storage.sql`                   | Bucket publik `library-assets` + policies `storage.objects`                                                      |
+| `migrations/0005_checkout.sql`                  | Checkout reservasi → loan                                                                                        |
+| `migrations/0006_content.sql`                   | Tabel/polices konten (pages, FAQs, dsb.)                                                                         |
+| `migrations/0007_storage_guard.sql`             | Guard tambahan storage                                                                                           |
+| `migrations/0008_theme.sql`                     | Tema/library settings                                                                                            |
+| `migrations/0009_drop_legacy_theme.sql`         | Drop kolom/fungsi tema legacy                                                                                    |
+| `migrations/0011_return_loan.sql`               | RPC return loan (atomic)                                                                                         |
+| `migrations/0012_perf.sql`                      | Index & optimasi performa                                                                                        |
+| `migrations/0013_pay_own_fine.sql`              | RPC self-pay denda (owner)                                                                                       |
+| `migrations/0014_fine_rate.sql`                 | Tarif denda configurable                                                                                         |
+| `migrations/0015_checkout_active_guard.sql`     | Guard double-POST checkout (idempotensi)                                                                         |
+| `migrations/0016_articles_trgm.sql`             | Trigram GIN index pencarian artikel                                                                              |
+| `migrations/0017_dashboard_stats.sql`           | RPC agregat dashboard admin                                                                                      |
+| `migrations/0018_perf_fixes.sql`                | 3 RPC agregat lanjutan                                                                                           |
+| `migrations/0019_role_guard.sql`                | Trigger guard eskalasi role profiles (hanya admin)                                                               |
+| `migrations/0020_sketch_theme.sql`              | Tema `sketch` (tema ke-6)                                                                                        |
+| `migrations/0021_services.sql`                  | Tabel `services` (kartu Layanan)                                                                                 |
+| `migrations/0022_theme_overrides.sql`           | Kolom `theme_overrides` (layout-only Fase 1)                                                                     |
+| `migrations/0023_loan_eligibility.sql`          | Batas pinjaman aktif per anggota (gate checkout)                                                                 |
+| `migrations/0024_checkout_reservation_tx.sql`   | RPC checkout reservasi atomik (issue #73)                                                                        |
+| `migrations/0025_dashboard_stats_rtt.sql`       | `get_dashboard_stats` v2 (dashboard 1 RTT) + idx_loans_*                                                         |
+| `migrations/0026_loan_policy.sql`               | Kebijakan pinjam jadi pengaturan: `loan_days`, `max_extensions`, `loans.extend_count`, `replacement_fee_*` (#74) |
+| `migrations/0027_fines_sop.sql`                 | SOP denda: tabel `payments` immutable + `receipt_no`, `fine_max`, `pay_fine_tx` (#72)                            |
+| `migrations/0028_issue67_fk_stock_fine.sql`     | FK `CASCADE` → `RESTRICT` (histori pinjam/denda tidak ikut terhapus, #67)                                        |
+| `migrations/0028_reservation_expiry.sql`        | `reservations.expires_at` NOT NULL + RPC `sweep_expired_reservations` (cron, #76)                                |
+| `migrations/0029_issue65_fines_rls.sql`         | Cabut `EXECUTE` anon `get_fines_total` + guard staff/owner di body (#65)                                         |
+| `migrations/0030_issue75_soft_delete.sql`       | `members.deleted_at` — hapus anggota = soft-delete + anonimisasi (#75)                                           |
+| `migrations/0031_issue68_search_books_page.sql` | RPC `search_books_page` — katalog 4 RTT → 1 RTT (window count, #68)                                              |
+| `migrations/0032_issue75_stock_opname.sql`      | RPC `stock_opname_tx` — opname atomik (lock + audit selisih, #75)                                                |
+| `migrations/0033_harden_stock_opname_tx.sql`    | Hardening `stock_opname_tx`: lock berurutan (`ORDER BY id`), dedupe, SQLSTATE mapping (review #117)              |
+| `seed.sql`                                      | Data awal (settings#1, 6 kategori, 3 rak, 8 buku, 3 banner, 3 artikel, 4 FAQ, 3 halaman, testimoni, menu)        |
+| `config.toml` _(opsional)_                      | Konfigurasi `supabase` CLI bila di-init                                                                          |
 
 ## Prasyarat
 
@@ -51,14 +61,15 @@ supabase status
 ```
 
 Alternatif tanpa CLI: buka SQL Editor di dashboard, paste isi migrasi
-berurutan `0001 → 0024` (0010 dilewati, tidak dipakai), Run.
+berurutan `0001 → 0033` (0010 dilewati, tidak dipakai; dua file `0028_*` urut
+nama file), Run.
 
-## 2. Jalankan migrasi (urutan WAJIB 0001 → 0024)
+## 2. Jalankan migrasi (urutan WAJIB 0001 → 0033)
 
 ### Opsi A — Supabase CLI (disarankan, tercatat di `supabase/migrations`)
 
 ```powershell
-# Dari root repo; file 0001..0024 sudah bernama versi + timestamp-friendly.
+# Dari root repo; file 0001..0033 sudah bernama versi + timestamp-friendly.
 # Bila `supabase link` sudah dilakukan:
 supabase db push
 # Cek:
@@ -69,7 +80,7 @@ supabase migration list
 > ini tetap valid sebagai SQL biasa; bila `db push` menolak prefix numerik,
 > rename sekali saja, mis.:
 > `0001_core.sql → 20260917000001_core.sql` (dst. `...02` s/d `...09`,
-> `...11` s/d `...24` — lewati 0010, tidak dipakai)
+> `...11` s/d `...33` — lewati 0010, tidak dipakai)
 > tanpa mengubah isi.
 
 ### Opsi B — psql langsung (tanpa CLI)
@@ -148,7 +159,7 @@ order by created_at desc limit 12;
 - `0003`: hardening RLS — drop policy yang ditambah di file (lihat blok ROLLBACK di file).
 - `0004`: hapus policy `storage.objects`, kosongkan objek, lalu hapus bucket
   (lihat blok ROLLBACK di file).
-- `0005`–`0009` dan `0011`–`0024`: non-destruktif — revert objek yang
+- `0005`–`0009` dan `0011`–`0033`: non-destruktif — revert objek yang
   ditambah tiap file (lihat komentar `-- Rollback:` di masing-masing file).
 - `seed.sql`: data contoh — hapus manual per tabel bila perlu
   (`delete from public.books where slug in (...)`), jangan `truncate`
