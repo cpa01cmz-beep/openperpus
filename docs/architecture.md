@@ -57,7 +57,7 @@ src/
 │   │   └── logs/page.tsx           # RSC force-dynamic, baca activity_logs LANGSUNG (bukan /api/logs — 404)
 │   ├── daftar/page.tsx             # registrasi anggota (publik)
 │   ├── login/{page,layout}.tsx
-│   ├── api/                        # 35 route handler — REST contract (lihat docs/api-contract.md + openapi.yaml)
+│   ├── api/                        # 42 route handler — REST contract (lihat docs/api-contract.md + openapi.yaml)
 │   │   ├── settings/route.ts       # GET public (whitelist field) + PUT admin
 │   │   ├── settings/theme/route.ts # admin only, layout-only
 │   │   ├── books/route.ts + [id]/route.ts
