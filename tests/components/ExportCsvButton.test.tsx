@@ -253,12 +253,64 @@ describe('ExportCsvButton (#78/#133)', () => {
     expect((clickSpy.mock.instances[0] as HTMLAnchorElement).download).toBe('buku.csv');
   });
 
+  it('filename* akhiran .CSV kapital tetap diterima (seperti endsWith case-insensitive dulu)', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        okExport({ 'content-disposition': "attachment; filename*=UTF-8''Laporan%20Akhir.CSV" })
+      );
+    vi.stubGlobal('fetch', fetchMock);
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    render(<ExportCsvButton filename="buku.csv" headers={['ID']} rows={[['b1']]} scope="books" />);
+    fireEvent.click(exportAllButton());
+
+    await waitFor(() => expect(clickSpy).toHaveBeenCalledTimes(1));
+    expect((clickSpy.mock.instances[0] as HTMLAnchorElement).download).toBe('Laporan Akhir.CSV');
+  });
+
+  it('filename* nama reserved Windows (CON.csv) ditolak — jatuh ke stempel lokal', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        okExport({ 'content-disposition': "attachment; filename*=UTF-8''CON.csv" })
+      );
+    vi.stubGlobal('fetch', fetchMock);
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    render(<ExportCsvButton filename="buku.csv" headers={['ID']} rows={[['b1']]} scope="books" />);
+    fireEvent.click(exportAllButton());
+
+    await waitFor(() => expect(clickSpy).toHaveBeenCalledTimes(1));
+    expect((clickSpy.mock.instances[0] as HTMLAnchorElement).download).toMatch(
+      /^buku-\d{4}-\d{2}-\d{2}\.csv$/
+    );
+  });
+
+  it('filename* nama kepanjangan (>100 karakter) ditolak — jatuh ke stempel lokal', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      okExport({
+        'content-disposition': `attachment; filename*=UTF-8''${'a'.repeat(120)}.csv`,
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    render(<ExportCsvButton filename="buku.csv" headers={['ID']} rows={[['b1']]} scope="books" />);
+    fireEvent.click(exportAllButton());
+
+    await waitFor(() => expect(clickSpy).toHaveBeenCalledTimes(1));
+    expect((clickSpy.mock.instances[0] as HTMLAnchorElement).download).toMatch(
+      /^buku-\d{4}-\d{2}-\d{2}\.csv$/
+    );
+  });
+
   it('filename="…" dengan karakter tak diizinkan ditolak utuh — nama separuh-bersih tak pernah terunduh', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       okExport({
-        // \n di dalam nilai + homoglyph Cyrillic: keduanya membuat nama
-        // tidak aman → ditolak, fallback stempel lokal (bukan "laporanpustakawan").
-        'content-disposition': 'attachment; filename="laporan\npustakawan.csv"',
+        // \n di dalam nilai + homoglyph Cyrillic 'а' (U+0430) di "pustakаwan":
+        // keduanya membuat nama tidak aman → ditolak utuh → fallback stempel.
+        'content-disposition': 'attachment; filename="laporan\npustakаwan.csv"',
       })
     );
     vi.stubGlobal('fetch', fetchMock);

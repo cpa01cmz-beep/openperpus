@@ -49,18 +49,25 @@ function filenameFromHeader(header: string | null, fallback: string): string {
 /**
  * Nama dari header diterima HANYA bila seluruhnya aman — ASCII huruf/angka,
  * spasi, dan pemisa nama biasa (`.` `_` `(` `)` `-`), diawali huruf/angka,
- * diakhiri `.csv`. Sengaja tidak "dibersihkan sebagian": nama separuh-bersih
- * (`buku\u202Evet.csv`, `laporan\npustakawan.csv`) lebih membingungkan
- * daripada ditolak, dan charset ASCII menutup homoglyph/bidi/zero-width
- * secara struktural. Basename diambil lebih dulu supaya nilai seperti
- * `../../buku.csv` tidak menentukan path; dot-run di depan adalah residue
- * traversal, bukan bagian nama. Null = nilai tak layak → pemanggil pakai
- * fallback (stempel WIB kanonis).
+ * diakhiri `.csv` (case-insensitive, seperti endsWith sebelumnya). Sengaja
+ * tidak "dibersihkan sebagian": nama separuh-bersih (`buku\u202Evet.csv`,
+ * `laporan\npustakawan.csv`) lebih membingungkan daripada ditolak, dan
+ * charset ASCII menutup homoglyph/bidi/zero-width secara struktural.
+ * Basename diambil lebih dulu supaya nilai seperti `../../buku.csv` tidak
+ * menentukan path; dot-run di depan adalah residue traversal, bukan bagian
+ * nama. Nama reserved Windows (`CON.csv`) dan nama kepanjangan juga ditolak
+ * supaya pustakawan Windows tidak dapat berkas yang tak bisa disentuh.
+ * Null = nilai tak layak → pemanggil pakai fallback (stempel WIB kanonis).
  */
+const SAFE_NAME = /^[A-Za-z0-9][A-Za-z0-9 ._()-]*\.csv$/i;
+const WIN_RESERVED = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$/i;
+const MAX_NAME_LEN = 100;
+
 function safeDownloadName(raw: string | undefined): string | null {
   const base = (raw ?? '').split(/[/\\]/).pop() ?? '';
   const name = base.trim().replace(/^\.+/, '');
-  return /^[A-Za-z0-9][A-Za-z0-9 ._()-]*\.csv$/.test(name) ? name : null;
+  if (name.length > MAX_NAME_LEN || WIN_RESERVED.test(name)) return null;
+  return SAFE_NAME.test(name) ? name : null;
 }
 
 export default function ExportCsvButton({ filename, headers, rows, scope }: Props) {
