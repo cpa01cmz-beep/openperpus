@@ -269,9 +269,20 @@ describe('ExportCsvButton (#78/#133)', () => {
     expect((clickSpy.mock.instances[0] as HTMLAnchorElement).download).toBe('Laporan Akhir.CSV');
   });
 
-  it('filename* nama reserved Windows dengan/tanpa spasi (CON.csv, NUL .csv, COM1, LPT1) ditolak', async () => {
+  it('filename* seluruh nama reserved Windows dengan/tanpa spasi (CON/PRN/AUX/NUL/COM1-9/LPT1-9) ditolak', async () => {
     const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
-    for (const raw of ['CON.csv', 'CON%20.csv', 'NUL%20.csv', 'COM1.csv', 'LPT1.csv']) {
+    // Loop menutup SELURUH daftar reserved (sesuai klaim PR #142), bukan sampel:
+    // empat nama tanpa digit + COM1-9 + LPT1-9, tiap nama dengan & tanpa spasi pemisah.
+    const reservedNames = [
+      'CON',
+      'PRN',
+      'AUX',
+      'NUL',
+      ...Array.from({ length: 9 }, (_, i) => `COM${i + 1}`),
+      ...Array.from({ length: 9 }, (_, i) => `LPT${i + 1}`),
+    ];
+    const cases = reservedNames.flatMap((base) => [`${base}.csv`, `${base}%20.csv`]);
+    for (const raw of cases) {
       clickSpy.mockClear();
       vi.stubGlobal(
         'fetch',
