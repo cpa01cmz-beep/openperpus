@@ -8,6 +8,7 @@ import Input from '@/components/ui/Input';
 import Pagination from '@/components/ui/Pagination';
 import Badge from '@/components/ui/Badge';
 import { useAdminList } from '@/hooks/useAdminList';
+import { SERVICE_ICON } from '@/lib/enums';
 import { errMsg } from '@/lib/admin-errors';
 
 type ServiceRow = {
@@ -18,8 +19,6 @@ type ServiceRow = {
   sort_order: number;
   is_active: boolean;
 };
-
-const ICON_OPTIONS = ['book', 'catalog', 'users', 'clock', 'info', 'star'] as const;
 
 const EMPTY_FORM = { title: '', description: '', icon: 'book', sort_order: '0' };
 
@@ -94,7 +93,7 @@ export default function LayananAdminPage() {
     setForm({
       title: row.title,
       description: row.description ?? '',
-      icon: ICON_OPTIONS.includes(row.icon as (typeof ICON_OPTIONS)[number]) ? row.icon : 'book',
+      icon: SERVICE_ICON.some((o) => o.value === row.icon) ? row.icon : 'book',
       sort_order: String(row.sort_order ?? 0),
     });
     setFormError('');
@@ -179,9 +178,9 @@ export default function LayananAdminPage() {
             onChange={(e) => setForm({ ...form, icon: e.target.value })}
             className="h-11 min-h-[44px] rounded-md border border-slate-200 bg-white px-4 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
           >
-            {ICON_OPTIONS.map((opt) => (
-              <option key={opt} value={opt}>
-                {opt}
+            {SERVICE_ICON.map((opt) => (
+              <option key={opt.value} value={opt.value}>
+                {opt.label}
               </option>
             ))}
           </select>
@@ -249,7 +248,11 @@ export default function LayananAdminPage() {
               </span>
             ),
           },
-          { key: 'icon', header: 'Ikon' },
+          {
+            key: 'icon',
+            header: 'Ikon',
+            render: (r) => SERVICE_ICON.find((o) => o.value === r.icon)?.label ?? r.icon,
+          },
           {
             key: 'sort_order',
             header: 'Urutan',

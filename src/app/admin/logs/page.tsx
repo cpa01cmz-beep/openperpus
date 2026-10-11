@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { LOG_ENTITY } from '@/lib/enums';
 import { createClient } from '@/lib/supabase/server';
 import { isAdminRole } from '@/lib/roles';
 import LogsTable from '@/components/admin/LogsTable';
@@ -7,6 +8,11 @@ import Pagination from '@/components/ui/Pagination';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
+
+// Issue #79 — PENGECUALIAN RSC terdokumentasi: halaman ini Server Component
+// read-only langsung ke Supabase (bukan useAdminList client+fetch seperti
+// 13 halaman daftar lain). Setara segar karena force-dynamic + revalidate 0
+// (tak ada cache), dan tak butuh debounce/search-as-you-type client.
 
 const PER_PAGE = 20;
 
@@ -130,20 +136,7 @@ export default async function LogsPage({
     'articles.delete',
     'settings.update',
   ];
-  const ENTITIES = [
-    '',
-    'books',
-    'members',
-    'loans',
-    'fines',
-    'reservations',
-    'categories',
-    'racks',
-    'menus',
-    'banners',
-    'articles',
-    'settings',
-  ];
+  const ENTITIES = ['', ...LOG_ENTITY.map((e) => e.value)];
 
   return (
     <div className="grid gap-4">
@@ -197,7 +190,7 @@ export default async function LogsPage({
           >
             {ENTITIES.map((e) => (
               <option key={e || 'all-e'} value={e}>
-                {e || 'Semua entitas'}
+                {e ? (LOG_ENTITY.find((x) => x.value === e)?.label ?? e) : 'Semua entitas'}
               </option>
             ))}
           </select>

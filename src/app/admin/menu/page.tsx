@@ -8,6 +8,7 @@ import Input from '@/components/ui/Input';
 import Pagination from '@/components/ui/Pagination';
 import Badge from '@/components/ui/Badge';
 import { useAdminList } from '@/hooks/useAdminList';
+import { MENU_POSITION, MENU_TARGET } from '@/lib/enums';
 import { errMsg } from '@/lib/admin-errors';
 
 type Menu = {
@@ -185,9 +186,11 @@ export default function MenuPage() {
             onChange={(e) => setForm({ ...form, position: e.target.value })}
             className="h-11 min-h-[44px] rounded-md border border-slate-200 bg-white px-4 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
           >
-            <option value="header">header</option>
-            <option value="footer">footer</option>
-            <option value="sidebar">sidebar</option>
+            {MENU_POSITION.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
           </select>
         </div>
         <div className="grid gap-1">
@@ -203,8 +206,11 @@ export default function MenuPage() {
             onChange={(e) => setForm({ ...form, target: e.target.value })}
             className="h-11 min-h-[44px] rounded-md border border-slate-200 bg-white px-4 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
           >
-            <option value="_self">_self (tab sama)</option>
-            <option value="_blank">_blank (tab baru)</option>
+            {MENU_TARGET.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
           </select>
         </div>
         <div className="w-28">
@@ -262,7 +268,11 @@ export default function MenuPage() {
             render: (r) => <span className="font-medium">{r.label}</span>,
           },
           { key: 'url', header: 'URL' },
-          { key: 'position', header: 'Posisi' },
+          {
+            key: 'position',
+            header: 'Posisi',
+            render: (r) => MENU_POSITION.find((o) => o.value === r.position)?.label ?? r.position,
+          },
           {
             key: 'sort_order',
             header: 'Urutan',
@@ -271,7 +281,10 @@ export default function MenuPage() {
           {
             key: 'target',
             header: 'Target',
-            render: (r) => <span>{r.target ?? '_self'}</span>,
+            render: (r) => {
+              const v = r.target ?? '_self';
+              return MENU_TARGET.find((o) => o.value === v)?.label ?? v;
+            },
           },
           {
             key: 'is_active',

@@ -4,9 +4,11 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import Breadcrumb from '@/components/public/Breadcrumb';
 import Modal from '@/components/ui/Modal';
+import StatusBadge from '@/components/ui/StatusBadge';
 import { useAdminList } from '@/hooks/useAdminList';
 import { useFineRate } from '@/hooks/useFineRate';
 import { formatAngka, formatRp, formatTanggal, num } from '@/lib/format';
+import { FINE_STATUS, PAYMENT_METHOD } from '@/lib/enums';
 import { PER_PAGE } from '@/lib/pagination';
 import { errMsg } from '@/lib/admin-errors';
 
@@ -21,9 +23,6 @@ type Fine = {
   notes: string | null;
 };
 
-const STATUS_OPTS = ['', 'unpaid', 'partial', 'paid', 'waived'];
-const METHOD_OPTS = ['tunai', 'transfer', 'qris'] as const;
-
 const fmtRp = formatRp;
 const methodOf = (notes: string | null) => {
   if (!notes) return '—';
@@ -33,7 +32,7 @@ const methodOf = (notes: string | null) => {
 
 export default function DendaSayaPage() {
   const [status, setStatus] = useState('');
-  const [method, setMethod] = useState<(typeof METHOD_OPTS)[number]>('qris');
+  const [method, setMethod] = useState<(typeof PAYMENT_METHOD)[number]['value']>('qris');
   const [page, setPage] = useState(1);
   const [openTotal, setOpenTotal] = useState(0);
   const [payingId, setPayingId] = useState<string | null>(null);
@@ -229,7 +228,8 @@ export default function DendaSayaPage() {
       >
         {pendingPay && (
           <p>
-            Bayar denda {fmtRp(num(pendingPay.amount) - num(pendingPay.paid_amount))} via {method}?
+            Bayar denda {fmtRp(num(pendingPay.amount) - num(pendingPay.paid_amount))} via{' '}
+            {PAYMENT_METHOD.find((m) => m.value === method)?.label ?? method}?
           </p>
         )}
       </Modal>
@@ -388,9 +388,9 @@ export default function DendaSayaPage() {
             setStatus(e.target.value);
           }}
         >
-          {STATUS_OPTS.map((s) => (
-            <option key={s} value={s}>
-              {s === '' ? 'Semua' : s}
+          {[{ value: '', label: 'Semua' }, ...FINE_STATUS].map((s) => (
+            <option key={s.value || 'semua'} value={s.value}>
+              {s.label}
             </option>
           ))}
         </select>
@@ -399,11 +399,11 @@ export default function DendaSayaPage() {
           id="denda-method"
           className="min-h-[44px] rounded-lg border px-3 py-1.5"
           value={method}
-          onChange={(e) => setMethod(e.target.value as (typeof METHOD_OPTS)[number])}
+          onChange={(e) => setMethod(e.target.value as (typeof PAYMENT_METHOD)[number]['value'])}
         >
-          {METHOD_OPTS.map((m) => (
-            <option key={m} value={m}>
-              {m}
+          {PAYMENT_METHOD.map((m) => (
+            <option key={m.value} value={m.value}>
+              {m.label}
             </option>
           ))}
         </select>
@@ -447,7 +447,7 @@ export default function DendaSayaPage() {
                       </span>
                     </p>
                     <p className="mt-1 text-sm">
-                      Status: <span className="font-semibold">{r.status}</span>
+                      Status: <StatusBadge status={r.status} />
                       {' · '}Terbit: {formatTanggal(r.issued_at)}
                       {r.paid_at && (
                         <>
