@@ -139,7 +139,7 @@ export default function DendaPage() {
   // Aksi tulis punya state sibuk masing-masing (bayar vs waive vs decision),
   // jadi tidak memakai useAdminSubmit di sini.
   const [actionError, setActionError] = useState('');
-  // 404 dari aksi bayar: banner amber sendiri; list successful clears it.
+  // 404 dari aksi bayar: banner amber sendiri; dibuang saat filter berubah.
   const [payMissing, setPayMissing] = useState(false);
   // Banner 404 khusus + pesan generic hook tak ditampilkan bersamaan.
   // Pesan aksi tulis lebih baru daripada pesan pemuatan daftar.
@@ -155,6 +155,7 @@ export default function DendaPage() {
   // error tunggal di-clear di awal load()).
   useEffect(() => {
     setActionError('');
+    setPayMissing(false);
   }, [page, status, search]);
 
   useEffect(() => {
