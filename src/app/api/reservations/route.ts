@@ -54,7 +54,7 @@ export async function GET(req: Request) {
   if ('errorResponse' in s) return s.errorResponse;
   const { supabase, memberId, isStaff } = s.session;
 
-  const { sp, page, perPage, q, from, to } = parsePaging(req.url, 20);
+  const { sp, page, perPage, q, from, to } = parsePaging(req.url);
   const status = (sp.get('status') ?? '').trim();
   const bookId = (sp.get('book_id') ?? '').trim();
   let memberFilter = (sp.get('member_id') ?? '').trim();
@@ -64,7 +64,8 @@ export async function GET(req: Request) {
 
   let query = supabase
     .from('reservations')
-    .select('*, books(id,title,slug), members(id,member_code)', { count: 'exact' })
+    // #68: exact -> estimated — count exact seq-scan di reservations mahal.
+    .select('*, books(id,title,slug), members(id,member_code)', { count: 'estimated' })
     .order('reserved_at', { ascending: false })
     .range(from, to);
 

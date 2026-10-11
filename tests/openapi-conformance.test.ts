@@ -284,10 +284,10 @@ describe('articles contract', () => {
     expect(articles).not.toContain('meta: { page, per_page');
   });
 
-  it('GET per_page defaults to 10 like parsePaging in the handler', () => {
+  it('GET per_page defaults to 24 like parsePaging in the handler (#68)', () => {
     const perPage = SPEC.components.parameters['PerPageParam'] as Obj;
-    expect(((perPage['schema'] as Obj) ?? {})['default']).toBe(10);
-    expect(articles).toContain('parsePaging(req.url, 10)');
+    expect(((perPage['schema'] as Obj) ?? {})['default']).toBe(24);
+    expect(articles).toContain('parsePaging(req.url)');
   });
 
   it('POST body: title+content_md required, slug optional/auto, status default draft with archived', () => {
