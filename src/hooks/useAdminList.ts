@@ -99,13 +99,6 @@ export function useAdminList<T>(options: UseAdminListOptions): AdminList<T> {
   const clearError = useCallback(() => setError(''), []);
 
   useEffect(() => {
-    // Pesan & status daftar dikosongkan saat request baru dimulai (perilaku
-    // lama: load() memanggil setError('')/setLoading(true) lebih dulu).
-    setLoading(true);
-    setError('');
-    setMissing(false);
-    setDenied(false);
-
     // Ambil & langsung kosongkan: hanya pemanggilan reload() yang instan.
     const immediate = immediateRef.current;
     immediateRef.current = false;
@@ -113,6 +106,10 @@ export function useAdminList<T>(options: UseAdminListOptions): AdminList<T> {
     let alive = true;
 
     const run = async () => {
+      setLoading(true);
+      setError('');
+      setMissing(false);
+      setDenied(false);
       const qs = toQueryParams(params);
       if (!qs.has('per_page')) qs.set('per_page', String(PER_PAGE));
       try {
@@ -154,16 +151,15 @@ export function useAdminList<T>(options: UseAdminListOptions): AdminList<T> {
 
     // Kelalaian baca `error` di halaman tertentu membuat 404/401/403 tampak
     // sebagai "tak ada data" — jadi pesan selalu diisi untuk ketiga kasus.
+    let timer: ReturnType<typeof setTimeout> | undefined;
     if (immediate || debounceMs <= 0) {
       void run();
-      return () => {
-        alive = false;
-      };
+    } else {
+      timer = setTimeout(() => void run(), debounceMs);
     }
-    const timer = setTimeout(() => void run(), debounceMs);
     return () => {
       alive = false;
-      clearTimeout(timer);
+      if (timer) clearTimeout(timer);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- `params` dipakai via queryKey
   }, [queryKey, path, noStore, errorMessage, debounceMs, nonce]);

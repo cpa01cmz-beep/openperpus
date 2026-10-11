@@ -78,9 +78,9 @@ export default function KontenPage() {
   // Sebaliknya ketiga daftar bisa gagal sendiri-sendiri, jadi pesan yang
   // bukan 404 tetap ditampilkan semuanya — bukan cuma satu yang tersaring.
   const listErrors = [
-    { key: 'pages', msg: missing.pages ? '' : pagesList.error },
-    { key: 'faqs', msg: missing.faqs ? '' : faqsList.error },
-    { key: 'testimonials', msg: missing.testimonials ? '' : testisList.error },
+    { key: 'pages', label: 'Halaman', msg: pagesList.missing ? '' : pagesList.error },
+    { key: 'faqs', label: 'FAQ', msg: faqsList.missing ? '' : faqsList.error },
+    { key: 'testimonials', label: 'Testimoni', msg: testisList.missing ? '' : testisList.error },
   ].filter((x) => x.msg !== '');
   const totalPages = Math.max(pagesList.totalPages, faqsList.totalPages, testisList.totalPages);
 
@@ -93,9 +93,7 @@ export default function KontenPage() {
     // meniru setMissing({...}) yang dulu dihitung ulang tiap load().
     setTabMissing({});
     setActionError('');
-    // Objek daftar ikut jadi dependensi agar `load` tidak membeku mengikuti
-    // reload fungsi lama (lihat keluhan eslint exhaustive-deps).
-  }, [pagesList, faqsList, testisList]);
+  }, [pagesList.reload, faqsList.reload, testisList.reload]);
 
   // Berganti halaman juga memuat ulang daftar: buang pesan aksi lama.
   useEffect(() => {
@@ -177,13 +175,13 @@ export default function KontenPage() {
           {actionError}
         </div>
       )}
-      {listErrors.map(({ key, msg }) => (
+      {listErrors.map(({ key, label, msg }) => (
         <div
           key={key}
           role="alert"
           className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
         >
-          {msg}
+          {label}: {msg}
         </div>
       ))}
 
