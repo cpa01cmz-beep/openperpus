@@ -51,7 +51,7 @@ function revalidated(): string[] {
 
 export async function POST(req: Request, { params }: Ctx) {
   const log = createLogger(requestIdFromHeaders(req.headers));
-  const guard = await requireStaff(['admin', 'librarian']);
+  const guard = await requireStaff();
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
   const { supabase } = guard as { supabase: ReturnType<typeof createClient> };
 

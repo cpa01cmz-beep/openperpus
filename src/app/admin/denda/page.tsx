@@ -9,7 +9,11 @@ import StatCard from '@/components/admin/StatCard';
 import Modal from '@/components/ui/Modal';
 import Pagination from '@/components/ui/Pagination';
 import StatusBadge from '@/components/ui/StatusBadge';
+import { useAdminList } from '@/hooks/useAdminList';
+import { useFineRate } from '@/hooks/useFineRate';
 import { errMsg } from '@/lib/admin-errors';
+import { formatRp, num } from '@/lib/format';
+import { PER_PAGE } from '@/lib/pagination';
 
 type Payment = {
   id: string;
@@ -46,8 +50,7 @@ const STATUS_OPTS = ['', 'unpaid', 'partial', 'paid', 'waived'];
 const METHOD_OPTS = ['tunai', 'transfer', 'qris'];
 const REASON_MIN = 10;
 
-const num = (v: number | string | null | undefined) => Number(v ?? 0) || 0;
-const fmtRp = (v: number | string | null | undefined) => `Rp${num(v).toLocaleString('id-ID')}`;
+const fmtRp = formatRp;
 
 /** Kwitansi terbaru sebuah denda (immutable, issue #72). */
 function receiptNoOf(f: Fine): string | null {
@@ -61,18 +64,12 @@ function pendingWaiverOf(f: Fine): Waiver | null {
 }
 
 export default function DendaPage() {
-  const [rows, setRows] = useState<Fine[]>([]);
   const [status, setStatus] = useState('');
   const [search, setSearch] = useState('');
   const [method, setMethod] = useState('tunai');
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [loading, setLoading] = useState(true);
   const [payingId, setPayingId] = useState<string | null>(null);
-  const [apiMissing, setApiMissing] = useState(false);
-  const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const [finePerDay, setFinePerDay] = useState(1000);
   const [tagihanTotal, setTagihanTotal] = useState(0);
   // Identitas admin pemakai: dasar segregation-of-duties pengajuan waive.
   const [myUserId, setMyUserId] = useState<string | null>(null);
@@ -88,15 +85,8 @@ export default function DendaPage() {
   const [decisionNote, setDecisionNote] = useState('');
   const [decisionBusy, setDecisionBusy] = useState(false);
 
-  useEffect(() => {
-    fetch('/api/settings')
-      .then((r) => r.json() as Promise<{ data?: { fine_per_day?: unknown } }>)
-      .then((j) => {
-        const v = Number(j.data?.fine_per_day);
-        if (Number.isFinite(v) && v > 0) setFinePerDay(v);
-      })
-      .catch(() => {});
-  }, []);
+  // #62: tarif denda dari satu hook pengaturan.
+  const { finePerDay } = useFineRate();
 
   // Siapa yang login (id profil) + apakah admin — untuk aturan approver ≠ pengaju.
   useEffect(() => {
@@ -133,42 +123,40 @@ export default function DendaPage() {
     } catch {}
   }, []);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const q = new URLSearchParams({
-        page: String(page),
-        per_page: '20',
-        ...(status ? { status } : {}),
-        ...(search ? { q: search } : {}),
-      });
-      const res = await fetch(`/api/fines?${q}`, { cache: 'no-store' });
-      if (res.status === 404) {
-        setApiMissing(true);
-        setRows([]);
-        return;
-      }
-      const json = (await res.json()) as {
-        data?: Fine[];
-        pagination?: { totalPages?: number };
-        meta?: { totalPages?: number };
-      };
-      if (!res.ok) throw new Error(errMsg(json));
-      setApiMissing(false);
-      setRows(json.data ?? []);
-      setTotalPages(json.pagination?.totalPages ?? 1);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, status, search]);
+  // #62: satu hook daftar — termasuk memisahkan 404 (API belum tersedia).
+  const list = useAdminList<Fine>({
+    path: '/api/fines',
+    params: {
+      page: String(page),
+      per_page: PER_PAGE,
+      ...(status ? { status } : {}),
+      ...(search ? { q: search } : {}),
+    },
+    noStore: true,
+    errorMessage: 'Gagal memuat denda.',
+  });
+  const { rows, loading, missing: apiMissing, totalPages, error: listError, reload: load } = list;
+  // Aksi tulis punya state sibuk masing-masing (bayar vs waive vs decision),
+  // jadi tidak memakai useAdminSubmit di sini.
+  const [actionError, setActionError] = useState('');
+  // 404 dari aksi bayar: banner amber sendiri; dibuang saat filter berubah.
+  const [payMissing, setPayMissing] = useState(false);
+  // Banner 404 khusus + pesan generic hook tak ditampilkan bersamaan.
+  // Pesan aksi tulis lebih baru daripada pesan pemuatan daftar.
+  const error = actionError || (apiMissing ? '' : listError);
 
+  // Total tagihan disegarkan saat filter/halaman berubah (perilaku lama:
+  // ikut load()); riwayatnya diurus useAdminList.
   useEffect(() => {
-    const t = setTimeout(load, 300);
-    return () => clearTimeout(t);
-  }, [load]);
+    loadTotals();
+  }, [loadTotals, page, status, search]);
+
+  // Pesan aksi lama dibuang saat daftar dimuat ulang (perilaku lama: state
+  // error tunggal di-clear di awal load()).
+  useEffect(() => {
+    setActionError('');
+    setPayMissing(false);
+  }, [page, status, search]);
 
   useEffect(() => {
     loadTotals();
@@ -179,7 +167,8 @@ export default function DendaPage() {
     if (!f) return;
     if (payingId) return;
     setPayingId(f.id);
-    setError('');
+    setActionError('');
+    setPayMissing(false);
     setNotice('');
     try {
       const res = await fetch(`/api/fines/${f.id}/pay`, {
@@ -189,12 +178,12 @@ export default function DendaPage() {
       });
       const json = await res.json().catch(() => ({}));
       if (res.status === 404) {
-        setApiMissing(true);
-        setError('API /api/fines belum tersedia di backend.');
+        setPayMissing(true);
+        setActionError('API /api/fines belum tersedia di backend.');
         return;
       }
       if (!res.ok) {
-        setError(errMsg(json));
+        setActionError(errMsg(json));
         return;
       }
       const payment = (json as { payment?: { receipt_no?: string | null } | null }).payment;
@@ -204,7 +193,7 @@ export default function DendaPage() {
       load();
       loadTotals();
     } catch (e) {
-      setError((e as Error).message);
+      setActionError((e as Error).message);
     } finally {
       setPayingId(null);
     }
@@ -215,11 +204,11 @@ export default function DendaPage() {
     if (!f) return;
     if (waiveBusy) return;
     if (waiveReason.trim().length < REASON_MIN) {
-      setError(`Alasan pembebasan wajib diisi minimal ${REASON_MIN} karakter.`);
+      setActionError(`Alasan pembebasan wajib diisi minimal ${REASON_MIN} karakter.`);
       return;
     }
     setWaiveBusy(true);
-    setError('');
+    setActionError('');
     setNotice('');
     try {
       const res = await fetch(`/api/fines/${f.id}/waive`, {
@@ -229,7 +218,7 @@ export default function DendaPage() {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(errMsg(json));
+        setActionError(errMsg(json));
         return;
       }
       setWaiveTarget(null);
@@ -246,7 +235,7 @@ export default function DendaPage() {
     if (!d) return;
     if (decisionBusy) return;
     setDecisionBusy(true);
-    setError('');
+    setActionError('');
     setNotice('');
     try {
       const res = await fetch(`/api/fines/waivers/${d.waiver.id}/decision`, {
@@ -256,7 +245,7 @@ export default function DendaPage() {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(errMsg(json));
+        setActionError(errMsg(json));
         return;
       }
       setDecision(null);
@@ -283,7 +272,7 @@ export default function DendaPage() {
         </p>
       </div>
 
-      {apiMissing && (
+      {(apiMissing || payMissing) && (
         <div
           role="alert"
           className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800"
@@ -485,7 +474,7 @@ export default function DendaPage() {
                       type="button"
                       disabled={payingId === r.id}
                       onClick={() => {
-                        setError('');
+                        setActionError('');
                         setNotice('');
                         setPendingPay(r);
                       }}
@@ -497,7 +486,7 @@ export default function DendaPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        setError('');
+                        setActionError('');
                         setNotice('');
                         setWaiveReason('');
                         setWaiveTarget(r);
