@@ -59,9 +59,28 @@ describe('issue-79 enums kanonis: value EN + label ID + tone', () => {
     }
   });
 
-  it('value unik di seluruh enum status', () => {
-    const values = ALL_STATUS.map((e) => e.value);
-    expect(new Set(values).size).toBe(values.length);
+  it('value unik di dalam tiap daftar enum', () => {
+    for (const list of [
+      LOAN_STATUS,
+      RESERVATION_STATUS,
+      FINE_STATUS,
+      MEMBER_STATUS,
+      ARTICLE_STATUS,
+    ]) {
+      const values = list.map((e) => e.value);
+      expect(new Set(values).size, `duplikat value di daftar`).toBe(values.length);
+    }
+  });
+
+  it('value yang muncul di dua daftar (pending) punya label + tone identik', () => {
+    // 'pending' ada di RESERVATION_STATUS dan MEMBER_STATUS — memang boleh,
+    // tapi label/tone-nya harus konsisten supaya StatusBadge tak ambigu.
+    const pending = ALL_STATUS.filter((e) => e.value === 'pending');
+    expect(pending.length).toBeGreaterThan(1);
+    for (const e of pending) {
+      expect(e.label).toBe('Menunggu');
+      expect(e.tone).toBe('amber');
+    }
   });
 
   it('peminjaman page tanpa option mentah + pakai LOAN_STATUS', () => {

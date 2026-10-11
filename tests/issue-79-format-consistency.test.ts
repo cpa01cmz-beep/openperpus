@@ -13,7 +13,7 @@ import {
   formatHariUtc,
   num,
 } from '@/lib/format';
-import { onAdd, onToggle, onDelete } from '@/lib/konten-api';
+import { onDelete } from '@/lib/konten-api';
 
 const ROOT = process.cwd();
 const read = (p: string) => readFileSync(join(ROOT, p), 'utf8');
@@ -72,9 +72,12 @@ describe('issue-79: src/lib/format.ts satu sumber format', () => {
   });
 
   it('formatHariUtc deterministik lintas TZ runtime', () => {
-    // 2026-10-11 = hari Minggu -> label singkat id-ID "Min".
+    // 2026-10-11 = hari Minggu (UTC) -> label singkat id-ID "Min".
     expect(formatHariUtc('2026-10-11T00:00:00Z')).toBe('Min');
-    expect(formatHariUtc('2026-10-12T23:00:00Z')).toBe('Min'); // masih Minggu UTC
+    // Malam hari UTC TETAP hari UTC yang sama — label tak geser sehari
+    // seperti yang terjadi pada formatter berlokal runtime non-UTC.
+    expect(formatHariUtc('2026-10-11T23:30:00Z')).toBe('Min');
+    expect(formatHariUtc('2026-10-12T00:00:00Z')).toBe('Sen'); // hari berikutnya
   });
 
   it('formatNum ribuan id-ID + fallback', () => {
