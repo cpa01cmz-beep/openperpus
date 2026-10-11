@@ -165,15 +165,26 @@ const OPNAME_STOCK_MAX = 2147483647;
 /**
  * Predikat stok opname IDENTIK dengan RPC stock_opname_tx (migrasi 0033):
  * hanya bilangan bulat >= 0 — angka JSON atau string digit, maks 10 digit
- * (batas panjang int4), disaring rentang 2147483647. Number() MENERIMA
+ * (batas panjang int4), disaring rentang 2147483647. Number() lama MENERIMA
  * null/""/true/"5.0"/1e21 -> 0/1/5/1e21 DAN MENULISNYA; nilai di luar
  * int4 juga melempar 22003 di DB. null = baris tidak valid (dilewati
  * dengan reason), sama seperti RPC.
+ * Paritas dua kasus tepi (review PR #122):
+ *  - `-0` DINORMALKAN jadi 0, bukan ditolak. UI kirim `Number("-0")` -> -0
+ *    dan JSON.stringify(-0) = "-0", sedangkan jsonb Postgres menormalkan -0
+ *    jadi 0 sehingga `->>` menghasilkan '0' yang LOLOS predikat RPC dan
+ *    ditulis sebagai 0. Menolaknya di fallback justru membuat dua jalur
+ *    berbeda untuk permintaan yang sama.
+ *  - `5.0` tak bisa dijangkau klien JS: JSON.parse selalu memberi angka 5 dan
+ *    supabase-js serialisasi ulang menjadi `5`. Bila dikirim sebagai STRING
+ *    "5.0", kedua jalur menolaknya (regex ^\d{1,10}$) — tetap identik.
  */
 function parseOpnameStock(v: unknown): number | null {
   if (typeof v === 'number') {
-    if (!Number.isInteger(v) || v < 0 || v > OPNAME_STOCK_MAX || Object.is(v, -0)) return null;
-    return v;
+    if (!Number.isInteger(v) || v < 0 || v > OPNAME_STOCK_MAX) return null;
+    // -0 -> 0: -0 < 0 salah di JS, jadi ia lolos filter di atas; normalkan
+    // agar sama dengan jsonb/RPC yang menulis 0.
+    return Object.is(v, -0) ? 0 : v;
   }
   if (typeof v === 'string' && /^\d{1,10}$/.test(v)) {
     const n = Number(v);
@@ -194,6 +205,11 @@ function parseOpnameStock(v: unknown): number | null {
  * (42883/PGRST202) atau klien tanpa .rpc. Fallback tidak dipakai ketika RPC
  * sudah merespons: hasil ambigu TIDAK boleh diulang via jalur non-atomik
  * (opname bisa termuat dua kali + audit ganda).
+ * Kontrak fallback == RPC (urutan cek per item): id -> eksistensi ->
+ * dipinjam -> stok, dengan reason string yang sama. Cek eksistensi wajib:
+ * id tak dikenal yang jatuh ke `upsert` memicu NOT NULL title/slug/author
+ * (0001_core.sql) sehingga SELURUH batch gagal (`Gagal menyimpan.`, HTTP 200),
+ * padahal RPC hanya melewati baris itu (`Buku tidak ditemukan.`).
  * Balikan: { data: { updated: string[], skipped: [{ id, reason }], diffs: [...] } }.
  * ponytail: naikkan ke approval opname dua langkah (tabel batch +
  * ajukan/setujui) bila opname jadi SOP sensitif — cukup bila bulk <= 100 manual.
@@ -303,11 +319,43 @@ export async function PUT(req: Request) {
 
   const skipped: { id: string; reason: string }[] = [];
   const rows: { id: string; stock_total: number; stock_available: number }[] = [];
+  // Peta buku yang ADA (id -> stock_available lama). Dimuat SEBELUM loop
+  // (satu round-trip untuk semua kandidat, meniru pass 2 RPC yang mengunci
+  // kandidat sekaligus) dan dipakai untuk DUA hal: cek eksistensi dan
+  // `old_available` pada diffs.
+  // Cek eksistensi wajib ada (review PR #122): id tak dikenal yang jatuh ke
+  // `upsert` memicu NOT NULL title/slug/author (0001_core.sql) sehingga
+  // SELURUH batch gagal — semua baris jadi 'Gagal menyimpan.' dengan HTTP 200,
+  // sedangkan RPC hanya melewati baris itu dengan 'Buku tidak ditemukan.'.
+  const existing = new Map<string, number>();
+  {
+    const { data: found, error: fetchError } = await supabase
+      .from('books')
+      .select('id,stock_available')
+      .in('id', validIds);
+    if (fetchError) {
+      // Jangan ditelan: kegagalan baca yang diabaikan akan membuat SEMUA
+      // baris tampak "tidak ditemukan" dan opname mengembalikan 200 kosong.
+      log.error('books.stock_opname_fetch_failed', { detail: fetchError.message });
+      return jsonError('SAVE_FAILED', 'Gagal menyimpan stok opname.', 500, {
+        requestId: log.requestId,
+      });
+    }
+    for (const b of (found ?? []) as { id: string; stock_available: number }[])
+      existing.set(b.id, b.stock_available);
+  }
   for (const item of items) {
     const rawId = item.id;
     const id = typeof rawId === 'string' ? rawId : String(rawId ?? '');
     if (!isUuid(rawId)) {
       skipped.push({ id: id || '(tanpa id)', reason: 'id wajib UUID valid.' });
+      continue;
+    }
+    // Eksistensi SEBELUM cek pinjam — urutan identik dengan RPC pass 3
+    // (id -> eksistensi -> dipinjam -> stok) agar reason dan urutan `skipped`
+    // sama di kedua jalur.
+    if (!existing.has(id)) {
+      skipped.push({ id, reason: 'Buku tidak ditemukan.' });
       continue;
     }
     if (blocked.has(id)) {
@@ -336,19 +384,11 @@ export async function PUT(req: Request) {
   let updated: string[] = [];
   let diffs: { id: string; old_available: number | null; new_available: number }[] = [];
   if (rows.length > 0) {
-    const { data: cur } = await supabase
-      .from('books')
-      .select('id,stock_available')
-      .in(
-        'id',
-        rows.map((r) => r.id)
-      );
-    const oldMap = new Map<string, number>();
-    for (const b of (cur ?? []) as { id: string; stock_available: number }[])
-      oldMap.set(b.id, b.stock_available);
+    // old_available datang dari `existing` yang sudah dimuat sebelum loop
+    // (bukan query kedua di sini) — tidak ada round-trip tambahan.
     diffs = rows.map((r) => ({
       id: r.id,
-      old_available: oldMap.has(r.id) ? (oldMap.get(r.id) as number) : null,
+      old_available: existing.has(r.id) ? (existing.get(r.id) as number) : null,
       new_available: r.stock_available,
     }));
     const { error } = await supabase.from('books').upsert(rows, { onConflict: 'id' });
