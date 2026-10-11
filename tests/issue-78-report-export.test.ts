@@ -79,9 +79,14 @@ describe('#78 ekspor books', () => {
     );
     expect(res.headers.get('cache-control')).toBe('no-store');
 
-    const text = await res.text();
-    expect(text.startsWith(CSV_BOM)).toBe(true);
-    const lines = text.replace(CSV_BOM, '').split('\r\n');
+    // Response.text()/TextDecoder default MALAH membuang BOM — jadi cek byte
+    // mentah (EF BB BF) lalu decode untuk assert isi.
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    expect([...bytes.slice(0, 3)], 'CSV wajib berawalan BOM UTF-8 (Excel Windows)').toEqual([
+      0xef, 0xbb, 0xbf,
+    ]);
+    const text = new TextDecoder().decode(bytes);
+    const lines = text.split('\r\n');
     expect(lines[0]).toBe('ID,Judul,Penulis,Kategori,Tersedia,Total');
     expect(lines[1]).toBe('b1,Laskar Pelangi,Andrea Hirata,Fiksi,3,5');
   });
@@ -104,7 +109,7 @@ describe('#78 ekspor books', () => {
     });
     const res = await EXPORT_GET(req('/api/reports/export?scope=books'));
     const text = await res.text();
-    expect(text.replace(CSV_BOM, '').split('\r\n')[1]).toBe('b2,"Buku, ""Edisi Khusus""",,,0,1');
+    expect(text.split('\r\n')[1]).toBe('b2,"Buku, ""Edisi Khusus""",,,0,1');
   });
 
   it('error DB pada chunk pertama -> 500 FETCH_FAILED (bukan stream rusak)', async () => {
@@ -136,7 +141,7 @@ describe('#78 ekspor loans + fines', () => {
     const res = await EXPORT_GET(req('/api/reports/export?scope=loans'));
     expect(res.status).toBe(200);
     const text = await res.text();
-    const lines = text.replace(CSV_BOM, '').split('\r\n');
+    const lines = text.split('\r\n');
     expect(lines[0]).toBe('ID,Anggota,Buku,Pinjam,Tempo,Status,Denda');
     expect(lines[1]).toBe(
       'l1,AG-001,Laskar Pelangi,2026-01-01T00:00:00.000Z,2026-01-08T00:00:00.000Z,overdue,0'
@@ -162,7 +167,7 @@ describe('#78 ekspor loans + fines', () => {
     });
     const res = await EXPORT_GET(req('/api/reports/export?scope=fines'));
     const text = await res.text();
-    const lines = text.replace(CSV_BOM, '').split('\r\n');
+    const lines = text.split('\r\n');
     expect(lines[0]).toBe('ID,Anggota,Tagihan,Dibayar,Status,No. struk,Terbit');
     expect(lines[1]).toBe('f1,AG-002,25000,0,partial,KW-003,2026-02-01T00:00:00.000Z');
   });
