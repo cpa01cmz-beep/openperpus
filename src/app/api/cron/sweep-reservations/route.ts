@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { jsonError } from '@/lib/supabase/auth';
+import { withTimeout } from '@/lib/fetch-with-retry';
 import { createLogger, requestIdFromHeaders, type Logger } from '@/lib/logger';
 import { isCronAuthorized } from '@/lib/cron-sweep';
 
@@ -38,7 +39,9 @@ export async function GET(req: Request) {
   }
   if (!isCronAuthorized(req.headers.get('authorization'), secret)) {
     log.warn('cron.sweep.unauthorized');
-    return jsonError('UNAUTHORIZED', 'Cron secret tidak valid.', 401);
+    return jsonError('UNAUTHORIZED', 'Cron secret tidak valid.', 401, {
+      requestId: log.requestId,
+    });
   }
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -53,7 +56,24 @@ export async function GET(req: Request) {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
-  const { data, error } = await supabase.rpc('sweep_expired_reservations');
+  // Isu #69 readyTimeoutMs baca per-request: sweep ikut pola yang sama —
+  // RPC service-role dibatasi timeout eksplisit agar cron tak menggantung.
+  const rawTimeout = Number(process.env.SWEEP_TIMEOUT_MS);
+  const sweepTimeoutMs =
+    Number.isFinite(rawTimeout) && rawTimeout >= 250 ? Math.trunc(rawTimeout) : 9000;
+  let rpc: { data: unknown; error: { message: string } | null };
+  try {
+    rpc = await withTimeout(supabase.rpc('sweep_expired_reservations'), sweepTimeoutMs);
+  } catch (e) {
+    const timedOut = (e as { name?: string } | null)?.name === 'TimeoutError';
+    log.error('cron.sweep.failed', {
+      detail: timedOut ? `timeout after ${sweepTimeoutMs}ms` : String(e),
+    });
+    return jsonError('SWEEP_FAILED', 'Gagal sweep reservasi kedaluwarsa.', 500, {
+      requestId: log.requestId,
+    });
+  }
+  const { data, error } = rpc;
   if (error) {
     log.error('cron.sweep.failed', { detail: error.message });
     return jsonError('SWEEP_FAILED', 'Gagal sweep reservasi kedaluwarsa.', 500, {
