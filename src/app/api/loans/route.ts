@@ -240,6 +240,8 @@ export async function POST(req: Request) {
     // as fallback when code is absent.
     if (rpcCode === '25001' || /sudah meminjam buku ini|loan aktif/i.test(rpcMsg))
       return jsonError('CONFLICT', 'Anggota sudah meminjam buku ini (loan aktif).', 409);
+    if (rpcCode === '23505' || /uq_loans_active|duplicate key/i.test(rpcMsg))
+      return jsonError('CONFLICT', 'Anggota sudah meminjam buku ini (loan aktif).', 409);
     if (rpcCode === '25000' || /Stok buku habis/i.test(rpcMsg))
       return jsonError('CONFLICT', 'Stok buku habis.', 409);
     if (rpcCode === '02000' || /Buku tidak ditemukan/i.test(rpcMsg))
@@ -302,7 +304,9 @@ export async function POST(req: Request) {
     .single();
 
   if (error) {
-    await supabase.from('books').update({ stock_available: avail }).eq('id', book_id); // rollback
+    await supabase.from('books').update({ stock_available: avail }).eq('id', book_id);
+    if ((error as { code?: string }).code === '23505')
+      return jsonError('CONFLICT', 'Anggota sudah meminjam buku ini (loan aktif).', 409);
     log.error('loans.save_failed', { detail: error.message });
     return jsonError('SAVE_FAILED', 'Gagal mencatat peminjaman.', 500, {
       requestId: log.requestId,
