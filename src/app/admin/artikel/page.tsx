@@ -9,6 +9,7 @@ import Input from '@/components/ui/Input';
 import Pagination from '@/components/ui/Pagination';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { useAdminList } from '@/hooks/useAdminList';
+import { ARTICLE_STATUS } from '@/lib/enums';
 import { errMsg } from '@/lib/admin-errors';
 
 type Article = { id: string; title: string; slug: string; status: string };
@@ -124,8 +125,8 @@ export default function ArtikelPage() {
           <div className="min-w-[200px] flex-1">
             <Input
               id="artikel-cover-url"
-              label="Cover URL"
-              placeholder="Cover URL"
+              label="URL Sampul"
+              placeholder="URL Sampul"
               value={form.cover_url}
               onChange={(e) => setForm({ ...form, cover_url: e.target.value })}
             />
@@ -178,9 +179,11 @@ export default function ArtikelPage() {
               value={form.status}
               onChange={(e) => setForm({ ...form, status: e.target.value })}
             >
-              <option value="draft">draft</option>
-              <option value="published">published</option>
-              <option value="archived">archived</option>
+              {ARTICLE_STATUS.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
             </select>
           </div>
           <Button type="submit">+ Tambah</Button>

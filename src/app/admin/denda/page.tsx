@@ -11,6 +11,7 @@ import Pagination from '@/components/ui/Pagination';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { useAdminList } from '@/hooks/useAdminList';
 import { useFineRate } from '@/hooks/useFineRate';
+import { FINE_STATUS } from '@/lib/enums';
 import { errMsg } from '@/lib/admin-errors';
 import { formatRp, num } from '@/lib/format';
 import { PER_PAGE } from '@/lib/pagination';
@@ -47,7 +48,6 @@ type Fine = {
   fine_waivers?: Waiver[] | null;
 };
 
-const STATUS_OPTS = ['', 'unpaid', 'partial', 'paid', 'waived'];
 const METHOD_OPTS = ['tunai', 'transfer', 'qris'];
 const REASON_MIN = 10;
 
@@ -305,9 +305,9 @@ export default function DendaPage() {
         <StatCard
           label="Tagihan terbuka"
           value={fmtRp(tagihanTotal)}
-          hint="unpaid + partial (semua anggota)"
+          hint="Belum lunas + sebagian (semua anggota)"
         />
-        <StatCard label="Lunas" value={lunasCount} hint="Status paid (halaman ini)" />
+        <StatCard label="Lunas" value={lunasCount} hint="Lunas (halaman ini)" />
         <StatCard
           label="Total baris"
           value={rows.length}
@@ -357,9 +357,10 @@ export default function DendaPage() {
               setStatus(e.target.value);
             }}
           >
-            {STATUS_OPTS.map((s) => (
-              <option key={s} value={s}>
-                {s === '' ? 'Semua' : s}
+            <option value="">Semua</option>
+            {FINE_STATUS.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
               </option>
             ))}
           </select>

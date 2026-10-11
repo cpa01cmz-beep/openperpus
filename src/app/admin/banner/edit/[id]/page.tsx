@@ -87,13 +87,13 @@ export default function EditBannerPage({ params }: { params: { id: string } }) {
         />
         <input
           className={input}
-          placeholder="Subtitle"
+          placeholder="Subjudul"
           value={form.subtitle}
           onChange={(e) => setForm({ ...form, subtitle: e.target.value })}
         />
         <input
           className={input}
-          placeholder="Image URL* https://…"
+          placeholder="URL Gambar* https://…"
           value={form.image_url}
           onChange={(e) => setForm({ ...form, image_url: e.target.value })}
           required
@@ -101,7 +101,7 @@ export default function EditBannerPage({ params }: { params: { id: string } }) {
         <div className="flex gap-2">
           <input
             className={input}
-            placeholder="Link URL"
+            placeholder="URL Tautan"
             value={form.link}
             onChange={(e) => setForm({ ...form, link: e.target.value })}
           />

@@ -7,6 +7,7 @@ import ConfirmModal from '@/components/admin/ConfirmModal';
 import FilterBar from '@/components/admin/FilterBar';
 import Pagination from '@/components/ui/Pagination';
 import StatusBadge from '@/components/ui/StatusBadge';
+import { RESERVATION_STATUS } from '@/lib/enums';
 import { checkoutReservation } from '@/lib/reservation-checkout';
 import { findExpiredCandidates, sweepExpiredReservations } from '@/lib/reservation-sweep';
 import { errMsg } from '@/lib/admin-errors';
@@ -24,8 +25,6 @@ type Reservation = {
   members: { member_code: string } | null;
   books: { title: string } | null;
 };
-
-const STATUS_OPTS = ['', 'pending', 'ready', 'completed', 'cancelled', 'expired'];
 
 const NEXT_ACTION_LABEL: Record<'ready' | 'cancelled', string> = {
   ready: 'Setujui (siap diambil)',
@@ -252,8 +251,8 @@ export default function ReservasiPage() {
       )}
 
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="Menunggu" value={pending} hint="Status pending (halaman ini)" />
-        <StatCard label="Siap diambil" value={ready} hint="Status ready (halaman ini)" />
+        <StatCard label="Menunggu" value={pending} hint="Menunggu (halaman ini)" />
+        <StatCard label="Siap diambil" value={ready} hint="Siap diambil (halaman ini)" />
         <StatCard
           label="Total baris"
           value={rows.length}
@@ -287,9 +286,10 @@ export default function ReservasiPage() {
               setStatus(e.target.value);
             }}
           >
-            {STATUS_OPTS.map((s) => (
-              <option key={s} value={s}>
-                {s === '' ? 'Semua' : s}
+            <option value="">Semua</option>
+            {RESERVATION_STATUS.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
               </option>
             ))}
           </select>

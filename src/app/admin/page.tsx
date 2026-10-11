@@ -4,6 +4,7 @@ import { calcFine, FINE_PER_DAY } from '@/lib/finecalc';
 import { formatRp, num } from '@/lib/format';
 import { effectiveLoanStatus } from '@/lib/loans-overdue';
 import StatCard from '@/components/admin/StatCard';
+import Badge from '@/components/ui/Badge';
 
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
@@ -117,10 +118,11 @@ export default async function AdminDashboard() {
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Total Buku" value={totalBooks ?? 0} hint="Judul aktif" />
         <StatCard label="Anggota" value={totalMembers ?? 0} hint="Terdaftar" />
-        <StatCard label="Dipinjam" value={dipinjam} hint="borrowed/overdue berjalan" />
+        <StatCard label="Dipinjam" value={dipinjam} hint="Dipinjam/terlambat berjalan" />
         <StatCard
           label="Terlambat"
           value={terlambat}
+          tone="rose"
           hint={`Denda ${formatRp(fineRate)}/hari${
             finesOpen === null ? '' : ` · tagihan terbuka ${formatRp(finesOpen)}`
           }`}
@@ -156,7 +158,7 @@ export default async function AdminDashboard() {
                     ? o.members[0]?.member_code
                     : o.members?.member_code) ?? '?'}{' '}
                   → {(Array.isArray(o.books) ? o.books[0]?.title : o.books?.title) ?? '?'}
-                  <span className="ml-1 text-xs text-red-700">telat {lateDays} hari</span>
+                  <Badge tone="rose">telat {lateDays} hari</Badge>
                 </span>
                 <span className="shrink-0 text-xs font-semibold tabular-nums">
                   {formatRp(preview)}
@@ -170,7 +172,11 @@ export default async function AdminDashboard() {
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="rounded-2xl border bg-white p-6">
           <h2 className="mb-4 font-semibold">Peminjaman 7 hari terakhir</h2>
-          <div className="flex h-32 items-end gap-2">
+          <div
+            className="flex h-32 items-end gap-2"
+            role="img"
+            aria-label={`Peminjaman 7 hari terakhir, total ${days.reduce((a, d) => a + d.count, 0)} pinjam`}
+          >
             {days.map((d) => (
               <div key={d.label} className="flex flex-1 flex-col items-center gap-1">
                 <div
