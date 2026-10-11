@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { updateSession } from '@/lib/supabase/middleware';
 import { checkRateLimit, WRITE_API_LIMIT, WRITE_API_WINDOW_MS } from '@/lib/rate-limit';
+import { ROLE_HEADER } from '@/lib/role-claim';
 
 /**
  * CSRF guard untuk write /api/*: Origin/Referer harus same-origin LENGKAP
@@ -166,6 +167,7 @@ async function getProfileRole(request: NextRequest, userId: string): Promise<str
 }
 
 export async function middleware(request: NextRequest) {
+  request.headers.delete(ROLE_HEADER);
   const { pathname, search } = request.nextUrl;
   const isAdmin = pathname === '/admin' || pathname.startsWith('/admin/');
   const isLogin = pathname === '/login' || pathname.startsWith('/login');
@@ -260,6 +262,10 @@ export async function middleware(request: NextRequest) {
       url.search = '';
       return NextResponse.redirect(url);
     }
+    request.headers.set(ROLE_HEADER, role);
+    const claimed = NextResponse.next({ request });
+    for (const c of sessionResponse.cookies.getAll()) claimed.cookies.set(c);
+    sessionResponse = claimed;
   }
 
   sessionResponse.headers.set('Content-Security-Policy', csp);
