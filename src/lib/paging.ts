@@ -1,11 +1,11 @@
 /**
- * SATU kontrak pagination (page/per_page/q) + alias lama (limit/search).
+ * SATU kontrak pagination (page/per_page/q) + alias lama (limit).
  *
- * Issue #68 (perf): default & batas disatukan supaya biaya query per hitu
+ * Issue #68 (perf): default & batas disatukan supaya biaya query per hit
  * bisa diperkirakan — default 24 dan maks 50 (sebelumnya per-route 10/20 dan
  * plafon 100, dan beberapa halaman mengizinkan ?per_page=100 yang memicu
  * row fetch besar + seq-scan count exact). Nilai >50 di-clamp, bukan ditolak,
- * agar klien lama tidak pecah.
+ * agar klien lama tidak pecah. Alias `search` dihapus (issue #71: baca hanya `q`).
  */
 export const DEFAULT_PER_PAGE = 24;
 export const MAX_PER_PAGE = 50;
@@ -17,7 +17,7 @@ export function parsePaging(url: string, defPerPage: number = DEFAULT_PER_PAGE) 
     MAX_PER_PAGE,
     Math.max(1, Number(sp.get('per_page') ?? sp.get('limit') ?? String(defPerPage)) || defPerPage)
   );
-  const q = (sp.get('q') ?? sp.get('search') ?? '').trim();
+  const q = (sp.get('q') ?? '').trim();
   return {
     sp,
     page,
