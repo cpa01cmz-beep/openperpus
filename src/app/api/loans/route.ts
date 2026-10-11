@@ -127,10 +127,13 @@ export async function GET(req: Request) {
   }
 
   const total = count ?? 0;
-  return NextResponse.json({
-    data: data ?? [],
-    pagination: { page, limit: perPage, total, totalPages: Math.ceil(total / perPage) },
-  });
+  return NextResponse.json(
+    {
+      data: data ?? [],
+      pagination: { page, limit: perPage, total, totalPages: Math.ceil(total / perPage) },
+    },
+    { headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' } }
+  );
 }
 
 export async function POST(req: Request) {
