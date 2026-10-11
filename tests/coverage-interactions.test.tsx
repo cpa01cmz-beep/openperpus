@@ -63,6 +63,7 @@ import BannerPage from '@/app/admin/banner/page';
 import ArtikelPage from '@/app/admin/artikel/page';
 import BukuAdminPage from '@/app/admin/buku/page';
 import AnggotaPage from '@/app/admin/anggota/page';
+import ReservasiAdminPage from '@/app/admin/reservasi/page';
 import PeminjamanPage from '@/app/admin/peminjaman/page';
 import KontenPage from '@/app/admin/konten/page';
 import DendaAdminPage from '@/app/admin/denda/page';
@@ -313,6 +314,8 @@ describe('admin list page interactions', () => {
       timeout: 2500,
     });
     fireEvent.click(screen.getByRole('button', { name: /hapus rak/i }));
+    // Dialog konfirmasi (bukan confirm() native): klik "Ya, hapus" di modal.
+    fireEvent.click(await screen.findByRole('button', { name: /ya, hapus/i }, { timeout: 2500 }));
     await waitFor(
       () =>
         expect(
@@ -337,6 +340,7 @@ describe('admin list page interactions', () => {
       jsonResponse(500, { error: { message: 'Server rak sedang sibuk.' } })
     );
     fireEvent.click(screen.getByRole('button', { name: /hapus rak/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /ya, hapus/i }, { timeout: 2500 }));
     await waitFor(
       () =>
         expect(screen.getByText(/Server rak sedang sibuk|tidak bisa dihapus|Gagal/i)).toBeTruthy(),
@@ -386,6 +390,7 @@ describe('admin list page interactions', () => {
       { timeout: 2500 }
     );
     fireEvent.click(screen.getByRole('button', { name: /hapus menu/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /ya, hapus/i }, { timeout: 2500 }));
     await waitFor(
       () =>
         expect(
@@ -432,6 +437,7 @@ describe('admin list page interactions', () => {
       { timeout: 2500 }
     );
     fireEvent.click(screen.getByRole('button', { name: /hapus kategori/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /ya, hapus/i }, { timeout: 2500 }));
     await waitFor(
       () =>
         expect(
@@ -512,6 +518,7 @@ describe('admin list page interactions', () => {
       { timeout: 2500 }
     );
     fireEvent.click(screen.getByRole('button', { name: /hapus banner/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /ya, hapus/i }, { timeout: 2500 }));
     await waitFor(
       () =>
         expect(
@@ -574,6 +581,7 @@ describe('admin list page interactions', () => {
       { timeout: 2500 }
     );
     fireEvent.click(screen.getByRole('button', { name: /hapus artikel/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /ya, hapus/i }, { timeout: 2500 }));
     await waitFor(
       () =>
         expect(
@@ -581,6 +589,59 @@ describe('admin list page interactions', () => {
         ).toBe(true),
       { timeout: 2500 }
     );
+  });
+
+  it('reservasi: search q + approve/checkout lewat dialog konfirmasi', async () => {
+    listRows = [
+      {
+        id: 'r1',
+        status: 'ready',
+        book_id: 'b1',
+        member_id: 'm1',
+        reserved_at: '2026-09-01T00:00:00Z',
+        expires_at: null,
+        notes: null,
+        members: { member_code: 'AG-1' },
+        books: { title: 'Buku A' },
+      },
+    ];
+    const view = render(<ReservasiAdminPage />);
+    await waitFor(
+      () => expect(screen.getByRole('heading', { level: 1, name: 'Reservasi' })).toBeTruthy(),
+      { timeout: 2500 }
+    );
+    // kotak pencarian mengirim parameter q (lintas relasi member_code/judul)
+    fireEvent.change(view.container.querySelector('#reservasi-search') as Element, {
+      target: { value: 'AG-1' },
+    });
+    await waitFor(
+      () => expect(fetchMock.mock.calls.some((c) => String(c[0]).includes('q=AG-1'))).toBe(true),
+      { timeout: 2500 }
+    );
+    // Pinjamkan (checkout atomik #92) lewat dialog inline — bukan confirm() native
+    const checkoutBtn = await screen.findByRole(
+      'button',
+      { name: /pinjamkan/i },
+      { timeout: 2500 }
+    );
+    fireEvent.click(checkoutBtn);
+    expect(screen.getByRole('dialog')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: /ya, pinjamkan/i }));
+    await waitFor(
+      () =>
+        expect(
+          fetchMock.mock.calls.some(
+            (c) =>
+              String(c[0]).includes('/api/reservations/r1/checkout') &&
+              (c[1] as RequestInit | undefined)?.method === 'POST'
+          )
+        ).toBe(true),
+      { timeout: 2500 }
+    );
+    // pastikan tidak ada dialog native yang dipakai
+    expect(
+      (globalThis as unknown as { confirm: ReturnType<typeof vi.fn> }).confirm
+    ).not.toHaveBeenCalled();
   });
 
   it('buku: csv export + delete + bulk select', async () => {
@@ -622,6 +683,8 @@ describe('admin list page interactions', () => {
     if (selectAll) fireEvent.click(selectAll);
     fireEvent.click(screen.getAllByRole('checkbox')[0]);
     fireEvent.click(screen.getByRole('button', { name: /hapus buku/i }));
+    // Dialog konfirmasi inline (bukan confirm() native).
+    fireEvent.click(await screen.findByRole('button', { name: /ya, hapus/i }, { timeout: 2500 }));
     await waitFor(
       () =>
         expect(
@@ -687,6 +750,8 @@ describe('anggota + peminjaman interactions', () => {
     ) as HTMLInputElement | null;
     if (selectAll) fireEvent.click(selectAll);
     fireEvent.click(screen.getAllByRole('button', { name: /hapus anggota/i })[0]);
+    // Hapus anggota lewat dialog konfirmasi inline (bukan confirm() native).
+    fireEvent.click(await screen.findByRole('button', { name: /ya, hapus/i }, { timeout: 2500 }));
     await waitFor(
       () =>
         expect(
@@ -710,14 +775,15 @@ describe('anggota + peminjaman interactions', () => {
       jsonResponse(500, { error: { message: 'Server anggota penuh.' } })
     );
     fireEvent.click(view.container.querySelector('form button[type="submit"]')!);
-    // add failure surfaces through alert(), not inline text
+    // add failure surfaces inline (formError), not via alert()
     await waitFor(
-      () =>
-        expect(
-          (globalThis as unknown as { alert: ReturnType<typeof vi.fn> }).alert
-        ).toHaveBeenCalledWith(expect.stringMatching(/Server anggota penuh|Gagal menambah/i)),
+      () => expect(screen.getByText(/Server anggota penuh|Gagal menambah|gagal/i)).toBeTruthy(),
       { timeout: 2500 }
     );
+    // pastikan tidak memakai alert() native
+    expect(
+      (globalThis as unknown as { alert: ReturnType<typeof vi.fn> }).alert
+    ).not.toHaveBeenCalled();
   });
 
   it('peminjaman: row actions, modals, filters, bulk select', async () => {
@@ -741,6 +807,11 @@ describe('anggota + peminjaman interactions', () => {
     const overdueBtn = screen.getByRole('button', { name: /terlambat|overdue/i });
     fireEvent.click(overdueBtn);
     fireEvent.click(overdueBtn);
+    // muat awal ber-debounce 300ms: tunggu baris render sebelum header sortir
+    await waitFor(
+      () => expect(screen.getByRole('button', { name: /kembalikan pinjaman/i })).toBeTruthy(),
+      { timeout: 2500 }
+    );
     const sortBtn = screen.getAllByRole('button', { name: /urutkan berdasarkan/i })[0];
     if (sortBtn) fireEvent.click(sortBtn);
     const selectAll = view.container.querySelector(
@@ -877,6 +948,8 @@ describe('denda flows (admin + member) + konten reload', () => {
       { timeout: 2500 }
     );
     fireEvent.click(payBtn);
+    // Bayar via dialog konfirmasi inline (bukan window.confirm()).
+    fireEvent.click(await screen.findByRole('button', { name: /ya, bayar/i }, { timeout: 2500 }));
     await waitFor(
       () =>
         expect(

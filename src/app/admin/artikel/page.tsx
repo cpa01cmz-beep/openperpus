@@ -3,9 +3,11 @@
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
 import DataTable from '@/components/admin/DataTable';
+import ConfirmModal from '@/components/admin/ConfirmModal';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Pagination from '@/components/ui/Pagination';
+import StatusBadge from '@/components/ui/StatusBadge';
 import { errMsg } from '@/lib/admin-errors';
 
 type Article = { id: string; title: string; slug: string; status: string };
@@ -22,6 +24,10 @@ export default function ArtikelPage() {
     category: '',
     status: 'draft',
   });
+  const [formError, setFormError] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [pendingDelete, setPendingDelete] = useState<Article | null>(null);
 
   const load = useCallback(async () => {
     const q = new URLSearchParams({ page: String(page), per_page: '10' });
@@ -43,14 +49,23 @@ export default function ArtikelPage() {
 
   async function onAdd(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.title.trim() || !form.content_md.trim()) return alert('Judul & konten wajib.');
+    setFormError('');
+    setActionError('');
+    setNotice('');
+    if (!form.title.trim() || !form.content_md.trim()) {
+      setFormError('Judul & konten wajib.');
+      return;
+    }
     const res = await fetch('/api/articles', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(form),
     });
-    const json = await res.json();
-    if (!res.ok) return alert(errMsg(json));
+    const json = (await res.json().catch(() => ({}))) as { error?: { message?: string } | string };
+    if (!res.ok) {
+      setFormError(errMsg(json));
+      return;
+    }
     setForm({
       title: '',
       content_md: '',
@@ -59,14 +74,23 @@ export default function ArtikelPage() {
       category: '',
       status: 'draft',
     });
+    setNotice('Artikel ditambahkan.');
     load();
   }
 
-  async function onDelete(id: string) {
-    if (!confirm('Hapus artikel?')) return;
-    const res = await fetch(`/api/articles/${id}`, { method: 'DELETE' });
-    const json = await res.json();
-    if (!res.ok) return alert(errMsg(json));
+  async function confirmDelete() {
+    const row = pendingDelete;
+    if (!row) return;
+    setPendingDelete(null);
+    setActionError('');
+    setNotice('');
+    const res = await fetch(`/api/articles/${row.id}`, { method: 'DELETE' });
+    const json = (await res.json().catch(() => ({}))) as { error?: { message?: string } | string };
+    if (!res.ok) {
+      setActionError(errMsg(json));
+      return;
+    }
+    setNotice(`Artikel "${row.title}" dihapus.`);
     load();
   }
 
@@ -75,6 +99,24 @@ export default function ArtikelPage() {
   return (
     <div className="grid gap-4">
       <h1 className="text-2xl font-bold">Artikel</h1>
+      {notice && (
+        <div
+          role="status"
+          className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+        >
+          {notice}
+        </div>
+      )}
+      {formError && (
+        <p role="alert" className="text-sm text-red-600">
+          {formError}
+        </p>
+      )}
+      {actionError && (
+        <p role="alert" className="text-sm text-red-600">
+          {actionError}
+        </p>
+      )}
       <form onSubmit={onAdd} className="grid max-w-2xl gap-2 rounded-2xl border bg-white p-4">
         <Input
           id="artikel-title"
@@ -158,7 +200,11 @@ export default function ArtikelPage() {
             render: (r) => <span className="font-medium">{r.title}</span>,
           },
           { key: 'slug', header: 'Slug' },
-          { key: 'status', header: 'Status' },
+          {
+            key: 'status',
+            header: 'Status',
+            render: (r) => <StatusBadge status={r.status} />,
+          },
           {
             key: 'aksi',
             header: 'Aksi',
@@ -172,7 +218,7 @@ export default function ArtikelPage() {
                 </Link>
                 <button
                   type="button"
-                  onClick={() => onDelete(r.id)}
+                  onClick={() => setPendingDelete(r)}
                   aria-label={`Hapus artikel ${r.title}`}
                   className="inline-flex min-h-[44px] items-center text-red-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
@@ -184,8 +230,25 @@ export default function ArtikelPage() {
         ]}
         rows={rows}
         getRowKey={(r) => r.id}
+        emptyState={{
+          title: 'Belum ada artikel',
+          description: 'Artikel yang ditulis tampil di halaman /berita publik.',
+        }}
       />
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+
+      <ConfirmModal
+        open={pendingDelete !== null}
+        onClose={() => setPendingDelete(null)}
+        onConfirm={() => void confirmDelete()}
+        title="Hapus artikel"
+        description="Artikel langsung hilang dari halaman /berita publik."
+        confirmLabel="Ya, hapus"
+      >
+        <p>
+          Hapus artikel <strong>{pendingDelete?.title}</strong>?
+        </p>
+      </ConfirmModal>
     </div>
   );
 }

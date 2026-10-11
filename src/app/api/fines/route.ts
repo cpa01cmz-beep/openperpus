@@ -2,10 +2,12 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { jsonError, parsePaging, requireStaff } from '@/lib/supabase/auth';
 import { getSession } from '@/lib/session';
+import { sanitizeIlike } from '@/lib/search';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
 /**
- * GET /api/fines?member_id=&status=&page=&per_page=
+ * GET /api/fines?member_id=&status=&q=&page=&per_page=
+ *   — q mencari member_code | catatan denda (lintas relasi).
  *   — anggota: otomatis miliknya (member_id diabaikan); pustakawan+: semua/filter.
  * POST /api/fines { loan_id, member_id, amount, notes? } -> admin/librarian
  *   — denda manual tetap wajib terikat loan (loan_id NOT NULL); audit fines.create best-effort.
@@ -29,7 +31,7 @@ export async function GET(req: Request) {
   if ('errorResponse' in s) return s.errorResponse;
   const { supabase, isStaff, memberId } = s.session;
 
-  const { sp, page, perPage, from, to } = parsePaging(req.url, 20);
+  const { sp, page, perPage, q, from, to } = parsePaging(req.url, 20);
   const status = (sp.get('status') ?? '').trim();
   let memberFilter = (sp.get('member_id') ?? '').trim();
   if (!isStaff) memberFilter = memberId ?? '__none__';
@@ -46,6 +48,11 @@ export async function GET(req: Request) {
 
   if (status) query = query.eq('status', status);
   if (memberFilter) query = query.eq('member_id', memberFilter);
+  if (q) {
+    // Cari lintas relasi: kode anggota + catatan denda (embedded PostgREST).
+    const clean = sanitizeIlike(q);
+    if (clean) query = query.or(`members.member_code.ilike.%${clean}%,notes.ilike.%${clean}%`);
+  }
 
   const { data, error, count } = await query;
   if (error) {

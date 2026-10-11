@@ -239,8 +239,8 @@ describe('#57 UI + docs — tidak ada lagi definisi ganda', () => {
     expect(src).toContain("overdue: '1'");
     expect(src).toContain('Terlambat saja');
     expect(src).toContain('effectiveLoanStatus');
-    // Status tampil kolom = status efektif, bukan kolom mentah.
-    expect(src).toContain('render: (r) => statusOf(r)');
+    // Status tampil kolom = status efektif (#60: via StatusBadge), bukan kolom mentah.
+    expect(src).toContain('<StatusBadge status={statusOf(r)}');
   });
 
   it('dashboard memakai status efektif untuk badge aktivitas', () => {

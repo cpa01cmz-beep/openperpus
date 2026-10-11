@@ -4,6 +4,7 @@ import { useState, type FormEvent } from 'react';
 import DataTable from '@/components/admin/DataTable';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import Badge from '@/components/ui/Badge';
 
 type Testimonial = {
   id: string;
@@ -33,11 +34,16 @@ export function TestimonialsTab({
   onDeleteTestimonial: (id: string) => void;
 }) {
   const [testiForm, setTestiForm] = useState({ name: '', role: '', content: '', rating: 5 });
+  const [formError, setFormError] = useState('');
   const [busy, setBusy] = useState(false);
 
   const handleAdd = (e: FormEvent) => {
     e.preventDefault();
-    if (!testiForm.name.trim() || !testiForm.content.trim()) return alert('Nama & isi wajib.');
+    setFormError('');
+    if (!testiForm.name.trim() || !testiForm.content.trim()) {
+      setFormError('Nama & isi wajib.');
+      return;
+    }
     setBusy(true);
     onAddTestimonial({ ...testiForm, sort_order: 0 });
     setTestiForm({ name: '', role: '', content: '', rating: 5 });
@@ -108,6 +114,11 @@ export function TestimonialsTab({
         <Button type="submit" loading={busy} className="w-fit">
           + Tambah Testimoni
         </Button>
+        {formError && (
+          <p role="alert" className="text-sm text-red-600">
+            {formError}
+          </p>
+        )}
       </form>
       <DataTable<Testimonial>
         caption={`Daftar konten halaman ${page} dari ${totalPages}`}
@@ -121,7 +132,11 @@ export function TestimonialsTab({
           {
             key: 'is_active',
             header: 'Aktif',
-            render: (r) => (r.is_active ? 'Ya' : 'Tidak'),
+            render: (r) => (
+              <Badge tone={r.is_active ? 'emerald' : 'slate'}>
+                {r.is_active ? 'Aktif' : 'Nonaktif'}
+              </Badge>
+            ),
           },
           {
             key: 'aksi',

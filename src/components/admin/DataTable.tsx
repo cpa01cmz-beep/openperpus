@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import EmptyState from '@/components/ui/EmptyState';
 
 export type Column<T> = {
   key: string;
@@ -11,11 +12,19 @@ export type Column<T> = {
 
 export type SortDir = 'asc' | 'desc';
 
+export type TableEmptyState = {
+  title: string;
+  description?: string;
+  action?: ReactNode;
+};
+
 type Props<T> = {
   columns: Column<T>[];
   rows: T[];
   getRowKey: (row: T, i: number) => string;
   emptyText?: string;
+  /** State kosong kaya (judul + deskripsi + CTA) — dipakai bila ada. */
+  emptyState?: TableEmptyState;
   caption?: string;
   sortKey?: string;
   sortDir?: SortDir;
@@ -32,6 +41,7 @@ export default function DataTable<T>({
   rows,
   getRowKey,
   emptyText = 'Belum ada data.',
+  emptyState,
   caption = 'Tabel data admin',
   sortKey,
   sortDir,
@@ -47,6 +57,15 @@ export default function DataTable<T>({
     rows.length > 0 &&
     rows.every((r, i) => selectedKeys?.has(getRowKey(r, i)) ?? false);
   if (!rows.length) {
+    if (emptyState) {
+      return (
+        <EmptyState
+          title={emptyState.title}
+          description={emptyState.description}
+          action={emptyState.action}
+        />
+      );
+    }
     return (
       <div
         role="status"

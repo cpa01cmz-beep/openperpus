@@ -3,7 +3,10 @@
 import { useCallback, useEffect, useState } from 'react';
 import DataTable from '@/components/admin/DataTable';
 import StatCard from '@/components/admin/StatCard';
+import ConfirmModal from '@/components/admin/ConfirmModal';
+import FilterBar from '@/components/admin/FilterBar';
 import Pagination from '@/components/ui/Pagination';
+import StatusBadge from '@/components/ui/StatusBadge';
 import { checkoutReservation } from '@/lib/reservation-checkout';
 import { findExpiredCandidates, sweepExpiredReservations } from '@/lib/reservation-sweep';
 import { errMsg } from '@/lib/admin-errors';
@@ -22,16 +25,30 @@ type Reservation = {
 
 const STATUS_OPTS = ['', 'pending', 'ready', 'completed', 'cancelled', 'expired'];
 
+const NEXT_ACTION_LABEL: Record<'ready' | 'cancelled', string> = {
+  ready: 'Setujui (siap diambil)',
+  cancelled: 'Batalkan',
+};
+
 export default function ReservasiPage() {
   const [rows, setRows] = useState<Reservation[]>([]);
   const [status, setStatus] = useState('');
+  const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [actingId, setActingId] = useState<string | null>(null);
   const [apiMissing, setApiMissing] = useState(false);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [sweeping, setSweeping] = useState(false);
+  // Pengganti window.confirm: dialog konfirmasi per aksi.
+  const [pendingCheckout, setPendingCheckout] = useState<Reservation | null>(null);
+  const [pendingUpdate, setPendingUpdate] = useState<{
+    row: Reservation;
+    next: 'ready' | 'cancelled';
+  } | null>(null);
+  const [pendingSweep, setPendingSweep] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -41,6 +58,7 @@ export default function ReservasiPage() {
         page: String(page),
         per_page: '20',
         ...(status ? { status } : {}),
+        ...(search ? { q: search } : {}),
       });
       const res = await fetch(`/api/reservations?${q}`, { cache: 'no-store' });
       if (res.status === 404) {
@@ -51,7 +69,6 @@ export default function ReservasiPage() {
       const json = (await res.json()) as {
         data?: Reservation[];
         pagination?: { totalPages?: number };
-        meta?: { totalPages?: number };
       };
       if (!res.ok) throw new Error(errMsg(json));
       setApiMissing(false);
@@ -62,19 +79,32 @@ export default function ReservasiPage() {
     } finally {
       setLoading(false);
     }
-  }, [page, status]);
+  }, [page, status, search]);
 
   useEffect(() => {
-    load();
+    const t = setTimeout(load, 300);
+    return () => clearTimeout(t);
   }, [load]);
 
-  async function onCheckout(r: Reservation) {
-    // #73: checkout atomik 1-klik — POST /api/reservations/{id}/checkout
+  function onCheckout(r: Reservation) {
+    setPendingCheckout(r);
+  }
+
+  function onUpdate(id: string, next: 'ready' | 'cancelled') {
+    const row = rows.find((x) => x.id === id);
+    if (row) setPendingUpdate({ row, next });
+  }
+
+  async function runCheckout() {
+    const r = pendingCheckout;
+    if (!r) return;
+    setPendingCheckout(null);
+    // #92: checkout atomik 1-klik — POST /api/reservations/{id}/checkout
     // (RPC checkout_reservation_tx): loan + completed dalam satu transaksi.
-    // Gagal => rollback penuh; message server persis ditampilkan.
-    if (!confirm(`Pinjamkan buku "${r.books?.title ?? '-'}" ke ${r.members?.member_code ?? '-'}?`))
-      return;
+    // Gagal => rollback penuh; message server persis ditampilkan inline.
     setActingId(r.id);
+    setNotice('');
+    setError('');
     try {
       const out = await checkoutReservation(
         {
@@ -88,20 +118,25 @@ export default function ReservasiPage() {
         { reservationId: r.id }
       );
       if (out.skipped) return;
+      setNotice(`Reservasi ${r.members?.member_code ?? '-'} selesai — buku dipinjamkan.`);
       load();
     } catch (e) {
-      alert((e as Error).message);
+      setError((e as Error).message);
     } finally {
       setActingId(null);
     }
   }
 
-  async function onUpdate(id: string, next: 'ready' | 'cancelled') {
-    const label = next === 'ready' ? 'setujui (siap diambil)' : 'batalkan';
-    if (!confirm(`Yakin ${label} reservasi ini?`)) return;
-    setActingId(id);
+  async function runUpdate() {
+    const pending = pendingUpdate;
+    if (!pending) return;
+    setPendingUpdate(null);
+    const { row, next } = pending;
+    setActingId(row.id);
+    setNotice('');
+    setError('');
     try {
-      const res = await fetch(`/api/reservations/${id}`, {
+      const res = await fetch(`/api/reservations/${row.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: next }),
@@ -109,21 +144,31 @@ export default function ReservasiPage() {
       const json = await res.json().catch(() => ({}));
       if (res.status === 404) {
         setApiMissing(true);
-        return alert('API /api/reservations belum tersedia di backend.');
+        setError('API /api/reservations belum tersedia di backend.');
+        return;
       }
-      if (!res.ok) return alert(errMsg(json));
+      if (!res.ok) {
+        setError(errMsg(json));
+        return;
+      }
+      setNotice(`Reservasi diperbarui: ${NEXT_ACTION_LABEL[next]}.`);
       load();
+    } catch (e) {
+      setError((e as Error).message);
     } finally {
       setActingId(null);
     }
   }
 
-  async function onSweep() {
+  async function confirmSweep() {
     // S-roi6 1-klik: PUT expired per kandidat via reservation-sweep.ts.
-    // 422 per-baris diskip + failure count; 403/offline → zero sukses + alert.
-    if (expired.length === 0) return;
-    if (!confirm(`Tandai ${expired.length} reservasi kedaluwarsa sebagai expired?`)) return;
+    // 422 per-baris diskip + failure count; 403/offline -> zero sukses + inline error.
+    setPendingSweep(false);
+    const candidates = findExpiredCandidates(rows);
+    if (candidates.length === 0) return;
     setSweeping(true);
+    setNotice('');
+    setError('');
     try {
       const out = await sweepExpiredReservations(
         {
@@ -135,18 +180,20 @@ export default function ReservasiPage() {
             }>,
           isStaff: true,
         },
-        { candidates: expired.map((r) => ({ id: r.id })) }
+        { candidates: candidates.map((r) => ({ id: r.id })) }
       );
       if (out.failed > 0) {
-        alert(
+        setError(
           `${out.succeeded} ditandai kedaluwarsa, ${out.failed} gagal: ${out.errors
             .map((e) => `${e.id}: ${e.message}`)
             .join('; ')}`
         );
+      } else {
+        setNotice(`${out.succeeded} reservasi ditandai kedaluwarsa.`);
       }
       load();
     } catch (e) {
-      alert((e as Error).message);
+      setError((e as Error).message);
     } finally {
       setSweeping(false);
     }
@@ -182,6 +229,14 @@ export default function ReservasiPage() {
           {error}
         </div>
       )}
+      {notice && (
+        <div
+          role="status"
+          className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+        >
+          {notice}
+        </div>
+      )}
 
       {expired.length > 0 && (
         <div
@@ -199,7 +254,7 @@ export default function ReservasiPage() {
           </ul>
           <button
             type="button"
-            onClick={onSweep}
+            onClick={() => setPendingSweep(true)}
             disabled={sweeping}
             className="mt-2 inline-flex min-h-[44px] items-center justify-center rounded-lg bg-amber-600 px-3 font-semibold text-white transition hover:bg-amber-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
           >
@@ -218,7 +273,19 @@ export default function ReservasiPage() {
         />
       </div>
 
-      <div className="flex flex-wrap items-end gap-2 text-sm">
+      <FilterBar
+        search={{
+          id: 'reservasi-search',
+          label: 'Cari reservasi',
+          placeholder: 'Cari kode anggota / judul buku…',
+          value: search,
+          onChange: (v) => {
+            setPage(1);
+            setSearch(v);
+          },
+        }}
+        onReload={load}
+      >
         <div className="grid gap-1">
           <label htmlFor="filter-status" className="text-sm font-semibold text-slate-700">
             Filter status
@@ -239,14 +306,7 @@ export default function ReservasiPage() {
             ))}
           </select>
         </div>
-        <button
-          type="button"
-          onClick={load}
-          className="inline-flex min-h-[44px] items-center justify-center rounded-md border border-slate-200 bg-white px-3 font-semibold text-slate-700 transition hover:border-brand hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-        >
-          Muat ulang
-        </button>
-      </div>
+      </FilterBar>
 
       {loading ? (
         <p className="text-sm text-slate-500" aria-live="polite">
@@ -281,7 +341,7 @@ export default function ReservasiPage() {
                 </span>
               ),
             },
-            { key: 'status', header: 'Status' },
+            { key: 'status', header: 'Status', render: (r) => <StatusBadge status={r.status} /> },
             {
               key: 'aksi',
               header: 'Aksi',
@@ -324,11 +384,58 @@ export default function ReservasiPage() {
           ]}
           rows={rows}
           getRowKey={(r) => r.id}
-          emptyText="Belum ada reservasi."
+          emptyState={{
+            title: 'Belum ada reservasi',
+            description: search
+              ? `Tidak ada reservasi yang cocok dengan "${search}". Coba kata kunci lain.`
+              : 'Reservasi anggota akan muncul di sini untuk disetujui atau diselesaikan.',
+          }}
         />
       )}
 
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+
+      <ConfirmModal
+        open={pendingCheckout !== null}
+        onClose={() => setPendingCheckout(null)}
+        onConfirm={() => void runCheckout()}
+        title="Pinjamkan buku"
+        description="Loan dibuat dulu; reservasi ditandai selesai hanya jika loan berhasil."
+        confirmLabel="Ya, pinjamkan"
+      >
+        <p>
+          Pinjamkan buku <strong>{pendingCheckout?.books?.title ?? '-'}</strong> ke{' '}
+          <strong>{pendingCheckout?.members?.member_code ?? '-'}</strong>? Stok berkurang 1 dan
+          tempo otomatis 14 hari.
+        </p>
+      </ConfirmModal>
+
+      <ConfirmModal
+        open={pendingUpdate !== null}
+        onClose={() => setPendingUpdate(null)}
+        onConfirm={() => void runUpdate()}
+        title={pendingUpdate ? NEXT_ACTION_LABEL[pendingUpdate.next] : 'Perbarui reservasi'}
+        confirmLabel="Ya, lanjutkan"
+      >
+        <p>
+          Yakin{' '}
+          {pendingUpdate ? NEXT_ACTION_LABEL[pendingUpdate.next].toLowerCase() : 'memperbarui'}{' '}
+          reservasi <strong>{pendingUpdate?.row.members?.member_code ?? '-'}</strong> (
+          {pendingUpdate?.row.books?.title ?? '-'})?
+        </p>
+      </ConfirmModal>
+
+      <ConfirmModal
+        open={pendingSweep}
+        onClose={() => setPendingSweep(false)}
+        onConfirm={() => void confirmSweep()}
+        title="Tandai kedaluwarsa"
+        description={`${expired.length} reservasi akan ditandai expired.`}
+        confirmLabel="Ya, tandai"
+        loading={sweeping}
+      >
+        <p>Tandai {expired.length} reservasi kedaluwarsa sebagai expired?</p>
+      </ConfirmModal>
     </div>
   );
 }

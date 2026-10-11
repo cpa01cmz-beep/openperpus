@@ -164,6 +164,31 @@ components:
         maximum: 100
         default: 10
       description: Items per page (articles/banners/books/members/loans default 10; other collections default 20)
+    SearchParam:
+      name: q
+      in: query
+      schema:
+        type: string
+        maxLength: 100
+      description: >
+        Free-text search (sanitized for ilike). Members: member_code/phone/profiles.full_name.
+        Loans: members.member_code/books.title/notes. Reservations:
+        members.member_code/books.title/notes. Fines: members.member_code/notes.
+    SortParam:
+      name: sort
+      in: query
+      schema:
+        type: string
+      description: >
+        Sort column, whitelisted per collection. Members: member_code|status|phone|created_at|full_name.
+    OrderParam:
+      name: order
+      in: query
+      schema:
+        type: string
+        enum: [asc, desc]
+      description: >
+        Sort direction (default per collection; members defaults asc except created_at).
 paths:
   /api/health:
     get:
@@ -619,6 +644,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/PageParam'
         - $ref: '#/components/parameters/PerPageParam'
+        - $ref: '#/components/parameters/SearchParam'
       responses:
         '200':
           description: ok
@@ -694,11 +720,7 @@ paths:
           schema:
             type: string
             format: uuid
-        - name: q
-          in: query
-          description: Search in loan notes.
-          schema:
-            type: string
+        - $ref: '#/components/parameters/SearchParam'
       responses:
         '200':
           description: ok
@@ -824,6 +846,9 @@ paths:
       parameters:
         - $ref: '#/components/parameters/PageParam'
         - $ref: '#/components/parameters/PerPageParam'
+        - $ref: '#/components/parameters/SearchParam'
+        - $ref: '#/components/parameters/SortParam'
+        - $ref: '#/components/parameters/OrderParam'
       responses:
         '200':
           description: ok
@@ -1014,6 +1039,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/PageParam'
         - $ref: '#/components/parameters/PerPageParam'
+        - $ref: '#/components/parameters/SearchParam'
       responses:
         '200':
           description: ok

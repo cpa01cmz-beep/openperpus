@@ -15,6 +15,7 @@ import { useRouter } from 'next/navigation';
 import { ALLOWED_LAYOUT, familyOf, type SectionId } from '@/lib/theme-compat';
 import { getTheme } from '@/lib/themes';
 import { errMsg } from '@/lib/admin-errors';
+import ConfirmModal from '@/components/admin/ConfirmModal';
 import {
   LAYOUT_DRAFT_EVENT,
   SECTION_LABELS_ID,
@@ -107,6 +108,7 @@ export default function LayoutPicker({ currentBase, initialOverrides, onDraftCha
   );
   const [status, setStatus] = useState<Status>('idle');
   const [notice, setNotice] = useState('');
+  const [resetOpen, setResetOpen] = useState(false);
 
   const enabledCount = useMemo(() => rows.filter((r) => r.enabled).length, [rows]);
   const canSave = enabledCount >= 1 && status !== 'saving';
@@ -181,11 +183,8 @@ export default function LayoutPicker({ currentBase, initialOverrides, onDraftCha
     }
   }
 
-  async function onReset() {
-    const ok = window.confirm(
-      'Kembalikan komposisi layout ke bawaan preset? Draf yang belum disimpan akan hilang.'
-    );
-    if (!ok) return;
+  async function confirmReset() {
+    setResetOpen(false);
     setNotice('');
     setStatus('saving');
     try {
@@ -352,13 +351,25 @@ export default function LayoutPicker({ currentBase, initialOverrides, onDraftCha
           <button
             type="button"
             disabled={status === 'saving'}
-            onClick={onReset}
+            onClick={() => setResetOpen(true)}
             className={`rounded-xl border px-4 py-2 text-sm font-medium text-slate-700 transition disabled:opacity-50 ${FOCUS_RING} hover:border-slate-400`}
           >
             Reset ke preset
           </button>
         </div>
       </div>
+
+      <ConfirmModal
+        open={resetOpen}
+        onClose={() => setResetOpen(false)}
+        onConfirm={() => void confirmReset()}
+        title="Reset ke preset"
+        description="Komposisi layout kembali ke bawaan preset; draf yang belum disimpan hilang."
+        confirmLabel="Ya, reset"
+        loading={status === 'saving'}
+      >
+        <p>Kembalikan komposisi layout ke bawaan preset? Draf yang belum disimpan akan hilang.</p>
+      </ConfirmModal>
     </section>
   );
 }
