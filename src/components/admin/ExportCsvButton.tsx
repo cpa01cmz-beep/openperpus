@@ -60,7 +60,9 @@ function filenameFromHeader(header: string | null, fallback: string): string {
  * Null = nilai tak layak → pemanggil pakai fallback (stempel WIB kanonis).
  */
 const SAFE_NAME = /^[A-Za-z0-9][A-Za-z0-9 ._()-]*\.csv$/i;
-const WIN_RESERVED = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])(\..*)?$/i;
+// \s* di tengah: allowlist sendiri mengizinkan spasi, jadi "CON .csv" sama
+// reserved-nya dengan "CON.csv" — tanpa itu guard bolong terhadap allowlist.
+const WIN_RESERVED = /^(con|prn|aux|nul|com[1-9]|lpt[1-9])\s*(\..*)?$/i;
 const MAX_NAME_LEN = 100;
 
 function safeDownloadName(raw: string | undefined): string | null {
