@@ -108,6 +108,42 @@ describe('ExportCsvButton (#78/#133)', () => {
     expect(anchor.download).toMatch(/^denda-\d{4}-\d{2}-\d{2}\.csv$/);
   });
 
+  it('Content-Disposition RFC 5987 filename* dipakai (di-decode UTF-8)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      okExport({
+        'content-disposition':
+          'attachment; filename="fallback.csv"; filename*=UTF-8\'\'laporan%20pustakawan.csv',
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    render(<ExportCsvButton filename="buku.csv" headers={['ID']} rows={[['b1']]} scope="books" />);
+    fireEvent.click(exportAllButton());
+
+    await waitFor(() => expect(clickSpy).toHaveBeenCalledTimes(1));
+    expect((clickSpy.mock.instances[0] as HTMLAnchorElement).download).toBe(
+      'laporan pustakawan.csv'
+    );
+  });
+
+  it('percent-encoding rusak di filename*: ekspor sukses tetap jalan (jatuh ke filename="…")', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      okExport({
+        'content-disposition': 'attachment; filename="buku-2026-10-11.csv"; filename*=UTF-8\'\'%E0',
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    render(<ExportCsvButton filename="buku.csv" headers={['ID']} rows={[['b1']]} scope="books" />);
+    fireEvent.click(exportAllButton());
+
+    await waitFor(() => expect(clickSpy).toHaveBeenCalledTimes(1));
+    expect((clickSpy.mock.instances[0] as HTMLAnchorElement).download).toBe('buku-2026-10-11.csv');
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
   it('401 sesi habis: dialihkan ke login?next=… tanpa mengunduh apa pun', async () => {
     const fetchMock = vi.fn().mockResolvedValue(errExport(401, 'UNAUTHORIZED', 'Silakan login.'));
     vi.stubGlobal('fetch', fetchMock);
@@ -152,6 +188,26 @@ describe('ExportCsvButton (#78/#133)', () => {
 
     await waitFor(() =>
       expect(screen.getByRole('alert')).toHaveTextContent('Gagal mengekspor data.')
+    );
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
+  });
+
+  it('error dengan body non-JSON: pesan fallback tampil, bukan JSON mentah', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      headers: { get: () => null },
+      json: async () => {
+        throw new Error('bukan JSON');
+      },
+    } as unknown as Response);
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<ExportCsvButton filename="buku.csv" headers={['ID']} rows={[['b1']]} scope="books" />);
+    fireEvent.click(exportAllButton());
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent('Gagal mengekspor seluruh data.')
     );
     expect(URL.createObjectURL).not.toHaveBeenCalled();
   });
