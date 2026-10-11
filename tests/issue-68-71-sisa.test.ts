@@ -43,7 +43,11 @@ describe('#68 katalog search 1 RTT (window count)', () => {
     const src = read('src/lib/books/catalog.ts');
     const idx = src.indexOf('async function fetchBooksPagedUncached');
     expect(idx, 'fetchBooksPagedUncached must exist').toBeGreaterThanOrEqual(0);
-    const block = src.slice(idx, src.indexOf('// Non-search path'));
+    // Batas blok: fungsi top-level berikutnya (perbandingan '// Non-search path'
+    // tidak dipakai — komentar itu juga ada di fetchBooksUncached yang lebih dulu).
+    const rest = src.slice(idx);
+    const nextFn = rest.slice(1).search(/\n(?:export )?(?:async )?function /);
+    const block = nextFn === -1 ? rest : rest.slice(0, nextFn + 1);
     expect(block).toContain('searchBooksPageViaRpc');
     expect(block).not.toContain('searchBooksViaRpc');
   });
