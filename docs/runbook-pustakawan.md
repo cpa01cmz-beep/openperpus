@@ -89,6 +89,13 @@ plus `cancelled` (batal) dan `expired` (kedaluwarsa).
 > API: `PUT /api/reservations/{id} {status}` (state-machine dijaga server:
 > hanya `pending→ready`, `*→cancelled/expired`). `completed` **tidak** bisa
 > lewat PUT — hanya via checkout atomik di atas (issue #73).
+>
+> Sweep otomatis (isu #76): reservasi `pending`/`ready` yang lewat `expires_at`
+> (+3 hari sejak dibuat, migrasi 0026) ditandai `expired` sendiri tiap malam
+> oleh Vercel Cron `GET /api/cron/sweep-reservations`. Tombol sweep manual di
+> halaman ini tetap ada sebagai cadangan. Verifikasi: `select count(*) from
+> public.reservations where status in ('pending','ready') and expires_at < now();`
+> harus 0 tak lama setelah jadwal cron.
 
 ### 2.6 Opname stok — `/admin/buku`
 
