@@ -77,6 +77,18 @@ supabase/migrations/0019_role_guard.sql
 supabase/migrations/0020_sketch_theme.sql
 supabase/migrations/0021_services.sql
 supabase/migrations/0022_theme_overrides.sql
+supabase/migrations/0023_loan_eligibility.sql
+supabase/migrations/0024_checkout_reservation_tx.sql
+supabase/migrations/0025_dashboard_stats_rtt.sql
+supabase/migrations/0026_loan_policy.sql
+supabase/migrations/0027_fines_sop.sql
+supabase/migrations/0028_issue67_fk_stock_fine.sql   # dua file 0028_*: urut nama file
+supabase/migrations/0028_reservation_expiry.sql      #   (saling independen, bebas urutan)
+supabase/migrations/0029_issue65_fines_rls.sql
+supabase/migrations/0030_issue75_soft_delete.sql
+supabase/migrations/0031_issue68_search_books_page.sql
+supabase/migrations/0032_issue75_stock_opname.sql
+supabase/migrations/0033_harden_stock_opname_tx.sql  # jalankan juga bila 0032 sudah pernah jalan
 ```
 
 Alternatif CLI: `supabase db push` (butuh `supabase login` + `supabase link`) —
@@ -153,10 +165,10 @@ playwright-list); pantau lewat `gh pr checks`.
 
 ```
 src/app/admin/     halaman admin (lihat runbook §3.1)
-src/app/api/       route handler REST (33 file route.ts)
+src/app/api/       route handler REST (42 file route.ts, parity dengan openapi.yaml)
 src/lib/           logika: loans-return, finecalc, reservation-*, settings, themes…
 src/middleware.ts  CSP nonce + proteksi rute
-supabase/          migrations 0001→0022 + seed.sql + README operasional
+supabase/          migrations 0001→0033 + seed.sql + README operasional
 openapi.yaml       kontrak OpenAPI (dilayani di /api/docs)
 tests/             vitest (unit/components) + tests/e2e (playwright)
 docs/              dokumen ini + ADR + api-contract + db-design + architecture
