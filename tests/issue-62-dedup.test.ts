@@ -139,6 +139,24 @@ describe('#62 AC1: satu hook list + satu hook tarif', () => {
   });
 });
 
+describe('#62 kontrak hook daftar', () => {
+  it('reload() menembus debounce (aksi tulis tak menjadikan daftar basi)', () => {
+    // Regresi: reload() yang ikut tertunda 300 ms membuat baris baru tidak
+    // muncul setelah mutasi (dulu ini ditangkap coverage-interactions).
+    const hook = read('src/hooks/useAdminList.ts');
+    expect(hook, 'reload harus tandai panggilan sebagai segera').toContain('immediateRef');
+    expect(hook, 'debounce hanya untuk perubahan params').toMatch(
+      /if \(immediate \|\| debounceMs <= 0\)/
+    );
+  });
+
+  it('hanya membaca envelope pagination — bukan json.meta (kontrak #61)', () => {
+    const hook = read('src/hooks/useAdminList.ts');
+    expect(hook).not.toContain('json.meta');
+    expect(hook).toContain('json.pagination?.totalPages ?? 1');
+  });
+});
+
 describe('#62 AC3: PER_PAGE tunggal', () => {
   it('src tidak lagi memakai literal per_page 10/20/50 di luar pagination.ts', () => {
     const offenders: string[] = [];
