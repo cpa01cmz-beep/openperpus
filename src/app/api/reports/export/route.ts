@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireStaff, jsonError } from '@/lib/supabase/auth';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
+import { formatStamp } from '@/lib/format';
 import { rowsToCSV } from '@/lib/csv-export';
 import {
   EXPORT_CHUNK,
@@ -108,7 +109,7 @@ export async function GET(req: Request) {
     },
   });
 
-  const stamp = new Date().toLocaleDateString('sv-SE');
+  const stamp = formatStamp();
   const dated = def.filename.replace(/\.csv$/, `-${stamp}.csv`);
   return new NextResponse(stream, {
     headers: {

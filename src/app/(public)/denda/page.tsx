@@ -6,7 +6,7 @@ import Breadcrumb from '@/components/public/Breadcrumb';
 import Modal from '@/components/ui/Modal';
 import { useAdminList } from '@/hooks/useAdminList';
 import { useFineRate } from '@/hooks/useFineRate';
-import { formatRp, num } from '@/lib/format';
+import { formatAngka, formatRp, formatTanggal, num } from '@/lib/format';
 import { PER_PAGE } from '@/lib/pagination';
 import { errMsg } from '@/lib/admin-errors';
 
@@ -304,9 +304,7 @@ export default function DendaSayaPage() {
               {receipt.paid_at && (
                 <p>
                   Lunas pada:{' '}
-                  <span className="font-semibold">
-                    {new Date(receipt.paid_at).toLocaleDateString('id-ID')}
-                  </span>
+                  <span className="font-semibold">{formatTanggal(receipt.paid_at)}</span>
                 </p>
               )}
               {copied && (
@@ -339,7 +337,7 @@ export default function DendaSayaPage() {
         <h1 className="mt-3 text-2xl font-bold">Denda Saya</h1>
         <p className="text-sm text-slate-500">
           Denda terbentuk otomatis saat pengembalian terlambat (Rp
-          {finePerDay.toLocaleString('id-ID')}/hari, tarif denda_per_hari). Bayar langsung tanpa
+          {formatAngka(finePerDay)}/hari, tarif denda_per_hari). Bayar langsung tanpa
           payment gateway.
         </p>
       </div>
@@ -450,10 +448,10 @@ export default function DendaSayaPage() {
                     </p>
                     <p className="mt-1 text-sm">
                       Status: <span className="font-semibold">{r.status}</span>
-                      {' · '}Terbit: {new Date(r.issued_at).toLocaleDateString('id-ID')}
+                      {' · '}Terbit: {formatTanggal(r.issued_at)}
                       {r.paid_at && (
                         <>
-                          {' · '}Lunas pada: {new Date(r.paid_at).toLocaleDateString('id-ID')}
+                          {' · '}Lunas pada: {formatTanggal(r.paid_at)}
                         </>
                       )}
                       {' · '}Metode: {methodOf(r.notes)}

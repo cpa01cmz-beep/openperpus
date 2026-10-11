@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import Button from '@/components/ui/Button';
 import SearchCombobox, { type SearchOption } from './SearchCombobox';
 import { evaluateLoanEligibility } from '@/lib/loan-eligibility';
+import { formatTanggal } from '@/lib/format';
 // Isu #69: POST checkout dibatasi waktu agar form tidak menggantung selamanya
 // ketika Supabase lambat (pesan timeout tampil di blok error yang sama).
 import { clientFetch } from '@/lib/api-client';
@@ -45,7 +46,7 @@ export default function LoanForm({
   const duePreview = useMemo(() => {
     const d = new Date();
     d.setDate(d.getDate() + days);
-    return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+    return formatTanggal(d, { day: 'numeric', month: 'long', year: 'numeric' });
   }, [days]);
 
   const selectedBook =

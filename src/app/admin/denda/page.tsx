@@ -11,9 +11,9 @@ import Pagination from '@/components/ui/Pagination';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { useAdminList } from '@/hooks/useAdminList';
 import { useFineRate } from '@/hooks/useFineRate';
-import { FINE_STATUS } from '@/lib/enums';
+import { FINE_STATUS, PAYMENT_METHOD } from '@/lib/enums';
 import { errMsg } from '@/lib/admin-errors';
-import { formatRp, num } from '@/lib/format';
+import { formatAngka, formatRp, formatTanggal, num } from '@/lib/format';
 import { PER_PAGE } from '@/lib/pagination';
 import { isAdminRole } from '@/lib/roles';
 
@@ -48,7 +48,6 @@ type Fine = {
   fine_waivers?: Waiver[] | null;
 };
 
-const METHOD_OPTS = ['tunai', 'transfer', 'qris'];
 const REASON_MIN = 10;
 
 const fmtRp = formatRp;
@@ -268,7 +267,7 @@ export default function DendaPage() {
         <h1 className="text-2xl font-bold">Denda</h1>
         <p className="text-sm text-slate-500">
           Denda terbentuk otomatis saat pengembalian terlambat (Rp
-          {finePerDay.toLocaleString('id-ID')}/hari, tarif denda_per_hari; dipatok plafon denda_maks
+          {formatAngka(finePerDay)}/hari, tarif denda_per_hari; dipatok plafon denda_maks
           bila diatur). Pembayaran mencetak nomor struk; pembebasan butuh alasan + approval admin
           lain.
         </p>
@@ -374,9 +373,9 @@ export default function DendaPage() {
             value={method}
             onChange={(e) => setMethod(e.target.value)}
           >
-            {METHOD_OPTS.map((m) => (
-              <option key={m} value={m}>
-                {m}
+            {PAYMENT_METHOD.map((m) => (
+              <option key={m.value} value={m.value}>
+                {m.label}
               </option>
             ))}
           </select>
@@ -422,7 +421,7 @@ export default function DendaPage() {
             {
               key: 'issued_at',
               header: 'Terbit',
-              render: (r) => new Date(r.issued_at).toLocaleDateString('id-ID'),
+              render: (r) => formatTanggal(r.issued_at),
             },
             {
               key: 'aksi',
@@ -544,9 +543,9 @@ export default function DendaPage() {
               value={method}
               onChange={(e) => setMethod(e.target.value)}
             >
-              {METHOD_OPTS.map((m) => (
-                <option key={m} value={m}>
-                  {m}
+              {PAYMENT_METHOD.map((m) => (
+                <option key={m.value} value={m.value}>
+                  {m.label}
                 </option>
               ))}
             </select>

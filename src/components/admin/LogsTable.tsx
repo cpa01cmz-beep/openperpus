@@ -1,6 +1,7 @@
 'use client';
 
 import DataTable from '@/components/admin/DataTable';
+import { formatJam, formatTanggal } from '@/lib/format';
 
 export type LogRow = {
   id: string;
@@ -28,11 +29,9 @@ export default function LogsTable({ rows, caption }: { rows: LogRow[]; caption?:
           header: 'Waktu',
           render: (r) => (
             <span className="whitespace-nowrap">
-              {new Date(r.created_at).toLocaleDateString('id-ID')}
+              {formatTanggal(r.created_at)}
               <br />
-              <span className="text-xs text-slate-500">
-                {new Date(r.created_at).toLocaleTimeString('id-ID')}
-              </span>
+              <span className="text-xs text-slate-500">{formatJam(r.created_at)}</span>
             </span>
           ),
         },

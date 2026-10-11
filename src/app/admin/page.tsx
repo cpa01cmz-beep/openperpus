@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { calcFine, FINE_PER_DAY } from '@/lib/finecalc';
-import { formatRp, num } from '@/lib/format';
+import { formatRp, formatTanggal, num } from '@/lib/format';
+import { statusLabel } from '@/components/ui/StatusBadge';
 import { effectiveLoanStatus } from '@/lib/loans-overdue';
 import StatCard from '@/components/admin/StatCard';
 import Badge from '@/components/ui/Badge';
@@ -18,7 +19,7 @@ function seedWeekDays(): { label: string; count: number }[] {
     const d = new Date(now);
     d.setUTCDate(d.getUTCDate() - i);
     out.push({
-      label: d.toLocaleDateString('id-ID', { weekday: 'short', timeZone: 'UTC' }),
+      label: formatTanggal(d, { weekday: 'short', timeZone: 'UTC' }),
       count: 0,
     });
   }
@@ -94,7 +95,7 @@ export default async function AdminDashboard() {
   const days = perDay.length
     ? perDay.map((d) => ({
         // Bucket SQL hari UTC — label eksplisit UTC agar tak geser sehari bila TZ runtime non-UTC.
-        label: new Date(`${d.day}T00:00:00Z`).toLocaleDateString('id-ID', {
+        label: formatTanggal(`${d.day}T00:00:00Z`, {
           weekday: 'short',
           timeZone: 'UTC',
         }),
@@ -225,7 +226,7 @@ export default async function AdminDashboard() {
                           : 'bg-green-100 text-green-800'
                       }`}
                     >
-                      {eff}
+                      {statusLabel(eff)}
                     </span>
                   </li>
                 );

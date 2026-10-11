@@ -31,7 +31,32 @@ const eslintConfig = [
   },
   {
     files: ['src/**/*.{ts,tsx}'],
-    rules: { '@typescript-eslint/no-explicit-any': 'error' },
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'error',
+      // Issue #79: nol dialog native di UI — ganti ConfirmModal/Modal + error inline.
+      'no-alert': 'error',
+      'no-restricted-globals': [
+        'error',
+        { name: 'confirm', message: 'Pakai ConfirmModal, bukan confirm() native (issue #79).' },
+        { name: 'prompt', message: 'Pakai Modal + form, bukan prompt() native (issue #79).' },
+      ],
+    },
+  },
+  {
+    // Issue #79: satu helper format — toLocale* id-ID hanya di src/lib/format.ts.
+    files: ['src/**/*.{ts,tsx}'],
+    ignores: ['src/lib/format.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector:
+            'CallExpression[callee.property.name=/^(toLocaleString|toLocaleDateString|toLocaleTimeString)$/]',
+          message:
+            'Pakai formatRp/formatAngka/formatTanggal/formatJam/formatStamp dari @/lib/format (issue #79).',
+        },
+      ],
+    },
   },
   {
     files: ['tests/**/*.ts', 'tests/**/*.tsx'],
