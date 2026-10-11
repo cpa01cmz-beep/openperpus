@@ -27,6 +27,20 @@ describe('#68 sisa loans GET', () => {
     expect(src).toContain('Cache-Control');
     expect(src).toContain('no-store');
   });
+
+  it('loans GET select kolom sempit (bukan *) + embed member_code/title', () => {
+    const src = read('src/app/api/loans/route.ts');
+    // over-fetch: select('*') pada list dilarang
+    expect(src).not.toMatch(/\.select\(\s*['"]\*['"]/);
+    // kolom inti list + relasi yang dikonsumsi halaman sirkulasi
+    expect(src).toContain(
+      'id,book_id,member_id,borrowed_at,due_at,returned_at,status,fine_amount,notes'
+    );
+    expect(src).toContain('members(member_code)');
+    expect(src).toContain('books(title)');
+    // count estimated (bukan exact) tetap dipertahankan
+    expect(src).toContain("{ count: 'estimated' }");
+  });
 });
 
 describe('#68 katalog search 1 RTT (window count)', () => {
