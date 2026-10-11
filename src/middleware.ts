@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { updateSession } from '@/lib/supabase/middleware';
-<import { checkRateLimit, WRITE_API_LIMIT, WRITE_API_WINDOW_MS, READ_SENSITIVE_LIMIT, READ_SENSITIVE_WINDOW_MS, LOGIN_LIMIT, LOGIN_WINDOW_MS } from '@/lib/rate-limit';
+import { checkRateLimit, WRITE_API_LIMIT, WRITE_API_WINDOW_MS, READ_SENSITIVE_LIMIT, READ_SENSITIVE_WINDOW_MS, LOGIN_LIMIT, LOGIN_WINDOW_MS } from '@/lib/rate-limit';
 import { isStaffRole } from '@/lib/roles';
 import { ROLE_HEADER } from '@/lib/role-claim';
 
