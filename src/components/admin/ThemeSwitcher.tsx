@@ -42,7 +42,7 @@ export default function ThemeSwitcher({ current }: { current: string }) {
   }
 
   return (
-    <section className="grid max-w-4xl gap-4 rounded-2xl border bg-white p-6">
+    <section className="grid max-w-4xl gap-4 rounded-2xl border bg-surface p-6 text-ink">
       <div>
         <h2 className="font-semibold">Tema Tampilan</h2>
         <p className="text-sm text-slate-500">
@@ -63,13 +63,13 @@ export default function ThemeSwitcher({ current }: { current: string }) {
               aria-pressed={isActive}
               onClick={() => onSelect(t.id)}
               className={`grid gap-2 rounded-xl border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 disabled:opacity-50 ${
-                isActive ? 'border-slate-900 ring-2 ring-slate-900' : 'hover:border-slate-400'
+                isActive ? 'border-brand ring-2 ring-brand' : 'hover:border-slate-400'
               }`}
             >
               <span className="flex items-center justify-between gap-2">
                 <span className="font-semibold text-sm">{t.name}</span>
                 {isActive && (
-                  <span className="rounded-full bg-slate-900 px-2 py-0.5 text-xs font-medium text-white">
+                  <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-medium text-white">
                     Aktif
                   </span>
                 )}
@@ -104,7 +104,7 @@ export default function ThemeSwitcher({ current }: { current: string }) {
               <span className="flex items-center gap-2">
                 <span
                   title={t.fonts.heading}
-                  className="text-base font-bold leading-none text-slate-900"
+                  className="text-base font-bold leading-none text-ink"
                   style={{ fontFamily: t.fonts.heading }}
                 >
                   Aa

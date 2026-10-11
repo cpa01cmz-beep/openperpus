@@ -69,15 +69,15 @@ export default function DataTable<T>({
     return (
       <div
         role="status"
-        className="rounded-xl border bg-white p-8 text-center text-sm text-slate-500"
+        className="rounded-xl border bg-surface p-8 text-center text-sm text-slate-500"
       >
         {emptyText}
       </div>
     );
   }
   return (
-    <div className="overflow-x-auto rounded-xl border bg-white">
-      <table className="w-full min-w-[640px] text-left text-sm">
+    <div className="overflow-x-auto rounded-xl border bg-white max-w-full">
+      <table className="hidden w-full min-w-[640px] text-left text-sm sm:table">
         <caption className="sr-only">{caption}</caption>
         <thead className="sticky top-0 z-20">
           <tr className="border-b bg-slate-50 text-slate-500">
@@ -143,7 +143,7 @@ export default function DataTable<T>({
                 {columns.map((c, ci) => (
                   <td
                     key={c.key}
-                    className={`px-4 py-3 align-top ${ci === 0 && !showBulk ? 'sticky left-0 z-10 bg-white' : ''}`}
+                    className={`px-4 py-3 align-top ${ci === 0 ? 'max-w-[220px] truncate' : ''} ${ci === 0 && !showBulk ? 'sticky left-0 z-10 bg-white' : ''}`}
                   >
                     {c.render
                       ? c.render(row)
@@ -155,6 +155,38 @@ export default function DataTable<T>({
           })}
         </tbody>
       </table>
+      <ul className="grid gap-2 p-2 sm:hidden">
+        {rows.map((row, i) => {
+          const rk = getRowKey(row, i);
+          const first = columns[0];
+          return (
+            <li key={rk} className="rounded-xl border bg-white p-3 text-sm">
+              {showBulk && (
+                <input
+                  type="checkbox"
+                  aria-label={bulkLabel ? bulkLabel(rk) : `Pilih baris ${rk}`}
+                  checked={selectedKeys?.has(rk) ?? false}
+                  onChange={() => onToggleRow?.(rk)}
+                  className="mb-2 h-5 w-5 accent-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                />
+              )}
+              <p className="truncate font-medium">
+                {first?.render
+                  ? first.render(row)
+                  : String((row as Record<string, unknown>)[first?.key ?? ''] ?? '-')}
+              </p>
+              {columns.slice(1).map((c) => (
+                <p key={c.key} className="mt-1 flex items-start justify-between gap-2 text-xs">
+                  <span className="shrink-0 text-slate-500">{c.header}</span>
+                  <span className="min-w-0 truncate text-right">
+                    {c.render ? c.render(row) : String((row as Record<string, unknown>)[c.key] ?? '-')}
+                  </span>
+                </p>
+              ))}
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }

@@ -129,12 +129,12 @@ export default async function AdminDashboard() {
         />
       </div>
 
-      <section className="rounded-2xl border bg-white p-6">
+      <section className="rounded-2xl border bg-surface p-6">
         <div className="mb-4 flex items-center justify-between gap-2">
           <h2 className="font-semibold">Perlu dikembalikan (terlambat)</h2>
           <Link
             href="/admin/peminjaman?overdue=1"
-            className="text-sm font-medium text-slate-700 underline"
+            className="inline-flex min-h-[44px] items-center text-sm font-medium text-ink underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
             Lihat antrean
           </Link>
@@ -158,7 +158,7 @@ export default async function AdminDashboard() {
                     ? o.members[0]?.member_code
                     : o.members?.member_code) ?? '?'}{' '}
                   → {(Array.isArray(o.books) ? o.books[0]?.title : o.books?.title) ?? '?'}
-                  <Badge tone="rose">telat {lateDays} hari</Badge>
+                  <Badge tone="rose" className="ml-2">telat {lateDays} hari</Badge>
                 </span>
                 <span className="shrink-0 text-xs font-semibold tabular-nums">
                   {formatRp(preview)}
@@ -170,7 +170,7 @@ export default async function AdminDashboard() {
       </section>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <section className="rounded-2xl border bg-white p-6">
+        <section className="rounded-2xl border bg-surface p-6">
           <h2 className="mb-4 font-semibold">Peminjaman 7 hari terakhir</h2>
           <div
             className="flex h-32 items-end gap-2"
@@ -180,7 +180,7 @@ export default async function AdminDashboard() {
             {days.map((d) => (
               <div key={d.label} className="flex flex-1 flex-col items-center gap-1">
                 <div
-                  className="w-full flex-1 rounded-t bg-slate-900"
+                  className="w-full flex-1 rounded-t bg-brand"
                   style={{ height: `${Math.max(4, (d.count / max) * 100)}px` }}
                   title={`${d.count} pinjam`}
                 />
@@ -191,7 +191,7 @@ export default async function AdminDashboard() {
           </div>
         </section>
 
-        <section className="rounded-2xl border bg-white p-6">
+        <section className="rounded-2xl border bg-surface p-6">
           <h2 className="mb-4 font-semibold">Aktivitas terbaru</h2>
           <ul className="grid gap-2 text-sm">
             {(recent ?? []).length === 0 && (
@@ -218,15 +218,9 @@ export default async function AdminDashboard() {
                         : r.members?.member_code) ?? '?'}{' '}
                       → {(Array.isArray(r.books) ? r.books[0]?.title : r.books?.title) ?? '?'}
                     </span>
-                    <span
-                      className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${
-                        eff === 'borrowed' || eff === 'overdue'
-                          ? 'bg-amber-100 text-amber-800'
-                          : 'bg-green-100 text-green-800'
-                      }`}
-                    >
+                    <Badge tone={eff === 'borrowed' || eff === 'overdue' ? 'amber' : 'emerald'}>
                       {eff}
-                    </span>
+                    </Badge>
                   </li>
                 );
               }
