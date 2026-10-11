@@ -29,12 +29,44 @@ describe('#68 sisa loans GET', () => {
   });
 });
 
-describe('#68 sisa katalog search 2 RTT', () => {
-  it('ponytail window-count upgrade path, tanpa refactor RPC', () => {
+describe('#68 katalog search 1 RTT (window count)', () => {
+  it('catalog.ts memakai RPC search_books_page untuk page+total+relasi', () => {
     const src = read('src/lib/books/catalog.ts');
-    expect(src).toContain('ponytail');
-    expect(src).toContain('window-count');
-    expect(src).toContain('searchBooksViaRpc');
+    expect(src).toContain("supabase.rpc('search_books_page'");
+    expect(src).toContain('searchBooksPageViaRpc');
+    // pola lama 2x RPC (page + total) harus hilang
+    expect(src).not.toContain('searchBooksViaRpc');
+    expect(src).not.toContain("rpc('search_books'");
+  });
+
+  it('search path paged tidak lagi fetch terpisah untuk total', () => {
+    const src = read('src/lib/books/catalog.ts');
+    const idx = src.indexOf('async function fetchBooksPagedUncached');
+    expect(idx, 'fetchBooksPagedUncached must exist').toBeGreaterThanOrEqual(0);
+    const block = src.slice(idx, src.indexOf('// Non-search path'));
+    expect(block).toContain('searchBooksPageViaRpc');
+    expect(block).not.toContain('searchBooksViaRpc');
+  });
+
+  it('migrasi 0031: search_books_page window count + join kategori/rak + kolom sempit', () => {
+    const sql = read('supabase/migrations/0031_issue68_search_books_page.sql');
+    expect(sql).toContain('CREATE OR REPLACE FUNCTION public.search_books_page');
+    // total satu call: window count (COUNT(*) OVER()) sebelum LIMIT/OFFSET
+    expect(sql).toContain('COUNT(*) OVER ()');
+    expect(sql).toContain("'total'");
+    expect(sql).toContain("'books'");
+    // relasi ter-join di SQL — tanpa select.in kedua
+    expect(sql).toContain('public.categories');
+    expect(sql).toContain('public.racks');
+    // katalog publik jalan dengan anon key (RLS invoker)
+    expect(sql).toContain(
+      'GRANT EXECUTE ON FUNCTION public.search_books_page(text, int, int) TO anon, authenticated'
+    );
+    // kolom berat list tidak ikut (sempit seperti BOOKS_LIST_SELECT)
+    expect(sql).not.toMatch(/b\.description/);
+    expect(sql).not.toMatch(/b\.pdf_url/);
+    // plafon baris tetap seperti search_books lama
+    expect(sql).toContain('LEAST(GREATEST(p_limit, 1), 100)');
   });
 });
 
