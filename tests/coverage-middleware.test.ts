@@ -47,6 +47,15 @@ function req(path: string, init: RequestInit & { method?: string } = {}): NextRe
   return new NextRequest(`http://localhost:3000${path}`, init);
 }
 
+/** Baca header request yang diteruskan middleware untuk render (x-middleware-request-*). */
+function forwardedHeaders(res: Response): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const [k, v] of res.headers as unknown as Iterable<[string, string]>) {
+    if (k.startsWith('x-middleware-request-')) out[k.slice('x-middleware-request-'.length)] = v;
+  }
+  return out;
+}
+
 beforeEach(() => {
   session.user = null;
   session.throw = false;
@@ -255,6 +264,22 @@ describe('middleware session + role gate on /admin', () => {
     profile.role = 'librarian';
     const res = await middleware(req('/admin'));
     expect(res.status).toBe(200);
+  });
+
+  it('issue #53: klaim x-role diteruskan ke render hanya untuk staf', async () => {
+    session.user = { id: 'u1' };
+    profile.role = 'admin';
+    const res = await middleware(req('/admin'));
+    expect(res.status).toBe(200);
+    expect(forwardedHeaders(res)['x-role']).toBe('admin');
+  });
+
+  it('issue #53: klaim x-role palsu dari klien dibuang (anon tetap redirect login)', async () => {
+    session.user = null;
+    const res = await middleware(req('/admin/peminjaman', { headers: { 'x-role': 'admin' } }));
+    expect([307, 308]).toContain(res.status);
+    expect(res.headers.get('location')).toContain('/login');
+    expect(forwardedHeaders(res)['x-role']).toBeUndefined();
   });
 
   it('profile query failure -> fail-closed redirect home', async () => {

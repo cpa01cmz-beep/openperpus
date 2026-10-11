@@ -23,7 +23,7 @@ const BODY_KEYS = ['active_theme', 'theme_overrides', 'reset'] as const;
 
 export async function PUT(req: Request) {
   const log = createLogger(requestIdFromHeaders(req.headers));
-  const guard = await requireStaff(['admin', 'librarian']);
+  const guard = await requireStaff();
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
   const { supabase, user, profile } = guard as {
     supabase: ReturnType<typeof createClient>;
