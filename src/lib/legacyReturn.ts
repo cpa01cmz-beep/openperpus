@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { calcFine, jsonError, FINE_PER_DAY } from '@/lib/supabase/auth';
 import { capLateFine, getFineMax, getReplacementFee } from '@/lib/loan-settings';
+import { formatRp } from '@/lib/format';
 import { createLogger } from '@/lib/logger';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -99,12 +100,8 @@ export async function legacyReturnLoan(
   const cleanNotes = typeof opts.notes === 'string' ? opts.notes.trim().slice(0, 500) : '';
   const noteExtra = cleanNotes ? ` | ${cleanNotes}` : '';
   const replacementNote =
-    replacement > 0
-      ? ` | Biaya ganti rugi (${kondisi}): Rp${replacement.toLocaleString('id-ID')}`
-      : '';
-  const capNote = capped.capped
-    ? ` | Denda dipatok maksimum Rp${fineMax.toLocaleString('id-ID')}`
-    : '';
+    replacement > 0 ? ` | Biaya ganti rugi (${kondisi}): ${formatRp(replacement)}` : '';
+  const capNote = capped.capped ? ` | Denda dipatok maksimum ${formatRp(fineMax)}` : '';
 
   const updatePayload: Record<string, unknown> = hasKondisi
     ? {

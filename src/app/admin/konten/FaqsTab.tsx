@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import DataTable from '@/components/admin/DataTable';
+import ConfirmModal from '@/components/admin/ConfirmModal';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Badge from '@/components/ui/Badge';
@@ -35,6 +36,8 @@ export function FaqsTab({
   const [faqForm, setFaqForm] = useState({ question: '', answer: '', category: '' });
   const [formError, setFormError] = useState('');
   const [busy, setBusy] = useState(false);
+  // Konfirmasi hapus pakai ConfirmModal (isu #79): tidak ada dialog native.
+  const [pendingDelete, setPendingDelete] = useState<Faq | null>(null);
 
   const handleAdd = (e: FormEvent) => {
     e.preventDefault();
@@ -127,7 +130,7 @@ export function FaqsTab({
                   {r.is_active ? 'Nonaktifkan' : 'Aktifkan'}
                 </button>
                 <button
-                  onClick={() => onDeleteFaq(r.id)}
+                  onClick={() => setPendingDelete(r)}
                   className="inline-flex min-h-[44px] items-center text-red-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
                   Hapus
@@ -140,6 +143,20 @@ export function FaqsTab({
         getRowKey={(r) => r.id}
         emptyText="Belum ada FAQ."
       />
+      <ConfirmModal
+        open={pendingDelete !== null}
+        onClose={() => setPendingDelete(null)}
+        onConfirm={() => {
+          const target = pendingDelete;
+          setPendingDelete(null);
+          if (target) onDeleteFaq(target.id);
+        }}
+        title="Hapus FAQ"
+      >
+        <p>
+          Hapus FAQ <strong>{pendingDelete?.question}</strong>?
+        </p>
+      </ConfirmModal>
     </section>
   );
 }

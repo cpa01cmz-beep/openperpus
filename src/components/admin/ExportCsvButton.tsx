@@ -2,6 +2,7 @@
 
 import Button from '@/components/ui/Button';
 import { downloadCSV, toCSV, type CsvCell } from '@/lib/csv-export';
+import { formatStamp } from '@/lib/format';
 import type { ReportScope } from '@/lib/report-export';
 
 type Props = {
@@ -14,7 +15,7 @@ type Props = {
 
 export default function ExportCsvButton({ filename, headers, rows, scope }: Props) {
   // Tanggal lokal (bukan UTC) — ekspor dini hari WIB tidak mendapat tanggal kemarin.
-  const stamp = new Date().toLocaleDateString('sv-SE');
+  const stamp = formatStamp();
   const dated = filename.replace(/\.csv$/, `-${stamp}.csv`);
   return (
     <>
