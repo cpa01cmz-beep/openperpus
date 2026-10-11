@@ -5,6 +5,7 @@ import { ArrowLeft, Calendar, Eye } from 'lucide-react';
 import { fetchArticleBySlug, fetchArticles, fetchSettings } from '@/lib/books';
 import { getOgImage, getSiteName } from '@/lib/settings';
 import { coverSrc } from '@/lib/cover';
+import { formatTanggalPanjang, formatTanggalRingkas } from '@/lib/format';
 import { getSiteUrl } from '@/lib/site';
 import { escapeJsonLd } from '@/lib/validation';
 import Breadcrumb from '@/components/public/Breadcrumb';
@@ -130,11 +131,7 @@ export default async function BeritaDetailPage({ params }: Props) {
               <span className="inline-flex items-center gap-1 font-normal normal-case tracking-normal text-slate-400">
                 <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
                 <time dateTime={article.published_at}>
-                  {new Date(article.published_at).toLocaleDateString('id-ID', {
-                    day: 'numeric',
-                    month: 'long',
-                    year: 'numeric',
-                  })}
+                  {formatTanggalPanjang(article.published_at)}
                 </time>
               </span>
             )}
@@ -176,11 +173,7 @@ export default async function BeritaDetailPage({ params }: Props) {
                   </span>
                   {a.published_at && (
                     <time dateTime={a.published_at} className="text-xs text-slate-400">
-                      {new Date(a.published_at).toLocaleDateString('id-ID', {
-                        day: 'numeric',
-                        month: 'short',
-                        year: 'numeric',
-                      })}
+                      {formatTanggalRingkas(a.published_at)}
                     </time>
                   )}
                 </Link>

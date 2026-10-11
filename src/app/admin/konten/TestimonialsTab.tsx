@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import DataTable from '@/components/admin/DataTable';
+import ConfirmModal from '@/components/admin/ConfirmModal';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Badge from '@/components/ui/Badge';
@@ -36,6 +37,8 @@ export function TestimonialsTab({
   const [testiForm, setTestiForm] = useState({ name: '', role: '', content: '', rating: 5 });
   const [formError, setFormError] = useState('');
   const [busy, setBusy] = useState(false);
+  // Konfirmasi hapus pakai ConfirmModal (isu #79): tidak ada dialog native.
+  const [pendingDelete, setPendingDelete] = useState<Testimonial | null>(null);
 
   const handleAdd = (e: FormEvent) => {
     e.preventDefault();
@@ -150,7 +153,7 @@ export function TestimonialsTab({
                   {r.is_active ? 'Nonaktifkan' : 'Aktifkan'}
                 </button>
                 <button
-                  onClick={() => onDeleteTestimonial(r.id)}
+                  onClick={() => setPendingDelete(r)}
                   className="inline-flex min-h-[44px] items-center text-red-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
                   Hapus
@@ -163,6 +166,20 @@ export function TestimonialsTab({
         getRowKey={(r) => r.id}
         emptyText="Belum ada testimoni."
       />
+      <ConfirmModal
+        open={pendingDelete !== null}
+        onClose={() => setPendingDelete(null)}
+        onConfirm={() => {
+          const target = pendingDelete;
+          setPendingDelete(null);
+          if (target) onDeleteTestimonial(target.id);
+        }}
+        title="Hapus testimoni"
+      >
+        <p>
+          Hapus testimoni dari <strong>{pendingDelete?.name}</strong>?
+        </p>
+      </ConfirmModal>
     </section>
   );
 }

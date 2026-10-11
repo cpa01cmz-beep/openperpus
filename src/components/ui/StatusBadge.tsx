@@ -1,30 +1,13 @@
+import { ALL_STATUS, type EnumEntry } from '@/lib/enums';
 import Badge, { type Tone } from './Badge';
 
-const STATUS_MAP: Record<string, { label: string; tone: Tone }> = {
-  // Sirkulasi (loans)
-  borrowed: { label: 'Dipinjam', tone: 'sky' },
-  overdue: { label: 'Terlambat', tone: 'rose' },
-  returned: { label: 'Dikembalikan', tone: 'emerald' },
-  lost: { label: 'Hilang', tone: 'rose' },
-  // Reservasi
-  pending: { label: 'Menunggu', tone: 'amber' },
-  ready: { label: 'Siap diambil', tone: 'sky' },
-  completed: { label: 'Selesai', tone: 'emerald' },
-  cancelled: { label: 'Dibatalkan', tone: 'slate' },
-  expired: { label: 'Kedaluwarsa', tone: 'rose' },
-  // Denda
-  unpaid: { label: 'Belum lunas', tone: 'rose' },
-  partial: { label: 'Sebagian', tone: 'amber' },
-  paid: { label: 'Lunas', tone: 'emerald' },
-  waived: { label: 'Dibebaskan', tone: 'slate' },
-  // Anggota
-  active: { label: 'Aktif', tone: 'emerald' },
-  suspended: { label: 'Ditangguhkan', tone: 'amber' },
-  // Artikel
-  draft: { label: 'Draf', tone: 'slate' },
-  published: { label: 'Terbit', tone: 'emerald' },
-  archived: { label: 'Arsip', tone: 'slate' },
-};
+/**
+ * Label + tone status berasal dari SATU sumber enum (src/lib/enums.ts,
+ * issue #79) — tidak ada kamus lokal yang bisa melenceng.
+ */
+const STATUS_MAP: Record<string, EnumEntry> = Object.fromEntries(
+  ALL_STATUS.map((e) => [e.value, e])
+);
 
 /** Label Indonesia untuk enum status DB (fallback: nilai mentah apa adanya). */
 export function statusLabel(status: string): string {
