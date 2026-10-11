@@ -34,3 +34,43 @@ export const ARTICLE_STATUS: EnumEntry[] = [
   { value: 'published', label: 'Terbit' },
   { value: 'archived', label: 'Arsip' },
 ];
+
+export const PAYMENT_METHOD: EnumEntry[] = [
+  { value: 'tunai', label: 'Tunai' },
+  { value: 'transfer', label: 'Transfer' },
+  { value: 'qris', label: 'QRIS' },
+];
+
+export const SERVICE_ICON: EnumEntry[] = [
+  { value: 'book', label: 'Buku' },
+  { value: 'catalog', label: 'Katalog' },
+  { value: 'users', label: 'Anggota' },
+  { value: 'clock', label: 'Jam' },
+  { value: 'info', label: 'Info' },
+  { value: 'star', label: 'Bintang' },
+];
+
+export const MENU_POSITION: EnumEntry[] = [
+  { value: 'header', label: 'Kepala' },
+  { value: 'footer', label: 'Kaki' },
+  { value: 'sidebar', label: 'Sisi' },
+];
+
+export const MENU_TARGET: EnumEntry[] = [
+  { value: '_self', label: 'Tab sama' },
+  { value: '_blank', label: 'Tab baru' },
+];
+
+export const LOG_ENTITY: EnumEntry[] = [
+  { value: 'books', label: 'Buku' },
+  { value: 'members', label: 'Anggota' },
+  { value: 'loans', label: 'Peminjaman' },
+  { value: 'fines', label: 'Denda' },
+  { value: 'reservations', label: 'Reservasi' },
+  { value: 'categories', label: 'Kategori' },
+  { value: 'racks', label: 'Rak' },
+  { value: 'menus', label: 'Menu' },
+  { value: 'banners', label: 'Banner' },
+  { value: 'articles', label: 'Artikel' },
+  { value: 'settings', label: 'Pengaturan' },
+];

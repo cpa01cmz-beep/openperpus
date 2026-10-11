@@ -1,4 +1,5 @@
 import { BookCopy, LibraryBig, Newspaper, Shapes } from "lucide-react";
+import { formatAngka } from "@/lib/format";
 
 type Props = {
   totalBooks: number;
@@ -28,7 +29,7 @@ export default function StatsBar({ totalBooks, totalCopies, totalCategories, tot
           </span>
           <span>
             <span className="block font-heading text-xl font-bold text-heading sm:text-2xl">
-              {it.value.toLocaleString("id-ID")}
+              {formatAngka(it.value)}
             </span>
             <span className="block text-xs text-[var(--ink)]/60">{it.label}</span>
           </span>
