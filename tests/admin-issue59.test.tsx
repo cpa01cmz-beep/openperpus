@@ -167,6 +167,7 @@ describe('#59 bulk delete anggota', () => {
     fireEvent.click(selectAll!);
     const bulkBtn = await screen.findByRole('button', { name: /hapus terpilih \(2\)/i });
     fireEvent.click(bulkBtn);
+    fireEvent.click(await screen.findByRole('button', { name: /ya, hapus semua/i }));
     await waitFor(
       () =>
         expect(
@@ -202,6 +203,7 @@ describe('#59 bulk delete anggota', () => {
     ) as HTMLInputElement | null;
     fireEvent.click(selectAll!);
     fireEvent.click(await screen.findByRole('button', { name: /hapus terpilih \(2\)/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /ya, hapus semua/i }));
     await waitFor(() => expect(screen.getByRole('alert').textContent).toMatch(/dilewati/), {
       timeout: 2500,
     });
@@ -233,6 +235,7 @@ describe('#59 bulk delete anggota', () => {
       view.container.querySelector('thead input[type="checkbox"]') as HTMLInputElement
     );
     fireEvent.click(await screen.findByRole('button', { name: /hapus terpilih \(3\)/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /ya, hapus semua/i }));
     await waitFor(
       () => {
         const t = screen.getByRole('alert').textContent ?? '';
@@ -339,9 +342,7 @@ describe('#59 kontrak sumber (cover upload + ekspor + 3 halaman)', () => {
     const src = read('src/components/admin/ExportCsvButton.tsx');
     expect(src).toMatch(/Ekspor halaman ini/);
     expect(src).not.toMatch(/Ekspor CSV/);
-    expect(src, 'filename pakai tanggal lokal YYYY-MM-DD').toMatch(
-      /toLocaleDateString\('sv-SE'\)/
-    );
+    expect(src, 'filename pakai tanggal lokal YYYY-MM-DD').toMatch(/toLocaleDateString\('sv-SE'\)/);
   });
 
   it('buku/anggota/peminjaman: load punya catch + error state role=alert', () => {

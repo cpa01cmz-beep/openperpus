@@ -59,6 +59,7 @@ import { POST as reservationCheckoutPOST } from '@/app/api/reservations/[id]/che
 import { PUT as settingsPUT } from '@/app/api/settings/route';
 import { PUT as settingsThemePUT } from '@/app/api/settings/theme/route';
 import { GET as testimonialsGET } from '@/app/api/testimonials/route';
+import { GET as reportsExportGET } from '@/app/api/reports/export/route';
 import { POST as servicesPOST } from '@/app/api/services/route';
 import { PUT as serviceByIdPUT, DELETE as serviceByIdDELETE } from '@/app/api/services/[id]/route';
 import {
@@ -137,6 +138,10 @@ const adminOnly: Case[] = [
   { name: 'GET /api/loans', run: () => loansGET(req()) },
   { name: 'POST /api/loans', run: () => loansPOST(req()) },
   { name: 'GET /api/members', run: () => membersGET(req()) },
+  {
+    name: 'GET /api/reports/export',
+    run: () => reportsExportGET(req('http://localhost/api/reports/export?scope=books')),
+  },
   { name: 'POST /api/members', run: () => membersPOST(req()) },
   { name: 'POST /api/menus', run: () => menusPOST(req()) },
   { name: 'POST /api/pages', run: () => pagesPOST(req()) },
@@ -256,7 +261,8 @@ describe('issue #25 — unified staff authorization (Gherkin: non-staff → 403 
     // (22 pair) keluar matrix, diganti GET/PUT/DELETE /api/{members,articles,
     // banners}/[id] (7 pair admin-only; GET articles/banners [id] publik-dengan-
     // elevasi seperti taxonomy lain).
-    expect(covered.length, 'matrix must declare 48 admin-only endpoint+method pairs').toBe(48);
+    // Issue #78: +1 GET /api/reports/export (streaming CSV seluruh data, staf).
+    expect(covered.length, 'matrix must declare 49 admin-only endpoint+method pairs').toBe(49);
     expect(covered, 'matrix missing admin-only handlers present in src/app/api').toEqual(scanned);
   });
 

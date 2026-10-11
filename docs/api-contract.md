@@ -377,6 +377,25 @@ Semua list memakai envelope pagination tunggal (§Konvensi). Body kanonis (alias
 
 ---
 
+## 10. Ekspor CSV seluruh data (issue #78)
+
+- **`GET /api/reports/export?scope=books|loans|fines`** — pustakawan+ (tanpa login → `401`, scope kosong/tak dikenal → `422`).
+- Mengunduh **seluruh baris tabel** sebagai CSV (`Content-Type: text/csv; charset=utf-8`,
+  `Content-Disposition: attachment; filename="<scope>-<YYYY-MM-DD>.csv"`, `Cache-Control: no-store`),
+  bukan hanya halaman aktif seperti tombol "Ekspor halaman ini" di admin.
+- Kolom CSV identik dengan ekspor halaman-aktif yang lama: `books` = ID, Judul, Penulis, Kategori,
+  Tersedia, Total; `loans` = ID, Anggota, Buku, Pinjam, Tempo, Status, Denda (status memakai definisi
+  turunan `loans-overdue.ts`); `fines` = ID, Anggota, Tagihan, Dibayar, Status, No. struk, Terbit
+  (kwitansi terbaru dari `payments`).
+- Server mengambil data per-chunk `range()` 1000 baris dan **streaming** ke klien
+  (`src/lib/report-export.ts` — definisi scope, `src/app/api/reports/export/route.ts` — handler).
+  Chunk pertama gagal → `500 FETCH_FAILED` JSON; kegagalan chunk berikutnya mengakhiri stream
+  (sudah di-log) karena header respons sudah terlanjur terkirim.
+- Setiap ekspor menulis audit best-effort `reports.export` ke `activity_logs` (ekspor memuat PII anggota).
+- Belum termasuk (tujuan PR terpisah): penjadwal dunning WA (`/api/cron/dunning`) dan `npm run db:seed`.
+
+---
+
 ```bash
 curl /api/settings
 curl "/api/books?q=laskar&tersedia=1&per_page=5"

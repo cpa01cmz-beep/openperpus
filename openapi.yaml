@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: OpenPerpus API
   version: 0.1.0
-  description: CMS Perpustakaan — 40 route handler. Deploy utama Vercel (ADR-002), Cloudflare Workers alternatif; preview lokal via `npm run dev` / `npm run cf:preview`. Enforced bidirectionally by tests/openapi-conformance.test.ts.
+  description: CMS Perpustakaan — 41 route handler (36 resource + health/readyz/docs/metrics/register). Deploy utama Vercel (ADR-002), Cloudflare Workers alternatif; preview lokal via `npm run dev` / `npm run cf:preview`. Enforced bidirectionally by tests/openapi-conformance.test.ts.
 servers:
   - url: http://localhost:3000
     description: local
@@ -164,6 +164,31 @@ components:
         maximum: 100
         default: 10
       description: Items per page (articles/banners/books/members/loans default 10; other collections default 20)
+    SearchParam:
+      name: q
+      in: query
+      schema:
+        type: string
+        maxLength: 100
+      description: >
+        Free-text search (sanitized for ilike). Members: member_code/phone/profiles.full_name.
+        Loans: members.member_code/books.title/notes. Reservations:
+        members.member_code/books.title/notes. Fines: members.member_code/notes.
+    SortParam:
+      name: sort
+      in: query
+      schema:
+        type: string
+      description: >
+        Sort column, whitelisted per collection. Members: member_code|status|phone|created_at|full_name.
+    OrderParam:
+      name: order
+      in: query
+      schema:
+        type: string
+        enum: [asc, desc]
+      description: >
+        Sort direction (default per collection; members defaults asc except created_at).
 paths:
   /api/health:
     get:
@@ -673,6 +698,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/PageParam'
         - $ref: '#/components/parameters/PerPageParam'
+        - $ref: '#/components/parameters/SearchParam'
       responses:
         '200':
           description: ok
@@ -850,11 +876,7 @@ paths:
           schema:
             type: string
             format: uuid
-        - name: q
-          in: query
-          description: Search in loan notes.
-          schema:
-            type: string
+        - $ref: '#/components/parameters/SearchParam'
       responses:
         '200':
           description: ok
@@ -1015,6 +1037,9 @@ paths:
       parameters:
         - $ref: '#/components/parameters/PageParam'
         - $ref: '#/components/parameters/PerPageParam'
+        - $ref: '#/components/parameters/SearchParam'
+        - $ref: '#/components/parameters/SortParam'
+        - $ref: '#/components/parameters/OrderParam'
       responses:
         '200':
           description: ok
@@ -1197,6 +1222,49 @@ paths:
       responses:
         '200':
           description: ok
+  /api/reports/export:
+    get:
+      summary: Export full dataset as CSV (staff; issue #78)
+      description: >-
+        Streams the ENTIRE table as CSV — bukan hanya baris halaman aktif —
+        untuk scope=books|loans|fines. Baris diambil per-chunk range() 1000
+        dan dialirkan ke klien; header Content-Disposition attachment +
+        UTF-8 BOM; audit best-effort reports.export. scope kosong/tak dikenal
+        -> 422 VALIDATION.
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: scope
+          in: query
+          required: true
+          schema:
+            type: string
+            enum: [books, loans, fines]
+      responses:
+        '200':
+          description: CSV stream (text/csv; charset=utf-8, attachment)
+          content:
+            text/csv:
+              schema:
+                type: string
+        '401':
+          description: Silakan login
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: scope wajib books|loans|fines
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Gagal mengekspor data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/reservations:
     get:
       summary: List reservations (auth required; members scoped to own)
@@ -1205,6 +1273,7 @@ paths:
       parameters:
         - $ref: '#/components/parameters/PageParam'
         - $ref: '#/components/parameters/PerPageParam'
+        - $ref: '#/components/parameters/SearchParam'
       responses:
         '200':
           description: ok
