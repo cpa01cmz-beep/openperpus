@@ -78,9 +78,9 @@ export default function KontenPage() {
   // Sebaliknya ketiga daftar bisa gagal sendiri-sendiri, jadi pesan yang
   // bukan 404 tetap ditampilkan semuanya — bukan cuma satu yang tersaring.
   const listErrors = [
-    { key: 'pages', label: 'Halaman', msg: missing.pages ? '' : pagesList.error },
-    { key: 'faqs', label: 'FAQ', msg: missing.faqs ? '' : faqsList.error },
-    { key: 'testimonials', label: 'Testimoni', msg: missing.testimonials ? '' : testisList.error },
+    { key: 'pages', label: 'Halaman', msg: pagesList.missing ? '' : pagesList.error },
+    { key: 'faqs', label: 'FAQ', msg: faqsList.missing ? '' : faqsList.error },
+    { key: 'testimonials', label: 'Testimoni', msg: testisList.missing ? '' : testisList.error },
   ].filter((x) => x.msg !== '');
   const totalPages = Math.max(pagesList.totalPages, faqsList.totalPages, testisList.totalPages);
 

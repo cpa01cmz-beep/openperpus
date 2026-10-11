@@ -142,7 +142,8 @@ export default function DendaPage() {
   // 404 dari aksi bayar: banner amber sendiri; list successful clears it.
   const [payMissing, setPayMissing] = useState(false);
   // Banner 404 khusus + pesan generic hook tak ditampilkan bersamaan.
-  const error = (apiMissing ? '' : listError) || actionError;
+  // Pesan aksi tulis lebih baru daripada pesan pemuatan daftar.
+  const error = actionError || (apiMissing ? '' : listError);
 
   // Total tagihan disegarkan saat filter/halaman berubah (perilaku lama:
   // ikut load()); riwayatnya diurus useAdminList.

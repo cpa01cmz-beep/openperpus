@@ -103,10 +103,11 @@ export default function DendaSayaPage() {
     loadTotals();
   }, [loadTotals]);
 
-  // Pesan error aksi dibuang saat daftar dimuat ulang, seperti setError('')
-  // di awal load() pada kode lama.
+  // Pesan aksi dibuang saat daftar dimuat ulang karena filter berubah — seperti
+  // setError('')/setNeedLogin(false) di awal load() pada kode lama.
   useEffect(() => {
     setError('');
+    setPayNeedLogin(false);
   }, [page, status]);
 
   async function onPay(f: Fine) {

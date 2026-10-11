@@ -70,6 +70,7 @@ export default function ReservasiPage() {
   // Pesan aksi lama dibuang saat daftar dimuat ulang (filter berubah).
   useEffect(() => {
     setActionError('');
+    setPayMissing(false);
   }, [page, status, search]);
 
   function onCheckout(r: Reservation) {

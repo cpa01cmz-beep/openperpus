@@ -125,10 +125,15 @@ describe('#62 AC1: satu hook list + satu hook tarif', () => {
       // Harus ada PEMANGGILAN hook — komentar atau import tak dihitung.
       expect(s, `${f} harus memanggil useAdminList`).toMatch(/useAdminList</);
       // Menulis ulang pemuatan daftar selalu meninggalkan jejak state lokal
-      // untuk baris & jumlah halaman — dasar fetch-nya pindah ke useAdminList.
-      // (Pola fetch yang sah, mis. combobox, tetap dibiarkan menyala.)
-      expect(s, `${f}: tak menyimpan daftar di state lokal`).not.toMatch(
-        /\bsetRows\b|\bsetTotalPages\b/
+      // untuk baris & jumlah halaman — keduanya hanya dipakai daftar
+      // ber-tabel. Nama lain (setItems, setData…) juga tertangkap.
+      // CATATAN: `setLoading` TIDAK diperiksa karena #60 memakainya untuk
+      // status sibuk AKSI TULIS (bulk delete, stok opname) — itu sah.
+      expect(s, `${f}: tak menyimpan baris di state lokal`).not.toMatch(
+        /\bsetRows\b|\bsetItems\b|\bsetData\b|\bsetList\b/
+      );
+      expect(s, `${f}: tak menyimpan jumlah halaman di state lokal`).not.toMatch(
+        /\bsetTotalPages\b|\bsetTotalCount\b/
       );
     }
   });
@@ -154,10 +159,18 @@ describe('#62 AC1: satu hook list + satu hook tarif', () => {
 });
 
 describe('#62 halaman menyertakan errorMessage khas', () => {
+  const GENERIC = 'Gagal memuat data.'; // default hook — harus selalu ditimpa
+
   it('tiap halaman daftar memberi errorMessage sendiri (bukan default generik)', () => {
     for (const f of LIST_PAGES) {
       const s = readCode(f);
-      expect(s, `${f} harus mengirim errorMessage khas halaman`).toMatch(/errorMessage:\s*'/);
+      const m = s.match(/errorMessage:\s*'([^']+)'/);
+      expect(m, `${f} harus mengirim errorMessage bertanda petik`).toBeTruthy();
+      const msg = m?.[1] ?? '';
+      // Harus pesan nyata: tak kosong, dan bukan default generik hook.
+      expect(msg.length, `${f} errorMessage tak boleh kosong`).toBeGreaterThan(4);
+      expect(msg, `${f} errorMessage harus khas halaman`).not.toBe(GENERIC);
+      expect(msg, `${f} errorMessage harus menyebut nama datanya`).toMatch(/memuat/i);
     }
   });
 });

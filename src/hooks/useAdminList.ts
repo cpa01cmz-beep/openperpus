@@ -106,6 +106,9 @@ export function useAdminList<T>(options: UseAdminListOptions): AdminList<T> {
     let alive = true;
 
     const run = async () => {
+      // Objek hanya disaat request BENAR-BENAR dimulai — dipindah kedalam
+      // `run()` supaya debounce tak mengubah state sebelum ada fetch, dan
+      // hasil request lama tak ikut terhapus oleh request baru.
       setLoading(true);
       setError('');
       setMissing(false);
