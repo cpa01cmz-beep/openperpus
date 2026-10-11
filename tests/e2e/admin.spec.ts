@@ -1,6 +1,7 @@
 import { test, expect, type BrowserContext, type Page } from '@playwright/test';
 
-// Issue #63: 5 journey admin minimum (API-seed + UI-assert, satu login UI di beforeAll).
+// Issue #63: 5 journey admin minimum (API-seed + UI-assert, satu login UI di beforeAll,
+// tag unik acak per-run agar aman paralel 3 proyek Playwright).
 // Butuh backend Supabase + akun admin: tanpa E2E_ADMIN_EMAIL/PASSWORD,
 // test ber-auth di-skip aman (suite tetap hijau). Journey (2) tanpa
 // kredensial (self-seed via /api/register publik + fallback anonim).
@@ -14,13 +15,18 @@ const BASE_URL = 'http://localhost:3000';
 
 test.describe.configure({ mode: 'serial' });
 
+function unique(tag: string): string {
+  return `${tag}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 async function api<T>(
   page: Page,
   method: 'GET' | 'POST' | 'PUT' | 'PATCH',
   url: string,
   body?: unknown
 ): Promise<{ status: number; data: T }> {
-  const res = await page.request.fetch(url, {
+  const target = url.startsWith('http') ? url : `${BASE_URL}${url}`;
+  const res = await page.request.fetch(target, {
     method,
     ...(body === undefined ? {} : { data: body }),
   });
@@ -51,6 +57,7 @@ test.describe('Admin journeys (issue #63)', () => {
   let adminCtx: BrowserContext | null = null;
 
   test.beforeAll(async ({ browser }) => {
+    if (!HAS_ADMIN) return;
     adminCtx = await browser.newContext({ baseURL: BASE_URL });
     const login = await adminCtx.newPage();
     await login.goto('/login');
@@ -74,17 +81,17 @@ test.describe('Admin journeys (issue #63)', () => {
   test('(1) admin buat buku via API → terlihat di /katalog', async () => {
     const page = await adminPage();
     try {
-      const ts = Date.now();
+      const tag = unique('E2E');
       const cat = await api<{ id: string }>(page, 'POST', '/api/categories', {
-        name: `E2E Kategori ${ts}`,
+        name: `E2E Kategori ${tag}`,
       });
       expect(cat.status).toBe(201);
       const rack = await api<{ id: string }>(page, 'POST', '/api/racks', {
-        code: `E${String(ts).slice(-6)}`,
-        name: `E2E Rak ${ts}`,
+        code: `E${Date.now().toString().slice(-6)}${Math.random().toString(36).slice(2, 6)}`,
+        name: `E2E Rak ${tag}`,
       });
       expect(rack.status).toBe(201);
-      const title = `E2E Buku Hijau ${ts}`;
+      const title = `E2E Buku Hijau ${tag}`;
       const book = await api<{ id: string }>(page, 'POST', '/api/books', {
         title,
         author: 'Tim E2E',
@@ -94,7 +101,18 @@ test.describe('Admin journeys (issue #63)', () => {
         stock_available: 3,
       });
       expect(book.status).toBe(201);
-      await page.goto('/katalog');
+      // Taxonomy round-trip: edit kategori + rak → baca balik.
+      const catUpd = await api<{ name: string }>(page, 'PUT', `/api/categories/${cat.data.id}`, {
+        name: `E2E Kategori ${tag} Revisi`,
+      });
+      expect(catUpd.status).toBe(200);
+      expect(catUpd.data.name).toContain('Revisi');
+      const rackUpd = await api<{ name: string }>(page, 'PUT', `/api/racks/${rack.data.id}`, {
+        name: `E2E Rak ${tag} Revisi`,
+      });
+      expect(rackUpd.status).toBe(200);
+      expect(rackUpd.data.name).toContain('Revisi');
+      await page.goto(`/katalog?q=${encodeURIComponent(title)}`);
       await expect(page.getByText(title).first()).toBeVisible({ timeout: 15000 });
     } finally {
       await page.close();
@@ -104,9 +122,9 @@ test.describe('Admin journeys (issue #63)', () => {
   test('(3) admin approve reservasi → checkout → loan + stok berkurang', async () => {
     const page = await adminPage();
     try {
-      const ts = Date.now();
-      const member = await ensureActiveMember(page, `${ts}r`);
-      const bookTitle = `E2E Reservasi ${ts}`;
+      const tag = unique('E2E');
+      const member = await ensureActiveMember(page, `${tag}r`);
+      const bookTitle = `E2E Reservasi ${tag}`;
       const book = await api<{ id: string }>(page, 'POST', '/api/books', {
         title: bookTitle,
         author: 'Tim E2E',
@@ -149,12 +167,12 @@ test.describe('Admin journeys (issue #63)', () => {
     }
   });
 
-  test('(4) admin return overdue → denda di /admin/denda', async () => {
+  test('(4) admin return overdue bad-condition → denda di /admin/denda', async () => {
     const page = await adminPage();
     try {
-      const ts = Date.now();
-      const member = await ensureActiveMember(page, `${ts}d`);
-      const bookTitle = `E2E Telat ${ts}`;
+      const tag = unique('E2E');
+      const member = await ensureActiveMember(page, `${tag}d`);
+      const bookTitle = `E2E Telat ${tag}`;
       const book = await api<{ id: string }>(page, 'POST', '/api/books', {
         title: bookTitle,
         author: 'Tim E2E',
@@ -171,9 +189,17 @@ test.describe('Admin journeys (issue #63)', () => {
       expect(loan.status).toBe(201);
       const ret = await api<{ fine_amount: number }>(page, 'PUT', `/api/loans/${loan.data.id}`, {
         action: 'return',
+        kondisi: 'rusak',
       });
       expect(ret.status).toBe(200);
-      expect(ret.data.fine_amount).toBeGreaterThan(0);
+      expect(Number(ret.data.fine_amount)).toBeGreaterThan(0);
+      const fines = await api<unknown[]>(
+        page,
+        'GET',
+        `/api/fines?member_id=${member.id}`
+      );
+      expect(fines.status).toBe(200);
+      expect(fines.data.length).toBeGreaterThan(0);
       await page.goto('/admin/denda');
       await page.fill('#denda-search', member.member_code);
       await expect(page.getByText(member.member_code).first()).toBeVisible({ timeout: 15000 });
@@ -185,8 +211,8 @@ test.describe('Admin journeys (issue #63)', () => {
   test('(5) artikel+banner draft → publish → homepage + edit round-trip', async () => {
     const page = await adminPage();
     try {
-      const ts = Date.now();
-      const artTitle = `E2E Berita ${ts}`;
+      const tag = unique('E2E');
+      const artTitle = `E2E Berita ${tag}`;
       const art = await api<{ id: string; slug: string }>(page, 'POST', '/api/articles', {
         title: artTitle,
         content_md: 'Draf awal E2E.',
@@ -197,7 +223,7 @@ test.describe('Admin journeys (issue #63)', () => {
         status: 'published',
       });
       expect(pub.status).toBe(200);
-      const bannerTitle = `E2E Banner ${ts}`;
+      const bannerTitle = `E2E Banner ${tag}`;
       const ban = await api<unknown>(page, 'POST', '/api/banners', {
         title: bannerTitle,
         image_url: '/og-default.jpg',
@@ -206,9 +232,9 @@ test.describe('Admin journeys (issue #63)', () => {
       expect(ban.status).toBe(201);
       await page.goto('/');
       await expect(page.getByText(artTitle).first()).toBeVisible({ timeout: 20000 });
-      await expect(
-        page.getByRole('tab', { name: new RegExp(bannerTitle) }).first()
-      ).toBeVisible({ timeout: 20000 });
+      const bannerTab = page.getByRole('tab', { name: bannerTitle });
+      const bannerHeading = page.getByRole('heading', { name: bannerTitle });
+      await expect(bannerTab.or(bannerHeading).first()).toBeVisible({ timeout: 20000 });
       const revised = `${artTitle} Revisi`;
       const upd = await api<{ slug: string }>(page, 'PUT', `/api/articles/${art.data.id}`, {
         title: revised,
@@ -225,12 +251,28 @@ test.describe('Admin journeys (issue #63)', () => {
 });
 
 test.describe('Admin guard non-staff (issue #63)', () => {
-  test('(2) member buka /admin/peminjaman → redirect /login', async ({ browser, request }) => {
-    const ts = Date.now();
-    const email = `e2e-member-${ts}@example.com`;
-    await request.post('/api/register', {
-      data: { nama: 'E2E Member', email, password: 'E2eMember123!' },
+  test('(2a) anonim buka /admin/peminjaman → redirect /login', async ({ browser }) => {
+    const ctx = await browser.newContext({ baseURL: BASE_URL });
+    const p = await ctx.newPage();
+    try {
+      await p.goto('/admin/peminjaman');
+      await expect(p).toHaveURL(/\/login/, { timeout: 15000 });
+    } finally {
+      await ctx.close();
+    }
+  });
+
+  test('(2b) member buka /admin/peminjaman → ditolak (redirect /)', async ({
+    browser,
+    request,
+  }) => {
+    const tag = unique('member');
+    const email = `e2e-member-${tag}@example.com`;
+    const password = 'E2eMember123!';
+    const reg = await request.post(`${BASE_URL}/api/register`, {
+      data: { nama: 'E2E Member', email, password },
     });
+    expect(reg.status()).toBe(201);
     const ctx = await browser.newContext({ baseURL: BASE_URL });
     const p = await ctx.newPage();
     try {
@@ -238,11 +280,9 @@ test.describe('Admin guard non-staff (issue #63)', () => {
       await p.fill('#login-email', email);
       await p.fill('#login-password', password);
       await p.click('button[type="submit"]');
-      await p
-        .waitForURL((url) => !url.pathname.includes('/login'), { timeout: 10000 })
-        .catch(() => null);
+      await expect(p).not.toHaveURL(/.*login/, { timeout: 15000 });
       await p.goto('/admin/peminjaman');
-      await expect(p).toHaveURL(/\/login/, { timeout: 15000 });
+      await expect(p).toHaveURL(/\/$/, { timeout: 15000 });
     } finally {
       await ctx.close();
     }

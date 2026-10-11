@@ -141,3 +141,60 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npx playwright test --list
+
+  # Issue #63: 5 journey admin + round-trip taxonomy/CMS hanya terdaftar oleh
+  # playwright-list (--list) — TIDAK pernah dieksekusi. Job ini yang menjalankan
+  # suite e2e terhadap backend nyata BILA kredensial disediakan (pola sama
+  # dengan job integration di atas):
+  # - repo variable RUN_E2E_ADMIN=true (vars, bukan secrets: secrets tak bisa
+  #   dipakai di job-level `if`)
+  # - secrets E2E_ADMIN_EMAIL / E2E_ADMIN_PASSWORD (akun staf di proyek test)
+  # - secrets NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY /
+  #   SUPABASE_SERVICE_ROLE_KEY agar `npm run dev` punya backend
+  # Tanpa toggle ini job dilewati (skip), jadi PR tetap hijau. Journey tanpa
+  # kredensial admin tetap self-skip aman di dalam spec.
+  playwright-e2e:
+    if: ${{ vars.RUN_E2E_ADMIN == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      E2E_ADMIN_EMAIL: ${{ secrets.E2E_ADMIN_EMAIL }}
+      E2E_ADMIN_PASSWORD: ${{ secrets.E2E_ADMIN_PASSWORD }}
+      NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
+      SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Fail fast bila kredensial tes tidak lengkap
+        run: |
+          missing=0
+          for v in E2E_ADMIN_EMAIL E2E_ADMIN_PASSWORD \
+                   NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY \
+                   SUPABASE_SERVICE_ROLE_KEY; do
+            if [ -z "${!v}" ]; then
+              echo "::error::$v kosong — isi secrets atau set variable RUN_E2E_ADMIN=false."
+              missing=1
+            fi
+          done
+          exit $missing
+      - name: Install browser Playwright (chromium saja — viewport tak dipakai journey)
+        run: npx playwright install --with-deps chromium
+      - name: Jalankan 5 journey admin + round-trip taxonomy/CMS
+        run: >-
+          npx playwright test tests/e2e/admin.spec.ts --project=chromium
+          --reporter=line --reporter=junit --outputFile=test-results/e2e-junit.xml
+      - name: Upload laporan e2e
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results
+          path: test-results/
+          retention-days: 14
+          if-no-files-found: warn
+
