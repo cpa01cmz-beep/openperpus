@@ -269,11 +269,43 @@ describe('ExportCsvButton (#78/#133)', () => {
     expect((clickSpy.mock.instances[0] as HTMLAnchorElement).download).toBe('Laporan Akhir.CSV');
   });
 
-  it('filename* nama reserved Windows (CON.csv) ditolak — jatuh ke stempel lokal', async () => {
+  it('filename* nama reserved Windows dengan/tanpa spasi (CON.csv, NUL .csv, COM1, LPT1) ditolak', async () => {
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    for (const raw of ['CON.csv', 'CON%20.csv', 'NUL%20.csv', 'COM1.csv', 'LPT1.csv']) {
+      clickSpy.mockClear();
+      vi.stubGlobal(
+        'fetch',
+        vi
+          .fn()
+          .mockResolvedValue(
+            okExport({ 'content-disposition': `attachment; filename*=UTF-8''${raw}` })
+          )
+      );
+      // unmount per iterasi: render berlapis bikin getByText menemukan
+      // beberapa tombol sekaligus.
+      const { unmount } = render(
+        <ExportCsvButton filename="buku.csv" headers={['ID']} rows={[['b1']]} scope="books" />
+      );
+      fireEvent.click(exportAllButton());
+
+      await waitFor(() => expect(clickSpy).toHaveBeenCalledTimes(1));
+      expect((clickSpy.mock.instances[0] as HTMLAnchorElement).download).toMatch(
+        /^buku-\d{4}-\d{2}-\d{2}\.csv$/
+      );
+      unmount();
+    }
+  });
+
+  it('filename* panjang tepat 100 karakter diterima, 101 ditolak (batas kepanjangan)', async () => {
+    const name100 = `${'a'.repeat(96)}.csv`;
+    const name101 = `${'a'.repeat(97)}.csv`;
+    expect(name100).toHaveLength(100);
+    expect(name101).toHaveLength(101);
+
     const fetchMock = vi
       .fn()
       .mockResolvedValue(
-        okExport({ 'content-disposition': "attachment; filename*=UTF-8''CON.csv" })
+        okExport({ 'content-disposition': `attachment; filename*=UTF-8''${name100}` })
       );
     vi.stubGlobal('fetch', fetchMock);
     const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
@@ -282,15 +314,24 @@ describe('ExportCsvButton (#78/#133)', () => {
     fireEvent.click(exportAllButton());
 
     await waitFor(() => expect(clickSpy).toHaveBeenCalledTimes(1));
-    expect((clickSpy.mock.instances[0] as HTMLAnchorElement).download).toMatch(
+    expect((clickSpy.mock.instances[0] as HTMLAnchorElement).download).toBe(name100);
+
+    fetchMock.mockResolvedValue(
+      okExport({ 'content-disposition': `attachment; filename*=UTF-8''${name101}` })
+    );
+    fireEvent.click(exportAllButton());
+
+    await waitFor(() => expect(clickSpy).toHaveBeenCalledTimes(2));
+    expect((clickSpy.mock.instances[1] as HTMLAnchorElement).download).toMatch(
       /^buku-\d{4}-\d{2}-\d{2}\.csv$/
     );
   });
 
-  it('filename* nama kepanjangan (>100 karakter) ditolak — jatuh ke stempel lokal', async () => {
+  it('filename="…" dengan karakter kontrol ditolak utuh — nama separuh-bersih tak pernah terunduh', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       okExport({
-        'content-disposition': `attachment; filename*=UTF-8''${'a'.repeat(120)}.csv`,
+        // \n di dalam nilai: nama tidak aman → ditolak utuh → fallback stempel.
+        'content-disposition': 'attachment; filename="laporan\npustakawan.csv"',
       })
     );
     vi.stubGlobal('fetch', fetchMock);
@@ -305,12 +346,11 @@ describe('ExportCsvButton (#78/#133)', () => {
     );
   });
 
-  it('filename="…" dengan karakter tak diizinkan ditolak utuh — nama separuh-bersih tak pernah terunduh', async () => {
+  it('filename="…" homoglyph Cyrillic (U+0430) sendiri cukup menolak nama — fallback stempel', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       okExport({
-        // \n di dalam nilai + homoglyph Cyrillic 'а' (U+0430) di "pustakаwan":
-        // keduanya membuat nama tidak aman → ditolak utuh → fallback stempel.
-        'content-disposition': 'attachment; filename="laporan\npustakаwan.csv"',
+        // Tanpa \n: homoglyph 'а' (U+0430) satu-satunya alasan penolakan.
+        'content-disposition': 'attachment; filename="pustakаwan.csv"',
       })
     );
     vi.stubGlobal('fetch', fetchMock);
