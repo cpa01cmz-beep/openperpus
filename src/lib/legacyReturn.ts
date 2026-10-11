@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { calcFine, jsonError, FINE_PER_DAY } from '@/lib/supabase/auth';
-import { getReplacementFee } from '@/lib/loan-settings';
+import { capLateFine, getFineMax, getReplacementFee } from '@/lib/loan-settings';
 import { createLogger } from '@/lib/logger';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -84,7 +84,11 @@ export async function legacyReturnLoan(
     return jsonError('CONFLICT', 'Sudah dikembalikan.', 409);
 
   const rate = await getFineRate(supabase);
-  const lateFine = calcFine(l.due_at, returnedAt, rate);
+  // Isu #72: denda telat dipatok library_settings.fine_max (0 = tanpa plafon).
+  // Jalur utama (RPC return_loan) menjepitnya di DB; ini jalur fallback.
+  const fineMax = await getFineMax(supabase);
+  const capped = capLateFine(calcFine(l.due_at, returnedAt, rate), fineMax);
+  const lateFine = capped.fine;
   // Isu #74: rusak/hilang dikenakan biaya ganti rugi dari settings
   // (library_settings.replacement_fee_damaged / replacement_fee_lost).
   // Jalur utama (RPC return_loan) menghitungnya sendiri di DB — ini jalur
@@ -98,13 +102,16 @@ export async function legacyReturnLoan(
     replacement > 0
       ? ` | Biaya ganti rugi (${kondisi}): Rp${replacement.toLocaleString('id-ID')}`
       : '';
+  const capNote = capped.capped
+    ? ` | Denda dipatok maksimum Rp${fineMax.toLocaleString('id-ID')}`
+    : '';
 
   const updatePayload: Record<string, unknown> = hasKondisi
     ? {
         returned_at: returnedAt.toISOString(),
         status: kondisi === 'hilang' ? 'lost' : 'returned',
         fine_amount: fine,
-        notes: `Kondisi kembali: ${kondisi}${replacementNote}${noteExtra}`,
+        notes: `Kondisi kembali: ${kondisi}${replacementNote}${capNote}${noteExtra}`,
       }
     : {
         returned_at: returnedAt.toISOString(),
@@ -189,6 +196,7 @@ export async function legacyReturnLoan(
       status: 'unpaid',
       notes:
         `Denda keterlambatan otomatis Rp${rate}/hari (due ${l.due_at}).` +
+        (capped.capped ? ` Denda dipatok maksimum Rp${fineMax} (setelan plafon denda).` : '') +
         (replacement > 0 ? ` Biaya ganti rugi (${kondisi}): Rp${replacement}.` : '') +
         (hasKondisi ? ` Kondisi: ${kondisi}.` : ''),
     });
@@ -208,8 +216,16 @@ export async function legacyReturnLoan(
     entity_type: 'loans',
     entity_id: id,
     metadata: hasKondisi
-      ? { fine, late_fine: lateFine, replacement_fee: replacement, kondisi, book_id: l.book_id }
-      : { fine, late_fine: lateFine },
+      ? {
+          fine,
+          late_fine: lateFine,
+          replacement_fee: replacement,
+          kondisi,
+          book_id: l.book_id,
+          capped: capped.capped,
+          fine_max: fineMax,
+        }
+      : { fine, late_fine: lateFine, capped: capped.capped, fine_max: fineMax },
   };
   const firstAudit = await supabase.from('activity_logs').insert(auditPayload);
   if (firstAudit.error) {

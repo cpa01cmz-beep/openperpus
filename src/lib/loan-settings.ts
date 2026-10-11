@@ -24,6 +24,8 @@ export const LOAN_DAYS_DEFAULT = 14;
 export const MAX_EXTENSIONS_DEFAULT = 2;
 /** Biaya ganti rugi default (Rp) — 0 = belum dikonfigurasi pustakawan. */
 export const REPLACEMENT_FEE_DEFAULT = 0;
+/** Plafon denda keterlambatan default — 0 = tanpa plafon (perilaku sebelum #72). */
+export const FINE_MAX_DEFAULT = 0;
 
 export type LoanPolicy = {
   /** Lama pinjam checkout (hari). */
@@ -82,6 +84,27 @@ export function resolveLoanPolicy(row: Record<string, unknown> | null | undefine
   };
 }
 
+/**
+ * Plafon denda keterlambatan (#72): nilai >= 0; 0 = tanpa plafon.
+ * Sengaja TERPISAH dari LoanPolicy agar kontrak resolveLoanPolicy tetap
+ * (kolom fine_max hanya dipakai jalur denda).
+ */
+export function resolveFineMax(row: Record<string, unknown> | null | undefined): number {
+  const r = (row ?? {}) as Record<string, unknown>;
+  const n = Number(r.fine_max);
+  if (!Number.isFinite(n) || n <= 0) return FINE_MAX_DEFAULT;
+  return n;
+}
+
+/**
+ * Jepit denda keterlambatan ke plafon (fine_max). fine_max <= 0 = tanpa
+ * plafon (perilaku lama). Biaya ganti rugi TIDAK ikut dipatok.
+ */
+export function capLateFine(lateFine: number, fineMax: number): { fine: number; capped: boolean } {
+  if (fineMax > 0 && lateFine > fineMax) return { fine: fineMax, capped: true };
+  return { fine: lateFine, capped: false };
+}
+
 /** Biaya ganti rugi untuk satu kondisi (baik = 0). */
 export function replacementFeeFor(kondisi: string, policy: LoanPolicy): number {
   if (kondisi === 'hilang') return policy.replacementFeeLost;
@@ -121,5 +144,22 @@ export async function getReplacementFee(supabase: SupabaseLike, kondisi: string)
     return replacementFeeFor(kondisi, resolveLoanPolicy(data as Record<string, unknown> | null));
   } catch {
     return 0;
+  }
+}
+
+/**
+ * Plafon denda keterlambatan (fine_max, 1 query; 0 = tanpa plafon).
+ * Dipakai jalur legacy fallback; RPC `return_loan` membacanya sendiri di DB.
+ */
+export async function getFineMax(supabase: SupabaseLike): Promise<number> {
+  try {
+    const { data } = await supabase
+      .from('library_settings')
+      .select('fine_max')
+      .eq('id', 1)
+      .single();
+    return resolveFineMax(data as Record<string, unknown> | null);
+  } catch {
+    return FINE_MAX_DEFAULT;
   }
 }

@@ -33,6 +33,8 @@ const ALLOWED: Record<string, string> = {
   announcement: 'announcement',
   active_theme: 'active_theme',
   fine_per_day: 'fine_per_day',
+  // plafon denda keterlambatan (issue #72) — 0 = tanpa plafon
+  fine_max: 'fine_max',
   // kebijakan pinjam (issue #74) — kolom kanonis Inggris, lihat migrasi 0026
   loan_days: 'loan_days',
   max_extensions: 'max_extensions',
@@ -161,6 +163,19 @@ export async function PUT(req: Request) {
       return jsonError('VALIDATION', 'Tarif denda per hari harus lebih dari 0.', 422);
     }
     payload.fine_per_day = rate;
+  }
+  // Plafon denda keterlambatan (#72): rupiah >= 0, 0 = tanpa plafon.
+  if ('fine_max' in payload) {
+    const v = payload.fine_max;
+    const n = typeof v === 'string' && v.trim() !== '' ? Number(v) : Number(v);
+    if (v !== null && (!Number.isFinite(n) || n < 0)) {
+      return jsonError(
+        'VALIDATION',
+        'Plafon denda harus angka rupiah >= 0 (0 = tanpa plafon).',
+        422
+      );
+    }
+    payload.fine_max = v === null ? 0 : n;
   }
   // Kebijakan pinjam (issue #74): integer/rupiah dengan rentang sama seperti
   // CHECK constraint di migrasi 0026 — nilai di luar rentang ditolak 422,

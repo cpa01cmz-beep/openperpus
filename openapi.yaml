@@ -656,9 +656,111 @@ paths:
         - BearerAuth: []
       responses:
         '200':
-          description: ok
+          description: >-
+            ok — response is {data: fine, payment: immutable receipt row with
+            receipt_no, revalidated}
         '401':
           description: Silakan login
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Denda sudah lunas/dibebaskan
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Nominal melebihi sisa denda
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/fines/{id}/waive:
+    post:
+      summary: Request fine waiver (staff; step 1 of 2, issue #72)
+      description: >-
+        Reason required (min 10 chars). The request lands in fine_waivers with
+        requested_by recorded; approval/rejection by a DIFFERENT admin happens
+        via POST /api/fines/waivers/{id}/decision.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - reason
+              properties:
+                reason:
+                  type: string
+                  minLength: 10
+                  maxLength: 2000
+      responses:
+        '201':
+          description: created — waiver row awaiting approval
+        '400':
+          description: Body JSON tidak valid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Denda sudah lunas/dibebaskan atau pengajuan sudah menunggu
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: Alasan wajib diisi minimal 10 karakter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/fines/waivers/{id}/decision:
+    post:
+      summary: Approve/reject fine waiver (admin; approver must differ from requester)
+      description: >-
+        Step 2 of the two-step fine waiver (#72). Segregation of duties:
+        only admin may decide and the approver cannot be the requester of the
+        waiver (self-approval → 403, also enforced by a DB CHECK constraint).
+        Approving moves the fine to status 'waived'.
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - approve
+              properties:
+                approve:
+                  type: boolean
+                note:
+                  type: string
+                  maxLength: 500
+      responses:
+        '200':
+          description: ok — decided waiver row
+        '403':
+          description: Hanya admin, dan bukan pengajunya sendiri
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Pengajuan sudah diputuskan / denda berubah status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: approve wajib boolean
           content:
             application/json:
               schema:

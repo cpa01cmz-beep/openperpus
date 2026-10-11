@@ -38,6 +38,8 @@ import {
 import { GET as faqsGET, POST as faqsPOST } from '@/app/api/faqs/route';
 import { PUT as faqByIdPUT, DELETE as faqByIdDELETE } from '@/app/api/faqs/[id]/route';
 import { POST as finesPOST } from '@/app/api/fines/route';
+import { POST as finesWaivePOST } from '@/app/api/fines/[id]/waive/route';
+import { POST as finesWaiverDecisionPOST } from '@/app/api/fines/waivers/[id]/decision/route';
 import { GET as loansGET, POST as loansPOST } from '@/app/api/loans/route';
 import { PUT as loanByIdPUT, DELETE as loanByIdDELETE } from '@/app/api/loans/[id]/route';
 import { POST as loanReturnPOST } from '@/app/api/loans/[id]/return/route';
@@ -127,6 +129,11 @@ const adminOnly: Case[] = [
   { name: 'POST /api/categories', run: () => categoriesPOST(req()) },
   { name: 'POST /api/faqs', run: () => faqsPOST(req()) },
   { name: 'POST /api/fines', run: () => finesPOST(req()) },
+  { name: 'POST /api/fines/[id]/waive', run: () => finesWaivePOST(req(), CTX) },
+  {
+    name: 'POST /api/fines/waivers/[id]/decision',
+    run: () => finesWaiverDecisionPOST(req(), CTX),
+  },
   { name: 'GET /api/loans', run: () => loansGET(req()) },
   { name: 'POST /api/loans', run: () => loansPOST(req()) },
   { name: 'GET /api/members', run: () => membersGET(req()) },
@@ -242,11 +249,14 @@ describe('issue #25 — unified staff authorization (Gherkin: non-staff → 403 
     // GET koleksi/[id] publik-dengan-elevasi, benar tak masuk matrix.
     // Fase 1 tema: +1 PUT /api/settings/theme (admin-only, layout-only).
     // Issue #73: +1 POST /api/reservations/[id]/checkout (checkout atomik).
+    // Issue #72: +2 endpoint pembebasan denda dua tahap —
+    // POST /api/fines/[id]/waive (pustakawan+) + POST
+    // /api/fines/waivers/[id]/decision (admin saja).
     // Issue #54: tulis single-resource HANYA via [id] — koleksi PUT/DELETE
     // (22 pair) keluar matrix, diganti GET/PUT/DELETE /api/{members,articles,
     // banners}/[id] (7 pair admin-only; GET articles/banners [id] publik-dengan-
     // elevasi seperti taxonomy lain).
-    expect(covered.length, 'matrix must declare 46 admin-only endpoint+method pairs').toBe(46);
+    expect(covered.length, 'matrix must declare 48 admin-only endpoint+method pairs').toBe(48);
     expect(covered, 'matrix missing admin-only handlers present in src/app/api').toEqual(scanned);
   });
 
