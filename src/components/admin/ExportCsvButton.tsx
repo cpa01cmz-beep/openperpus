@@ -19,11 +19,21 @@ type Props = {
 /**
  * Nama berkas dari header Content-Disposition server (stempel WIB kanonis,
  * isu #133 item 2) — dukungan bentuk `filename="…"` dan RFC 5987
- * `filename*=UTF-8''…`. Fallback ke nama bertanggal klien bila header absen.
+ * `filename*=UTF-8''…`. Fallback ke nama bertanggal klien bila header absen
+ * atau tak terpakai; decodeURIComponent dijaga karena header dari jaringan
+ * bisa mengandung percent-encoding rusak (URIError) — ekspor yang SUKSES
+ * tidak boleh gagal gara-gara nama berkas.
  */
 function filenameFromHeader(header: string | null, fallback: string): string {
   const utf8 = header?.match(/filename\*=UTF-8''([^;]+)/i);
-  if (utf8?.[1]) return decodeURIComponent(utf8[1]);
+  if (utf8?.[1]) {
+    try {
+      const decoded = decodeURIComponent(utf8[1]).trim();
+      if (decoded) return decoded;
+    } catch {
+      // percent-encoding rusak — jatuh ke bentuk lain di bawah.
+    }
+  }
   const match = header?.match(/filename="([^"]*)"|filename=([^;]+)/i);
   const name = (match?.[1] ?? match?.[2])?.trim();
   return name ? name : fallback;
