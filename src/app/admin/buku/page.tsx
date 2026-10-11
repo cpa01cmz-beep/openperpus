@@ -199,6 +199,7 @@ export default function BukuPage() {
         </div>
         <ExportCsvButton
           filename="buku.csv"
+          scope="books"
           headers={['ID', 'Judul', 'Penulis', 'Kategori', 'Tersedia', 'Total']}
           rows={rows.map((r) => [
             r.id,
