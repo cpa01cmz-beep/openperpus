@@ -159,6 +159,29 @@ export async function POST(req: Request) {
   return NextResponse.json({ data }, { status: 201 });
 }
 
+/** Batas int4 Postgres (2147483647) — dipakai predikat stok opname. */
+const OPNAME_STOCK_MAX = 2147483647;
+
+/**
+ * Predikat stok opname IDENTIK dengan RPC stock_opname_tx (migrasi 0033):
+ * hanya bilangan bulat >= 0 — angka JSON atau string digit, maks 10 digit
+ * (batas panjang int4), disaring rentang 2147483647. Number() MENERIMA
+ * null/""/true/"5.0"/1e21 -> 0/1/5/1e21 DAN MENULISNYA; nilai di luar
+ * int4 juga melempar 22003 di DB. null = baris tidak valid (dilewati
+ * dengan reason), sama seperti RPC.
+ */
+function parseOpnameStock(v: unknown): number | null {
+  if (typeof v === 'number') {
+    if (!Number.isInteger(v) || v < 0 || v > OPNAME_STOCK_MAX || Object.is(v, -0)) return null;
+    return v;
+  }
+  if (typeof v === 'string' && /^\d{1,10}$/.test(v)) {
+    const n = Number(v);
+    return n <= OPNAME_STOCK_MAX ? n : null;
+  }
+  return null;
+}
+
 /**
  * PUT /api/books { action: 'stock_opname', items: [{ id, stock_total, stock_available }] }
  * Stok opname ATOMIK via RPC stock_opname_tx (migrasi 0032 + hardening 0033):
@@ -205,9 +228,9 @@ export async function PUT(req: Request) {
     return jsonError('VALIDATION', 'Setiap item wajib punya id UUID.', 422);
   }
 
-  // Jalur utama ATOMIK: satu transaksi DB (lock + clamp + audit).
+  // Jalur utama ATOMIK: satu transaksi DB (lock + update + audit).
   // Fallback orkestrasi aplikasi bila RPC belum terdeploy (42883/PGRST202)
-  // atau klien mock tanpa .rpc.
+  // atau klien mock tanpa .rpc — dengan predikat stok identik (parseOpnameStock).
   if (typeof (supabase as { rpc?: unknown }).rpc === 'function') {
     try {
       const { data, error } = (await (
@@ -234,9 +257,12 @@ export async function PUT(req: Request) {
         log.warn('books.stock_opname_rpc_no_payload');
         return NextResponse.json({ data: { updated: [], skipped: [], diffs: [] } });
       }
-      {
-        const rc = (error as { code?: string }).code ?? '';
-        const msg = (error as { message?: string }).message ?? '';
+      // Guard eksplisit: blok mapping error hanya boleh jalan saat error
+      // benar-benar ada — TypeScript menarrow tipe di sini, tidak lagi lewat
+      // cast yang "diam-diam" lolos saat error null.
+      if (error) {
+        const rc = error.code ?? '';
+        const msg = error.message ?? '';
         const rpcMissing =
           rc === '42883' ||
           rc === 'PGRST202' ||
@@ -274,8 +300,6 @@ export async function PUT(req: Request) {
     .in('status', ['borrowed', 'overdue']);
   const activeBookIds = ((active ?? []) as { book_id: string }[]).map((r) => r.book_id);
   const blocked = new Set(activeBookIds);
-  const activeCounts = new Map<string, number>();
-  for (const b of activeBookIds) activeCounts.set(b, (activeCounts.get(b) ?? 0) + 1);
 
   const skipped: { id: string; reason: string }[] = [];
   const rows: { id: string; stock_total: number; stock_available: number }[] = [];
@@ -290,9 +314,14 @@ export async function PUT(req: Request) {
       skipped.push({ id, reason: 'Dilewati: buku masih dipinjam.' });
       continue;
     }
-    const st = Number(item.stock_total);
-    const sa = Number(item.stock_available);
-    if (!Number.isInteger(st) || st < 0 || !Number.isInteger(sa) || sa < 0) {
+    // Predikat stok IDENTIK dengan RPC stock_opname_tx (migrasi 0033): hanya
+    // bilangan bulat >= 0 (angka JSON atau string digit, maks 10 digit —
+    // batas int4). Number() lama menerima null/""/true/"5.0" -> 0/1/5 dan
+    // menulisnya; nilai > 2147483647 juga lolos lalu melempar 22003 di DB.
+    // null = tidak valid (dilewati), sama seperti RPC.
+    const st = parseOpnameStock(item.stock_total);
+    const sa = parseOpnameStock(item.stock_available);
+    if (st === null || sa === null) {
       skipped.push({ id, reason: 'Stok tidak valid: harus bilangan bulat >= 0.' });
       continue;
     }
@@ -300,10 +329,9 @@ export async function PUT(req: Request) {
       skipped.push({ id, reason: 'Stok tersedia melebihi stok total.' });
       continue;
     }
-    const maxAvail = Math.max(0, st - (activeCounts.get(id) ?? 0));
-    const clamped = Math.min(sa, maxAvail);
-    if (!rows.some((r) => r.id === id))
-      rows.push({ id, stock_total: st, stock_available: clamped });
+    // Tanpa clamp: buku berpinjaman sudah dilewati di atas — available akhir
+    // selalu = nilai opname (sama seperti RPC, tanpa clamp tersembunyi).
+    if (!rows.some((r) => r.id === id)) rows.push({ id, stock_total: st, stock_available: sa });
   }
   let updated: string[] = [];
   let diffs: { id: string; old_available: number | null; new_available: number }[] = [];
@@ -336,7 +364,9 @@ export async function PUT(req: Request) {
           action: 'books.stock_opname',
           entity_type: 'books',
           entity_id: updated[0] as string,
-          metadata: { ids: updated, diffs, bulk: items.length > 1 },
+          // bulk = jumlah baris yang TERUPDATE (identik dengan RPC:
+          // array_length(v_updated, 1) > 1), bukan jumlah item input.
+          metadata: { ids: updated, diffs, bulk: updated.length > 1 },
         });
       } catch {
         /* best-effort */

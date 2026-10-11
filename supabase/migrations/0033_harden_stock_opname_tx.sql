@@ -14,14 +14,24 @@
 --      mengubah error internal (timeout/cancel) menjadi baris "skipped"
 --      -> request 200. Ganti dengan predikat eksplisit, tanpa exception.
 --   4. MASKING UUID: EXCEPTION disempitkan ke invalid_text_representation (22P02).
---   5. RENTANG int4: nilai > 2147483647 melempar 22003 saat `::INTEGER` dan
---      membatalkan SELURUH batch (baris sah ikut gagal -> 500 global). Disaring
---      lebih dulu sebagai skipped per baris.
+--   5. RENTANG int4: nilai > 2147483647 melempar 22003 saat cast dan
+--      membatalkan SELURUH batch (baris sah ikut gagal -> 500 global).
+--      Predikat digit diperketat menjadi `^\d{1,10}$` (batas panjang int4 =
+--      10 digit): string digit super-panjang tak pernah mencapai cast —
+--      ::NUMERIC pun tak mungkin melempar 22003 pada masukan <= 10 digit.
 --   6. KONTRAK: docstring 0032 mengiklankan "clamp available <= total - active",
 --      padahal buku berpinjaman di-CONTINUE sehingga v_active SELALU 0 saat
 --      clamp -> ekspresi itu dead code dan menyesatkan (terlihat seperti safety
 --      net). Docstring diperbaiki, ekspresi dead dibuang.
--- Rollback: pulihkan definisi 0032 (isi file lama di bawah).
+--   7. PERILAKU IDENTIK dengan fallback aplikasi: urutan cek kini
+--      id -> existence -> dipinjam -> stok (mengikuti fallback), sehingga
+--      reason string "skipped" sama di kedua jalur; predikat stok juga
+--      menyamai fallback (parseOpnameStock di src/app/api/books/route.ts):
+--      bilangan bulat >= 0, maks 10 digit, rentang int4.
+-- Rollback: eksekusi ulang isi supabase/migrations/0032_issue75_stock_opname.sql
+--   (CREATE OR REPLACE memulihkan definisi sebelumnya), atau darurat:
+--   DROP FUNCTION IF EXISTS public.stock_opname_tx(jsonb, uuid); — PUT
+--   /api/books otomatis jatuh ke fallback aplikasi (jalan non-atomik).
 -- ============================================================================
 
 CREATE OR REPLACE FUNCTION public.stock_opname_tx(
@@ -110,6 +120,9 @@ BEGIN
 
   -- ---------------------------------------------------------------------------
   -- Pass 3: validasi + update per item (mengikuti urutan input).
+  -- URUTAN cek identik dengan fallback aplikasi (src/app/api/books/route.ts):
+  -- id -> (dedup) -> existence -> dipinjam -> stok. Reason string "skipped"
+  -- karena itu sama di kedua jalur.
   -- ---------------------------------------------------------------------------
   FOR v_idx IN 0 .. v_count - 1 LOOP
     v_item := p_items -> v_idx;
@@ -129,30 +142,6 @@ BEGIN
       CONTINUE;
     END IF;
 
-    v_st_text := v_item ->> 'stock_total';
-    v_sa_text := v_item ->> 'stock_available';
-    -- Predikat eksplisit (bukan EXCEPTION WHEN OTHERS): timeout/cancel/error
-    -- internal tetap melempar dan menggagalkan transaksi, bukan menyamar jadi
-    -- baris "skipped" dengan HTTP 200.
-    IF v_st_text IS NULL OR v_sa_text IS NULL
-       OR v_st_text !~ '^\d+$' OR v_sa_text !~ '^\d+$' THEN
-      v_skipped := v_skipped || jsonb_build_object('id', v_id, 'reason', 'Stok tidak valid: harus bilangan bulat >= 0.');
-      CONTINUE;
-    END IF;
-    -- Saring rentang int4 SEBELUM cast ::INTEGER: nilai di luar 2147483647
-    -- melempar 22003 dan membatalkan SELURUH transaksi — baris yang sah ikut
-    -- batal dan hanya tampak sebagai 500 global. NUMERIC tak pernah meluber.
-    IF v_st_text::NUMERIC > 2147483647 OR v_sa_text::NUMERIC > 2147483647 THEN
-      v_skipped := v_skipped || jsonb_build_object('id', v_id, 'reason', 'Stok tidak valid: harus bilangan bulat >= 0.');
-      CONTINUE;
-    END IF;
-    v_st := v_st_text::INTEGER;
-    v_sa := v_sa_text::INTEGER;
-    IF v_sa > v_st THEN
-      v_skipped := v_skipped || jsonb_build_object('id', v_id, 'reason', 'Stok tersedia melebihi stok total.');
-      CONTINUE;
-    END IF;
-
     -- Tidak ter-lock di pass 2 = baris buku tidak ada.
     IF NOT (v_locked ? v_id::text) THEN
       v_skipped := v_skipped || jsonb_build_object('id', v_id, 'reason', 'Buku tidak ditemukan.');
@@ -166,6 +155,31 @@ BEGIN
      WHERE book_id = v_id AND status IN ('borrowed', 'overdue');
     IF v_active > 0 THEN
       v_skipped := v_skipped || jsonb_build_object('id', v_id, 'reason', 'Dilewati: buku masih dipinjam.');
+      CONTINUE;
+    END IF;
+
+    v_st_text := v_item ->> 'stock_total';
+    v_sa_text := v_item ->> 'stock_available';
+    -- Predikat eksplisit (bukan EXCEPTION WHEN OTHERS): timeout/cancel/error
+    -- internal tetap melempar dan menggagalkan transaksi, bukan menyamar jadi
+    -- baris "skipped" dengan HTTP 200.
+    -- Batas panjang 10 digit DULU (maks 2147483647 = 10 digit): string digit
+    -- lebih panjang tak boleh sampai ke cast — ::NUMERIC/::INTEGER melempar
+    -- 22003 dan membatalkan SELURUH batch.
+    IF v_st_text IS NULL OR v_sa_text IS NULL
+       OR v_st_text !~ '^\d{1,10}$' OR v_sa_text !~ '^\d{1,10}$' THEN
+      v_skipped := v_skipped || jsonb_build_object('id', v_id, 'reason', 'Stok tidak valid: harus bilangan bulat >= 0.');
+      CONTINUE;
+    END IF;
+    -- Masukan sudah <= 10 digit, jadi cast aman; saring rentang int4.
+    IF v_st_text::NUMERIC > 2147483647 OR v_sa_text::NUMERIC > 2147483647 THEN
+      v_skipped := v_skipped || jsonb_build_object('id', v_id, 'reason', 'Stok tidak valid: harus bilangan bulat >= 0.');
+      CONTINUE;
+    END IF;
+    v_st := v_st_text::INTEGER;
+    v_sa := v_sa_text::INTEGER;
+    IF v_sa > v_st THEN
+      v_skipped := v_skipped || jsonb_build_object('id', v_id, 'reason', 'Stok tersedia melebihi stok total.');
       CONTINUE;
     END IF;
 
