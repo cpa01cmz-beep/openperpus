@@ -66,18 +66,42 @@ export type ScopeDef = {
   /** Kolom select — HEADS UP: sama dengan kolom yang dipakai mapper. */
   select: string;
   /**
-   * Kolom ORDER BY: kolom utama + tiebreaker UNIK (`id`). WAJIB deterministik,
+  /** Kolom ORDER BY: kolom utama + tiebreaker UNIK (`id`). WAJIB deterministik,
    * bukan sekadar "urut": ekspor mengambil data per-chunk dengan `range()`
    * (offset), dan offset hanya stabil bila urutan tidak bisa berubah antar
    * query. Kolom non-unik (created_at/borrowed_at/issued_at) mengizinkan
    * Postgres mengembalikan baris ber-key-sama dalam urutan berbeda di tiap
    * eksekusi — baris bisa GANDA di satu chunk dan HILANG di chunk lain
-   * (review PR #105). `id` unik menutup lubang itu.
-   */
+   * (review PR #105). `id` unik menutup lubang itu. */
   order: readonly [string, ...string[]];
+  /**
+   * Filter ruang lingkup (diterapkan sebagai `.eq` saat fetch). Dipakai agar
+   * ekspor SELARAS dengan tampilan aplikasi: buku soft-delete (is_active=false)
+   * tak pernah muncul di aplikasi, jadi ekspor laporan pun tak memuatnya —
+   * kalau tidak, jumlah baris ekspor tak akan pernah sama dengan ekspor
+   * halaman aktif yang dibandingkan pengguna (review PR #105).
+   */
+  filters?: readonly { col: string; val: unknown }[];
   headers: string[];
   row: (r: Row) => CsvCell[];
 };
+
+/**
+ * Penanda akhir stream untuk ekspor yang TIDAK lengkap. Diawali `#` supaya
+ * terbaca sebagai komentar di sebagian besar alat, dan pesannya eksplisit:
+ * berkas ini BUKAN "seluruh data". Tanpa penanda ini, ekspor terpotong
+ * (batas chunk) atau gagal di tengah stream tetap berupa CSV rapi berstatus
+ * 200 — kegagalan yang menyamar jadi sukses (review PR #105).
+ */
+export const EXPORT_INCOMPLETE = {
+  /** Batas EXPORT_MAX_CHUNKS tercapai dan masih ada sisa baris. */
+  truncated: (exported: number, limit: number): string =>
+    `# PERINGATAN: ekspor TIDAK LENGKAP — terhenti pada batas ${limit} baris ` +
+    `(terunduh ${exported}). Sisa data belum ikut; pakai filter atau ekspor per-periode.`,
+  /** Kegagalan baca di tengah stream (header respons sudah terkirim). */
+  failed:
+    '# PERINGATAN: ekspor TIDAK LENGKAP — pembacaan data gagal di tengah proses. Sebagian baris belum terunduh.',
+} as const;
 
 const num = (v: unknown): number => Number(v ?? 0) || 0;
 
@@ -102,6 +126,8 @@ export const REPORTS: Record<ReportScope, ScopeDef> = {
     filename: 'buku.csv',
     select: 'id,title,author,categories(name),stock_available,stock_total',
     order: ['created_at', 'id'],
+    // Selaras dengan GET /api/books dan daftar admin: hanya buku aktif.
+    filters: [{ col: 'is_active', val: true }],
     headers: ['ID', 'Judul', 'Penulis', 'Kategori', 'Tersedia', 'Total'],
     row: (r: Row) => {
       const b = r as unknown as BookExportRow;
