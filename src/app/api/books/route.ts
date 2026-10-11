@@ -161,12 +161,16 @@ export async function POST(req: Request) {
 
 /**
  * PUT /api/books { action: 'stock_opname', items: [{ id, stock_total, stock_available }] }
- * Stok opname ATOMIK via RPC stock_opname_tx (migrasi 0032): lock buku
- * FOR UPDATE per baris, hitung pinjaman aktif fresh di transaksi, clamp
- * available <= total - active, update + audit full diff (berita acara
- * selisih) dalam SATU transaksi. Fallback ke orkestrasi aplikasi bila RPC
- * belum terdeploy (42883/PGRST202) atau klien tanpa .rpc — perilaku identik
- * (skip borrowed, clamp, diffs, 1 audit row).
+ * Stok opname ATOMIK via RPC stock_opname_tx (migrasi 0032 + hardening 0033):
+ * lock semua kandidat SEKALIGUS `ORDER BY id FOR UPDATE` (bebas deadlock),
+ * hitung pinjaman aktif fresh di dalam transaksi, update + audit full diff
+ * (berita acara selisih) dalam SATU transaksi.
+ * Aturan: buku dengan pinjaman borrowed/overdue DILEWATI (dengan alasan) —
+ * available akhir selalu = nilai opname (tidak ada clamp tersembunyi).
+ * Fallback ke orkestrasi aplikasi HANYA bila RPC belum terdeploy
+ * (42883/PGRST202) atau klien tanpa .rpc. Fallback tidak dipakai ketika RPC
+ * sudah merespons: hasil ambigu TIDAK boleh diulang via jalur non-atomik
+ * (opname bisa termuat dua kali + audit ganda).
  * Balikan: { data: { updated: string[], skipped: [{ id, reason }], diffs: [...] } }.
  * ponytail: naikkan ke approval opname dua langkah (tabel batch +
  * ajukan/setujui) bila opname jadi SOP sensitif — cukup bila bulk <= 100 manual.
@@ -212,14 +216,25 @@ export async function PUT(req: Request) {
           args: Record<string, unknown>
         ) => Promise<{ data: unknown; error: { code?: string; message?: string } | null }>
       )('stock_opname_tx', { p_items: items, p_user_id: user?.id ?? null })) as {
-        data: { updated: string[]; skipped: { id: string; reason: string }[]; diffs: unknown[] } | null;
+        data: {
+          updated: string[];
+          skipped: { id: string; reason: string }[];
+          diffs: unknown[];
+        } | null;
         error: { code?: string; message?: string } | null;
       };
-      if (!error && data) {
+      // RPC sudah berkomitmen (atau dibatalkan DB). Hasil apa pun TIDAK boleh
+      // diulang lewat jalur non-atomik di bawah — opname bisa termuat dua kali
+      // dan menulis audit ganda.
+      if (!error) {
         revalidateTag('books', 'max');
-        return NextResponse.json({ data });
+        if (data) return NextResponse.json({ data });
+        // data null tanpa error: PostgREST jarang melakukan ini pada fungsi
+        // RETURN jsonb, tapi bila terjadi, laporkan kosong — jangan ulang mutasi.
+        log.warn('books.stock_opname_rpc_no_payload');
+        return NextResponse.json({ data: { updated: [], skipped: [], diffs: [] } });
       }
-      if (error) {
+      {
         const rc = (error as { code?: string }).code ?? '';
         const msg = (error as { message?: string }).message ?? '';
         const rpcMissing =
@@ -227,16 +242,28 @@ export async function PUT(req: Request) {
           rc === 'PGRST202' ||
           /could not find.*stock_opname_tx|function.*stock_opname_tx.*does not exist/i.test(msg);
         if (!rpcMissing) {
-          if (rc === '42501') return jsonError('FORBIDDEN', 'Hanya pustakawan yang boleh opname.', 403);
-          if (rc === '22000') return jsonError('VALIDATION', msg || 'Data opname tidak valid.', 422);
+          // 22000 dipetakan ke pesan tetap; teks exception asli hanya ke log —
+          // jangan bocorkan detail DB ke klien.
+          if (rc === '42501')
+            return jsonError('FORBIDDEN', 'Hanya pustakawan yang boleh opname.', 403);
+          if (rc === '22000') {
+            log.warn('books.stock_opname_invalid', { detail: msg });
+            return jsonError('VALIDATION', 'Data opname tidak valid.', 422);
+          }
           log.error('books.stock_opname_failed', { detail: msg });
           return jsonError('SAVE_FAILED', 'Gagal menyimpan stok opname.', 500, {
             requestId: log.requestId,
           });
         }
+        // RPC belum terdeploy -> jatuh ke fallback di bawah.
       }
-    } catch {
-      /* jatuh ke fallback legacy */
+    } catch (err) {
+      // Throw (network/timeout/abort): status commit TIDAK diketahui. Mengulang
+      // lewat jalur non-atomik bisa menerapkan opname dua kali -> gagal jujur.
+      log.error('books.stock_opname_rpc_threw', { detail: String(err) });
+      return jsonError('SAVE_FAILED', 'Gagal menyimpan stok opname.', 500, {
+        requestId: log.requestId,
+      });
     }
   }
 
