@@ -66,13 +66,14 @@ export type ScopeDef = {
   /** Kolom select — HEADS UP: sama dengan kolom yang dipakai mapper. */
   select: string;
   /**
-  /** Kolom ORDER BY: kolom utama + tiebreaker UNIK (`id`). WAJIB deterministik,
+   * Kolom ORDER BY: kolom utama + tiebreaker UNIK (`id`). WAJIB deterministik,
    * bukan sekadar "urut": ekspor mengambil data per-chunk dengan `range()`
    * (offset), dan offset hanya stabil bila urutan tidak bisa berubah antar
    * query. Kolom non-unik (created_at/borrowed_at/issued_at) mengizinkan
    * Postgres mengembalikan baris ber-key-sama dalam urutan berbeda di tiap
    * eksekusi — baris bisa GANDA di satu chunk dan HILANG di chunk lain
-   * (review PR #105). `id` unik menutup lubang itu. */
+   * (review PR #105). `id` unik menutup lubang itu.
+   */
   order: readonly [string, ...string[]];
   /**
    * Filter ruang lingkup (diterapkan sebagai `.eq` saat fetch). Dipakai agar

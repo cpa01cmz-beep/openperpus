@@ -14,10 +14,20 @@ vi.mock('@/lib/supabase/server', () => ({
 }));
 
 // Chunk kecil (2 baris, maksimal 2 chunk) supaya kasus batas bisa diuji tanpa
-// 50.000 baris di memori.
+// 50.000 baris di memori. `chunkRange` ikut di-mock: kalau tidak, helper asli
+// tetap memakai EXPORT_CHUNK asli (1000) untuk menghitung range() sementara
+// route memakai nilai mock (2) untuk logika break — hasilnya tak konsisten.
 vi.mock('@/lib/report-export', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/report-export')>();
-  return { ...actual, EXPORT_CHUNK: 2, EXPORT_MAX_CHUNKS: 2 };
+  return {
+    ...actual,
+    EXPORT_CHUNK: 2,
+    EXPORT_MAX_CHUNKS: 2,
+    chunkRange: (chunkIndex: number) => {
+      const from = Math.max(0, chunkIndex) * 2;
+      return [from, from + 1] as [number, number];
+    },
+  };
 });
 
 import { GET as EXPORT_GET } from '@/app/api/reports/export/route';
