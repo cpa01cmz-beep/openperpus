@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import Button from '@/components/ui/Button';
 import { createClient } from '@/lib/supabase/client';
 import { ARTICLE_STATUS } from '@/lib/enums';
 import { errMsg } from '@/lib/admin-errors';
@@ -82,7 +83,11 @@ export default function EditArtikelPage({ params }: { params: { id: string } }) 
     <div className="grid gap-4">
       <h1 className="text-2xl font-bold">Edit Artikel</h1>
       <form onSubmit={onSubmit} className="grid max-w-2xl gap-2 rounded-2xl border bg-white p-4">
-        {err && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{err}</p>}
+        {err && (
+          <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+            {err}
+          </p>
+        )}
         <input
           className={input}
           placeholder="Judul*"
@@ -136,12 +141,9 @@ export default function EditArtikelPage({ params }: { params: { id: string } }) 
               </option>
             ))}
           </select>
-          <button
-            disabled={saving}
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm text-white disabled:opacity-50"
-          >
-            {saving ? 'Menyimpan…' : 'Simpan Perubahan'}
-          </button>
+          <Button disabled={saving} loading={saving}>
+            Simpan
+          </Button>
         </div>
         {publishedAt && <p className="text-xs text-slate-500">published_at: {publishedAt}</p>}
       </form>

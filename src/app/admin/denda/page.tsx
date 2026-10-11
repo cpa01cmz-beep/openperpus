@@ -6,6 +6,7 @@ import ExportCsvButton from '@/components/admin/ExportCsvButton';
 import ConfirmModal from '@/components/admin/ConfirmModal';
 import FilterBar from '@/components/admin/FilterBar';
 import StatCard from '@/components/admin/StatCard';
+import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
 import Pagination from '@/components/ui/Pagination';
 import StatusBadge from '@/components/ui/StatusBadge';
@@ -560,21 +561,18 @@ export default function DendaPage() {
         description="Pengajuan pembebasan wajib berisi alasan dan disetujui admin lain."
         footer={
           <>
-            <button
-              type="button"
-              onClick={() => setWaiveTarget(null)}
-              className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
-            >
+            <Button type="button" variant="outline" size="sm" onClick={() => setWaiveTarget(null)}>
               Batal
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              disabled={waiveBusy || waiveReason.trim().length < REASON_MIN}
+              size="sm"
+              loading={waiveBusy}
+              disabled={waiveReason.trim().length < REASON_MIN}
               onClick={() => void submitWaive()}
-              className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 disabled:opacity-50"
             >
-              {waiveBusy ? 'Mengirim…' : 'Ajukan pembebasan'}
-            </button>
+              Ajukan pembebasan
+            </Button>
           </>
         }
       >
@@ -609,21 +607,17 @@ export default function DendaPage() {
         description="Keputusan tercatat beserta pengaju dan approver."
         footer={
           <>
-            <button
-              type="button"
-              onClick={() => setDecision(null)}
-              className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
-            >
+            <Button type="button" variant="outline" size="sm" onClick={() => setDecision(null)}>
               Batal
-            </button>
-            <button
+            </Button>
+            <Button
               type="button"
-              disabled={decisionBusy}
+              size="sm"
+              loading={decisionBusy}
               onClick={() => void submitDecision()}
-              className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 disabled:opacity-50"
             >
-              {decisionBusy ? 'Memproses…' : decision?.approve ? 'Setujui' : 'Tolak'}
-            </button>
+              {decision?.approve ? 'Setujui' : 'Tolak'}
+            </Button>
           </>
         }
       >
