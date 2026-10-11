@@ -22,10 +22,10 @@ describe('#68 sisa loans GET', () => {
     expect(src).toContain('loans.fine_rate_invalid');
   });
 
-  it('Cache-Control s-maxage singkat pada GET', () => {
+  it('Cache-Control no-store pada GET staff-only', () => {
     const src = read('src/app/api/loans/route.ts');
     expect(src).toContain('Cache-Control');
-    expect(src).toContain('s-maxage=30');
+    expect(src).toContain('no-store');
   });
 });
 
