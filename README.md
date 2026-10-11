@@ -51,13 +51,13 @@ Deploy utama: **Vercel** (ADR-002 — Workers free plan kena error 1102 resource
 1. Import repo di Vercel (Git integration → auto deploy per PR).
 2. Set env di dashboard (Settings → Environment Variables):
 
-   | Variable                        | Nilai                           |
-   | ------------------------------- | ------------------------------- |
-   | `NEXT_PUBLIC_SUPABASE_URL`      | Project URL Supabase            |
-   | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | anon public key                 |
-   | `SUPABASE_SERVICE_ROLE_KEY`     | service_role (server only)      |
-   | `NEXT_PUBLIC_SITE_URL`          | `https://openperpus.cmz.web.id` |
-   | `METRICS_TOKEN`                 | token acak untuk `/api/metrics` (opsional; mis. `openssl rand -hex 32`) |
+   | Variable                        | Nilai                                                                                                                                |
+   | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+   | `NEXT_PUBLIC_SUPABASE_URL`      | Project URL Supabase                                                                                                                 |
+   | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | anon public key                                                                                                                      |
+   | `SUPABASE_SERVICE_ROLE_KEY`     | service_role (server only)                                                                                                           |
+   | `NEXT_PUBLIC_SITE_URL`          | `https://openperpus.cmz.web.id`                                                                                                      |
+   | `METRICS_TOKEN`                 | token acak untuk `/api/metrics` (opsional; mis. `openssl rand -hex 32`)                                                              |
    | `SENTRY_DSN`                    | DSN Sentry — reserved, belum aktif (stub di `src/lib/observability.ts`; tanpa `@sentry/*`, set var saja tidak mengaktifkan tracking) |
 
 3. Tambah custom domain `openperpus.cmz.web.id` + DNS record di zone Cloudflare.
@@ -129,6 +129,9 @@ supabase/migrations/0021_services.sql
 supabase/migrations/0022_theme_overrides.sql
 supabase/migrations/0023_loan_eligibility.sql
 supabase/migrations/0024_checkout_reservation_tx.sql
+supabase/migrations/0025_dashboard_stats_rtt.sql
+supabase/migrations/0026_loan_policy.sql
+supabase/migrations/0027_fines_sop.sql
 ```
 
 Alternatif (tanpa paste manual): `supabase db push` dari root repo — prasyarat:
@@ -160,8 +163,8 @@ SELECT tgname, tgenabled FROM pg_trigger WHERE tgrelid = 'public.profiles'::regc
 SELECT role FROM public.profiles WHERE id = (SELECT id FROM auth.users WHERE email = 'email-kamu@contoh.com');
 ```
 
-   > Pastikan email sudah terdaftar (selesaikan langkah 1 dulu) — email yang tidak
-   > ditemukan = 0 baris ter-update, juga tanpa error (senyap).
+> Pastikan email sudah terdaftar (selesaikan langkah 1 dulu) — email yang tidak
+> ditemukan = 0 baris ter-update, juga tanpa error (senyap).
 
 3. (Opsional) isi data awal perpus — nama, kategori, rak, buku contoh — dengan menjalankan
    `supabase/seed.sql` (paste ke SQL Editor, atau via psql: PowerShell `psql $env:DATABASE_URL -f supabase/seed.sql`, Linux/macOS `psql "$DATABASE_URL" -f supabase/seed.sql` — `DATABASE_URL` lihat `supabase/README.md` §Prasyarat).
@@ -201,14 +204,14 @@ login di `/login`, lalu cek halaman `/admin` memakai akun admin dari §Akun admi
 
 ## Troubleshooting
 
-| Gejala | Penyebab / fix |
-| ------ | -------------- |
-| `/api/metrics` balas 401 | Set env `METRICS_TOKEN` lalu kirim header `Authorization: Bearer <token>` (token kosong = route terbuka tanpa auth) |
-| `PUT /api/settings/theme` 500 / kolom `theme_overrides` tidak ada | Migrasi `0022_theme_overrides.sql` belum jalan — lihat §Migrasi Supabase |
-| Login langsung kembali ke `/login` | Tambahkan URL situs ke Supabase Dashboard → Authentication → URL Configuration → Redirect URLs |
-| Sudah login tapi 403 di `/admin` atau API admin | Role belum `admin` — jalankan §Akun admin pertama |
-| Upload gambar gagal | Bucket `library-assets` belum ada — jalankan `0004_storage.sql` lalu `0007_storage_guard.sql` (0004 saja mengembalikan svg ke daftar mime) |
-| Deploy CF error 1102 resource limit | Pakai Vercel sebagai target utama (ADR-002); worker CF tetap alternatif — cek juga `wrangler secret put` (§Alternatif deploy) |
+| Gejala                                                            | Penyebab / fix                                                                                                                             |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `/api/metrics` balas 401                                          | Set env `METRICS_TOKEN` lalu kirim header `Authorization: Bearer <token>` (token kosong = route terbuka tanpa auth)                        |
+| `PUT /api/settings/theme` 500 / kolom `theme_overrides` tidak ada | Migrasi `0022_theme_overrides.sql` belum jalan — lihat §Migrasi Supabase                                                                   |
+| Login langsung kembali ke `/login`                                | Tambahkan URL situs ke Supabase Dashboard → Authentication → URL Configuration → Redirect URLs                                             |
+| Sudah login tapi 403 di `/admin` atau API admin                   | Role belum `admin` — jalankan §Akun admin pertama                                                                                          |
+| Upload gambar gagal                                               | Bucket `library-assets` belum ada — jalankan `0004_storage.sql` lalu `0007_storage_guard.sql` (0004 saja mengembalikan svg ke daftar mime) |
+| Deploy CF error 1102 resource limit                               | Pakai Vercel sebagai target utama (ADR-002); worker CF tetap alternatif — cek juga `wrangler secret put` (§Alternatif deploy)              |
 
 ## Keamanan
 

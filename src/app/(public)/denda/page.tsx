@@ -40,7 +40,9 @@ export default function DendaSayaPage() {
   const [needLogin, setNeedLogin] = useState(false);
   const [error, setError] = useState('');
   const [pendingPay, setPendingPay] = useState<Fine | null>(null);
-  const [receipt, setReceipt] = useState<(Fine & { methodUsed: string }) | null>(null);
+  const [receipt, setReceipt] = useState<
+    (Fine & { methodUsed: string; receiptNo?: string | null }) | null
+  >(null);
   const [copied, setCopied] = useState(false);
   const [downloadError, setDownloadError] = useState('');
   const [finePerDay, setFinePerDay] = useState(1000);
@@ -156,7 +158,10 @@ export default function DendaSayaPage() {
         return;
       }
       const data = (json as { data?: Fine }).data;
-      if (data) setReceipt({ ...data, methodUsed: usedMethod });
+      // #72: nomor kwitansi immutable dari tabel payments (bila tersedia).
+      const payment = (json as { payment?: { receipt_no?: string | null } | null }).payment;
+      if (data)
+        setReceipt({ ...data, methodUsed: usedMethod, receiptNo: payment?.receipt_no ?? null });
       await load();
       loadTotals();
     } finally {
@@ -169,6 +174,7 @@ export default function DendaSayaPage() {
     const text =
       `Bukti pembayaran denda\n` +
       `ID: ${receipt.id}\n` +
+      `Nomor struk: ${receipt.receiptNo ?? '-'}\n` +
       `Nominal: ${fmtRp(receipt.amount)}\n` +
       `Dibayar: ${fmtRp(receipt.paid_amount)}\n` +
       `Sisa: ${fmtRp(num(receipt.amount) - num(receipt.paid_amount))}\n` +
@@ -192,6 +198,7 @@ export default function DendaSayaPage() {
     const text =
       `Bukti pembayaran denda\n` +
       `ID: ${receipt.id}\n` +
+      `Nomor struk: ${receipt.receiptNo ?? '-'}\n` +
       `Nominal: ${fmtRp(receipt.amount)}\n` +
       `Dibayar: ${fmtRp(receipt.paid_amount)}\n` +
       `Sisa: ${fmtRp(0)}\n` +
@@ -296,6 +303,10 @@ export default function DendaSayaPage() {
           <>
             <div className="grid gap-1.5 print:hidden">
               <p>
+                Nomor struk:{' '}
+                <span className="font-mono font-semibold">{receipt.receiptNo ?? '—'}</span>
+              </p>
+              <p>
                 Nominal: <span className="font-semibold">{fmtRp(receipt.amount)}</span>
               </p>
               <p>
@@ -332,6 +343,7 @@ export default function DendaSayaPage() {
             <div className="hidden print:block">
               <p>Bukti pembayaran denda</p>
               <p>ID: {receipt.id}</p>
+              <p>Nomor struk: {receipt.receiptNo ?? '—'}</p>
               <p>Nominal: {fmtRp(receipt.amount)}</p>
               <p>Dibayar: {fmtRp(receipt.paid_amount)}</p>
               <p>Sisa: {fmtRp(0)}</p>

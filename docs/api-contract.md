@@ -286,15 +286,25 @@
 ### `GET /api/fines?member_id=&status=&page=&per_page=` — anggota baca miliknya; staf baca semua.
 
 - `?status=` ∈ `unpaid|partial|paid|waived` (nilai lain → `422`). Embed `loans(id,book_id,due_at,status)`, `members(id,member_code)`.
+- Staf tambahan melihat `payments(id,amount,method,receipt_no,paid_at)` + `fine_waivers(id,status,reason,requested_by,approved_by,decided_at)`; anggota tidak melihat metadata internal.
 - Kolom: `loan_id, member_id, amount, paid_amount, status, notes, issued_at, ...`.
 
 ### `POST /api/fines` — pustakawan+ (terbitkan denda manual)
 
-### `POST /api/fines/{id}/pay` — pustakawan+
+### `POST /api/fines/{id}/pay` — pustakawan+ / pemilik denda
 
 - Body: `{amount?, metode?: cash|transfer|... (alias: method|payment_method|nominal), notes?}`.
-- Menyimpan `paid_amount` + status menjadi `paid`/`partial`. Pembayaran **belum** punya tabel receipts bernomor — lihat issue #72.
-- `200 {data: fine}` + log `fines.pay`.
+- Menyimpan `paid_amount` + status menjadi `paid`/`partial`. Setiap pembayaran menulis baris **payments** immutable dengan `receipt_no` unik (issu #72); balasan `200 {data: fine, payment: {receipt_no,...}}` + log `fines.pay`. Struk bisa dicetak/diunduh di `/denda` (anggota) dan nomor struk tampil di admin Denda.
+
+### `POST /api/fines/{id}/waive` — pustakawan+ (langkah 1 pembebasan, issue #72)
+
+- Body: `{reason}` — wajib, minimal 10 karakter.
+- Mencatat `fine_waivers` (`status=requested`, `requested_by`); keputusan diambil admin LAIN lewat endpoint decision. `409` bila denda sudah lunas/dibebaskan atau sudah ada pengajuan menunggu. `201 {data: waiver}` + log `fines.waive_request`.
+
+### `POST /api/fines/waivers/{id}/decision` — admin (langkah 2 pembebasan, issue #72)
+
+- Body: `{approve: boolean, note?}`.
+- Segregation of duties: approver wajib admin dan **berbeda** dari pengaju (self-approval → `403`, dijaga juga CHECK constraint DB). Approve → denda `status=waived`; jawaban `200 {data: waiver}` + log `fines.waive_approve`/`fines.waive_reject`.
 
 ## 6. Articles (artikel/berita/event)
 

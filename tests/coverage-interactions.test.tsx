@@ -870,13 +870,16 @@ describe('denda flows (admin + member) + konten reload', () => {
     const selects = view.container.querySelectorAll('select');
     if (selects[0]) fireEvent.change(selects[0], { target: { value: 'paid' } });
     if (selects[1]) fireEvent.change(selects[1], { target: { value: 'cash' } });
-    // admin pay flow uses window.confirm() + POST /pay — there is no modal on this page
+    // #72: admin pay flow pakai Modal (bukan native confirm) — POST hanya
+    // terjadi setelah "Ya, bayar" diklik di dalam dialog.
     const payBtn = await screen.findByRole(
       'button',
       { name: /bayar denda anggota/i },
       { timeout: 2500 }
     );
     fireEvent.click(payBtn);
+    const payConfirm = await screen.findByRole('button', { name: /ya, bayar/i }, { timeout: 2500 });
+    fireEvent.click(payConfirm);
     await waitFor(
       () =>
         expect(

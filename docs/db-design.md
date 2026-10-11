@@ -32,7 +32,7 @@
 
 - Index: PK saja. RLS: anon/authenticated SELECT; UPDATE hanya `admin`.
 - Seed awal 1 baris (nama generik — admin wajib ganti via CMS, bukan via kode).
-- Kolom operasional sirkulasi (kanonis Inggris, nilai aktual di migrasi; label Indonesia hanya di UI): `fine_per_day` (0014, tarif denda), `max_active_loans` (0023, batas pinjaman aktif), `loan_days` + `max_extensions` + `replacement_fee_damaged` + `replacement_fee_lost` (0026 — issue #74: tempo default, batas perpanjangan, biaya ganti rugi rusak/hilang).
+- Kolom operasional sirkulasi (kanonis Inggris, nilai aktual di migrasi; label Indonesia hanya di UI): `fine_per_day` (0014, tarif denda), `fine_max` (0027 — plafon denda keterlambatan, 0 = tanpa plafon), `max_active_loans` (0023, batas pinjaman aktif), `loan_days` + `max_extensions` + `replacement_fee_damaged` + `replacement_fee_lost` (0026 — issue #74: tempo default, batas perpanjangan, biaya ganti rugi rusak/hilang).
 - CHECK `theme_overrides` (0022): `NULL` ATAU (`jsonb_typeof()='object'` DAN `octet_length(::text)<=8000` DAN top-level keys hanya `tokens|fonts|radius|shadow|spacing|layout`). Aturan "hanya layout" ditegakkan di API, bukan DB (DB mencadangkan 5 kunci lain untuk masa depan).
 - Contoh layout-only: `{"layout":{"headerVariant":"ocean-wave","heroVariant":"ocean-tide","footerVariant":"ocean-harbor","homepageSections":[{"id":"hero","enabled":true,"order":0},{"id":"news","enabled":false}]}}`.
 - Rollback 0022: `ALTER TABLE public.library_settings DROP CONSTRAINT IF EXISTS library_settings_theme_overrides_check; ALTER TABLE public.library_settings DROP COLUMN IF EXISTS theme_overrides;`
@@ -152,7 +152,7 @@
 - Constraint: satu copy hanya 1 loan aktif (`UNIQUE(copy_id) WHERE tanggal_kembali IS NULL` partial).
 - RLS: anggota SELECT miliknya; pustakawan+admin full.
 - Trigger `loan_checkout`: tolak bila member cap `maks_pinjam` tercapai / status blokir / copy tak tersedia; set copy `dipinjam`. Trigger `loan_return`: set copy `tersedia`, hitung `denda = max(0, kembali - tempo) * denda_per_hari`, insert ke `fines`.
-- `extend_count` (0026): jumlah perpanjangan terpakai — dinaikkan atomik oleh RPC `extend_loan` bersama `due_at`, dan dijadikan batas (`max_extensions`) di DB sehingga penghitungan tidak lagi bergantung pada `activity_logs` yang bisa diprune. `return_loan` (0014/0026) menambahkan biaya ganti rugi `rusak`/`hilang` ke denda sebelum menulis baris `fines`.
+- `extend_count` (0026): jumlah perpanjangan terpakai — dinaikkan atomik oleh RPC `extend_loan` bersama `due_at`, dan dijadikan batas (`max_extensions`) di DB sehingga penghitungan tidak lagi bergantung pada `activity_logs` yang bisa diprune. `return_loan` (0014/0026) menambahkan biaya ganti rugi `rusak`/`hilang` ke denda sebelum menulis baris `fines`. `return_loan` (0027) mematok denda keterlambatan ke `library_settings.fine_max` (0 = tanpa plafon); kwitansi pembayaran ditulis ke tabel `payments` oleh RPC `pay_fine_tx`.
 
 ### Status terlambat — TURUNAN, bukan kolom (issue #57)
 
@@ -182,21 +182,13 @@ status IN ('borrowed','overdue') AND due_at < NOW()
 - Index: `(book_id, status)`, `(member_id, status)`.
 - RLS: anggota CRUD miliknya (status terbatas); pustakawan+admin full.
 
-## 9. fines / payments (denda & pembayaran)
+## 9. fines / payments / fine_waivers (denda, kwitansi & pembebasan — migrasi 0001/0027)
 
-| Kolom         | Tipe                                                              |
-| ------------- | ----------------------------------------------------------------- |
-| `id`          | uuid PK                                                           |
-| `loan_id`     | uuid → loans NOT NULL                                             |
-| `member_id`   | uuid → members NOT NULL                                           |
-| `jumlah`      | int NOT NULL CHECK(>0)                                            |
-| `status`      | text CHECK('belum_bayar','lunas','dihapus') DEFAULT 'belum_bayar' |
-| `metode`      | text (tunai/transfer/qris)                                        |
-| `dibayar_at`  | timestamptz NULL                                                  |
-| `received_by` | uuid → profiles                                                   |
-
-- Index: `(member_id, status)`.
-- RLS: anggota SELECT miliknya; tulis pustakawan+admin.
+- `fines` (0001): `id, loan_id, member_id, amount, paid_amount, status ('unpaid'|'partial'|'paid'|'waived'), issued_at, paid_at, notes`. Ditulis otomatis oleh RPC `return_loan` (0011/0014/0026/0027).
+- `payments` (0027): kwitansi pembayaran — `id, fine_id, amount, method, receipt_no UNIQUE, received_by, paid_at`. **Immutable**: trigger `payments_immutable` memblokir UPDATE/DELETE untuk semua peran. `receipt_no` dari sequence `payment_receipt_seq` (format `RCP-YYYYMMDD-NNNNNN`), ditulis atomik oleh RPC `pay_fine_tx`.
+- `fine_waivers` (0027): pengajuan pembebasan denda — `id, fine_id, reason (CHECK >= 10 karakter), status ('requested'|'approved'|'rejected'), requested_by, approved_by, decision_note, requested_at, decided_at`. CHECK `fine_waivers_approver_diff` menolak `approved_by = requested_by`; RPC `request_fine_waiver` (staf) + `decide_fine_waiver` (admin saja).
+- `library_settings.fine_max` (0027): plafon denda keterlambatan (0 = tanpa plafon) — `return_loan` menjepit denda telat ke nilai ini; biaya ganti rugi rusak/hilang (0026) tidak ikut dipatok.
+- RLS: anggota SELECT `fines`/`payments` miliknya; tulisan sensitif hanya staf (keputusan waive hanya admin); `payments` tanpa policy UPDATE/DELETE.
 
 ## 10. articles (+ news/events satu tabel via `tipe`)
 

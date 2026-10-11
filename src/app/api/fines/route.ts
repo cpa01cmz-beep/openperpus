@@ -38,9 +38,16 @@ export async function GET(req: Request) {
     return jsonError('VALIDATION', 'status harus: unpaid|partial|paid|waived.', 422);
   }
 
+  // #72: staf melihat kwitansi (payments) + pengajuan pembebasan
+  // (fine_waivers) dalam satu response — tanpa endpoint tambahan.
+  // Anggota HANYA melihat dendanya sendiri (tanpa metadata internal).
+  const selectCols = isStaff
+    ? '*, loans(id,book_id,due_at,status), members(id,member_code), payments(id,amount,method,receipt_no,paid_at), fine_waivers(id,status,reason,requested_by,approved_by,decided_at)'
+    : '*, loans(id,book_id,due_at,status), members(id,member_code)';
+
   let query = supabase
     .from('fines')
-    .select('*, loans(id,book_id,due_at,status), members(id,member_code)', { count: 'exact' })
+    .select(selectCols, { count: 'exact' })
     .order('issued_at', { ascending: false })
     .range(from, to);
 
