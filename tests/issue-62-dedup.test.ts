@@ -116,7 +116,12 @@ describe('#62 AC1: satu hook list + satu hook tarif', () => {
       const s = readCode(f);
       // Harus ada PEMANGGILAN hook — komentar atau import tak dihitung.
       expect(s, `${f} harus memanggil useAdminList`).toMatch(/useAdminList</);
-      expect(s, `${f} tak boleh fetch daftarnya sendiri`).not.toMatch(/fetch\(`\/\/api\//);
+      // Menulis ulang pemuatan daftar selalu meninggalkan jejak state lokal
+      // untuk baris & jumlah halaman — dasar fetch-nya pindah ke useAdminList.
+      // (Pola fetch yang sah, mis. combobox, tetap dibiarkan menyala.)
+      expect(s, `${f}: tak menyimpan daftar di state lokal`).not.toMatch(
+        /\bsetRows\b|\bsetTotalPages\b/
+      );
     }
   });
 

@@ -67,14 +67,21 @@ export default function KontenPage() {
   const { rows: faqs } = faqsList;
   const { rows: testis } = testisList;
   const loading = pagesList.loading || faqsList.loading || testisList.loading;
-  // Ketiga daftar bisa gagal sendiri-sendiri; semua pesannya ditampilkan
-  // (jangan cuma satu yang ikut tersaring).
-  const listErrors = [pagesList.error, faqsList.error, testisList.error].filter(Boolean);
   const missing: Record<Tab, boolean> = {
     pages: pagesList.missing || tabMissing.pages === true,
     faqs: faqsList.missing || tabMissing.faqs === true,
     testimonials: testisList.missing || tabMissing.testimonials === true,
   };
+  // Halaman ini sudah punya banner 404 amber per-tab, jadi pesan generic
+  // hook TIDAK ditampilkan untuk tab yang sedang ber-404 (sama seperti
+  // admin/denda, admin/reservasi, admin/peminjaman, dan (public)/denda).
+  // Sebaliknya ketiga daftar bisa gagal sendiri-sendiri, jadi pesan yang
+  // bukan 404 tetap ditampilkan semuanya — bukan cuma satu yang tersaring.
+  const listErrors = [
+    { key: 'pages', msg: missing.pages ? '' : pagesList.error },
+    { key: 'faqs', msg: missing.faqs ? '' : faqsList.error },
+    { key: 'testimonials', msg: missing.testimonials ? '' : testisList.error },
+  ].filter((x) => x.msg !== '');
   const totalPages = Math.max(pagesList.totalPages, faqsList.totalPages, testisList.totalPages);
 
   // Muat ulang ketiga tab sekaligus (dipakai setelah aksi tambah/ubah/hapus).
@@ -170,9 +177,9 @@ export default function KontenPage() {
           {actionError}
         </div>
       )}
-      {listErrors.map((msg) => (
+      {listErrors.map(({ key, msg }) => (
         <div
-          key={msg}
+          key={key}
           role="alert"
           className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
         >
