@@ -213,8 +213,11 @@ describe('US-3 denda receipt — struk + riwayat lunas', () => {
       'riwayat butuh kolom paid_at (Lunas pada) dari pay response'
     ).toBe(true);
     expect(
-      src.includes("toLocaleDateString('id-ID')") && /paid_at/.test(src),
-      'paid_at wajib format id-ID'
+      // Isu #79: format tanggal lewat helper bersama, bukan toLocaleDateString inline.
+      src.includes('formatTanggal(receipt.paid_at)') &&
+        src.includes("from '@/lib/format'") &&
+        /paid_at/.test(src),
+      'paid_at wajib format id-ID (helper @/lib/format)'
     ).toBe(true);
     expect(/Metode|methodUsed|notes/.test(src), 'riwayat butuh kolom method').toBe(true);
   });

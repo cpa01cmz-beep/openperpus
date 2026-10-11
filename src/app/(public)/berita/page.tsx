@@ -5,6 +5,7 @@ import { ArrowRight, Newspaper } from 'lucide-react';
 import { fetchArticles, fetchSettings } from '@/lib/books';
 import { getOgImage, getSiteName } from '@/lib/settings';
 import { coverSrc } from '@/lib/cover';
+import { formatTanggalPanjang } from '@/lib/format';
 import { getSiteUrl } from '@/lib/site';
 import Breadcrumb from '@/components/public/Breadcrumb';
 
@@ -107,11 +108,7 @@ export default async function BeritaPage() {
                       dateTime={a.published_at}
                       className="font-normal normal-case tracking-normal text-slate-400"
                     >
-                      {new Date(a.published_at).toLocaleDateString('id-ID', {
-                        day: 'numeric',
-                        month: 'long',
-                        year: 'numeric',
-                      })}
+                      {formatTanggalPanjang(a.published_at)}
                     </time>
                   )}
                 </p>

@@ -342,7 +342,8 @@ describe('#59 kontrak sumber (cover upload + ekspor + 3 halaman)', () => {
     const src = read('src/components/admin/ExportCsvButton.tsx');
     expect(src).toMatch(/Ekspor halaman ini/);
     expect(src).not.toMatch(/Ekspor CSV/);
-    expect(src, 'filename pakai tanggal lokal YYYY-MM-DD').toMatch(/toLocaleDateString\('sv-SE'\)/);
+    expect(src, 'filename pakai tanggal lokal YYYY-MM-DD').toMatch(/formatStamp\(\)/);
+    expect(src, 'stamp dari helper bersama (isu #79)').toContain("from '@/lib/format'");
   });
 
   it('buku/anggota/peminjaman: error pemuatan tampil role=alert, kontrak dijaga hook daftar', () => {

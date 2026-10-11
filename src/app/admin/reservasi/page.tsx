@@ -11,6 +11,7 @@ import { RESERVATION_STATUS } from '@/lib/enums';
 import { checkoutReservation } from '@/lib/reservation-checkout';
 import { findExpiredCandidates, sweepExpiredReservations } from '@/lib/reservation-sweep';
 import { errMsg } from '@/lib/admin-errors';
+import { formatTanggal } from '@/lib/format';
 import { useAdminList } from '@/hooks/useAdminList';
 import { PER_PAGE } from '@/lib/pagination';
 
@@ -235,7 +236,7 @@ export default function ReservasiPage() {
             {expired.map((r) => (
               <li key={r.id}>
                 {r.members?.member_code ?? '-'} · {r.books?.title ?? '-'} ·{' '}
-                {r.expires_at ? new Date(r.expires_at).toLocaleDateString('id-ID') : '-'}
+                {r.expires_at ? formatTanggal(r.expires_at) : '-'}
               </li>
             ))}
           </ul>
@@ -319,11 +320,11 @@ export default function ReservasiPage() {
               header: 'Reservasi',
               render: (r) => (
                 <span>
-                  {new Date(r.reserved_at).toLocaleDateString('id-ID')}
+                  {formatTanggal(r.reserved_at)}
                   <br />
                   <span className="text-xs text-slate-500">
                     {r.expires_at
-                      ? `kadaluarsa ${new Date(r.expires_at).toLocaleDateString('id-ID')}`
+                      ? `kadaluarsa ${formatTanggal(r.expires_at)}`
                       : 'tanpa kadaluarsa'}
                   </span>
                 </span>
