@@ -91,6 +91,16 @@ describe('issue-79: src/lib/format.ts satu sumber format', () => {
     expect(formatStamp('2026-01-05T00:00:00Z')).toMatch(/^\d{4}-\d{2}-\d{2}$/);
   });
 
+  it('formatStamp dipatok WIB — server (UTC) dan browser menghasilkan nama yang sama', () => {
+    // Server berjalan di UTC (Vercel/Workers) sementara tombol ekspor halaman
+    // memakai zona browser. Tanpa zona eksplisit, ekspor dini hari WIB bisa
+    // bernomor tanggal KEMARIN dan dua tombol berselisih hari.
+    // 2026-01-05 20:00 UTC = 2026-01-06 03:00 WIB -> tanggalnya nanti (bukan 05).
+    expect(formatStamp(new Date('2026-01-05T20:00:00Z'))).toBe('2026-01-06');
+    // Batas sebaliknya: masih 2026-01-05 sebelum tengah malam WIB (16:00 UTC).
+    expect(formatStamp(new Date('2026-01-05T15:59:00Z'))).toBe('2026-01-05');
+  });
+
   it('kosong/invalid -> "-" untuk semua helper tanggal', () => {
     for (const v of [null, undefined, '', 'bukan-tanggal']) {
       expect(formatTanggal(v)).toBe('-');

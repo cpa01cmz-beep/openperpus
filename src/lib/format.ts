@@ -90,13 +90,27 @@ export function formatNum(v: unknown): string {
   return num(v).toLocaleString('id-ID');
 }
 
+/** Zona yang dipakai stempel nama berkas ekspor. Aplikasi berbahasa
+ *  Indonesia + pustakawan beroperasi di WIB, jadi tanggalnya dipatok ke WIB:
+ *  server (UTC di Vercel/Cloudflare Workers) dan browser harus menghasilkan
+ *  nama berkas yang SAMA untuk satu klik. Tanpa ini, ekspor dini hari WIB
+ *  bisa bernomor tanggal KEMARIN dan dua tombol ekspor berselisih hari. */
+const EXPORT_TIME_ZONE = 'Asia/Jakarta';
+
 /**
  * Stamp nama berkas ekspor: "2026-10-11" — deterministik lintas
  * locale runtime (pengganti toLocaleDateString('sv-SE') yang sama
- * hasilnya tapi terbaca sebagai "magic locale").
+ * hasilnya tapi terbaca sebagai "magic locale") DAN lintas zona runtime
+ * (lihat EXPORT_TIME_ZONE).
  */
 export function formatStamp(v?: DateInput): string {
   const d = toDate(v) ?? new Date();
-  const p = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: EXPORT_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(d);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '00';
+  return `${get('year')}-${get('month')}-${get('day')}`;
 }
