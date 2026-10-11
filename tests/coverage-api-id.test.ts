@@ -308,7 +308,7 @@ describe('books/[id]', () => {
     expect((await BOOK_DEL(req('/api/x', { method: 'DELETE' }), ctx)).status).toBe(409);
     setTable('loans', { count: 0 });
     expect((await BOOK_DEL(req('/api/x', { method: 'DELETE' }), ctx)).status).toBe(200);
-    setTable('books', { delete: { data: null, error: { message: 'db' } } });
+    setTable('books', { update: { data: null, error: { message: 'db' } } });
     expect((await BOOK_DEL(req('/api/x', { method: 'DELETE' }), ctx)).status).toBe(500);
   });
 });
@@ -428,7 +428,7 @@ describe('members/[id]', () => {
     expect((await MEM_DEL(req('/api/x', { method: 'DELETE' }), ctx)).status).toBe(409);
     setTable('loans', { count: 0 });
     expect((await MEM_DEL(req('/api/x', { method: 'DELETE' }), ctx)).status).toBe(200);
-    setTable('members', { delete: { data: null, error: { message: 'db' } } });
+    setTable('members', { update: { data: null, error: { message: 'db' } } });
     expect((await MEM_DEL(req('/api/x', { method: 'DELETE' }), ctx)).status).toBe(500);
   });
 });
