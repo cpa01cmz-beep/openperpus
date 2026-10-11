@@ -294,7 +294,8 @@ export async function DELETE(req: Request) {
   if (deletable.length > 0) {
     const { error } = await supabase.from('books').delete().in('id', deletable);
     if (error) {
-      log.error('books.delete_failed', { detail: error.message });
+      if ((error as { code?: string }).code === '23503')
+        return NextResponse.json({ data: { deleted: [], skipped: ids } });
       return jsonError('DELETE_FAILED', 'Gagal menghapus buku.', 500, { requestId: log.requestId });
     }
     try {

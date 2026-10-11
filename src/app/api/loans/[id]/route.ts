@@ -146,6 +146,8 @@ export async function DELETE(_req: Request, { params }: Ctx) {
 
   const { error } = await supabase.from('loans').delete().eq('id', id);
   if (error) {
+    if ((error as { code?: string }).code === '23503')
+      return jsonError('CONFLICT', 'Peminjaman masih dirujuk denda/reservasi.', 409);
     log.error('loans.id.delete_failed', { detail: error.message });
     return jsonError('DELETE_FAILED', 'Gagal menghapus peminjaman.', 500, {
       requestId: log.requestId,

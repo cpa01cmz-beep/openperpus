@@ -149,8 +149,11 @@ export async function DELETE(_req: Request, { params }: Ctx) {
     return jsonError('CONFLICT', 'Buku masih dipinjam, tidak bisa dihapus.', 409);
 
   const { error } = await supabase.from('books').delete().eq('id', id);
-  if (error)
+  if (error) {
+    if ((error as { code?: string }).code === '23503')
+      return jsonError('CONFLICT', 'Buku masih dirujuk peminjaman/reservasi.', 409);
     return jsonError('DELETE_FAILED', 'Gagal menghapus buku.', 500, { requestId: log.requestId });
+  }
   await writeLog(supabase, user?.id, 'books.delete', id);
   revalidateTag('books', 'max');
   return NextResponse.json({ message: 'Buku dihapus.' });
