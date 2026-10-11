@@ -1,13 +1,12 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { getSupabaseServiceClient, skipIfNoSupabase } from './setup';
 
-const supabase = getSupabaseServiceClient();
+// Issue #23: client lazy di beforeAll; tanpa kredensial suite ter-skip, bukan throw.
+describe.skipIf(skipIfNoSupabase())('Integration: Reservations', () => {
+  let supabase!: ReturnType<typeof getSupabaseServiceClient>;
 
-describe('Integration: Reservations', () => {
   beforeAll(() => {
-    if (skipIfNoSupabase()) {
-      return;
-    }
+    supabase = getSupabaseServiceClient();
   });
 
   it('should create reservation', async () => {

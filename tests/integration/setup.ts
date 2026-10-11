@@ -42,9 +42,9 @@ const SUPABASE_ANON_KEY =
 const SUPABASE_SERVICE_KEY =
   process.env.TEST_SUPABASE_SERVICE_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
   console.warn(
-    '[tests/integration] TEST_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_URL not set — integration tests will be skipped'
+    '[tests/integration] TEST_SUPABASE_URL / TEST_SUPABASE_SERVICE_KEY not set — integration tests will be skipped'
   );
 }
 
@@ -97,10 +97,15 @@ afterAll(async () => {
   }
 });
 
-// Skip helper — use in describe.skipIf or test.skipIf
+// Skip helper — true berarti suite di-skip. Ketiga file suite memakai service
+// client, jadi URL + SERVICE_KEY (TEST_SUPABASE_SERVICE_KEY) wajib ada;
+// kalau tidak, describe.skipIf men-skip suite alih-alih melempar saat
+// koleksi (issue #23).
 export const skipIfNoSupabase = () => {
-  if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
-    console.log('[tests/integration] Skipping — Supabase credentials not configured');
+  if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) {
+    console.log(
+      '[tests/integration] Skipping — Supabase credentials (TEST_SUPABASE_URL/TEST_SUPABASE_SERVICE_KEY) not configured'
+    );
     return true;
   }
   return false;

@@ -238,7 +238,14 @@ npm test
 
 Suite utama (T-S1..T-S4): `tests/api/books-crud.test.ts`, `tests/katalog-pagination.test.ts`, `tests/loans-stock-fine.test.ts`, `tests/rls-escalation.test.ts`. Suite admin: `admin-bookform`, `admin-taxonomy`, `admin-edits`. Ada juga `placeholder.test.ts` sebagai smoke test.
 
-> Gate kualitas ada di GitHub Actions (typecheck, lint, unit+components, playwright-list) — jangan jalankan test suite penuh di lokal; cukup `npm run check` (typecheck + lint) sebelum push, lalu pantau `gh pr checks`.
+### Integration (Supabase nyata) — issue #23
+
+Tiga suite `tests/integration/` (books, loans, reservations) memanggil Supabase/service-role nyata. Tanpa kredensial (`TEST_SUPABASE_URL`, `TEST_SUPABASE_ANON_KEY`, `TEST_SUPABASE_SERVICE_KEY`) suite otomatis **ter-skip** — `npm test` tetap hijau. Untuk menjalankannya:
+
+- Lokal: isi env di atas lalu `npm run test:integration`.
+- CI: job `integration` hanya aktif bila (1) repo variable `RUN_SUPABASE_INTEGRATION=true` (Settings → Secrets and variables → Actions → Variables) dan (2) secrets `TEST_SUPABASE_URL` / `TEST_SUPABASE_ANON_KEY` / `TEST_SUPABASE_SERVICE_KEY` terisi. Job gagal cepat bila variabel aktif tapi secret kosong, dan selalu menerbitkan laporan JUnit (artifact `integration-test-results`) + ringkasan per-suite di step summary.
+
+> Gate kualitas ada di GitHub Actions (typecheck, lint, unit+components, integration bila di-enable, playwright-list) — jangan jalankan test suite penuh di lokal; cukup `npm run check` (typecheck + lint) sebelum push, lalu pantau `gh pr checks`.
 
 ### Panduan onboarding
 

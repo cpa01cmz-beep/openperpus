@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
-// T-O2: CI workflow — 4 jobs: typecheck, lint, test (unit), playwright-list
+// T-O2: CI workflow — 5 jobs: typecheck, lint, test (unit+components),
+// integration (gated), playwright-list
 function readCi(): string {
   return readFileSync(resolve(process.cwd(), '.github/workflows/ci.yml'), 'utf8');
 }
@@ -46,5 +47,35 @@ describe('ops ci workflow (T-O2)', () => {
     expect(raw).toMatch(/node-version\s*:\s*['"]?22['"]?/);
     expect(raw).toContain('npm ci');
     expect(raw).toMatch(/cache\s*:\s*npm/);
+  });
+
+  // Issue #23: job integration opsional — gate variable + secrets, JUnit artifact.
+  it('RED: has integration job gated by RUN_SUPABASE_INTEGRATION variable', () => {
+    const raw = readCi();
+    expect(raw).toMatch(/^\s{2}integration\s*:/m);
+    expect(raw).toContain("vars.RUN_SUPABASE_INTEGRATION == 'true'");
+    expect(raw).toContain('TEST_SUPABASE_SERVICE_KEY');
+  });
+
+  it('RED: integration job runs the integration vitest project + uploads report', () => {
+    const raw = readCi();
+    expect(raw).toMatch(/vitest run --project=integration/);
+    expect(raw).toContain('integration-test-results');
+    expect(raw).toContain('actions/upload-artifact@v4');
+  });
+
+  // Regresi issue #23: tanpa kredensial, suite integration harus ter-skip
+  // (describe.skipIf) — bukan throw saat koleksi seperti sebelumnya.
+  it('GREEN guard: integration suites lazy-init client + skipIf tanpa kredensial', () => {
+    for (const suite of ['books', 'loans', 'reservations']) {
+      const src = readFileSync(
+        resolve(process.cwd(), `tests/integration/${suite}.test.ts`),
+        'utf8'
+      );
+      expect(src).toContain('describe.skipIf(skipIfNoSupabase())');
+      // Client tidak boleh dibuat di top-level module (melempar tanpa env).
+      expect(src).not.toMatch(/^const supabase = getSupabaseServiceClient\(\)/m);
+      expect(src).toMatch(/let supabase!/);
+    }
   });
 });
