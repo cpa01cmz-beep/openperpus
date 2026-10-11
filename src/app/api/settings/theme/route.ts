@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { requireStaff, jsonError } from '@/lib/supabase/auth';
-import { normalizeRole } from '@/lib/auth';
+import { isAdminRole } from '@/lib/roles';
 import { THEMES } from '@/lib/themes';
 import {
   LOCKED_THEME_MESSAGE,
@@ -15,7 +15,7 @@ import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 /**
  * PUT /api/settings/theme — admin-only, layout-only (Fase 1: tema dikunci).
  * Body strict: { active_theme?, theme_overrides?, reset? }.
- * - librarian -> 403 THEME_FORBIDDEN.
+ * - librarian -> 403 THEME_FORBIDDEN (predikat admin kanonis: isAdminRole).
  * - tokens/fonts/radius/shadow/spacing -> 422 + pesan kunci-tema.
  */
 
@@ -30,7 +30,7 @@ export async function PUT(req: Request) {
     user: { id: string };
     profile: { role: string };
   };
-  if (normalizeRole(profile?.role) !== 'admin') {
+  if (!isAdminRole(profile?.role)) {
     return jsonError('THEME_FORBIDDEN', 'Hanya admin yang dapat mengubah tema.', 403);
   }
 

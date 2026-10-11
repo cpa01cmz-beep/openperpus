@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { updateSession } from '@/lib/supabase/middleware';
 import { checkRateLimit, WRITE_API_LIMIT, WRITE_API_WINDOW_MS } from '@/lib/rate-limit';
+import { isStaffRole } from '@/lib/roles';
 import { ROLE_HEADER } from '@/lib/role-claim';
 
 /**
@@ -254,15 +255,19 @@ export async function middleware(request: NextRequest) {
   // 3. Role gate /admin (I5 defense-in-depth): sesi SAJA tidak cukup —
   //    wajib staff (admin|librarian), sejajar admin/layout.tsx.
   //    Fail-closed: role bukan staff / query gagal → redirect '/'.
+  //    Predikat staf kanonis (issue #25) — semantik SAMA dengan
+  //    requireStaff() dan isStaffRole() di admin/layout.tsx.
   if (isAdmin && user) {
     const role = await getProfileRole(request, user.id);
-    if (role !== 'admin' && role !== 'librarian') {
+    if (!isStaffRole(role)) {
       const url = request.nextUrl.clone();
       url.pathname = '/';
       url.search = '';
       return NextResponse.redirect(url);
     }
-    request.headers.set(ROLE_HEADER, role);
+    // isStaffRole() fail-closed: hanya role string non-null yang lolos,
+    // jadi klaim di header selalu valid untuk dibaca layout.
+    request.headers.set(ROLE_HEADER, role as string);
     const claimed = NextResponse.next({ request });
     for (const c of sessionResponse.cookies.getAll()) claimed.cookies.set(c);
     sessionResponse = claimed;

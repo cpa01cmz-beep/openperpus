@@ -1,29 +1,15 @@
 import { createClient } from './server';
-import { normalizeRole } from '@/lib/auth';
-
-export type StaffRole = 'admin' | 'librarian';
-
-/** Default guard: staf = admin|librarian — mirror public.is_staff() (0002_rls.sql). */
-const STAFF_ROLES: readonly StaffRole[] = ['admin', 'librarian'];
+import { roleAllowed, STAFF_ROLES } from '@/lib/roles';
+import type { StaffRole } from '@/lib/roles';
 
 /**
- * Satu-sumber semantik role: apakah role termasuk allowedRoles di ruang
- * normalizeRole (admin|pustakawan|anggota). Fail-closed: role null/tak
- * dikenal ternormalisasi 'anggota' → tidak termasuk staf.
+ * Predikat role kanonis (issue #25) — re-export dari src/lib/roles.ts
+ * (modul tanpa dependensi: aman untuk middleware edge, guard API, halaman
+ * server, dan komponen client). Semua perbandingan role lewat predikat ini;
+ * cek role inline di route handler DILARANG.
  */
-function roleAllowed(role: string | null | undefined, allowedRoles: readonly StaffRole[]): boolean {
-  const allowed = allowedRoles.map(normalizeRole);
-  return allowed.includes(normalizeRole(role));
-}
-
-/**
- * Predikat staf kanonis untuk handler campuran staf-atau-pemilik.
- * Definisi yang SAMA dengan requireStaff() — cek role inline
- * (role === 'admin' || role === 'librarian') dilarang di route handler.
- */
-export function isStaffRole(role: string | null | undefined): boolean {
-  return roleAllowed(role, STAFF_ROLES);
-}
+export { normalizeRole, isStaffRole, isAdminRole, roleAllowed } from '@/lib/roles';
+export type { StaffRole } from '@/lib/roles';
 
 /* SHIM: logika kanonis per-modul (tanpa perubahan perilaku).
  * jsonError -> http-error.ts, slugify -> slug.ts,
@@ -38,9 +24,10 @@ export { parsePaging } from '@/lib/paging';
  * Guard API kanonis (SATU lapisan guard role aplikasi — docs/architecture.md §4):
  * pastikan ada user login + profiles.role termasuk allowedRoles.
  * roles mengikuti migrasi 0001: 'admin' | 'librarian' | 'member'.
- * Perbandingan lewat normalizeRole() (lib/auth) — semantik role DB dan
- * label Indonesia dibandingkan di ruang yang sama; perilaku identik untuk
- * ketiga nilai CHECK 0001 (admin/librarian/member).
+ * Perbandingan lewat predikat kanonis di src/lib/roles.ts
+ * (normalizeRole/roleAllowed) — semantik role DB dan label Indonesia
+ * dibandingkan di ruang yang sama; perilaku identik untuk ketiga nilai
+ * CHECK 0001 (admin/librarian/member).
  * Mengembalikan { supabase, user, profile } jika lolos,
  * atau { errorResponse } jika gagal (langsung return dari route).
  */
