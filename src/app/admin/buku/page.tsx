@@ -123,12 +123,12 @@ export default function BukuPage() {
     // Validasi di dalam modal — pengganti dua kotak input beruntun.
     const st = Number(opnameTotal);
     if (opnameTotal.trim() === '' || !Number.isInteger(st) || st < 0) {
-      setOpnameError('stok_total harus bilangan bulat >= 0.');
+      setOpnameError('Stok total harus bilangan bulat >= 0.');
       return;
     }
     const sa = opnameAvail.trim() === '' ? st : Number(opnameAvail);
     if (!Number.isInteger(sa) || sa < 0 || sa > st) {
-      setOpnameError('stok_available harus 0–total.');
+      setOpnameError('Stok tersedia harus 0–total.');
       return;
     }
     setOpnameError('');

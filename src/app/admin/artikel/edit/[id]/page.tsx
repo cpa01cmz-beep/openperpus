@@ -117,14 +117,14 @@ export default function EditArtikelPage({ params }: { params: { id: string } }) 
         </div>
         <input
           className={input}
-          placeholder="Ringkasan (excerpt)"
+          placeholder="Ringkasan"
           value={form.excerpt}
           onChange={(e) => setForm({ ...form, excerpt: e.target.value })}
         />
         <textarea
           className={input}
           rows={6}
-          placeholder="Konten markdown* (content_md)"
+          placeholder="Konten markdown*"
           value={form.content_md}
           onChange={(e) => setForm({ ...form, content_md: e.target.value })}
           required
@@ -145,7 +145,7 @@ export default function EditArtikelPage({ params }: { params: { id: string } }) 
             Simpan
           </Button>
         </div>
-        {publishedAt && <p className="text-xs text-slate-500">published_at: {publishedAt}</p>}
+        {publishedAt && <p className="text-xs text-slate-500">Terbit: {publishedAt}</p>}
       </form>
     </div>
   );

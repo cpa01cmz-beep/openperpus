@@ -113,7 +113,7 @@ export default function EditBannerPage({ params }: { params: { id: string } }) {
           <input
             type="number"
             className={input}
-            placeholder="Urutan (sort_order)"
+            placeholder="Urutan"
             value={form.sort_order}
             onChange={(e) => setForm({ ...form, sort_order: Number(e.target.value) })}
           />

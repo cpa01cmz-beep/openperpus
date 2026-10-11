@@ -60,7 +60,7 @@ export default function BannerPage() {
     setActionError('');
     setNotice('');
     if (!form.title.trim() || !form.image_url.trim()) {
-      setFormError('Judul & image_url wajib.');
+      setFormError('Judul & URL gambar wajib.');
       return;
     }
     const res = await fetch('/api/banners', {
@@ -174,7 +174,7 @@ export default function BannerPage() {
               id="banner-sort-order"
               label="Urutan"
               type="number"
-              placeholder="Urutan (sort_order)"
+              placeholder="Urutan"
               value={form.sort_order}
               onChange={(e) => setForm({ ...form, sort_order: Number(e.target.value) })}
             />
