@@ -16,8 +16,17 @@ export function rowsToCSV(rows: CsvCell[][]): string {
   return rows.map((r) => r.map(esc).join(',')).join('\r\n');
 }
 
+/** Picu unduhan berkas dari teks CSV (dibuat jadi Blob membawa charset). */
 export function downloadCSV(filename: string, csv: string): void {
-  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  downloadBlob(filename, new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+}
+
+/**
+ * Picu unduhan blob APA ADANYA — untuk respons endpoint (mis. stream CSV
+ * `/api/reports/export`, isu #78/#133) tanpa menyalin isinya lewat teks
+ * dulu. Nama berkas diambil dari Content-Disposition server oleh pemanggil.
+ */
+export function downloadBlob(filename: string, blob: Blob): void {
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
