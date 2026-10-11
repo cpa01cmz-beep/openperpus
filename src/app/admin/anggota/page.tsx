@@ -73,7 +73,8 @@ export default function AnggotaPage() {
     debounceMs: 300,
     errorMessage: 'Gagal memuat anggota.',
   });
-  const { rows, totalPages, error: listError, reload: load, clearError } = list;
+  // Error pemuatan daftar dibaca langsung dari hook (bukan alias lokal).
+  const { rows, totalPages, reload: load, clearError } = list;
 
   useEffect(() => {
     return () => {
@@ -296,9 +297,9 @@ export default function AnggotaPage() {
           {notice}
         </div>
       )}
-      {listError && (
+      {list.error && (
         <p role="alert" className="text-sm text-red-600">
-          {listError}
+          {list.error}
         </p>
       )}
       {actionError && (

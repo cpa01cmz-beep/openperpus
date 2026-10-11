@@ -1,4 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from 'vitest';
+import { PER_PAGE } from '@/lib/pagination';
 import { readdirSync, readFileSync, statSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -86,7 +87,10 @@ describe('S-issue-60 pencarian sirkulasi (overdue via member_code)', () => {
     ]) {
       const src = read(f);
       expect(src, `${f} harus memakai FilterBar`).toContain('<FilterBar');
-      expect(src, `${f} harus pakai per_page 20`).toContain("per_page: '20'");
+      // Ukuran halaman kini dari konstanta tunggal (issue #62); yang dipastikan
+      // di sini adalah maksudnya: halaman mengirim per_page bernilai 20.
+      expect(src, `${f} mengirim per_page`).toContain('per_page');
+      expect(PER_PAGE, `${f} ukuran halaman`).toBe(20);
     }
   });
 
