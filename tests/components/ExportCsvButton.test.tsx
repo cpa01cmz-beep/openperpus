@@ -181,12 +181,12 @@ describe('ExportCsvButton (#78/#133)', () => {
     expect((clickSpy.mock.instances[0] as HTMLAnchorElement).download).toBe('buku.csv');
   });
 
-  it('filename* karakter penyamaru Unicode (bidi/zero-width) dibuang — nama tak bisa menyamar', async () => {
+  it('filename* karakter penyamaru Unicode (bidi/zero-width/homoglyph) ditolak utuh — jatuh ke stempel lokal', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
-      // U+202E RLO ("buku%E2%80%AEvet.csv") + U+200B zero-width: denylist
-      // kontrol lama meloloskan keduanya — allowlist yang menutup kelasnya.
+      // U+202E RLO + U+200B zero-width + Cyrillic 'с' homoglyph: seluruh nama
+      // tidak aman → ditolak (bukan dibersihkan sebagian) → fallback stempel.
       okExport({
-        'content-disposition': "attachment; filename*=UTF-8''buku%E2%80%AE%E2%80%8Bvet.csv",
+        'content-disposition': "attachment; filename*=UTF-8''%D1%81buku%E2%80%AE%E2%80%8Bvet.csv",
       })
     );
     vi.stubGlobal('fetch', fetchMock);
@@ -196,7 +196,27 @@ describe('ExportCsvButton (#78/#133)', () => {
     fireEvent.click(exportAllButton());
 
     await waitFor(() => expect(clickSpy).toHaveBeenCalledTimes(1));
-    expect((clickSpy.mock.instances[0] as HTMLAnchorElement).download).toBe('bukuvet.csv');
+    expect((clickSpy.mock.instances[0] as HTMLAnchorElement).download).toMatch(
+      /^buku-\d{4}-\d{2}-\d{2}\.csv$/
+    );
+  });
+
+  it('filename* baseline spasi/dot campur (" . .csv") ditolak — jatuh ke stempel lokal', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        okExport({ 'content-disposition': "attachment; filename*=UTF-8''%20.%20.csv" })
+      );
+    vi.stubGlobal('fetch', fetchMock);
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    render(<ExportCsvButton filename="buku.csv" headers={['ID']} rows={[['b1']]} scope="books" />);
+    fireEvent.click(exportAllButton());
+
+    await waitFor(() => expect(clickSpy).toHaveBeenCalledTimes(1));
+    expect((clickSpy.mock.instances[0] as HTMLAnchorElement).download).toMatch(
+      /^buku-\d{4}-\d{2}-\d{2}\.csv$/
+    );
   });
 
   it('filename* basename seluruhnya dot-run: "csv" hasil lipatan tanpa .csv — jatuh ke stempel lokal', async () => {
@@ -233,9 +253,11 @@ describe('ExportCsvButton (#78/#133)', () => {
     expect((clickSpy.mock.instances[0] as HTMLAnchorElement).download).toBe('buku.csv');
   });
 
-  it('filename="…" biasa pun dibersihkan: separator & karakter kontrol dibuang', async () => {
+  it('filename="…" dengan karakter tak diizinkan ditolak utuh — nama separuh-bersih tak pernah terunduh', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       okExport({
+        // \n di dalam nilai + homoglyph Cyrillic: keduanya membuat nama
+        // tidak aman → ditolak, fallback stempel lokal (bukan "laporanpustakawan").
         'content-disposition': 'attachment; filename="laporan\npustakawan.csv"',
       })
     );
@@ -246,8 +268,26 @@ describe('ExportCsvButton (#78/#133)', () => {
     fireEvent.click(exportAllButton());
 
     await waitFor(() => expect(clickSpy).toHaveBeenCalledTimes(1));
+    expect((clickSpy.mock.instances[0] as HTMLAnchorElement).download).toMatch(
+      /^buku-\d{4}-\d{2}-\d{2}\.csv$/
+    );
+  });
+
+  it('filename="…" nama bersih diterima apa adanya (spasi & pemisa biasa)', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      okExport({
+        'content-disposition': 'attachment; filename="laporan pustakawan (final).csv"',
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    render(<ExportCsvButton filename="buku.csv" headers={['ID']} rows={[['b1']]} scope="books" />);
+    fireEvent.click(exportAllButton());
+
+    await waitFor(() => expect(clickSpy).toHaveBeenCalledTimes(1));
     expect((clickSpy.mock.instances[0] as HTMLAnchorElement).download).toBe(
-      'laporanpustakawan.csv'
+      'laporan pustakawan (final).csv'
     );
   });
 
