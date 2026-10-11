@@ -14,7 +14,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const libraryName = settings?.name ?? 'Perpustakaan';
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900">
+    <div className="min-h-screen bg-surface text-ink">
       <div className="lg:flex">
         <Sidebar libraryName={libraryName} />
         <main className="min-w-0 flex-1 p-4 sm:p-6 lg:p-8">{children}</main>

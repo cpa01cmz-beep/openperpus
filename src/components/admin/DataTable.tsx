@@ -2,6 +2,7 @@
 
 import type { ReactNode } from 'react';
 import EmptyState from '@/components/ui/EmptyState';
+import { useIsMobile } from '@/lib/use-media-query';
 
 export type Column<T> = {
   key: string;
@@ -51,6 +52,10 @@ export default function DataTable<T>({
   onToggleAll,
   bulkLabel,
 }: Props<T>) {
+  // #64: satu representasi per viewport. Render bersyarat (bukan utility
+  // `hidden`/`sm:hidden` saja) — Tailwind CSS tidak dimuat di jsdom, tabel +
+  // kartu akan tampil bersamaan dan tiap baris/pilihan jadi ganda.
+  const isMobile = useIsMobile();
   const showBulk = !!selectedKeys && !!onToggleRow;
   const allChecked =
     showBulk &&
@@ -69,92 +74,132 @@ export default function DataTable<T>({
     return (
       <div
         role="status"
-        className="rounded-xl border bg-white p-8 text-center text-sm text-slate-500"
+        className="rounded-xl border bg-surface p-8 text-center text-sm text-slate-500"
       >
         {emptyText}
       </div>
     );
   }
   return (
-    <div className="overflow-x-auto rounded-xl border bg-white">
-      <table className="w-full min-w-[640px] text-left text-sm">
-        <caption className="sr-only">{caption}</caption>
-        <thead className="sticky top-0 z-20">
-          <tr className="border-b bg-slate-50 text-slate-500">
-            {showBulk && (
-              <th scope="col" className="sticky left-0 z-10 bg-slate-50 px-4 py-3 font-medium">
-                <input
-                  type="checkbox"
-                  aria-label="Pilih semua baris"
-                  checked={allChecked}
-                  onChange={() => onToggleAll?.()}
-                  className="h-5 w-5 accent-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                />
-              </th>
-            )}
-            {columns.map((c, ci) => (
-              <th
-                key={c.key}
-                scope="col"
-                aria-sort={
-                  c.sortable && sortKey === c.key
-                    ? sortDir === 'asc'
-                      ? 'ascending'
-                      : 'descending'
-                    : undefined
-                }
-                className={`px-4 py-3 font-medium ${ci === 0 && !showBulk ? 'sticky left-0 z-10 bg-slate-50' : ''}`}
-              >
-                {c.sortable && onSort ? (
-                  <button
-                    type="button"
-                    onClick={() => onSort(c.key)}
-                    aria-label={`Urutkan berdasarkan ${c.header}${sortKey === c.key ? (sortDir === 'asc' ? ' (naik)' : ' (turun)') : ''}`}
-                    className="inline-flex min-h-[44px] items-center gap-1 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                  >
-                    {c.header}
-                    <span aria-hidden="true">
-                      {sortKey === c.key ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}
-                    </span>
-                  </button>
-                ) : (
-                  c.header
-                )}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
+    <div className="max-w-full overflow-x-auto rounded-xl border bg-white">
+      {/* Desktop (>=640px): tabel. Kelas responsive sekadar mencegah kedipan. */}
+      {!isMobile && (
+        <table className="w-full min-w-[640px] text-left text-sm">
+          <caption className="sr-only">{caption}</caption>
+          <thead className="sticky top-0 z-20">
+            <tr className="border-b bg-slate-50 text-slate-500">
+              {showBulk && (
+                <th scope="col" className="sticky left-0 z-10 bg-slate-50 px-4 py-3 font-medium">
+                  <input
+                    type="checkbox"
+                    aria-label="Pilih semua baris"
+                    checked={allChecked}
+                    onChange={() => onToggleAll?.()}
+                    className="h-5 w-5 accent-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  />
+                </th>
+              )}
+              {columns.map((c, ci) => (
+                <th
+                  key={c.key}
+                  scope="col"
+                  aria-sort={
+                    c.sortable && sortKey === c.key
+                      ? sortDir === 'asc'
+                        ? 'ascending'
+                        : 'descending'
+                      : undefined
+                  }
+                  className={`px-4 py-3 font-medium ${ci === 0 && !showBulk ? 'sticky left-0 z-10 bg-slate-50' : ''}`}
+                >
+                  {c.sortable && onSort ? (
+                    <button
+                      type="button"
+                      onClick={() => onSort(c.key)}
+                      aria-label={`Urutkan berdasarkan ${c.header}${sortKey === c.key ? (sortDir === 'asc' ? ' (naik)' : ' (turun)') : ''}`}
+                      className="inline-flex min-h-[44px] items-center gap-1 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                    >
+                      {c.header}
+                      <span aria-hidden="true">
+                        {sortKey === c.key ? (sortDir === 'asc' ? '▲' : '▼') : '↕'}
+                      </span>
+                    </button>
+                  ) : (
+                    c.header
+                  )}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((row, i) => {
+              const rk = getRowKey(row, i);
+              return (
+                <tr key={rk} className="border-b last:border-0 hover:bg-slate-50/60">
+                  {showBulk && (
+                    <td className="sticky left-0 z-10 bg-white px-4 py-3 align-top">
+                      <input
+                        type="checkbox"
+                        aria-label={bulkLabel ? bulkLabel(rk) : `Pilih baris ${rk}`}
+                        checked={selectedKeys?.has(rk) ?? false}
+                        onChange={() => onToggleRow?.(rk)}
+                        className="h-5 w-5 accent-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                      />
+                    </td>
+                  )}
+                  {columns.map((c, ci) => (
+                    <td
+                      key={c.key}
+                      className={`px-4 py-3 align-top ${ci === 0 ? 'max-w-[220px] truncate' : ''} ${ci === 0 && !showBulk ? 'sticky left-0 z-10 bg-white' : ''}`}
+                    >
+                      {c.render
+                        ? c.render(row)
+                        : String((row as Record<string, unknown>)[c.key] ?? '-')}
+                    </td>
+                  ))}
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      )}
+      {/* Mobile (<640px): pola kartu — satu baris per <li>, kolom jadi label+nilai. */}
+      {isMobile && (
+        <ul className="grid gap-2 p-2">
           {rows.map((row, i) => {
             const rk = getRowKey(row, i);
+            const first = columns[0];
             return (
-              <tr key={rk} className="border-b last:border-0 hover:bg-slate-50/60">
+              <li key={rk} className="rounded-xl border bg-white p-3 text-sm">
                 {showBulk && (
-                  <td className="sticky left-0 z-10 bg-white px-4 py-3 align-top">
-                    <input
-                      type="checkbox"
-                      aria-label={bulkLabel ? bulkLabel(rk) : `Pilih baris ${rk}`}
-                      checked={selectedKeys?.has(rk) ?? false}
-                      onChange={() => onToggleRow?.(rk)}
-                      className="h-5 w-5 accent-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-                    />
-                  </td>
+                  <input
+                    type="checkbox"
+                    aria-label={bulkLabel ? bulkLabel(rk) : `Pilih baris ${rk}`}
+                    checked={selectedKeys?.has(rk) ?? false}
+                    onChange={() => onToggleRow?.(rk)}
+                    className="mb-2 h-5 w-5 accent-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  />
                 )}
-                {columns.map((c, ci) => (
-                  <td
-                    key={c.key}
-                    className={`px-4 py-3 align-top ${ci === 0 && !showBulk ? 'sticky left-0 z-10 bg-white' : ''}`}
-                  >
-                    {c.render
-                      ? c.render(row)
-                      : String((row as Record<string, unknown>)[c.key] ?? '-')}
-                  </td>
+                <p className="truncate font-medium">
+                  {first?.render
+                    ? first.render(row)
+                    : String((row as Record<string, unknown>)[first?.key ?? ''] ?? '-')}
+                </p>
+                {columns.slice(1).map((c) => (
+                  <p key={c.key} className="mt-1 flex items-start justify-between gap-2 text-xs">
+                    <span className="shrink-0 text-slate-500">{c.header}</span>
+                    <span className="min-w-0 truncate text-right">
+                      {c.render
+                        ? c.render(row)
+                        : String((row as Record<string, unknown>)[c.key] ?? '-')}
+                    </span>
+                  </p>
                 ))}
-              </tr>
+              </li>
             );
           })}
-        </tbody>
-      </table>
+        </ul>
+      )}
     </div>
   );
 }

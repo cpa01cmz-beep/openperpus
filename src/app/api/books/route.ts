@@ -161,13 +161,15 @@ export async function POST(req: Request) {
 
 /**
  * PUT /api/books { action: 'stock_opname', items: [{ id, stock_total, stock_available }] }
- * Stok opname massal: update stok per baris, lewati buku dengan loan aktif,
- * baris invalid (available > total / negatif) dilewati dengan reason.
- * Selisih dihitung SEBELUM upsert -> { diffs: [{ id, old_available, new_available }] }
- * + 1 audit row berisi full diff di metadata. Clamp available <= total - active.
- * ponytail: naikkan ke RPC atomik (row lock + single round-trip) + approval
- * dua langkah bila opname jadi SOP sensitif — cukup bila bulk <= 100 manual.
+ * Stok opname ATOMIK via RPC stock_opname_tx (migrasi 0032): lock buku
+ * FOR UPDATE per baris, hitung pinjaman aktif fresh di transaksi, clamp
+ * available <= total - active, update + audit full diff (berita acara
+ * selisih) dalam SATU transaksi. Fallback ke orkestrasi aplikasi bila RPC
+ * belum terdeploy (42883/PGRST202) atau klien tanpa .rpc — perilaku identik
+ * (skip borrowed, clamp, diffs, 1 audit row).
  * Balikan: { data: { updated: string[], skipped: [{ id, reason }], diffs: [...] } }.
+ * ponytail: naikkan ke approval opname dua langkah (tabel batch +
+ * ajukan/setujui) bila opname jadi SOP sensitif — cukup bila bulk <= 100 manual.
  */
 export async function PUT(req: Request) {
   const log = createLogger(requestIdFromHeaders(req.headers));
@@ -197,6 +199,45 @@ export async function PUT(req: Request) {
   const validIds = [...new Set(items.filter((i) => isUuid(i.id)).map((i) => i.id as string))];
   if (validIds.length === 0) {
     return jsonError('VALIDATION', 'Setiap item wajib punya id UUID.', 422);
+  }
+
+  // Jalur utama ATOMIK: satu transaksi DB (lock + clamp + audit).
+  // Fallback orkestrasi aplikasi bila RPC belum terdeploy (42883/PGRST202)
+  // atau klien mock tanpa .rpc.
+  if (typeof (supabase as { rpc?: unknown }).rpc === 'function') {
+    try {
+      const { data, error } = (await (
+        supabase.rpc as unknown as (
+          fn: string,
+          args: Record<string, unknown>
+        ) => Promise<{ data: unknown; error: { code?: string; message?: string } | null }>
+      )('stock_opname_tx', { p_items: items, p_user_id: user?.id ?? null })) as {
+        data: { updated: string[]; skipped: { id: string; reason: string }[]; diffs: unknown[] } | null;
+        error: { code?: string; message?: string } | null;
+      };
+      if (!error && data) {
+        revalidateTag('books', 'max');
+        return NextResponse.json({ data });
+      }
+      if (error) {
+        const rc = (error as { code?: string }).code ?? '';
+        const msg = (error as { message?: string }).message ?? '';
+        const rpcMissing =
+          rc === '42883' ||
+          rc === 'PGRST202' ||
+          /could not find.*stock_opname_tx|function.*stock_opname_tx.*does not exist/i.test(msg);
+        if (!rpcMissing) {
+          if (rc === '42501') return jsonError('FORBIDDEN', 'Hanya pustakawan yang boleh opname.', 403);
+          if (rc === '22000') return jsonError('VALIDATION', msg || 'Data opname tidak valid.', 422);
+          log.error('books.stock_opname_failed', { detail: msg });
+          return jsonError('SAVE_FAILED', 'Gagal menyimpan stok opname.', 500, {
+            requestId: log.requestId,
+          });
+        }
+      }
+    } catch {
+      /* jatuh ke fallback legacy */
+    }
   }
 
   const { data: active } = await supabase

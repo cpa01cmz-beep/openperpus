@@ -3,6 +3,8 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
 import { errMsg } from '@/lib/admin-errors';
 
 export const dynamic = 'force-dynamic';
@@ -70,7 +72,6 @@ export default function EditBannerPage({ params }: { params: { id: string } }) {
     }
   }
 
-  const input = 'w-full rounded-lg border px-3 py-2 text-sm';
   if (loading) return <p className="text-sm text-slate-500">Memuat banner…</p>;
 
   return (
@@ -78,55 +79,64 @@ export default function EditBannerPage({ params }: { params: { id: string } }) {
       <h1 className="text-2xl font-bold">Edit Banner</h1>
       <form onSubmit={onSubmit} className="grid max-w-2xl gap-2 rounded-2xl border bg-white p-4">
         {err && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{err}</p>}
-        <input
-          className={input}
+        <Input
+          id="banner-title"
+          label="Judul"
           placeholder="Judul*"
           value={form.title}
           onChange={(e) => setForm({ ...form, title: e.target.value })}
           required
         />
-        <input
-          className={input}
+        <Input
+          id="banner-subtitle"
+          label="Subjudul"
           placeholder="Subjudul"
           value={form.subtitle}
           onChange={(e) => setForm({ ...form, subtitle: e.target.value })}
         />
-        <input
-          className={input}
+        <Input
+          id="banner-image-url"
+          label="URL Gambar"
           placeholder="URL Gambar* https://…"
           value={form.image_url}
           onChange={(e) => setForm({ ...form, image_url: e.target.value })}
           required
         />
-        <div className="flex gap-2">
-          <input
-            className={input}
-            placeholder="URL Tautan"
-            value={form.link}
-            onChange={(e) => setForm({ ...form, link: e.target.value })}
-          />
-          <input
-            type="number"
-            className={input}
-            placeholder="Urutan (sort_order)"
-            value={form.sort_order}
-            onChange={(e) => setForm({ ...form, sort_order: Number(e.target.value) })}
-          />
+        <div className="flex flex-wrap gap-2">
+          <div className="min-w-[200px] flex-1">
+            <Input
+              id="banner-link"
+              label="URL Tautan"
+              placeholder="URL Tautan"
+              value={form.link}
+              onChange={(e) => setForm({ ...form, link: e.target.value })}
+            />
+          </div>
+          <div className="min-w-[140px] flex-1">
+            <Input
+              id="banner-sort-order"
+              label="Urutan"
+              type="number"
+              placeholder="Urutan (sort_order)"
+              value={form.sort_order}
+              onChange={(e) => setForm({ ...form, sort_order: Number(e.target.value) })}
+            />
+          </div>
         </div>
-        <label className="flex items-center gap-2 text-sm">
+        <label className="flex min-h-[44px] items-center gap-2 text-sm">
           <input
             type="checkbox"
             checked={form.is_active}
             onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
+            className="h-5 w-5 accent-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           />
           Aktif (is_active)
         </label>
-        <button
-          disabled={saving}
-          className="w-fit rounded-lg bg-slate-900 px-4 py-2 text-sm text-white disabled:opacity-50"
-        >
-          {saving ? 'Menyimpan…' : 'Simpan Perubahan'}
-        </button>
+        <div className="w-fit">
+          <Button type="submit" loading={saving}>
+            Simpan Perubahan
+          </Button>
+        </div>
       </form>
     </div>
   );
