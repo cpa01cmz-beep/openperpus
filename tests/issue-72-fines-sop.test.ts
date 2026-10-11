@@ -71,6 +71,7 @@ describe('#72 pay — receipt_no selalu ada', () => {
   it('PAY-RCP-01 jalur RPC pay_fine_tx -> 200 + payment.receipt_no', async () => {
     setAuthUser({ id: 'user-1' });
     setProfileRole('admin');
+    setTable('profiles', { single: { data: { role: 'admin' } } });
     setTable('fines', {
       single: {
         data: {
@@ -106,6 +107,7 @@ describe('#72 pay — receipt_no selalu ada', () => {
   it('PAY-RCP-02 fallback CAS: pembayaran sukses tetap menulis payments ber-receipt_no', async () => {
     setAuthUser({ id: 'user-1' });
     setProfileRole('admin');
+    setTable('profiles', { single: { data: { role: 'admin' } } });
     setTable('fines', {
       single: {
         data: {

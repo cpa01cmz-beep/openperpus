@@ -73,7 +73,7 @@ export default function DendaPage() {
   // Identitas admin pemakai: dasar segregation-of-duties pengajuan waive.
   const [myUserId, setMyUserId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
-  // Dialog state (native confirm()/alert() dilarang, lihat #60/#72).
+  // Dialog state — dialog native (confirm/alert) dilarang, lihat #60/#72.
   const [pendingPay, setPendingPay] = useState<Fine | null>(null);
   const [waiveTarget, setWaiveTarget] = useState<Fine | null>(null);
   const [waiveReason, setWaiveReason] = useState('');
