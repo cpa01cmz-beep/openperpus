@@ -93,6 +93,12 @@ describe('#68 count estimated pada koleksi berat', () => {
   it('katalog publik tetap plafon 50 (selaras parsePaging)', () => {
     const src = read('src/lib/books/catalog.ts');
     expect(src, 'clamp halaman katalog maks 50').not.toMatch(/Math\.min\(100/);
+    // UI katalog ikut plafon yang sama (bukan 48) — satu kontrak per_page.
+    const page = read('src/app/(public)/katalog/page.tsx');
+    expect(page, 'halaman katalog clamp min(50, ...)').toContain(
+      'Math.min(50, Math.max(1, Number(sp.per_page ?? 24) || 24))'
+    );
+    expect(page, 'halaman katalog tidak boleh clamp 48').not.toContain('Math.min(48');
   });
 });
 

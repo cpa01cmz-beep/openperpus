@@ -27,31 +27,29 @@ export const BOOKS_SELECT =
 export const BOOKS_LIST_SELECT =
   'id,title,slug,author,publisher,year,isbn,category_id,rack_id,cover_url,pages,language,stock_total,stock_available,featured,rating_avg,created_at,updated_at,categories(id,name,slug),racks(code,name,location)';
 
-/** Search books via RPC (full-text + trigram) then fetch with relations.
- *  Returns books in search relevance order. Supports offset/limit for pagination. */
-async function searchBooksViaRpc(
+/** Search katalog via SATU RPC (#68): search_books_page mengembalikan
+ *  { total, books[] } — baris halaman + total (window count) + relasi
+ *  kategori/rak dalam 1 round-trip. Ganti pola lama 2x [RPC search_books +
+ *  select.in relasi] (page + total) = 4 RTT dengan query total menarik
+ *  sampai 100 baris b.* hanya untuk menghitung jumlah. */
+async function searchBooksPageViaRpc(
   supabase: ReturnType<typeof createClient>,
   needle: string,
   limit: number,
   offset: number = 0
-): Promise<Book[]> {
-  const { data: rpcData, error: rpcError } = await supabase.rpc('search_books', {
+): Promise<{ books: Book[]; total: number }> {
+  const { data, error } = await supabase.rpc('search_books_page', {
     p_q: needle,
     p_limit: limit,
     p_offset: offset,
   });
-  if (rpcError || !rpcData || rpcData.length === 0) return [];
-
-  const ids = (rpcData as { id: string }[]).map((b) => b.id);
-  const { data, error } = await supabase.from('books').select(BOOKS_LIST_SELECT).in('id', ids);
-  if (error || !data) return [];
-
-  // Preserve RPC relevance order
-  const idOrder = new Map(ids.map((id, idx) => [id, idx]));
-  const sorted = (data as Record<string, unknown>[]).sort(
-    (a, b) => (idOrder.get(strOrEmpty(a.id)) ?? 999) - (idOrder.get(strOrEmpty(b.id)) ?? 999)
-  );
-  return normalizeBooks(sorted.map(toBook));
+  if (error || !data || typeof data !== 'object' || Array.isArray(data)) {
+    return { books: [], total: 0 };
+  }
+  const payload = data as { total?: unknown; books?: unknown };
+  const total = typeof payload.total === 'number' ? payload.total : 0;
+  const rows = Array.isArray(payload.books) ? (payload.books as Record<string, unknown>[]) : [];
+  return { books: normalizeBooks(rows.map(toBook)), total };
 }
 
 /** Ambil objek pertama bila relasi datang sebagai array (bentuk join Supabase). */
@@ -152,7 +150,8 @@ async function fetchBooksUncached(opts: FetchBooksOpts): Promise<Book[]> {
     // Search path: use RPC for relevance (full-text + trigram)
     if (needle) {
       const limit = opts.limit ?? opts.perPage ?? 24;
-      return searchBooksViaRpc(supabase, needle, limit);
+      const { books } = await searchBooksPageViaRpc(supabase, needle, limit);
+      return books;
     }
 
     // Non-search path: regular query with sort/filters
@@ -197,16 +196,12 @@ async function fetchBooksPagedUncached(opts: FetchBooksOpts): Promise<PagedBooks
     const to = page * perPage - 1;
     const needle = sanitizeIlike(opts.q ?? opts.search ?? '');
 
-    // Search path: use RPC (full-text + trigram), paginate via RPC offset/limit
+    // Search path: 1 RTT — search_books_page(p_q, limit, offset) mengembalikan
+    // halaman + total (window count) + relasi kategori/rak dalam satu panggilan
+    // (ganti pola lama 2x [RPC + select.in relasi] untuk page lalu 2x lagi untuk
+    // total = 4 RTT, dengan query total menarik sampai 100 baris b.*).
     if (needle) {
-      const books = await searchBooksViaRpc(supabase, needle, perPage, from);
-      // ponytail: 2 RTT (page + total via fetch terpisah); upgrade path =
-      // window-count di RPC search_books (total OVER () dalam 1 call) —
-      // JANGAN refactor RPC di sini, PR susulan bila search_books mendukungnya.
-      // Since RPC is limited to 100, fetch up to 100 for total
-      const allBooks = await searchBooksViaRpc(supabase, needle, 100, 0);
-      const total = allBooks.length;
-      return { books, total };
+      return searchBooksPageViaRpc(supabase, needle, perPage, from);
     }
 
     // Non-search path: regular query with count

@@ -57,7 +57,8 @@ export default async function KatalogPage({
 }) {
   const sp = (await searchParams) ?? {};
   const page = Math.max(1, Number(sp.page ?? 1) || 1);
-  const perPage = Math.min(48, Math.max(1, Number(sp.per_page ?? 24) || 24));
+  // #68: plafon 50 baris/halaman — selaras parsePaging MAX_PER_PAGE + lib.
+  const perPage = Math.min(50, Math.max(1, Number(sp.per_page ?? 24) || 24));
   const q = (sp.q ?? '').trim();
   const kategori = (sp.kategori ?? '').trim() || undefined;
   const sortRaw = (sp.sort ?? 'terbaru').trim();
