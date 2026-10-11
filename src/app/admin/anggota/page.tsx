@@ -1,11 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import DataTable, { type SortDir } from '@/components/admin/DataTable';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Pagination from '@/components/ui/Pagination';
 import { sanitizeIlike } from '@/lib/search';
+import { formatRp } from '@/lib/format';
+import { useAdminList } from '@/hooks/useAdminList';
+import { SEARCH_PER_PAGE } from '@/lib/pagination';
 import { errMsg } from '@/lib/admin-errors';
 
 type Member = {
@@ -22,21 +25,18 @@ type Member = {
   overdue_loans?: number | null;
 };
 
-const fmtRp = (v: number | null | undefined) => `Rp${Number(v ?? 0).toLocaleString('id-ID')}`;
+const fmtRp = formatRp;
 
 type PickOption = { user_id: string; label: string; sub: string };
 
 export default function AnggotaPage() {
-  const [rows, setRows] = useState<Member[]>([]);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [sortKey, setSortKey] = useState('');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [form, setForm] = useState({ user_id: '', member_code: '', phone: '', address: '' });
   const [actionError, setActionError] = useState('');
-  const [loadError, setLoadError] = useState('');
   const [loading, setLoading] = useState(false);
   const [bulkLoading, setBulkLoading] = useState(false);
   // Profile picker (search-as-you-type) — mengisi user_id tanpa paste UUID manual.
@@ -46,28 +46,14 @@ export default function AnggotaPage() {
   const pickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pickerListId = useId();
 
-  const load = useCallback(async () => {
-    setLoadError('');
-    try {
-      const q = new URLSearchParams({ page: String(page), per_page: '10', q: search });
-      const res = await fetch(`/api/members?${q}`);
-      const json = (await res.json().catch(() => ({}))) as {
-        data?: Member[];
-        pagination?: { totalPages?: number };
-        meta?: { totalPages?: number };
-      };
-      if (!res.ok) throw new Error(errMsg(json, 'Gagal memuat anggota.'));
-      setRows(json.data ?? []);
-      setTotalPages(json.pagination?.totalPages ?? 1);
-    } catch (e) {
-      setLoadError((e as Error).message);
-    }
-  }, [search, page]);
-
-  useEffect(() => {
-    const t = setTimeout(load, 300);
-    return () => clearTimeout(t);
-  }, [load]);
+  // Satu hook daftar (issue #62): fetch + pagination + error tidak ditulis ulang.
+  const list = useAdminList<Member>({
+    path: '/api/members',
+    params: { page: String(page), q: search },
+    debounceMs: 300,
+    errorMessage: 'Gagal memuat anggota.',
+  });
+  const { rows, totalPages, reload: load, clearError } = list;
 
   useEffect(() => {
     return () => {
@@ -85,7 +71,7 @@ export default function AnggotaPage() {
     }
     pickTimer.current = setTimeout(async () => {
       try {
-        const params = new URLSearchParams({ q: clean, per_page: '10' });
+        const params = new URLSearchParams({ q: clean, per_page: String(SEARCH_PER_PAGE) });
         const res = await fetch(`/api/members?${params}`);
         if (!res.ok) return;
         const json = (await res.json().catch(() => ({}))) as { data?: Member[] };
@@ -163,7 +149,7 @@ export default function AnggotaPage() {
   async function onDelete(id: string, code: string) {
     if (!confirm('Hapus anggota ini?')) return;
     setActionError('');
-    setLoadError('');
+    clearError();
     try {
       const res = await fetch(`/api/members/${id}`, { method: 'DELETE' });
       const json = await res.json().catch(() => ({}));
@@ -203,7 +189,7 @@ export default function AnggotaPage() {
     if (selected.size === 0) return;
     if (!confirm(`Hapus ${selected.size} anggota terpilih?`)) return;
     setActionError('');
-    setLoadError('');
+    clearError();
     setBulkLoading(true);
     try {
       const ids = [...selected];
@@ -377,9 +363,9 @@ export default function AnggotaPage() {
           </Button>
         )}
       </div>
-      {loadError && (
+      {list.error && (
         <p role="alert" className="text-sm text-red-600">
-          {loadError}
+          {list.error}
         </p>
       )}
       {actionError && (

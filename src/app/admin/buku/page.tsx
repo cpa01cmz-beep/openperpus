@@ -1,12 +1,14 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
 import DataTable from '@/components/admin/DataTable';
 import ExportCsvButton from '@/components/admin/ExportCsvButton';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Pagination from '@/components/ui/Pagination';
+import { useAdminList } from '@/hooks/useAdminList';
+import { useAdminSubmit } from '@/hooks/useAdminSubmit';
 import { errMsg } from '@/lib/admin-errors';
 import type { Book } from '@/lib/types';
 
@@ -16,51 +18,31 @@ type BukuRow = Pick<
 >;
 
 export default function BukuPage() {
-  const [rows, setRows] = useState<BukuRow[]>([]);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [bulkLoading, setBulkLoading] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const q = new URLSearchParams({ page: String(page), per_page: '10', q: search });
-      const res = await fetch(`/api/books?${q}`);
-      const json = (await res.json().catch(() => ({}))) as {
-        data?: BukuRow[];
-        pagination?: { totalPages?: number };
-      };
-      if (!res.ok) throw new Error(errMsg(json, 'Gagal memuat buku.'));
-      setRows(json.data ?? []);
-      setTotalPages(json.pagination?.totalPages ?? 1);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, search]);
-
-  useEffect(() => {
-    const t = setTimeout(load, 300);
-    return () => clearTimeout(t);
-  }, [load]);
+  // Satu hook daftar (issue #62): fetch + pagination + loading/error tak ditulis ulang.
+  const list = useAdminList<BukuRow>({
+    path: '/api/books',
+    params: { page: String(page), q: search },
+    debounceMs: 300,
+    errorMessage: 'Gagal memuat buku.',
+  });
+  // Satu hook aksi tulis: status sibuk + pesan error dipakai bareng
+  // (sebelumnya tiga blok try/catch salinan sendiri di halaman ini).
+  const { busy: bulkLoading, error: actionError, run: submit } = useAdminSubmit();
+  const { rows, totalPages, loading, reload: load } = list;
+  const error = list.error || actionError;
 
   async function onDelete(id: string) {
     if (!confirm('Hapus buku ini?')) return;
-    setError('');
-    try {
+    await submit(async () => {
       const res = await fetch(`/api/books/${id}`, { method: 'DELETE' });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(errMsg(json));
       load();
-    } catch (e) {
-      setError((e as Error).message);
-    }
+    });
   }
 
   function toggleSelect(id: string) {
@@ -79,9 +61,7 @@ export default function BukuPage() {
   async function onBulkDelete() {
     if (selected.size === 0) return;
     if (!confirm(`Hapus ${selected.size} buku terpilih?`)) return;
-    setBulkLoading(true);
-    setError('');
-    try {
+    await submit(async () => {
       const res = await fetch(`/api/books?id=${[...selected].join(',')}`, { method: 'DELETE' });
       const json = (await res.json().catch(() => ({}))) as {
         data?: { deleted?: string[]; skipped?: string[] };
@@ -95,11 +75,7 @@ export default function BukuPage() {
         );
       setSelected(new Set());
       load();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBulkLoading(false);
-    }
+    });
   }
 
   async function onBulkOpname() {
@@ -119,9 +95,7 @@ export default function BukuPage() {
     const sa = availRaw.trim() === '' ? st : Number(availRaw);
     if (!Number.isInteger(sa) || sa < 0 || sa > st) return alert('stok_available harus 0–total.');
     if (!confirm(`Terapkan stok ${sa}/${st} ke ${selected.size} buku?`)) return;
-    setBulkLoading(true);
-    setError('');
-    try {
+    await submit(async () => {
       const items = [...selected].map((id) => ({ id, stock_total: st, stock_available: sa }));
       const res = await fetch('/api/books', {
         method: 'PUT',
@@ -144,11 +118,7 @@ export default function BukuPage() {
         );
       setSelected(new Set());
       load();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBulkLoading(false);
-    }
+    });
   }
 
   return (

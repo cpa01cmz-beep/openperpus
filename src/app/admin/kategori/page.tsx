@@ -1,10 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import DataTable from '@/components/admin/DataTable';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Pagination from '@/components/ui/Pagination';
+import { useAdminList } from '@/hooks/useAdminList';
 import { errMsg } from '@/lib/admin-errors';
 
 type Category = {
@@ -17,33 +18,22 @@ type Category = {
 };
 
 export default function KategoriPage() {
-  const [rows, setRows] = useState<Category[]>([]);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [form, setForm] = useState({ name: '', description: '' });
   const [formError, setFormError] = useState('');
   const [actionError, setActionError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const load = useCallback(async () => {
-    const q = new URLSearchParams({ all: '1', page: String(page), per_page: '50', q: search });
-    const res = await fetch(`/api/categories?${q}`);
-    const json = (await res.json()) as {
-      data?: Category[];
-      pagination?: { totalPages?: number };
-      meta?: { totalPages?: number };
-    };
-    if (res.ok) {
-      setRows(json.data ?? []);
-      setTotalPages(json.pagination?.totalPages ?? 1);
-    }
-  }, [search, page]);
-
-  useEffect(() => {
-    const t = setTimeout(load, 300);
-    return () => clearTimeout(t);
-  }, [load]);
+  // #62: satu hook daftar — pencarian tetap ditunda 300 ms, ukuran halaman
+  // tunggal dari src/lib/pagination.ts (tak lagi '50').
+  const list = useAdminList<Category>({
+    path: '/api/categories',
+    params: { all: '1', page: String(page), q: search },
+    debounceMs: 300,
+  });
+  // #62: error pemuatan daftar ikut tampil (sebelumnya gagal load diabaikan diam-diam).
+  const { rows, totalPages, error: listError, reload: load } = list;
 
   async function onAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -148,6 +138,11 @@ export default function KategoriPage() {
           }}
         />
       </div>
+      {listError && (
+        <p role="alert" className="text-sm text-red-600">
+          {listError}
+        </p>
+      )}
       {actionError && (
         <p role="alert" className="text-sm text-red-600">
           {actionError}
