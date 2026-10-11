@@ -37,6 +37,7 @@ export default function ReservasiPage() {
     path: '/api/reservations',
     params: { page: String(page), per_page: PER_PAGE, ...(status ? { status } : {}) },
     noStore: true,
+    errorMessage: 'Gagal memuat reservasi.',
   });
   const { rows, loading, missing: apiMissing, totalPages, error, reload: load } = list;
 
@@ -72,6 +73,9 @@ export default function ReservasiPage() {
     const label = next === 'ready' ? 'setujui (siap diambil)' : 'batalkan';
     if (!confirm(`Yakin ${label} reservasi ini?`)) return;
     setActingId(id);
+    // 404 pada aksi berarti endpoint belum ada; load() berikutnya yang
+    // menentukan apakah banner tetap perlu tampil.
+    setPayMissing(false);
     try {
       const res = await fetch(`/api/reservations/${id}`, {
         method: 'PUT',

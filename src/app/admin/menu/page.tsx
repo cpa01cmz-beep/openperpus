@@ -40,6 +40,7 @@ export default function MenuPage() {
     path: '/api/menus',
     params: { all: '1', page: String(page), q: search },
     debounceMs: 300,
+    errorMessage: 'Gagal memuat menu.',
   });
   // #62: error pemuatan daftar ikut tampil (sebelumnya gagal load diabaikan diam-diam).
   const { rows, totalPages, error: listError, reload: load } = list;

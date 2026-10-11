@@ -113,8 +113,10 @@ describe('#62 AC2: nol duplikasi fmtRp/num', () => {
 describe('#62 AC1: satu hook list + satu hook tarif', () => {
   it('setiap halaman daftar memakai useAdminList (bukan fetch daftarnya sendiri)', () => {
     for (const f of LIST_PAGES) {
-      const s = read(f);
-      expect(s, `${f} harus memakai useAdminList`).toContain('useAdminList');
+      const s = readCode(f);
+      // Harus ada PEMANGGILAN hook — komentar atau import tak dihitung.
+      expect(s, `${f} harus memanggil useAdminList`).toMatch(/useAdminList</);
+      expect(s, `${f} tak boleh fetch daftarnya sendiri`).not.toMatch(/fetch\(`\/\/api\//);
     }
   });
 
@@ -129,12 +131,20 @@ describe('#62 AC1: satu hook list + satu hook tarif', () => {
 
   it('halaman bertarif memakai useFineRate, tanpa fetch /api/settings sendiri', () => {
     for (const f of SETTINGS_PAGES) {
-      const s = read(f);
       const code = readCode(f);
-      expect(s, `${f} harus memakai useFineRate`).toContain('useFineRate');
+      expect(code, `${f} harus memanggil useFineRate`).toMatch(/useFineRate\(/);
       expect(code, `${f} tidak boleh fetch /api/settings langsung`).not.toMatch(
         /fetch\('\/api\/settings'\)/
       );
+    }
+  });
+});
+
+describe('#62 halaman menyertakan errorMessage khas', () => {
+  it('tiap halaman daftar memberi errorMessage sendiri (bukan default generik)', () => {
+    for (const f of LIST_PAGES) {
+      const s = readCode(f);
+      expect(s, `${f} harus mengirim errorMessage khas halaman`).toMatch(/errorMessage:\s*'/);
     }
   });
 });

@@ -13,6 +13,7 @@
  * ============================================================ */
 
 import { useCallback, useState } from 'react';
+import { messageOf } from '@/lib/admin-errors';
 
 export type UseAdminSubmitResult = {
   /** Sedang ada aksi berjalan. */
@@ -37,7 +38,7 @@ export function useAdminSubmit(): UseAdminSubmitResult {
     try {
       await task();
     } catch (e) {
-      setError((e as Error).message);
+      setError(messageOf(e));
     } finally {
       setBusy(false);
     }

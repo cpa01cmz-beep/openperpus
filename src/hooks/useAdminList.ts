@@ -10,14 +10,15 @@
  *   beda per_page. Semuanya kini lewat hook ini.
  *
  * State halaman (page/setPage, filter, sort) TETAP milik
- * halaman; hook hanya mengurus pemuatan + hasilnya. Nanti
+ * halaman; hook hanya mengurus pemuatan + hasilnya. Saat
  * `params` berubah, request ikut berubah otomatis.
  *
  * Ukuran halaman tunggal: PER_PAGE di src/lib/pagination.ts.
+ * Envelope: hanya { data, pagination } (kontrak #61).
  * ============================================================ */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { errMsg } from '@/lib/admin-errors';
+import { errMsg, messageOf } from '@/lib/admin-errors';
 import { PER_PAGE } from '@/lib/pagination';
 
 /** Parameter query tambahan (nilai kosong/null diabaikan). */
@@ -32,7 +33,7 @@ export type UseAdminListOptions = {
   debounceMs?: number;
   /** Paksa cache: 'no-store' (data operasional yang tak boleh basi). */
   noStore?: boolean;
-  /** Pesan cadangan bila server tak memberi pesan. */
+  /** Pesan gagal khas halaman ini. */
   errorMessage?: string;
 };
 
@@ -48,17 +49,22 @@ export type AdminList<T> = {
   denied: boolean;
   /** Muat ulang daftar (tombol "Muat ulang" / setelah mutasi). */
   reload: () => void;
-  /** Kosongkan pesan error pemuatan tanpa refetch (dipakai sebelum aksi). */
+  /** Kosongkan pesan error pemuatan tanpa refetch. */
   clearError: () => void;
 };
 
-/** Params -> query string stabil (dipakai sebagai dependensi effect). */
-function serialize(params: ListParams | undefined): string {
-  if (!params) return '';
-  return Object.entries(params)
-    .filter(([, v]) => v !== undefined && v !== null && v !== '')
-    .map(([k, v]) => `${k}=${String(v)}`)
-    .join('&');
+/**
+ * Params -> URLSearchParams yang sudah di-encode benar. Bentuk record
+ * dipakai (bukan string "k=v&k=v" yang di-parse ulang) supaya nilai
+ * berisi `&`/`=`/`+`/`#` tetap utuh: "C++", "Tom & Jerry", "a=b".
+ */
+function toQueryParams(params: ListParams | undefined): URLSearchParams {
+  const qs = new URLSearchParams();
+  for (const [k, v] of Object.entries(params ?? {})) {
+    if (v === undefined || v === null || v === '') continue;
+    qs.set(k, String(v));
+  }
+  return qs;
 }
 
 export function useAdminList<T>(options: UseAdminListOptions): AdminList<T> {
@@ -69,7 +75,10 @@ export function useAdminList<T>(options: UseAdminListOptions): AdminList<T> {
     noStore = false,
     errorMessage = 'Gagal memuat data.',
   } = options;
-  const query = serialize(params);
+
+  // Kunci ketergantungan effect: nilai stabil meski objek `params`
+  // dibuat ulang tiap render.
+  const queryKey = toQueryParams(params).toString();
 
   const [rows, setRows] = useState<T[]>([]);
   const [totalPages, setTotalPages] = useState(1);
@@ -90,6 +99,13 @@ export function useAdminList<T>(options: UseAdminListOptions): AdminList<T> {
   const clearError = useCallback(() => setError(''), []);
 
   useEffect(() => {
+    // Pesan & status daftar dikosongkan saat request baru dimulai (perilaku
+    // lama: load() memanggil setError('')/setLoading(true) lebih dulu).
+    setLoading(true);
+    setError('');
+    setMissing(false);
+    setDenied(false);
+
     // Ambil & langsung kosongkan: hanya pemanggilan reload() yang instan.
     const immediate = immediateRef.current;
     immediateRef.current = false;
@@ -97,16 +113,23 @@ export function useAdminList<T>(options: UseAdminListOptions): AdminList<T> {
     let alive = true;
 
     const run = async () => {
-      setLoading(true);
-      setError('');
+      const qs = toQueryParams(params);
+      if (!qs.has('per_page')) qs.set('per_page', String(PER_PAGE));
       try {
-        const qs = new URLSearchParams(query);
-        if (!qs.has('per_page')) qs.set('per_page', String(PER_PAGE));
         const res = await fetch(`${path}?${qs}`, noStore ? { cache: 'no-store' } : undefined);
+        // Kontrak #61: satu envelope { data, pagination }. Fallback `meta`
+        // sengaja TIDAK dibaca (tests/pagination-contract.test.ts).
+        const json = (await res.json().catch(() => ({}))) as {
+          data?: T[];
+          pagination?: { totalPages?: number };
+        };
+        // Halaman yang tak punya banner 404/401 khusus tetap butuh penjelasan,
+        // jadi `error` diisi juga untuk ketiga kasus — bukan tabel kosong.
         if (res.status === 404) {
           if (alive) {
             setMissing(true);
             setRows([]);
+            setError(errMsg(json, errorMessage));
           }
           return;
         }
@@ -114,28 +137,23 @@ export function useAdminList<T>(options: UseAdminListOptions): AdminList<T> {
           if (alive) {
             setDenied(true);
             setRows([]);
+            setError(errMsg(json, errorMessage));
           }
           return;
         }
-        // Kontrak #61: satu envelope { data, pagination }. Fallback `meta`
-        // sengaja TIDAK dibaca (tests/pagination-contract.test.ts).
-        const json = (await res.json().catch(() => ({}))) as {
-          data?: T[];
-          pagination?: { totalPages?: number };
-        };
         if (!res.ok) throw new Error(errMsg(json, errorMessage));
         if (!alive) return;
-        setMissing(false);
-        setDenied(false);
         setRows(json.data ?? []);
         setTotalPages(json.pagination?.totalPages ?? 1);
       } catch (e) {
-        if (alive) setError((e as Error).message);
+        if (alive) setError(messageOf(e));
       } finally {
         if (alive) setLoading(false);
       }
     };
 
+    // Kelalaian baca `error` di halaman tertentu membuat 404/401/403 tampak
+    // sebagai "tak ada data" — jadi pesan selalu diisi untuk ketiga kasus.
     if (immediate || debounceMs <= 0) {
       void run();
       return () => {
@@ -147,7 +165,8 @@ export function useAdminList<T>(options: UseAdminListOptions): AdminList<T> {
       alive = false;
       clearTimeout(timer);
     };
-  }, [query, path, noStore, errorMessage, debounceMs, nonce]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- `params` dipakai via queryKey
+  }, [queryKey, path, noStore, errorMessage, debounceMs, nonce]);
 
   return { rows, loading, error, totalPages, missing, denied, reload, clearError };
 }

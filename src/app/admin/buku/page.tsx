@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import DataTable from '@/components/admin/DataTable';
 import ExportCsvButton from '@/components/admin/ExportCsvButton';
@@ -31,9 +31,19 @@ export default function BukuPage() {
   });
   // Satu hook aksi tulis: status sibuk + pesan error dipakai bareng
   // (sebelumnya tiga blok try/catch salinan sendiri di halaman ini).
-  const { busy: bulkLoading, error: actionError, run: submit } = useAdminSubmit();
+  const {
+    busy: bulkLoading,
+    error: actionError,
+    run: submit,
+    clearError: clearActionError,
+  } = useAdminSubmit();
   const { rows, totalPages, loading, reload: load } = list;
-  const error = list.error || actionError;
+  // Pesan aksi tulis (hapus/bulk) lebih baru -> tampil lebih dulu.
+  const error = actionError || list.error;
+  // Pergantian halaman/query memuat ulang daftar -> buang pesan aksi lama.
+  useEffect(() => {
+    clearActionError();
+  }, [clearActionError, page, search]);
 
   async function onDelete(id: string) {
     if (!confirm('Hapus buku ini?')) return;

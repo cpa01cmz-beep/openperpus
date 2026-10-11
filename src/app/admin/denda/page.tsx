@@ -93,6 +93,7 @@ export default function DendaPage() {
     path: '/api/fines',
     params: { page: String(page), per_page: PER_PAGE, ...(status ? { status } : {}) },
     noStore: true,
+    errorMessage: 'Gagal memuat denda.',
   });
   // Pesan pemuatan daftar + pesan aksi tulis digabung di satu tempat tampil.
   const { rows, loading, missing: apiMissing, totalPages, error: listError, reload: load } = list;
@@ -140,12 +141,21 @@ export default function DendaPage() {
     loadTotals();
   }, [loadTotals, page, status]);
 
+  // Pesan aksi lama dibuang saat daftar dimuat ulang, seperti state error
+  // tunggal sebelum #62.
+  useEffect(() => {
+    setActionError('');
+  }, [page, status]);
+
   async function confirmPay() {
     const f = pendingPay;
     if (!f) return;
     if (payingId) return;
     setPayingId(f.id);
     setActionError('');
+    // 404 pada aksi berarti endpoint belum ada; daftar yang sukses nanti
+    // membuang banner ini (bukan menempel selamanya).
+    setPayMissing(false);
     setNotice('');
     try {
       const res = await fetch(`/api/fines/${f.id}/pay`, {

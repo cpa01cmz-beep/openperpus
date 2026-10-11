@@ -31,6 +31,7 @@ export default function RakPage() {
     path: '/api/racks',
     params: { all: '1', page: String(page), q: search },
     debounceMs: 300,
+    errorMessage: 'Gagal memuat rak.',
   });
   // #62: error pemuatan daftar ikut tampil (sebelumnya gagal load diabaikan diam-diam).
   const { rows, totalPages, error: listError, reload: load } = list;

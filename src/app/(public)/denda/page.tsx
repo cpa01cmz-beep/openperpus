@@ -56,6 +56,7 @@ export default function DendaSayaPage() {
     path: '/api/fines',
     params: { page: String(page), per_page: PER_PAGE, ...(status ? { status } : {}) },
     noStore: true,
+    errorMessage: 'Gagal memuat riwayat denda.',
   });
   const { rows, loading, denied: needLogin, totalPages, error: listError, reload: load } = list;
 
@@ -93,11 +94,17 @@ export default function DendaSayaPage() {
     } catch {}
   }, [memberId]);
 
-  // Total tagihan terbuka disegarkan saat filter/halaman berubah (perilaku lama:
-  // ikut load()); riwayatnya sendiri diurus useAdminList di atas.
+  // Total tagihan terbuka biasanya hanya bergantung pada member id (perilaku
+  // lama: effect terpisah), jadi JANGAN ikut page/status.
   useEffect(() => {
     loadTotals();
-  }, [loadTotals, page, status]);
+  }, [loadTotals]);
+
+  // Pesan error aksi dibuang saat daftar dimuat ulang, seperti setError('')
+  // di awal load() pada kode lama.
+  useEffect(() => {
+    setError('');
+  }, [page, status]);
 
   async function onPay(f: Fine) {
     setPendingPay(f);
@@ -110,6 +117,8 @@ export default function DendaSayaPage() {
     const usedMethod = method;
     setPayingId(f.id);
     setPendingPay(null);
+    // 401 pada aksi bisa hilang setelah login ulang.
+    setPayNeedLogin(false);
     try {
       const res = await fetch(`/api/fines/${f.id}/pay`, {
         method: 'POST',

@@ -11,3 +11,12 @@ export function errMsg(json: unknown, fallback = 'Gagal.'): string {
   if (!err) return fallback;
   return typeof err === 'string' ? err : (err.message ?? fallback);
 }
+
+/**
+ * Pesan error dari nilai yang dilempar apa pun. `throw 'gagal'` atau
+ * objek dari wrapper tetap menghasilkan string, sehingga state bertipe
+ * string tidak pernah terisi undefined (lalu gagal ditampilkan).
+ */
+export function messageOf(e: unknown): string {
+  return e instanceof Error ? e.message : String(e);
+}
