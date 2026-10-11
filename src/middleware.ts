@@ -258,16 +258,16 @@ export async function middleware(request: NextRequest) {
   //    Predikat staf kanonis (issue #25) — semantik SAMA dengan
   //    requireStaff() dan isStaffRole() di admin/layout.tsx.
   if (isAdmin && user) {
-    const role = await getProfileRole(request, user.id);
+    // getProfileRole null saat query gagal -> '' -> isStaffRole('') false
+    // (fail-closed, redirect '/') — perilaku identik dengan cek lama.
+    const role = (await getProfileRole(request, user.id)) ?? '';
     if (!isStaffRole(role)) {
       const url = request.nextUrl.clone();
       url.pathname = '/';
       url.search = '';
       return NextResponse.redirect(url);
     }
-    // isStaffRole() fail-closed: hanya role string non-null yang lolos,
-    // jadi klaim di header selalu valid untuk dibaca layout.
-    request.headers.set(ROLE_HEADER, role as string);
+    request.headers.set(ROLE_HEADER, role);
     const claimed = NextResponse.next({ request });
     for (const c of sessionResponse.cookies.getAll()) claimed.cookies.set(c);
     sessionResponse = claimed;
