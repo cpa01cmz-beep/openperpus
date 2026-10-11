@@ -98,9 +98,10 @@ function PeminjamanInner() {
     clearError: clearActionError,
   } = useAdminSubmit();
   const { rows: loans, totalPages, denied, reload: load, clearError } = list;
-  // Pesan aksi tulis lebih baru daripada pesan pemuatan daftar, jadi ia yang
-  // ditampilkan lebih dulu (dulu satu state, selalu ditimpa yang terbaru).
-  const error = actionError || list.error;
+  // Banner 401/403 punya teks sendiri di halaman ini, jadi pesan generic
+  // dari hook tak diduplikasi. Sebaliknya pesan aksi tulis lebih baru
+  // daripada pesan pemuatan daftar, sehingga ia yang tampil lebih dulu.
+  const error = actionError || (denied ? '' : list.error);
 
   // Daftar dimuat ulang karena filter/halaman berubah -> pesan aksi lama
   // dibuang, seperti perilaku load() lama.

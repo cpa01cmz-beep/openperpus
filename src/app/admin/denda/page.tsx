@@ -97,8 +97,9 @@ export default function DendaPage() {
   });
   // Pesan pemuatan daftar + pesan aksi tulis digabung di satu tempat tampil.
   const { rows, loading, missing: apiMissing, totalPages, error: listError, reload: load } = list;
-  // Error pemuatan daftar + error aksi tulis tampil sebagai satu pesan.
-  const error = listError || actionError;
+  // Banner 404 khas halaman sudah menjelaskan "API belum ada", jadi pesan
+  // generic dari hook tidak diduplikasi. Sebaliknya aksi tulis tetap didahulukan.
+  const error = (apiMissing ? '' : listError) || actionError;
 
   // Siapa yang login (id profil) + apakah admin — untuk aturan approver ≠ pengaju.
   useEffect(() => {

@@ -40,6 +40,9 @@ export default function ReservasiPage() {
     errorMessage: 'Gagal memuat reservasi.',
   });
   const { rows, loading, missing: apiMissing, totalPages, error, reload: load } = list;
+  // Banner 404 khas halaman sudah menjelaskan "API belum ada"; pesan generic
+  // dari hook tidak diduplikasi untuk kasus itu.
+  const listError = apiMissing ? '' : error;
 
   async function onCheckout(r: Reservation) {
     // #73: checkout atomik 1-klik — POST /api/reservations/{id}/checkout
@@ -150,12 +153,12 @@ export default function ReservasiPage() {
           Daftar &amp; aksi approve/batal menunggu worker backend. Sudah dilaporkan ke mandor.
         </div>
       )}
-      {error && (
+      {listError && (
         <div
           role="alert"
           className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
         >
-          {error}
+          {listError}
         </div>
       )}
 
