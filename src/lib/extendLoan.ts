@@ -16,28 +16,43 @@ function retryableError(message: string, details?: unknown) {
   );
 }
 
+/** Baris loans yang dibutuhkan jalur perpanjang. */
+type LoanRow = {
+  id?: string;
+  status?: string | null;
+  due_at?: string | null;
+  extend_count?: unknown;
+};
+
 /**
- * Jumlah perpanjangan yang sudah dipakai, dari kolom `loans.extend_count`.
+ * Baca baris loan SEKALI: sekaligus menjadi sumber hitungan perlanjutan dari
+ * kolom `loans.extend_count` dan baris untuk fallback optimistic-lock (hemat
+ * satu round-trip dibanding select ulang setelah RPC).
  *
- * Isu #74: dulu HANYA dihitung dari activity_logs — rapuh bila log diprune
- * (retensi 180 hari) → anggota bisa memperpanjang tanpa batas. Kolom (migrasi
- * 0026) ikut transaksi DB, jadi selalu konsisten dengan yang dihitung RPC
- * `extend_loan`. Nilai `null` = kolom belum tersedia (DB lama / klien mock) →
- * pemanggil kembali memakai hitungan `activity_logs` agar batas tidak
- * mengendur saat migrasi belum jalan.
+ * Isu #74: dulu hitungan perpanjangan HANYA dari activity_logs — rapuh bila log
+ * diprune (retensi 180 hari) → anggota bisa memperpanjang tanpa batas. Kolom
+ * (migrasi 0026) ikut transaksi DB, jadi selalu konsisten dengan yang dihitung
+ * RPC `extend_loan`. `extendCount: null` = kolom belum tersedia (DB lama /
+ * klien mock) → pemanggil kembali memakai hitungan `activity_logs` agar batas
+ * tidak mengendur saat migrasi belum jalan.
  */
-async function readExtendCount(supabase: SupabaseLike, id: string): Promise<number | null> {
+async function readLoanForExtend(
+  supabase: SupabaseLike,
+  id: string
+): Promise<{ loan: LoanRow | null; extendCount: number | null }> {
   try {
     const rows = supabase.from('loans');
-    if (typeof rows.select !== 'function') return null;
-    const { data } = await rows.select('due_at,extend_count').eq('id', id).single();
-    const raw = (data as { extend_count?: unknown } | null)?.extend_count;
-    if (raw === undefined || raw === null) return null; // kolom belum di-backfill / mock
+    if (typeof rows.select !== 'function') return { loan: null, extendCount: null };
+    const { data } = await rows.select('id,status,due_at,extend_count').eq('id', id).single();
+    const loan = (data as LoanRow | null) ?? null;
+    if (!loan) return { loan: null, extendCount: null };
+    const raw = loan.extend_count;
+    if (raw === undefined || raw === null) return { loan, extendCount: null }; // kolom belum ada
     const n = Number(raw);
-    if (!Number.isFinite(n) || n < 0) return null;
-    return Math.floor(n);
+    if (!Number.isFinite(n) || n < 0) return { loan, extendCount: null };
+    return { loan, extendCount: Math.floor(n) };
   } catch {
-    return null;
+    return { loan: null, extendCount: null };
   }
 }
 
@@ -87,9 +102,11 @@ export async function extendLoan(opts: ExtendLoanOptions): Promise<Response> {
     return jsonError('VALIDATION', 'days harus bilangan bulat 1..90.', 422);
   }
 
+  // Baris pinjam dulu (dipakai untuk hitungan + fallback + audit), baru
+  // kebijakan batas dari settings — satu baris loan, satu baris settings.
+  const { loan: loanRow, extendCount: columnCount } = await readLoanForExtend(supabase, id);
   const policy = await getLoanPolicy(supabase);
   const maxExtensions = policy.maxExtensions;
-  const columnCount = await readExtendCount(supabase, id);
   const extensionCount = columnCount ?? (await countExtensionsFromLogs(supabase, id));
   if (extensionCount >= maxExtensions) {
     return jsonError(
@@ -103,9 +120,9 @@ export async function extendLoan(opts: ExtendLoanOptions): Promise<Response> {
   // Guard seperti returnLoan.ts: klien tanpa .rpc (mock/legacy) langsung
   // jatuh ke fallback optimistic-lock di bawah, bukan TypeError 500.
   if (typeof supabase.rpc === 'function') {
-    // Fetch old due_at before RPC for audit metadata
-    const { data: oldLoan } = await supabase.from('loans').select('due_at').eq('id', id).single();
-    const oldDueAt = oldLoan?.due_at ?? null;
+    // Baris sudah diambil di readLoanForExtend — dipakai ulang untuk audit
+    // (hemat round-trip, tidak ada query tambahan di jalur sukses).
+    const oldDueAt = loanRow?.due_at ?? null;
 
     const { data: rpcData, error: rpcError } = await supabase.rpc('extend_loan', {
       p_loan_id: id,
@@ -189,7 +206,13 @@ export async function extendLoan(opts: ExtendLoanOptions): Promise<Response> {
   }
 
   // --- Fallback: optimistic-lock ---
-  const { data: loan } = await supabase.from('loans').select('*').eq('id', id).single();
+  // Baris dari readLoanForExtend dipakai ulang; bila belum terbaca (mis. klien
+  // tanpa `from`/select), baru query sekarang.
+  let loan = loanRow;
+  if (!loan) {
+    const { data: fresh } = await supabase.from('loans').select('*').eq('id', id).single();
+    loan = (fresh as LoanRow | null) ?? null;
+  }
   if (!loan) return jsonError('NOT_FOUND', 'Peminjaman tidak ditemukan.', 404);
   const l = loan as { status: string; due_at: string };
   if (l.status === 'returned' || l.status === 'lost') {
