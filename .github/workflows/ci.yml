@@ -50,6 +50,72 @@ jobs:
       - run: npm ci
       - run: npx vitest run --project=unit --project=components
 
+  # Issue #23: tiga suite tests/integration hanya pernah ter-skip karena CI
+  # tidak pernah menjalankan project "integration". Job ini menjalankannya
+  # terhadap Supabase nyata BILA kredensial tes disediakan:
+  # - repo variable RUN_SUPABASE_INTEGRATION=true (secrets tidak bisa dipakai
+  #   di job-level `if`, hanya `vars`/`github`/`needs` yang tersedia)
+  # - secrets TEST_SUPABASE_URL / TEST_SUPABASE_ANON_KEY / TEST_SUPABASE_SERVICE_KEY
+  # Tanpa toggle ini job dilewati (skip), jadi PR fork/berkontributor tetap hijau.
+  # Hasil jatuh ke JUnit artifact + ringkasan step supaya muncul di test report.
+  integration:
+    if: ${{ vars.RUN_SUPABASE_INTEGRATION == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      TEST_SUPABASE_URL: ${{ secrets.TEST_SUPABASE_URL }}
+      TEST_SUPABASE_ANON_KEY: ${{ secrets.TEST_SUPABASE_ANON_KEY }}
+      TEST_SUPABASE_SERVICE_KEY: ${{ secrets.TEST_SUPABASE_SERVICE_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      - name: Fail fast bila kredensial tes tidak lengkap
+        run: |
+          missing=0
+          for v in TEST_SUPABASE_URL TEST_SUPABASE_ANON_KEY TEST_SUPABASE_SERVICE_KEY; do
+            if [ -z "${!v}" ]; then
+              echo "::error::$v kosong — isi secrets atau set variable RUN_SUPABASE_INTEGRATION=false."
+              missing=1
+            fi
+          done
+          exit $missing
+      - name: Jalankan suite integration (vitest --project=integration)
+        run: >-
+          npx vitest run --project=integration
+          --reporter=default --reporter=junit --outputFile=test-results/integration-junit.xml
+      - name: Ringkasan hasil ke step summary
+        if: always()
+        run: |
+          {
+            echo '### Integration suites (tests/integration)'
+            echo ''
+            if [ -f test-results/integration-junit.xml ]; then
+              echo '```'
+              node -e "
+                const xml = require('node:fs').readFileSync('test-results/integration-junit.xml', 'utf8');
+                const re = /<testsuite name=\"([^\"]+)\"[^>]*\btests=\"(\d+)\"[^>]*\bfailures=\"(\d+)\"[^>]*\berrors=\"(\d+)\"[^>]*\bskipped=\"(\d+)\"/g;
+                let m, out = '';
+                while ((m = re.exec(xml))) out += \`\${m[1]}: tests=\${m[2]} failures=\${m[3]} errors=\${m[4]} skipped=\${m[5]}\n\`;
+                process.stdout.write(out || '(tidak ada testsuite dalam laporan)\n');
+              "
+              echo '```'
+            else
+              echo 'Laporan JUnit tidak dihasilkan (run gagal sebelum reporter menulis).'
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload laporan integration
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: test-results/
+          retention-days: 14
+          if-no-files-found: warn
+
   playwright-list:
     runs-on: ubuntu-latest
     timeout-minutes: 10

@@ -1,13 +1,14 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { getSupabaseServiceClient, skipIfNoSupabase } from './setup';
 
-const supabase = getSupabaseServiceClient();
+// Issue #23: client dibuat lazy di beforeAll. Tanpa kredensial suite ter-skip
+// lewat describe.skipIf (bukan throw saat koleksi — dulu `npm test` tanpa env
+// Supabase gagal collection di tiga file ini).
+describe.skipIf(skipIfNoSupabase())('Integration: Books API', () => {
+  let supabase!: ReturnType<typeof getSupabaseServiceClient>;
 
-describe('Integration: Books API', () => {
   beforeAll(() => {
-    if (skipIfNoSupabase()) {
-      return;
-    }
+    supabase = getSupabaseServiceClient();
   });
 
   it('should list books with pagination', async () => {
