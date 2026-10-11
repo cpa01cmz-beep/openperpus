@@ -10,11 +10,10 @@ type Props = {
   title: string;
   /** WA deep-link petugas (fallback bila API gagal / tamu). */
   waHref: string | null;
-  variant?: 'primary' | 'queue';
 };
 
 /** 1-klik reservasi: POST /api/reservations {book_id}. 401 → login, gagal → WA fallback. */
-export default function ReserveButton({ bookId, slug, title, waHref, variant = 'primary' }: Props) {
+export default function ReserveButton({ bookId, slug, title, waHref }: Props) {
   const router = useRouter();
   const [state, setState] = useState<'idle' | 'loading' | 'done' | 'error'>('idle');
   const [msg, setMsg] = useState<string | null>(null);
@@ -57,9 +56,7 @@ export default function ReserveButton({ bookId, slug, title, waHref, variant = '
   }
 
   const btn =
-    variant === 'queue'
-      ? 'bg-accent text-brand-strong hover:bg-accent focus-visible:ring-brand'
-      : 'border border-brand-soft bg-[var(--surface)] text-brand shadow-sm hover:bg-brand-soft focus-visible:ring-brand';
+    'border border-brand-soft bg-[var(--surface)] text-brand shadow-sm hover:bg-brand-soft focus-visible:ring-brand';
 
   return (
     <span className="inline-flex flex-wrap items-center gap-3">
@@ -77,7 +74,7 @@ export default function ReserveButton({ bookId, slug, title, waHref, variant = '
         ) : (
           <>
             <BookmarkCheck className="h-4 w-4" aria-hidden="true" />
-            {variant === 'queue' ? 'Masuk Antrean (1-klik)' : 'Reservasi 1-klik'}
+            Reservasi 1-klik
           </>
         )}
       </button>

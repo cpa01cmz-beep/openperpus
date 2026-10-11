@@ -261,7 +261,10 @@ export default async function BookDetailPage({ params }: Props) {
                   {book.stock_available} tersedia / {book.stock_total} eksemplar — siap dipinjam
                 </>
               ) : (
-                <>Stok habis — semua {book.stock_total} eksemplar sedang dipinjam</>
+                <>
+                  Stok habis — semua {book.stock_total} eksemplar sedang dipinjam. Reservasi 1-klik
+                  hanya untuk stok tersedia; hubungi petugas via WA untuk masuk antrean.
+                </>
               )}
             </p>
             {available ? (
@@ -281,6 +284,8 @@ export default async function BookDetailPage({ params }: Props) {
                 </Link>
               </>
             ) : (
+              // #55: tanpa stok tak ada reservasi 1-klik — API menolak (409).
+              // Antrean tetap mungkin lewat petugas (TA / kontak WA).
               <>
                 <button
                   type="button"
@@ -291,13 +296,12 @@ export default async function BookDetailPage({ params }: Props) {
                 >
                   Stok Habis
                 </button>
-                <ReserveButton
-                  bookId={book.id}
-                  slug={book.slug}
-                  title={book.title}
-                  waHref={waHref}
-                  variant="queue"
-                />
+                <Link
+                  href={`/kontak?buku=${book.slug}`}
+                  className="inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-md)] border border-brand/40 bg-[var(--surface)] px-6 py-3 text-sm font-semibold text-brand-strong shadow-sm transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                >
+                  Tanya Stok <ArrowRight className="h-4 w-4" aria-hidden="true" />
+                </Link>
               </>
             )}
             {waHref && (
@@ -314,7 +318,7 @@ export default async function BookDetailPage({ params }: Props) {
           <p className="mt-3 text-xs text-[var(--ink)]/60">
             {available
               ? 'Peminjaman & reservasi diproses petugas sirkulasi. Bawa kartu anggota saat pengambilan.'
-              : 'Semua eksemplar sedang dipinjam. Masuk antrean agar dihubungi saat buku kembali.'}
+              : 'Semua eksemplar sedang dipinjam. Reservasi otomatis hanya berlaku saat stok tersedia — hubungi petugas untuk masuk antrean.'}
           </p>
 
           {book.description && (
