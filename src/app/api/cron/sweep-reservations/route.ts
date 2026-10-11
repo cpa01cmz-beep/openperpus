@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { revalidatePath, revalidateTag } from 'next/cache';
 import { createClient as createServiceClient } from '@supabase/supabase-js';
 import { jsonError } from '@/lib/supabase/auth';
-import { createLogger, requestIdFromHeaders } from '@/lib/logger';
+import { createLogger, requestIdFromHeaders, type Logger } from '@/lib/logger';
 import { isCronAuthorized } from '@/lib/cron-sweep';
 
 /**
@@ -14,16 +14,16 @@ import { isCronAuthorized } from '@/lib/cron-sweep';
  * key belum dikonfigurasi → 500 fail-closed (jangan sweep tanpa auth).
  */
 
-function revalidateReservations(): void {
+function revalidateReservations(log: Logger): void {
   try {
     revalidateTag('reservations', 'max');
-  } catch {
-    /* abaikan */
+  } catch (err) {
+    log.warn('cron.sweep.revalidate_tag_failed', { detail: String(err) });
   }
   try {
     revalidatePath('/admin/reservasi');
-  } catch {
-    /* abaikan */
+  } catch (err) {
+    log.warn('cron.sweep.revalidate_path_failed', { detail: String(err) });
   }
 }
 
@@ -62,6 +62,6 @@ export async function GET(req: Request) {
   }
   const swept = typeof data === 'number' ? data : 0;
   log.info('cron.sweep.done', { swept });
-  revalidateReservations();
+  revalidateReservations(log);
   return NextResponse.json({ data: { swept } }, { headers: { 'Cache-Control': 'no-store' } });
 }
