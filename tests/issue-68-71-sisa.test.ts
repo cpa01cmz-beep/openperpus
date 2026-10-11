@@ -18,7 +18,7 @@ function walkSrc(dir: string): string[] {
 describe('#68 sisa loans GET', () => {
   it('finite guard fineRate sebelum interpolasi + fallback 0 + warn', () => {
     const src = read('src/app/api/loans/route.ts');
-    expect(src).toContain('Number.isFinite(rawFineRate)');
+    expect(src).toContain('Number.isFinite(rawRate)');
     expect(src).toContain('loans.fine_rate_invalid');
   });
 
