@@ -96,8 +96,11 @@ describe('POST /api/reservations — gate stok (#55)', () => {
   });
 
   it('RES-STK-06 buku tidak ditemukan -> 404', async () => {
+    // member harus lolos resolusi dulu (getSession baca members.maybeSingle),
+    // baru query buku yang mengembalikan null -> 404.
+    setTable('members', { single: { data: { id: MID, status: 'active' } } });
     setTable('books', { single: { data: null, error: null } });
-    const res = await post({ book_id: BID, member_id: MID });
+    const res = await post({ book_id: BID });
     expect(res.status).toBe(404);
     expect(await errCode(res)).toBe('NOT_FOUND');
   });
