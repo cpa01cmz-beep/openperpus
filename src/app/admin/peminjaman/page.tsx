@@ -15,7 +15,7 @@ import { errMsg } from '@/lib/admin-errors';
 import { useAdminList } from '@/hooks/useAdminList';
 import { useAdminSubmit } from '@/hooks/useAdminSubmit';
 import { useFineRate } from '@/hooks/useFineRate';
-import { formatRp } from '@/lib/format';
+import { formatRp, formatTanggal } from '@/lib/format';
 import { PER_PAGE } from '@/lib/pagination';
 import { LOAN_STATUS } from '@/lib/enums';
 import { effectiveLoanStatus } from '@/lib/loans-overdue';
@@ -83,6 +83,8 @@ function PeminjamanInner() {
   const [overdueOnly, setOverdueOnly] = useState(() => searchParams.get('overdue') === '1');
 
   // #62: satu hook daftar — termasuk membedakan 401/403 (bukan petugas).
+  // #79: no-store seperti halaman sirkulasi lain (denda/reservasi) — data
+  // operasional tak boleh basi dari cache.
   const list = useAdminList<Loan>({
     path: '/api/loans',
     params: {
@@ -91,6 +93,7 @@ function PeminjamanInner() {
       ...(search ? { q: search } : {}),
       ...(sortKey ? { sort: sortKey, order: sortDir } : {}),
     },
+    noStore: true,
     errorMessage: 'Gagal memuat peminjaman.',
   });
   const { rows: loans, totalPages, denied, reload: load } = list;
@@ -247,7 +250,7 @@ function PeminjamanInner() {
         data?: { due_at?: string; extension_count?: number } | null;
       };
       if (!res.ok) throw new Error(errMsg(json, 'Gagal memproses perpanjangan.'));
-      const due = json.data?.due_at ? new Date(json.data.due_at).toLocaleDateString('id-ID') : '-';
+      const due = json.data?.due_at ? formatTanggal(json.data.due_at) : '-';
       // Isu #74: hitungan perpanjangan kini milik kolom loans.extend_count.
       const used = Number(json.data?.extension_count);
       const usedLabel = Number.isFinite(used) && used > 0 ? ` (perpanjangan ke-${used})` : '';
@@ -498,8 +501,8 @@ function PeminjamanInner() {
             sortable: true,
             render: (r) => (
               <span>
-                {new Date(r.borrowed_at).toLocaleDateString('id-ID')}
-                <br />→ {new Date(r.due_at).toLocaleDateString('id-ID')}
+                {formatTanggal(r.borrowed_at)}
+                <br />→ {formatTanggal(r.due_at)}
                 {statusOf(r) === 'overdue' && (
                   <span className="ml-1 rounded bg-red-100 px-1 text-xs text-red-700">telat</span>
                 )}

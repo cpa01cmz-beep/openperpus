@@ -1,12 +1,18 @@
 /* ============================================================
  * src/lib/format.ts — formatter domain MURNI (tanpa I/O), aman
  * untuk client maupun server. Satu-satunya sumber kebenaran
- * untuk tampilan angka & rupiah di aplikasi (issue #62).
+ * untuk tampilan angka, rupiah & tanggal di aplikasi
+ * (issue #62 untuk uang, #79 untuk tanggal & angka).
  *
  * Sebelumnya tiap halaman menyalin `fmtRp`/`num` sendiri:
  * admin/peminjaman, admin/denda, admin/page, admin/anggota,
  * (public)/denda, lib/wa-dunning, lib/loan-eligibility = 7
  * salinan. Semuanya kini mengimpor dari sini.
+ *
+ * Aturan #79: TIDAK ADA `toLocaleDateString`/`toLocaleTimeString`/
+ * `toLocaleString` inline di luar berkas ini. Semua tampilan
+ * tanggal/angka lewat helper di bawah (dipaksa oleh eslint rule
+ * lokal `openperpus/no-inline-format` + grep test issue #79).
  * ============================================================ */
 
 /** Angka aman: menerima number|string|null|undefined -> number. */
@@ -26,3 +32,71 @@ export function formatRp(v: unknown): string {
 
 /** Alias historis: pemanggil lama memakai `fmtRp`. */
 export { formatRp as fmtRp };
+
+/* ---------- Tanggal (issue #79) ---------- */
+
+/** Input tanggal yang diterima helper: ISO string, epoch, Date, atau kosong. */
+export type DateInput = string | number | Date | null | undefined;
+
+/** Date valid atau null (kosong/invalid tidak melempar). */
+function toDate(v: DateInput): Date | null {
+  if (v === null || v === undefined || v === '') return null;
+  const d = v instanceof Date ? v : new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/** Tanggal numerik id-ID: "2026-10-11" -> "11/10/2026". Kosong -> "-". */
+export function formatTanggal(v: DateInput): string {
+  const d = toDate(v);
+  return d ? d.toLocaleDateString('id-ID') : '-';
+}
+
+/** Tanggal panjang: "11 Oktober 2026". */
+export function formatTanggalPanjang(v: DateInput): string {
+  const d = toDate(v);
+  return d
+    ? d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
+    : '-';
+}
+
+/** Tanggal ringkas: "11 Okt 2026". */
+export function formatTanggalRingkas(v: DateInput): string {
+  const d = toDate(v);
+  return d
+    ? d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
+    : '-';
+}
+
+/** Jam id-ID: "14.30.00" (24 jam). */
+export function formatWaktu(v: DateInput): string {
+  const d = toDate(v);
+  return d ? d.toLocaleTimeString('id-ID') : '-';
+}
+
+/**
+ * Label hari singkat (mis. "Sab") untuk chart — timeZone UTC eksplisit
+ * agar bucket agregasi SQL (UTC) tidak bergeser sehari saat TZ runtime
+ * bukan UTC (pola dashboard admin).
+ */
+export function formatHariUtc(v: DateInput): string {
+  const d = toDate(v);
+  return d ? d.toLocaleDateString('id-ID', { weekday: 'short', timeZone: 'UTC' }) : '-';
+}
+
+/* ---------- Angka (issue #79) ---------- */
+
+/** Angka dengan pemisah ribuan id-ID: 15000 -> "15.000". */
+export function formatNum(v: unknown): string {
+  return num(v).toLocaleString('id-ID');
+}
+
+/**
+ * Stamp nama berkas ekspor: "2026-10-11" — deterministik lintas
+ * locale runtime (pengganti toLocaleDateString('sv-SE') yang sama
+ * hasilnya tapi terbaca sebagai "magic locale").
+ */
+export function formatStamp(v?: DateInput): string {
+  const d = toDate(v) ?? new Date();
+  const p = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}

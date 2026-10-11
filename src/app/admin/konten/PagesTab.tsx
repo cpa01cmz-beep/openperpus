@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from 'react';
 import DataTable from '@/components/admin/DataTable';
+import ConfirmModal from '@/components/admin/ConfirmModal';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 
@@ -40,6 +41,8 @@ export function PagesTab({
   });
   const [formError, setFormError] = useState('');
   const [busy, setBusy] = useState(false);
+  // Konfirmasi hapus pakai ConfirmModal (isu #79): tidak ada dialog native.
+  const [pendingDelete, setPendingDelete] = useState<PageItem | null>(null);
 
   const handleAdd = (e: FormEvent) => {
     e.preventDefault();
@@ -155,7 +158,7 @@ export function PagesTab({
                   {r.is_active ? 'Nonaktifkan' : 'Aktifkan'}
                 </button>
                 <button
-                  onClick={() => onDeletePage(r.id)}
+                  onClick={() => setPendingDelete(r)}
                   className="inline-flex min-h-[44px] items-center text-red-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
                   Hapus
@@ -168,6 +171,21 @@ export function PagesTab({
         getRowKey={(r) => r.id}
         emptyText="Belum ada halaman."
       />
+      <ConfirmModal
+        open={pendingDelete !== null}
+        onClose={() => setPendingDelete(null)}
+        onConfirm={() => {
+          const target = pendingDelete;
+          setPendingDelete(null);
+          if (target) onDeletePage(target.id);
+        }}
+        title="Hapus halaman"
+        description="Halaman yang dihapus tidak bisa dibuka lagi dari menu."
+      >
+        <p>
+          Hapus halaman <strong>{pendingDelete?.title}</strong>?
+        </p>
+      </ConfirmModal>
     </section>
   );
 }

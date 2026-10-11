@@ -6,7 +6,9 @@ import Breadcrumb from '@/components/public/Breadcrumb';
 import Modal from '@/components/ui/Modal';
 import { useAdminList } from '@/hooks/useAdminList';
 import { useFineRate } from '@/hooks/useFineRate';
-import { formatRp, num } from '@/lib/format';
+import { formatRp, formatTanggal, num } from '@/lib/format';
+import { FINE_STATUS } from '@/lib/enums';
+import { statusLabel } from '@/components/ui/StatusBadge';
 import { PER_PAGE } from '@/lib/pagination';
 import { errMsg } from '@/lib/admin-errors';
 
@@ -21,7 +23,6 @@ type Fine = {
   notes: string | null;
 };
 
-const STATUS_OPTS = ['', 'unpaid', 'partial', 'paid', 'waived'];
 const METHOD_OPTS = ['tunai', 'transfer', 'qris'] as const;
 
 const fmtRp = formatRp;
@@ -305,9 +306,7 @@ export default function DendaSayaPage() {
               {receipt.paid_at && (
                 <p>
                   Lunas pada:{' '}
-                  <span className="font-semibold">
-                    {new Date(receipt.paid_at).toLocaleDateString('id-ID')}
-                  </span>
+                  <span className="font-semibold">{formatTanggal(receipt.paid_at)}</span>
                 </p>
               )}
               {copied && (
@@ -339,9 +338,8 @@ export default function DendaSayaPage() {
         <Breadcrumb items={[{ label: 'Beranda', href: '/' }, { label: 'Denda Saya' }]} />
         <h1 className="mt-3 text-2xl font-bold">Denda Saya</h1>
         <p className="text-sm text-slate-500">
-          Denda terbentuk otomatis saat pengembalian terlambat (Rp
-          {finePerDay.toLocaleString('id-ID')}/hari, tarif denda_per_hari). Bayar langsung tanpa
-          payment gateway.
+          Denda terbentuk otomatis saat pengembalian terlambat ({formatRp(finePerDay)}/hari, tarif
+          denda_per_hari). Bayar langsung tanpa payment gateway.
         </p>
       </div>
 
@@ -391,9 +389,10 @@ export default function DendaSayaPage() {
             setStatus(e.target.value);
           }}
         >
-          {STATUS_OPTS.map((s) => (
-            <option key={s} value={s}>
-              {s === '' ? 'Semua' : s}
+          <option value="">Semua</option>
+          {FINE_STATUS.map((s) => (
+            <option key={s.value} value={s.value}>
+              {s.label}
             </option>
           ))}
         </select>
@@ -450,11 +449,11 @@ export default function DendaSayaPage() {
                       </span>
                     </p>
                     <p className="mt-1 text-sm">
-                      Status: <span className="font-semibold">{r.status}</span>
-                      {' · '}Terbit: {new Date(r.issued_at).toLocaleDateString('id-ID')}
+                      Status: <span className="font-semibold">{statusLabel(r.status)}</span>
+                      {' · '}Terbit: {formatTanggal(r.issued_at)}
                       {r.paid_at && (
                         <>
-                          {' · '}Lunas pada: {new Date(r.paid_at).toLocaleDateString('id-ID')}
+                          {' · '}Lunas pada: {formatTanggal(r.paid_at)}
                         </>
                       )}
                       {' · '}Metode: {methodOf(r.notes)}
