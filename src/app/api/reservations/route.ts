@@ -12,6 +12,8 @@ import { getSession } from '@/lib/session';
  * POST /api/reservations {book_id, member_id?, notes?}
  *   — anggota: {book_id} -> pending (member_id miliknya); pustakawan+: boleh untuk member lain.
  *   Gate kelayakan (#56): denda belum lunas / terlambat / batas pinjaman -> 409.
+ *   Gate stok (#55): stock_available <= 0 -> 409 CONFLICT (server-side, bukan
+ *   cuma disembunyikan di UI — is_active saja tidak cukup).
  * PUT/DELETE satu-resource PINDAH ke /api/reservations/{id} (issue #54 —
  * transport ?id= dihapus; kontrak lengkap + state-machine ada di route [id]).
  *
@@ -108,14 +110,22 @@ export async function POST(req: Request) {
     return jsonError('VALIDATION', 'Akun belum terdaftar sebagai anggota (members kosong).', 422);
   }
 
+  // #55 AC: cek stock_available eksplisit — is_active saja tidak cukup.
+  // Reservasi buku stok 0 ditolak server (409); checkout kemudiannya mustahil
+  // lulus gate stok RPC checkout_reservation_tx (migrasi 0024), jadi hold
+  // palsu tak boleh terbentuk. stock NULL (baris legacy) diizinkan lewat.
   const { data: book } = await supabase
     .from('books')
-    .select('id,is_active')
+    .select('id,is_active,stock_available')
     .eq('id', book_id)
     .single();
   if (!book) return jsonError('NOT_FOUND', 'Buku tidak ditemukan.', 404);
   if ((book as { is_active?: boolean }).is_active === false)
     return jsonError('GONE', 'Buku sudah tidak aktif, tidak bisa direservasi.', 410);
+  const stockAvailable = (book as { stock_available?: number | null }).stock_available;
+  if (stockAvailable != null && stockAvailable <= 0) {
+    return jsonError('CONFLICT', 'Stok buku habis, tidak bisa direservasi.', 409);
+  }
 
   const { data: member } = await supabase
     .from('members')
