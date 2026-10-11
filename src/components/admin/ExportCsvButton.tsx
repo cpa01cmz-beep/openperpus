@@ -23,9 +23,9 @@ type Props = {
  * atau tak terpakai; decodeURIComponent dijaga karena header dari jaringan
  * bisa mengandung percent-encoding rusak (URIError) — ekspor yang SUKSES
  * tidak boleh gagal gara-gara nama berkas. Nama dari header juga tidak
- * dipercaya mentah: separator path + karakter kontrol dibuang dan akhiran
- * `.csv` diwajibkan, jadi header tidak bisa menentukan path/ekstensi
- * berkas yang disimpan pustakawan (sisa review #136).
+ * dipercaya mentah: hanya basename yang dipakai, karakter kontrol dibuang,
+ * dan akhiran `.csv` diwajibkan — header tidak bisa menentukan path/ekstensi
+ * berkas yang disimpan pustakawan (sisa review #136/#137).
  */
 function filenameFromHeader(header: string | null, fallback: string): string {
   const utf8 = header?.match(/filename\*=UTF-8''([^;]+)/i);
@@ -46,20 +46,23 @@ function filenameFromHeader(header: string | null, fallback: string): string {
 }
 
 /**
- * Nama unduhan dari nilai header: buang karakter kontrol + separator path
- * (`/`, `\`) dan wajibkan akhiran `.csv`. Null = nilai tidak layak pakai
- * (kosong/whitespace/salah ekstensi) sehingga pemanggil jatuh ke fallback.
- * Spasi & huruf non-ASCII tetap dipertahankan (`laporan pustakawan.csv`).
+ * Nama unduhan dari nilai header: ambil basename dulu (seperti browser —
+ * `../../buku.csv` jadi `buku.csv`, tanpa artefak `....`), buang karakter
+ * kontrol + dot-run di depan, dan wajibkan akhiran `.csv`. Null = nilai tak
+ * layak pakai (kosong/whitespace/salah ekstensi) sehingga pemanggil jatuh ke
+ * fallback. Spasi & huruf non-ASCII dipertahankan (`laporan pustakawan.csv`).
  */
 function safeDownloadName(raw: string | undefined): string | null {
-  const name = (raw ?? '')
+  const base = (raw ?? '').split(/[/\\]/).pop() ?? '';
+  const name = base
     .split('')
     .filter((ch) => {
       const code = ch.charCodeAt(0);
-      return code > 0x1f && code !== 0x7f && ch !== '/' && ch !== '\\';
+      return code > 0x1f && code !== 0x7f;
     })
     .join('')
-    .trim();
+    .trim()
+    .replace(/^\.+/, '');
   return name.toLowerCase().endsWith('.csv') ? name : null;
 }
 
