@@ -106,9 +106,6 @@ export default function ReservasiPage() {
     setNotice('');
     setError('');
     try {
-      // #92: checkout atomik 1-klik — POST /api/reservations/{id}/checkout
-      // (RPC checkout_reservation_tx): loan + completed dalam satu transaksi.
-      // Gagal => rollback penuh; message server persis ditampilkan inline.
       const out = await checkoutReservation(
         {
           fetchLike: (url, init) =>
