@@ -23,9 +23,10 @@ type Props = {
  * atau tak terpakai; decodeURIComponent dijaga karena header dari jaringan
  * bisa mengandung percent-encoding rusak (URIError) — ekspor yang SUKSES
  * tidak boleh gagal gara-gara nama berkas. Nama dari header juga tidak
- * dipercaya mentah: hanya basename yang dipakai, karakter kontrol dibuang,
- * dan akhiran `.csv` diwajibkan — header tidak bisa menentukan path/ekstensi
- * berkas yang disimpan pustakawan (sisa review #136/#137).
+ * dipercaya mentah: hanya nama yang SELURUHNYA aman (basename, ASCII,
+ * akhiran `.csv`) yang diterima — sisanya diabaikan dan jatuh ke fallback,
+ * jadi header tidak bisa menentukan path/ekstensi/karakter penyamaru berkas
+ * yang disimpan pustakawan (sisa review #136–#139).
  */
 function filenameFromHeader(header: string | null, fallback: string): string {
   const utf8 = header?.match(/filename\*=UTF-8''([^;]+)/i);
@@ -46,24 +47,20 @@ function filenameFromHeader(header: string | null, fallback: string): string {
 }
 
 /**
- * Karakter yang DIBOLEHKAN di nama berkas: huruf (semua Unicode), angka,
- * spasi, dan pemisa nama biasa. Sengaja allowlist, bukan denylist — kelas
- * karakter penyamalu (bidi U+202E, zero-width U+200B–U+200F, U+2028/2029,
- * U+0085, DEL) tutup secara struktural, bukan tambal per karakter.
- */
-const SAFE_NAME_CHAR = /[^\p{L}\p{N} ._()\-]/gu;
-
-/**
- * Nama unduhan dari nilai header: ambil basename dulu (seperti browser —
- * `../../buku.csv` jadi `buku.csv`), buang karakter di luar allowlist,
- * lipat dot-run di depan, dan wajibkan akhiran `.csv`. Null = nilai tak layak
- * pakai (kosong/whitespace/salah ekstensi) sehingga pemanggil jatuh ke
- * fallback. Spasi & huruf non-ASCII dipertahankan (`laporan pustakawan.csv`).
+ * Nama dari header diterima HANYA bila seluruhnya aman — ASCII huruf/angka,
+ * spasi, dan pemisa nama biasa (`.` `_` `(` `)` `-`), diawali huruf/angka,
+ * diakhiri `.csv`. Sengaja tidak "dibersihkan sebagian": nama separuh-bersih
+ * (`buku\u202Evet.csv`, `laporan\npustakawan.csv`) lebih membingungkan
+ * daripada ditolak, dan charset ASCII menutup homoglyph/bidi/zero-width
+ * secara struktural. Basename diambil lebih dulu supaya nilai seperti
+ * `../../buku.csv` tidak menentukan path; dot-run di depan adalah residue
+ * traversal, bukan bagian nama. Null = nilai tak layak → pemanggil pakai
+ * fallback (stempel WIB kanonis).
  */
 function safeDownloadName(raw: string | undefined): string | null {
   const base = (raw ?? '').split(/[/\\]/).pop() ?? '';
-  const name = base.replace(SAFE_NAME_CHAR, '').trim().replace(/^\.+/, '');
-  return name.toLowerCase().endsWith('.csv') ? name : null;
+  const name = base.trim().replace(/^\.+/, '');
+  return /^[A-Za-z0-9][A-Za-z0-9 ._()-]*\.csv$/.test(name) ? name : null;
 }
 
 export default function ExportCsvButton({ filename, headers, rows, scope }: Props) {
