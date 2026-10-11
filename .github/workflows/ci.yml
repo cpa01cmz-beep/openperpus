@@ -38,6 +38,20 @@ jobs:
       - run: npm ci
       - run: npx eslint .
 
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci
+      # ponytail: 1 high (sharp via next, prod) per 2026-10 — level critical
+      # agar blocking tapi hijau. Turunkan ke moderate bila sharp bersih.
+      - run: npm audit --omit=dev --audit-level=critical
+
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 20

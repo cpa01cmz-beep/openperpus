@@ -20,19 +20,18 @@
     "cf:preview": "npx @opennextjs/cloudflare preview",
     "deploy": "npx @opennextjs/cloudflare build && wrangler deploy",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
-    "postinstall": "patch-package",
-    "prepare": "husky",
-    "preinstall": "npm config set legacy-peer-deps true"
+    "postinstall": "patch-package && node scripts/verify-patches.mjs",
+    "prepare": "husky"
   },
   "dependencies": {
     "@supabase/ssr": "0.5.2",
     "@supabase/supabase-js": "2.117.3",
-    "lucide-react": "^0.454.0",
+    "lucide-react": "0.454.0",
     "next": "16.4.0",
-    "react": "^18.3.1",
-    "react-dom": "^18.3.1",
-    "sanitize-html": "^2.18.0",
-    "server-only": "^0.0.1"
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "sanitize-html": "2.18.0",
+    "server-only": "0.0.1"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260922.1",
