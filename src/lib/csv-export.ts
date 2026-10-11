@@ -10,6 +10,12 @@ export function toCSV(headers: string[], rows: CsvCell[][]): string {
   return [headers.map(esc).join(','), ...rows.map((r) => r.map(esc).join(','))].join('\r\n');
 }
 
+/** Blok baris data TANPA baris header (dipisah CRLF) — untuk chunk streaming
+ *  ekspor seluruh data (issue #78); header hanya ditulis sekali di awal. */
+export function rowsToCSV(rows: CsvCell[][]): string {
+  return rows.map((r) => r.map(esc).join(',')).join('\r\n');
+}
+
 export function downloadCSV(filename: string, csv: string): void {
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
   const url = URL.createObjectURL(blob);

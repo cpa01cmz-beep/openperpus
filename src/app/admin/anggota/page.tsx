@@ -68,7 +68,9 @@ export default function AnggotaPage() {
         page: String(page),
         per_page: '10',
         q: search,
-        ...(sortKey && SORT_KEY_MAP[sortKey] ? { sort: SORT_KEY_MAP[sortKey], order: sortDir } : {}),
+        ...(sortKey && SORT_KEY_MAP[sortKey]
+          ? { sort: SORT_KEY_MAP[sortKey], order: sortDir }
+          : {}),
       });
       const res = await fetch(`/api/members?${q}`);
       const json = (await res.json().catch(() => ({}))) as {

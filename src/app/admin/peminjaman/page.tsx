@@ -468,6 +468,7 @@ export default function PeminjamanPage() {
         actions={
           <ExportCsvButton
             filename="peminjaman.csv"
+            scope="loans"
             headers={['ID', 'Anggota', 'Buku', 'Pinjam', 'Tempo', 'Status', 'Denda']}
             rows={loans.map((r) => [
               r.id,
