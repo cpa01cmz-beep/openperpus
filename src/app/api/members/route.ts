@@ -6,7 +6,9 @@ import { sanitizeIlike } from '@/lib/search';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 
 /**
- * GET /api/members?page=&per_page=&q=&status= — pustakawan+
+ * GET /api/members?page=&per_page=&q=&status=&sort=&order=
+ *   — q mencari member_code | telepon | nama profil (lintas relasi).
+ *   — sort: member_code|status|phone|created_at|full_name (server-side; order asc|desc).
  * POST /api/members { user_id, member_code?, phone?, address?, status? }
  * PUT /api/members/{id} — partial update (status/address/phone) — issue #54: ?id= dihapus
  * DELETE /api/members/{id} (admin; tolak bila ada loan borrowed/overdue)
@@ -17,6 +19,7 @@ import { createLogger, requestIdFromHeaders } from '@/lib/logger';
  */
 
 const STATUSES = ['active', 'suspended', 'expired', 'pending'] as const;
+const SORTABLE = ['member_code', 'status', 'phone', 'created_at', 'full_name'] as const;
 
 function isUuid(v: unknown): boolean {
   return (
@@ -34,15 +37,33 @@ export async function GET(req: Request) {
   const { sp, page, perPage, q, from, to } = parsePaging(req.url, 10);
   const status = (sp.get('status') ?? '').trim();
 
+  // Sort server-side (whitelist kolom) — urutan konsisten lintas halaman.
+  const sortParam = (sp.get('sort') ?? '').trim();
+  const sort: (typeof SORTABLE)[number] = (SORTABLE as readonly string[]).includes(sortParam)
+    ? (sortParam as (typeof SORTABLE)[number])
+    : 'created_at';
+  const orderParam = (sp.get('order') ?? '').trim().toLowerCase();
+  const asc = orderParam === 'asc' ? true : orderParam === 'desc' ? false : sort !== 'created_at';
+
+  // Urut per kolom embedded profiles butuh inner join — aman: members.user_id
+  // NOT NULL UNIQUE REFERENCES profiles(id), jadi tiap member punya tepat 1 profil.
+  const profileEmbed =
+    sort === 'full_name' ? 'profiles!inner(id,full_name)' : 'profiles(id,full_name)';
   let query = supabase
     .from('members')
-    .select('*, profiles(id,full_name)', { count: 'exact' })
-    .order('created_at', { ascending: false })
+    .select(`*, ${profileEmbed}`, { count: 'exact' })
     .range(from, to);
+  query =
+    sort === 'full_name'
+      ? query.order('full_name', { referencedTable: 'profiles', ascending: asc })
+      : query.order(sort, { ascending: asc });
   if (status) query = query.eq('status', status);
   if (q) {
     const clean = sanitizeIlike(q);
-    if (clean) query = query.or(`member_code.ilike.%${clean}%,phone.ilike.%${clean}%`);
+    if (clean)
+      query = query.or(
+        `member_code.ilike.%${clean}%,phone.ilike.%${clean}%,profiles.full_name.ilike.%${clean}%`
+      );
   }
 
   const { data, error, count } = await query;
