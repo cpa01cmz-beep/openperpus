@@ -138,7 +138,7 @@ async function updateById(req: Request, id: string) {
     // Migrasi 0026: kolom NOT NULL — null eksplisit ditolak 422 (bukan 500 DB).
     if (body.expires_at === null)
       return jsonError('VALIDATION', 'expires_at tidak boleh kosong.', 422);
-    {
+    else {
       const d = new Date(body.expires_at as string);
       if (Number.isNaN(d.getTime())) return jsonError('VALIDATION', 'expires_at tidak valid.', 422);
       payload.expires_at = d.toISOString();

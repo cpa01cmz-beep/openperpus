@@ -261,6 +261,18 @@ paths:
       responses:
         '200':
           description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [swept]
+                    properties:
+                      swept:
+                        type: integer
         '401':
           description: Cron secret tidak valid
           content:
