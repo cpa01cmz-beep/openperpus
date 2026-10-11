@@ -181,6 +181,58 @@ describe('ExportCsvButton (#78/#133)', () => {
     expect((clickSpy.mock.instances[0] as HTMLAnchorElement).download).toBe('buku.csv');
   });
 
+  it('filename* karakter penyamaru Unicode (bidi/zero-width) dibuang — nama tak bisa menyamar', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(
+      // U+202E RLO ("buku%E2%80%AEvet.csv") + U+200B zero-width: denylist
+      // kontrol lama meloloskan keduanya — allowlist yang menutup kelasnya.
+      okExport({
+        'content-disposition': "attachment; filename*=UTF-8''buku%E2%80%AE%E2%80%8Bvet.csv",
+      })
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    render(<ExportCsvButton filename="buku.csv" headers={['ID']} rows={[['b1']]} scope="books" />);
+    fireEvent.click(exportAllButton());
+
+    await waitFor(() => expect(clickSpy).toHaveBeenCalledTimes(1));
+    expect((clickSpy.mock.instances[0] as HTMLAnchorElement).download).toBe('bukuvet.csv');
+  });
+
+  it('filename* basename seluruhnya dot-run: "csv" hasil lipatan tanpa .csv — jatuh ke stempel lokal', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        okExport({ 'content-disposition': "attachment; filename*=UTF-8''..%2F..csv" })
+      );
+    vi.stubGlobal('fetch', fetchMock);
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    render(<ExportCsvButton filename="buku.csv" headers={['ID']} rows={[['b1']]} scope="books" />);
+    fireEvent.click(exportAllButton());
+
+    await waitFor(() => expect(clickSpy).toHaveBeenCalledTimes(1));
+    expect((clickSpy.mock.instances[0] as HTMLAnchorElement).download).toMatch(
+      /^buku-\d{4}-\d{2}-\d{2}\.csv$/
+    );
+  });
+
+  it('filename* separator di depan: basename tetap dipakai', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValue(
+        okExport({ 'content-disposition': "attachment; filename*=UTF-8''%2Fbuku.csv" })
+      );
+    vi.stubGlobal('fetch', fetchMock);
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+
+    render(<ExportCsvButton filename="buku.csv" headers={['ID']} rows={[['b1']]} scope="books" />);
+    fireEvent.click(exportAllButton());
+
+    await waitFor(() => expect(clickSpy).toHaveBeenCalledTimes(1));
+    expect((clickSpy.mock.instances[0] as HTMLAnchorElement).download).toBe('buku.csv');
+  });
+
   it('filename="…" biasa pun dibersihkan: separator & karakter kontrol dibuang', async () => {
     const fetchMock = vi.fn().mockResolvedValue(
       okExport({

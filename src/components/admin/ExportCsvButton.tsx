@@ -46,23 +46,23 @@ function filenameFromHeader(header: string | null, fallback: string): string {
 }
 
 /**
+ * Karakter yang DIBOLEHKAN di nama berkas: huruf (semua Unicode), angka,
+ * spasi, dan pemisa nama biasa. Sengaja allowlist, bukan denylist — kelas
+ * karakter penyamalu (bidi U+202E, zero-width U+200B–U+200F, U+2028/2029,
+ * U+0085, DEL) tutup secara struktural, bukan tambal per karakter.
+ */
+const SAFE_NAME_CHAR = /[^\p{L}\p{N} ._()\-]/gu;
+
+/**
  * Nama unduhan dari nilai header: ambil basename dulu (seperti browser —
- * `../../buku.csv` jadi `buku.csv`, tanpa artefak `....`), buang karakter
- * kontrol + dot-run di depan, dan wajibkan akhiran `.csv`. Null = nilai tak
- * layak pakai (kosong/whitespace/salah ekstensi) sehingga pemanggil jatuh ke
+ * `../../buku.csv` jadi `buku.csv`), buang karakter di luar allowlist,
+ * lipat dot-run di depan, dan wajibkan akhiran `.csv`. Null = nilai tak layak
+ * pakai (kosong/whitespace/salah ekstensi) sehingga pemanggil jatuh ke
  * fallback. Spasi & huruf non-ASCII dipertahankan (`laporan pustakawan.csv`).
  */
 function safeDownloadName(raw: string | undefined): string | null {
   const base = (raw ?? '').split(/[/\\]/).pop() ?? '';
-  const name = base
-    .split('')
-    .filter((ch) => {
-      const code = ch.charCodeAt(0);
-      return code > 0x1f && code !== 0x7f;
-    })
-    .join('')
-    .trim()
-    .replace(/^\.+/, '');
+  const name = base.replace(SAFE_NAME_CHAR, '').trim().replace(/^\.+/, '');
   return name.toLowerCase().endsWith('.csv') ? name : null;
 }
 
