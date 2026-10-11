@@ -81,7 +81,7 @@ export function PagesTab({
         <Input
           id="konten-page-excerpt"
           label="Ringkasan"
-          placeholder="Ringkasan (excerpt)"
+          placeholder="Ringkasan"
           value={pageForm.excerpt}
           onChange={(e) => setPageForm({ ...pageForm, excerpt: e.target.value })}
         />
@@ -96,7 +96,7 @@ export function PagesTab({
             id="konten-page-content"
             className={rawInput}
             rows={4}
-            placeholder="Konten markdown* (content_md)"
+            placeholder="Konten markdown*"
             value={pageForm.content_md}
             onChange={(e) => setPageForm({ ...pageForm, content_md: e.target.value })}
             required

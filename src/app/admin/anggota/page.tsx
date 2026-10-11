@@ -364,7 +364,7 @@ export default function AnggotaPage() {
             <Input
               id="anggota-user-id"
               label="User ID (UUID profiles)"
-              placeholder="user_id terisi otomatis dari pencarian*"
+              placeholder="ID pengguna (terisi otomatis dari pencarian)*"
               value={form.user_id}
               onChange={(e) => setForm({ ...form, user_id: e.target.value })}
               required
@@ -375,7 +375,7 @@ export default function AnggotaPage() {
               id="anggota-member-code"
               label="Kode anggota"
               hint="Otomatis bila kosong"
-              placeholder="member_code (auto bila kosong)"
+              placeholder="Kode anggota (otomatis bila kosong)"
               value={form.member_code}
               onChange={(e) => setForm({ ...form, member_code: e.target.value })}
             />

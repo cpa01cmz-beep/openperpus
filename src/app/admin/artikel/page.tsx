@@ -144,7 +144,7 @@ export default function ArtikelPage() {
         <Input
           id="artikel-excerpt"
           label="Ringkasan"
-          placeholder="Ringkasan (excerpt)"
+          placeholder="Ringkasan"
           value={form.excerpt}
           onChange={(e) => setForm({ ...form, excerpt: e.target.value })}
         />
@@ -159,7 +159,7 @@ export default function ArtikelPage() {
             id="artikel-content"
             className={rawInput}
             rows={4}
-            placeholder="Konten markdown* (content_md)"
+            placeholder="Konten markdown*"
             value={form.content_md}
             onChange={(e) => setForm({ ...form, content_md: e.target.value })}
             required

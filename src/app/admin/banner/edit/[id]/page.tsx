@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import Button from '@/components/ui/Button';
 import { createClient } from '@/lib/supabase/client';
 import { errMsg } from '@/lib/admin-errors';
 
@@ -51,7 +52,7 @@ export default function EditBannerPage({ params }: { params: { id: string } }) {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setErr('');
-    if (!form.title.trim() || !form.image_url.trim()) return setErr('Judul & image_url wajib.');
+    if (!form.title.trim() || !form.image_url.trim()) return setErr('Judul & URL gambar wajib.');
     setSaving(true);
     try {
       const res = await fetch(`/api/banners/${params.id}`, {
@@ -77,7 +78,11 @@ export default function EditBannerPage({ params }: { params: { id: string } }) {
     <div className="grid gap-4">
       <h1 className="text-2xl font-bold">Edit Banner</h1>
       <form onSubmit={onSubmit} className="grid max-w-2xl gap-2 rounded-2xl border bg-white p-4">
-        {err && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{err}</p>}
+        {err && (
+          <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
+            {err}
+          </p>
+        )}
         <input
           className={input}
           placeholder="Judul*"
@@ -119,14 +124,11 @@ export default function EditBannerPage({ params }: { params: { id: string } }) {
             checked={form.is_active}
             onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
           />
-          Aktif (is_active)
+          Aktif
         </label>
-        <button
-          disabled={saving}
-          className="w-fit rounded-lg bg-slate-900 px-4 py-2 text-sm text-white disabled:opacity-50"
-        >
-          {saving ? 'Menyimpan…' : 'Simpan Perubahan'}
-        </button>
+        <Button disabled={saving} loading={saving} className="w-fit">
+          Simpan
+        </Button>
       </form>
     </div>
   );
