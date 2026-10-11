@@ -3,16 +3,17 @@
 import { useCallback, useEffect, useState } from 'react';
 import DataTable from '@/components/admin/DataTable';
 import ExportCsvButton from '@/components/admin/ExportCsvButton';
+import ConfirmModal from '@/components/admin/ConfirmModal';
+import FilterBar from '@/components/admin/FilterBar';
 import StatCard from '@/components/admin/StatCard';
 import Modal from '@/components/ui/Modal';
 import Pagination from '@/components/ui/Pagination';
+import StatusBadge from '@/components/ui/StatusBadge';
 import { useAdminList } from '@/hooks/useAdminList';
 import { useFineRate } from '@/hooks/useFineRate';
 import { errMsg } from '@/lib/admin-errors';
 import { formatRp, num } from '@/lib/format';
 import { PER_PAGE } from '@/lib/pagination';
-
-const fmtRp = formatRp;
 
 type Payment = {
   id: string;
@@ -49,6 +50,8 @@ const STATUS_OPTS = ['', 'unpaid', 'partial', 'paid', 'waived'];
 const METHOD_OPTS = ['tunai', 'transfer', 'qris'];
 const REASON_MIN = 10;
 
+const fmtRp = formatRp;
+
 /** Kwitansi terbaru sebuah denda (immutable, issue #72). */
 function receiptNoOf(f: Fine): string | null {
   const rows = f.payments ?? [];
@@ -62,13 +65,10 @@ function pendingWaiverOf(f: Fine): Waiver | null {
 
 export default function DendaPage() {
   const [status, setStatus] = useState('');
+  const [search, setSearch] = useState('');
   const [method, setMethod] = useState('tunai');
   const [page, setPage] = useState(1);
   const [payingId, setPayingId] = useState<string | null>(null);
-  const [payMissing, setPayMissing] = useState(false);
-  // Pesan error dari AKSI TULIS (bayar/waive/decision). Error pemuatan
-  // daftar datang dari useAdminList dan digabung pada `error` di bawah.
-  const [actionError, setActionError] = useState('');
   const [notice, setNotice] = useState('');
   const [tagihanTotal, setTagihanTotal] = useState(0);
   // Identitas admin pemakai: dasar segregation-of-duties pengajuan waive.
@@ -85,21 +85,8 @@ export default function DendaPage() {
   const [decisionNote, setDecisionNote] = useState('');
   const [decisionBusy, setDecisionBusy] = useState(false);
 
-  // #62: tarif denda dari satu hook pengaturan (bukan salinan fetch per halaman).
+  // #62: tarif denda dari satu hook pengaturan.
   const { finePerDay } = useFineRate();
-
-  // #62: satu hook daftar — termasuk memisahkan 404 (API belum tersedia).
-  const list = useAdminList<Fine>({
-    path: '/api/fines',
-    params: { page: String(page), per_page: PER_PAGE, ...(status ? { status } : {}) },
-    noStore: true,
-    errorMessage: 'Gagal memuat denda.',
-  });
-  // Pesan pemuatan daftar + pesan aksi tulis digabung di satu tempat tampil.
-  const { rows, loading, missing: apiMissing, totalPages, error: listError, reload: load } = list;
-  // Banner 404 khas halaman sudah menjelaskan "API belum ada", jadi pesan
-  // generic dari hook tidak diduplikasi. Sebaliknya aksi tulis tetap didahulukan.
-  const error = (apiMissing ? '' : listError) || actionError;
 
   // Siapa yang login (id profil) + apakah admin — untuk aturan approver ≠ pengaju.
   useEffect(() => {
@@ -136,17 +123,42 @@ export default function DendaPage() {
     } catch {}
   }, []);
 
-  // Total tagihan disegarkan setiap filter/halaman berubah (perilaku lama:
-  // ikut load()), sedangkan daftarnya diurus useAdminList.
+  // #62: satu hook daftar — termasuk memisahkan 404 (API belum tersedia).
+  const list = useAdminList<Fine>({
+    path: '/api/fines',
+    params: {
+      page: String(page),
+      per_page: PER_PAGE,
+      ...(status ? { status } : {}),
+      ...(search ? { q: search } : {}),
+    },
+    noStore: true,
+    errorMessage: 'Gagal memuat denda.',
+  });
+  const { rows, loading, missing: apiMissing, totalPages, error: listError, reload: load } = list;
+  // Aksi tulis punya state sibuk masing-masing (bayar vs waive vs decision),
+  // jadi tidak memakai useAdminSubmit di sini.
+  const [actionError, setActionError] = useState('');
+  // 404 dari aksi bayar: banner amber sendiri; list successful clears it.
+  const [payMissing, setPayMissing] = useState(false);
+  // Banner 404 khusus + pesan generic hook tak ditampilkan bersamaan.
+  const error = (apiMissing ? '' : listError) || actionError;
+
+  // Total tagihan disegarkan saat filter/halaman berubah (perilaku lama:
+  // ikut load()); riwayatnya diurus useAdminList.
   useEffect(() => {
     loadTotals();
-  }, [loadTotals, page, status]);
+  }, [loadTotals, page, status, search]);
 
-  // Pesan aksi lama dibuang saat daftar dimuat ulang, seperti state error
-  // tunggal sebelum #62.
+  // Pesan aksi lama dibuang saat daftar dimuat ulang (perilaku lama: state
+  // error tunggal di-clear di awal load()).
   useEffect(() => {
     setActionError('');
-  }, [page, status]);
+  }, [page, status, search]);
+
+  useEffect(() => {
+    loadTotals();
+  }, [loadTotals]);
 
   async function confirmPay() {
     const f = pendingPay;
@@ -154,8 +166,6 @@ export default function DendaPage() {
     if (payingId) return;
     setPayingId(f.id);
     setActionError('');
-    // 404 pada aksi berarti endpoint belum ada; daftar yang sukses nanti
-    // membuang banner ini (bukan menempel selamanya).
     setPayMissing(false);
     setNotice('');
     try {
@@ -167,19 +177,21 @@ export default function DendaPage() {
       const json = await res.json().catch(() => ({}));
       if (res.status === 404) {
         setPayMissing(true);
+        setActionError('API /api/fines belum tersedia di backend.');
         return;
       }
       if (!res.ok) {
         setActionError(errMsg(json));
         return;
       }
-      // #72: kwitansi bernomor dari tabel payments.
       const payment = (json as { payment?: { receipt_no?: string | null } | null }).payment;
       const receipt = payment?.receipt_no ? ` Kwitansi: ${payment.receipt_no}` : '';
       setPendingPay(null);
       setNotice(`Pembayaran tersimpan.${receipt}`);
       load();
       loadTotals();
+    } catch (e) {
+      setActionError((e as Error).message);
     } finally {
       setPayingId(null);
     }
@@ -264,7 +276,7 @@ export default function DendaPage() {
           className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800"
         >
           API <code className="font-mono">/api/fines</code> belum tersedia di backend (404). Daftar
-          & tombol bayar menunggu worker backend. Sudah dilaporkan ke mandor.
+          &amp; tombol bayar menunggu worker backend. Sudah dilaporkan ke mandor.
         </div>
       )}
       {error && (
@@ -278,7 +290,7 @@ export default function DendaPage() {
       {notice && (
         <div
           role="status"
-          className="rounded-xl border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-800"
+          className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
         >
           {notice}
         </div>
@@ -298,7 +310,34 @@ export default function DendaPage() {
         />
       </div>
 
-      <div className="flex flex-wrap items-end gap-2 text-sm">
+      <FilterBar
+        search={{
+          id: 'denda-search',
+          label: 'Cari denda',
+          placeholder: 'Cari kode anggota…',
+          value: search,
+          onChange: (v) => {
+            setPage(1);
+            setSearch(v);
+          },
+        }}
+        onReload={load}
+        actions={
+          <ExportCsvButton
+            filename="denda.csv"
+            headers={['ID', 'Anggota', 'Tagihan', 'Dibayar', 'Status', 'No. struk', 'Terbit']}
+            rows={rows.map((r) => [
+              r.id,
+              r.members?.member_code ?? '',
+              num(r.amount),
+              num(r.paid_amount),
+              r.status,
+              receiptNoOf(r) ?? '',
+              r.issued_at,
+            ])}
+          />
+        }
+      >
         <div className="grid gap-1">
           <label htmlFor="filter-status" className="text-sm font-semibold text-slate-700">
             Filter status
@@ -336,27 +375,7 @@ export default function DendaPage() {
             ))}
           </select>
         </div>
-        <button
-          type="button"
-          onClick={load}
-          className="inline-flex min-h-[44px] items-center justify-center rounded-md border border-slate-200 bg-white px-3 font-semibold text-slate-700 transition hover:border-brand hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-        >
-          Muat ulang
-        </button>
-        <ExportCsvButton
-          filename="denda.csv"
-          headers={['ID', 'Anggota', 'Tagihan', 'Dibayar', 'Status', 'No. struk', 'Terbit']}
-          rows={rows.map((r) => [
-            r.id,
-            r.members?.member_code ?? '',
-            num(r.amount),
-            num(r.paid_amount),
-            r.status,
-            receiptNoOf(r) ?? '',
-            r.issued_at,
-          ])}
-        />
-      </div>
+      </FilterBar>
 
       {loading ? (
         <p className="text-sm text-slate-500" aria-live="polite">
@@ -381,7 +400,7 @@ export default function DendaPage() {
                 </span>
               ),
             },
-            { key: 'status', header: 'Status' },
+            { key: 'status', header: 'Status', render: (r) => <StatusBadge status={r.status} /> },
             {
               key: 'receipt',
               header: 'No. struk',
@@ -481,45 +500,53 @@ export default function DendaPage() {
           ]}
           rows={rows}
           getRowKey={(r) => r.id}
-          emptyText="Belum ada denda."
+          emptyState={{
+            title: 'Belum ada denda',
+            description: search
+              ? `Tidak ada denda yang cocok dengan "${search}". Coba kata kunci lain.`
+              : 'Denda muncul otomatis saat ada pengembalian terlambat.',
+          }}
         />
       )}
 
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
 
-      <Modal
+      <ConfirmModal
         open={pendingPay !== null}
         onClose={() => setPendingPay(null)}
-        title="Bayar denda"
-        description="Konfirmasi penerimaan pembayaran denda."
-        footer={
-          <>
-            <button
-              type="button"
-              onClick={() => setPendingPay(null)}
-              className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
-            >
-              Batal
-            </button>
-            <button
-              type="button"
-              disabled={payingId !== null}
-              onClick={() => void confirmPay()}
-              className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 disabled:opacity-50"
-            >
-              {payingId ? 'Memproses…' : 'Ya, bayar'}
-            </button>
-          </>
-        }
+        onConfirm={() => void confirmPay()}
+        title="Tandai lunas"
+        description="Pembayaran langsung tercatat lunas penuh; kwitansi bisa dicetak dari riwayat."
+        confirmLabel="Ya, bayar"
+        loading={payingId !== null}
       >
-        {pendingPay && (
+        <div className="grid gap-3">
           <p>
-            Tandai lunas denda {fmtRp(num(pendingPay.amount) - num(pendingPay.paid_amount))} (
-            {pendingPay.members?.member_code ?? '?'}) via {method}? Pembayaran akan menerbitkan
-            nomor struk.
+            Tandai lunas denda{' '}
+            <strong>
+              {fmtRp(pendingPay ? num(pendingPay.amount) - num(pendingPay.paid_amount) : 0)}
+            </strong>{' '}
+            ({pendingPay?.members?.member_code ?? '?'})?
           </p>
-        )}
-      </Modal>
+          <div className="grid gap-1">
+            <label htmlFor="pay-method-modal" className="text-sm font-semibold text-slate-700">
+              Metode bayar
+            </label>
+            <select
+              id="pay-method-modal"
+              className="h-11 min-h-[44px] rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
+              value={method}
+              onChange={(e) => setMethod(e.target.value)}
+            >
+              {METHOD_OPTS.map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </ConfirmModal>
 
       <Modal
         open={waiveTarget !== null}

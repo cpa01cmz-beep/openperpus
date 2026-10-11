@@ -2,9 +2,11 @@
 
 import { useState } from 'react';
 import DataTable from '@/components/admin/DataTable';
+import ConfirmModal from '@/components/admin/ConfirmModal';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Pagination from '@/components/ui/Pagination';
+import Badge from '@/components/ui/Badge';
 import { useAdminList } from '@/hooks/useAdminList';
 import { errMsg } from '@/lib/admin-errors';
 
@@ -24,16 +26,14 @@ export default function KategoriPage() {
   const [formError, setFormError] = useState('');
   const [actionError, setActionError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<Category | null>(null);
 
-  // #62: satu hook daftar — pencarian tetap ditunda 300 ms, ukuran halaman
-  // tunggal dari src/lib/pagination.ts (tak lagi '50').
   const list = useAdminList<Category>({
     path: '/api/categories',
     params: { all: '1', page: String(page), q: search },
     debounceMs: 300,
     errorMessage: 'Gagal memuat kategori.',
   });
-  // #62: error pemuatan daftar ikut tampil (sebelumnya gagal load diabaikan diam-diam).
   const { rows, totalPages, error: listError, reload: load } = list;
 
   async function onAdd(e: React.FormEvent) {
@@ -80,11 +80,13 @@ export default function KategoriPage() {
     load();
   }
 
-  async function onDelete(id: string) {
-    if (!confirm('Hapus kategori ini?')) return;
+  async function confirmDelete() {
+    const row = pendingDelete;
+    if (!row) return;
+    setPendingDelete(null);
     setActionError('');
-    const res = await fetch(`/api/categories/${id}`, { method: 'DELETE' });
-    const json = await res.json();
+    const res = await fetch(`/api/categories/${row.id}`, { method: 'DELETE' });
+    const json = await res.json().catch(() => ({}));
     if (!res.ok) {
       setActionError(errMsg(json));
       return;
@@ -170,7 +172,9 @@ export default function KategoriPage() {
                 aria-pressed={r.is_active}
                 className="inline-flex min-h-[44px] items-center rounded-full border px-3 text-xs hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
-                {r.is_active ? 'Aktif' : 'Nonaktif'}
+                <Badge tone={r.is_active ? 'emerald' : 'slate'}>
+                  {r.is_active ? 'Aktif' : 'Nonaktif'}
+                </Badge>
               </button>
             ),
           },
@@ -180,7 +184,7 @@ export default function KategoriPage() {
             render: (r) => (
               <button
                 type="button"
-                onClick={() => onDelete(r.id)}
+                onClick={() => setPendingDelete(r)}
                 aria-label={`Hapus kategori ${r.name}`}
                 className="inline-flex min-h-[44px] items-center text-red-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
@@ -193,6 +197,19 @@ export default function KategoriPage() {
         getRowKey={(r) => r.id}
       />
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+
+      <ConfirmModal
+        open={pendingDelete !== null}
+        onClose={() => setPendingDelete(null)}
+        onConfirm={() => void confirmDelete()}
+        title="Hapus kategori"
+        description="Buku dengan kategori ini kehilangan kategorinya."
+        confirmLabel="Ya, hapus"
+      >
+        <p>
+          Hapus kategori <strong>{pendingDelete?.name}</strong>?
+        </p>
+      </ConfirmModal>
     </div>
   );
 }

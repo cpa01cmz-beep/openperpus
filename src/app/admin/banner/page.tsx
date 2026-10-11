@@ -6,6 +6,8 @@ import DataTable from '@/components/admin/DataTable';
 import Pagination from '@/components/ui/Pagination';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
+import ConfirmModal from '@/components/admin/ConfirmModal';
+import Badge from '@/components/ui/Badge';
 import { useAdminList } from '@/hooks/useAdminList';
 import { errMsg } from '@/lib/admin-errors';
 
@@ -28,6 +30,10 @@ export default function BannerPage() {
   const [sort, setSort] = useState('sort_order');
   const [order, setOrder] = useState('asc');
   const [page, setPage] = useState(1);
+  const [formError, setFormError] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [pendingDelete, setPendingDelete] = useState<Banner | null>(null);
 
   // #62: satu hook daftar — ukuran halaman tunggal dari src/lib/pagination.ts.
   const list = useAdminList<Banner>({
@@ -35,7 +41,6 @@ export default function BannerPage() {
     params: { sort, order, page: String(page) },
     errorMessage: 'Gagal memuat banner.',
   });
-  // #62: error pemuatan daftar ikut tampil (sebelumnya gagal load diabaikan diam-diam).
   const { rows, totalPages, error: listError, reload: load } = list;
 
   function onSort(col: string) {
@@ -51,32 +56,56 @@ export default function BannerPage() {
 
   async function onAdd(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.title.trim() || !form.image_url.trim()) return alert('Judul & image_url wajib.');
+    setFormError('');
+    setActionError('');
+    setNotice('');
+    if (!form.title.trim() || !form.image_url.trim()) {
+      setFormError('Judul & image_url wajib.');
+      return;
+    }
     const res = await fetch('/api/banners', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ...form, sort_order: Number(form.sort_order) }),
     });
-    const json = await res.json();
-    if (!res.ok) return alert(errMsg(json));
+    const json = (await res.json().catch(() => ({}))) as { error?: { message?: string } | string };
+    if (!res.ok) {
+      setFormError(errMsg(json));
+      return;
+    }
     setForm({ title: '', subtitle: '', image_url: '', link: '', sort_order: 0 });
+    setNotice('Banner ditambahkan.');
     load();
   }
 
   async function onToggle(r: Banner) {
+    setActionError('');
+    setNotice('');
     const res = await fetch(`/api/banners/${r.id}`, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ is_active: !r.is_active }),
     });
-    if (!res.ok) return alert('Gagal update.');
+    if (!res.ok) {
+      setActionError('Gagal update status banner.');
+      return;
+    }
+    setNotice(`Banner "${r.title}" ${r.is_active ? 'dinonaktifkan' : 'diaktifkan'}.`);
     load();
   }
 
-  async function onDelete(id: string) {
-    if (!confirm('Hapus banner?')) return;
-    const res = await fetch(`/api/banners/${id}`, { method: 'DELETE' });
-    if (!res.ok) return alert('Gagal menghapus.');
+  async function confirmDelete() {
+    const row = pendingDelete;
+    if (!row) return;
+    setPendingDelete(null);
+    setActionError('');
+    setNotice('');
+    const res = await fetch(`/api/banners/${row.id}`, { method: 'DELETE' });
+    if (!res.ok) {
+      setActionError('Gagal menghapus banner.');
+      return;
+    }
+    setNotice(`Banner "${row.title}" dihapus.`);
     load();
   }
 
@@ -86,6 +115,24 @@ export default function BannerPage() {
       {listError && (
         <p role="alert" className="text-sm text-red-600">
           {listError}
+        </p>
+      )}
+      {notice && (
+        <div
+          role="status"
+          className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+        >
+          {notice}
+        </div>
+      )}
+      {formError && (
+        <p role="alert" className="text-sm text-red-600">
+          {formError}
+        </p>
+      )}
+      {actionError && (
+        <p role="alert" className="text-sm text-red-600">
+          {actionError}
         </p>
       )}
       <form onSubmit={onAdd} className="grid max-w-2xl gap-2 rounded-2xl border bg-white p-4">
@@ -177,7 +224,15 @@ export default function BannerPage() {
             render: (r) => <span className="font-medium">{r.title}</span>,
           },
           { key: 'sort_order', header: 'Urutan' },
-          { key: 'is_active', header: 'Aktif', render: (r) => (r.is_active ? 'Ya' : 'Tidak') },
+          {
+            key: 'is_active',
+            header: 'Aktif',
+            render: (r) => (
+              <Badge tone={r.is_active ? 'emerald' : 'slate'}>
+                {r.is_active ? 'Aktif' : 'Nonaktif'}
+              </Badge>
+            ),
+          },
           {
             key: 'aksi',
             header: 'Aksi',
@@ -199,7 +254,7 @@ export default function BannerPage() {
                 </button>
                 <button
                   type="button"
-                  onClick={() => onDelete(r.id)}
+                  onClick={() => setPendingDelete(r)}
                   aria-label={`Hapus banner ${r.title}`}
                   className="inline-flex min-h-[44px] items-center text-red-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
@@ -211,9 +266,25 @@ export default function BannerPage() {
         ]}
         rows={rows}
         getRowKey={(r) => r.id}
-        emptyText="Belum ada banner."
+        emptyState={{
+          title: 'Belum ada banner',
+          description: 'Banner yang ditambahkan tampil di halaman utama situs.',
+        }}
       />
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+
+      <ConfirmModal
+        open={pendingDelete !== null}
+        onClose={() => setPendingDelete(null)}
+        onConfirm={() => void confirmDelete()}
+        title="Hapus banner"
+        description="Banner langsung hilang dari halaman utama."
+        confirmLabel="Ya, hapus"
+      >
+        <p>
+          Hapus banner <strong>{pendingDelete?.title}</strong>?
+        </p>
+      </ConfirmModal>
     </div>
   );
 }

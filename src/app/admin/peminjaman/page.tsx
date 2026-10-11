@@ -6,13 +6,15 @@ import { useSearchParams } from 'next/navigation';
 import DataTable, { type SortDir } from '@/components/admin/DataTable';
 import DunningButton from '@/components/admin/DunningButton';
 import ExportCsvButton from '@/components/admin/ExportCsvButton';
+import FilterBar from '@/components/admin/FilterBar';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
 import Pagination from '@/components/ui/Pagination';
+import StatusBadge from '@/components/ui/StatusBadge';
+import { errMsg } from '@/lib/admin-errors';
 import { useAdminList } from '@/hooks/useAdminList';
 import { useAdminSubmit } from '@/hooks/useAdminSubmit';
 import { useFineRate } from '@/hooks/useFineRate';
-import { errMsg } from '@/lib/admin-errors';
 import { formatRp } from '@/lib/format';
 import { PER_PAGE } from '@/lib/pagination';
 import { effectiveLoanStatus } from '@/lib/loans-overdue';
@@ -40,22 +42,8 @@ function statusOf(loan: Loan): string {
   return loan.effective_status ?? effectiveLoanStatus(loan);
 }
 
-/** Isu #62: satu hook daftar, satu hook tarif/pengaturan, satu hook aksi tulis. */
 function PeminjamanInner() {
   const searchParams = useSearchParams();
-  const [status, setStatus] = useState('');
-  // ?overdue=1 diteruskan dari antrean terlambat di dashboard.
-  const [overdueOnly, setOverdueOnly] = useState(() => searchParams.get('overdue') === '1');
-  const [page, setPage] = useState(1);
-  const [sortKey, setSortKey] = useState('');
-  const [sortDir, setSortDir] = useState<SortDir>('desc');
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [pendingReturn, setPendingReturn] = useState<string | null>(null);
-  const [pendingExtend, setPendingExtend] = useState<string | null>(null);
-  const [extendDays, setExtendDays] = useState('7');
-  const [notice, setNotice] = useState<string | null>(null);
-  const [optionsError, setOptionsError] = useState('');
-  const [returnKondisi, setReturnKondisi] = useState('baik');
   const [members, setMembers] = useState<
     {
       id: string;
@@ -67,10 +55,17 @@ function PeminjamanInner() {
     }[]
   >([]);
   const [books, setBooks] = useState<{ id: string; label: string; stock?: number }[]>([]);
-  const optionsLoaded = useRef(false);
-
-  // Isu #74: kebijakan pinjam dari settings (bukan angka mati di kode) —
-  // kini lewat satu hook bersama, bukan salinan fetch('/api/settings').
+  const [status, setStatus] = useState('');
+  const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const [sortKey, setSortKey] = useState('');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [pendingReturn, setPendingReturn] = useState<string | null>(null);
+  // Isu #74: kebijakan pinjam dari settings (bukan angka mati di kode).
+  const [returnKondisi, setReturnKondisi] = useState('baik');
+  // #62: satu hook pengaturan untuk tarif & kebijakan pinjam. Pesan tarif
+  // default non-fatal punya state terpisah supaya tak ditimpa load().
   const {
     finePerDay,
     loanDays,
@@ -78,33 +73,39 @@ function PeminjamanInner() {
     replacementFees,
     notice: fineNotice,
   } = useFineRate();
+  const [pendingExtend, setPendingExtend] = useState<string | null>(null);
+  const [extendDays, setExtendDays] = useState('7');
+  const [optionsError, setOptionsError] = useState('');
+  const optionsLoaded = useRef(false);
 
-  // Isu #62: satu hook daftar — fetch, pagination, dan penanganan 401/403
-  // (bukan petugas) tak ditulis ulang per halaman.
+  // ?overdue=1 diteruskan dari antruan terlambat dashboard.
+  const [overdueOnly, setOverdueOnly] = useState(() => searchParams.get('overdue') === '1');
+
+  // #62: satu hook daftar — termasuk membedakan 401/403 (bukan petugas).
   const list = useAdminList<Loan>({
     path: '/api/loans',
     params: {
       page: String(page),
       ...(overdueOnly ? { overdue: '1' } : status ? { status } : {}),
+      ...(search ? { q: search } : {}),
       ...(sortKey ? { sort: sortKey, order: sortDir } : {}),
     },
     errorMessage: 'Gagal memuat peminjaman.',
   });
-  // Aksi tulis (kembalikan/perpanjang) berbagi pesan error dengan daftar.
+  const { rows: loans, totalPages, denied, reload: load } = list;
+  // Aksi tulis berbagi status sibuk + pesan error dengan daftar.
   const {
     error: actionError,
     run: submitAction,
     busy,
     clearError: clearActionError,
   } = useAdminSubmit();
-  const { rows: loans, totalPages, denied, reload: load, clearError } = list;
-  // Banner 401/403 punya teks sendiri di halaman ini, jadi pesan generic
-  // dari hook tak diduplikasi. Sebaliknya pesan aksi tulis lebih baru
-  // daripada pesan pemuatan daftar, sehingga ia yang tampil lebih dulu.
+  // Pesan sukses aksi tulis (dibawa ke banner status).
+  const [notice, setNotice] = useState<string | null>(null);
+  // Pesan aksi tulis lebih baru; banner 401/403 punya teks sendiri.
   const error = actionError || (denied ? '' : list.error);
 
-  // Daftar dimuat ulang karena filter/halaman berubah -> pesan aksi lama
-  // dibuang, seperti perilaku load() lama.
+  // Daftar dimuat ulang karena filter berubah -> buang pesan aksi lama.
   useEffect(() => {
     clearActionError();
   }, [clearActionError, page, status, overdueOnly, sortKey, sortDir]);
@@ -167,6 +168,10 @@ function PeminjamanInner() {
   }, []);
 
   useEffect(() => {
+    const t = setTimeout(load, 300);
+    return () => clearTimeout(t);
+  }, [load]);
+  useEffect(() => {
     loadOptions();
   }, [loadOptions]);
 
@@ -205,7 +210,6 @@ function PeminjamanInner() {
     const id = pendingReturn;
     if (!id) return;
     setPendingReturn(null);
-    clearError();
     await submitAction(async () => {
       // Isu #74: kondisi buku dikirim eksplisit (baik|rusak|hilang).
       // rusak/hilang mengurangi stok buku + menambah denda ganti rugi.
@@ -217,9 +221,7 @@ function PeminjamanInner() {
       const json = (await res.json().catch(() => ({}))) as {
         data?: { fine_amount?: number } | null;
       };
-      if (!res.ok) {
-        throw new Error(errMsg(json, 'Gagal memproses pengembalian.'));
-      }
+      if (!res.ok) throw new Error(errMsg(json, 'Gagal memproses pengembalian.'));
       const kondisiLabel =
         returnKondisi === 'baik' ? 'baik' : returnKondisi === 'rusak' ? 'rusak' : 'hilang';
       setNotice(
@@ -233,7 +235,6 @@ function PeminjamanInner() {
     const id = pendingExtend;
     if (!id) return;
     setPendingExtend(null);
-    clearError();
     await submitAction(async () => {
       const days = Number(extendDays);
       const res = await fetch(`/api/loans/${id}`, {
@@ -244,9 +245,7 @@ function PeminjamanInner() {
       const json = (await res.json().catch(() => ({}))) as {
         data?: { due_at?: string; extension_count?: number } | null;
       };
-      if (!res.ok) {
-        throw new Error(errMsg(json, 'Gagal memproses perpanjangan.'));
-      }
+      if (!res.ok) throw new Error(errMsg(json, 'Gagal memproses perpanjangan.'));
       const due = json.data?.due_at ? new Date(json.data.due_at).toLocaleDateString('id-ID') : '-';
       // Isu #74: hitungan perpanjangan kini milik kolom loans.extend_count.
       const used = Number(json.data?.extension_count);
@@ -347,13 +346,7 @@ function PeminjamanInner() {
             >
               Batal
             </Button>
-            <Button
-              type="button"
-              size="sm"
-              disabled={busy}
-              aria-busy={busy}
-              onClick={() => void confirmExtend()}
-            >
+            <Button type="button" size="sm" onClick={() => void confirmExtend()}>
               Ya, perpanjang
             </Button>
           </>
@@ -415,7 +408,36 @@ function PeminjamanInner() {
         </p>
       )}
       <LoanForm members={members} books={books} loanDays={loanDays} />
-      <div className="flex flex-wrap items-end gap-2 text-sm">
+      <FilterBar
+        search={{
+          id: 'peminjaman-search',
+          label: 'Cari peminjaman',
+          placeholder: 'Cari kode anggota / judul buku…',
+          value: search,
+          onChange: (v) => {
+            setPage(1);
+            setSearch(v);
+          },
+        }}
+        onReload={() => {
+          void Promise.all([load(), loadOptions(true)]);
+        }}
+        actions={
+          <ExportCsvButton
+            filename="peminjaman.csv"
+            headers={['ID', 'Anggota', 'Buku', 'Pinjam', 'Tempo', 'Status', 'Denda']}
+            rows={loans.map((r) => [
+              r.id,
+              r.members?.member_code ?? '',
+              r.books?.title ?? '',
+              r.borrowed_at,
+              r.due_at,
+              statusOf(r),
+              r.fine_amount,
+            ])}
+          />
+        }
+      >
         <div className="grid gap-1">
           <label htmlFor="peminjaman-status" className="text-sm font-semibold text-slate-700">
             Filter status
@@ -445,29 +467,7 @@ function PeminjamanInner() {
         >
           Terlambat saja
         </button>
-        <button
-          type="button"
-          onClick={() => {
-            void Promise.all([load(), loadOptions(true)]);
-          }}
-          className="inline-flex min-h-[44px] items-center justify-center rounded-md border border-slate-200 bg-white px-3 font-semibold text-slate-700 transition hover:border-brand hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-        >
-          Muat ulang
-        </button>
-        <ExportCsvButton
-          filename="peminjaman.csv"
-          headers={['ID', 'Anggota', 'Buku', 'Pinjam', 'Tempo', 'Status', 'Denda']}
-          rows={loans.map((r) => [
-            r.id,
-            r.members?.member_code ?? '',
-            r.books?.title ?? '',
-            r.borrowed_at,
-            r.due_at,
-            statusOf(r),
-            r.fine_amount,
-          ])}
-        />
-      </div>
+      </FilterBar>
       <DataTable<Loan>
         sortKey={sortKey}
         sortDir={sortDir}
@@ -506,7 +506,7 @@ function PeminjamanInner() {
             key: 'status',
             header: 'Status',
             sortable: true,
-            render: (r) => statusOf(r),
+            render: (r) => <StatusBadge status={statusOf(r)} />,
           },
           { key: 'fine_amount', header: 'Denda', render: (r) => formatRp(r.fine_amount) },
           {
@@ -553,7 +553,14 @@ function PeminjamanInner() {
         ]}
         rows={loans}
         getRowKey={(r) => r.id}
-        emptyText="Belum ada peminjaman."
+        emptyState={{
+          title: 'Belum ada peminjaman',
+          description: search
+            ? `Tidak ada peminjaman yang cocok dengan "${search}". Coba kode anggota atau judul buku lain.`
+            : overdueOnly
+              ? 'Tidak ada pinjaman terlambat. Semua buku masih dalam tempo.'
+              : 'Pinjaman yang dicatat akan muncul di sini.',
+        }}
       />
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
     </div>
