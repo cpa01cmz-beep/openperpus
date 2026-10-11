@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import DataTable from '@/components/admin/DataTable';
 import StatCard from '@/components/admin/StatCard';
 import ConfirmModal from '@/components/admin/ConfirmModal';
@@ -10,6 +10,8 @@ import StatusBadge from '@/components/ui/StatusBadge';
 import { checkoutReservation } from '@/lib/reservation-checkout';
 import { findExpiredCandidates, sweepExpiredReservations } from '@/lib/reservation-sweep';
 import { errMsg } from '@/lib/admin-errors';
+import { useAdminList } from '@/hooks/useAdminList';
+import { PER_PAGE } from '@/lib/pagination';
 
 type Reservation = {
   id: string;
@@ -31,15 +33,10 @@ const NEXT_ACTION_LABEL: Record<'ready' | 'cancelled', string> = {
 };
 
 export default function ReservasiPage() {
-  const [rows, setRows] = useState<Reservation[]>([]);
   const [status, setStatus] = useState('');
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [loading, setLoading] = useState(true);
   const [actingId, setActingId] = useState<string | null>(null);
-  const [apiMissing, setApiMissing] = useState(false);
-  const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [sweeping, setSweeping] = useState(false);
   // Pengganti window.confirm: dialog konfirmasi per aksi.
@@ -49,48 +46,39 @@ export default function ReservasiPage() {
     next: 'ready' | 'cancelled';
   } | null>(null);
   const [pendingSweep, setPendingSweep] = useState(false);
+  // 404 dari aksi (bukan dari pemuatan daftar).
+  const [payMissing, setPayMissing] = useState(false);
+  // Aksi tulis punya state sibuk sendiri (checkout vs update vs sweep).
+  const [actionError, setActionError] = useState('');
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const q = new URLSearchParams({
-        page: String(page),
-        per_page: '20',
-        ...(status ? { status } : {}),
-        ...(search ? { q: search } : {}),
-      });
-      const res = await fetch(`/api/reservations?${q}`, { cache: 'no-store' });
-      if (res.status === 404) {
-        setApiMissing(true);
-        setRows([]);
-        return;
-      }
-      const json = (await res.json()) as {
-        data?: Reservation[];
-        pagination?: { totalPages?: number };
-      };
-      if (!res.ok) throw new Error(errMsg(json));
-      setApiMissing(false);
-      setRows(json.data ?? []);
-      setTotalPages(json.pagination?.totalPages ?? 1);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, status, search]);
+  // #62: satu hook daftar — termasuk memisahkan 404 (API belum tersedia).
+  const list = useAdminList<Reservation>({
+    path: '/api/reservations',
+    params: {
+      page: String(page),
+      per_page: PER_PAGE,
+      ...(status ? { status } : {}),
+      ...(search ? { q: search } : {}),
+    },
+    noStore: true,
+    errorMessage: 'Gagal memuat reservasi.',
+  });
+  const { rows, loading, missing: apiMissing, totalPages, error: listError, reload: load } = list;
+  // Banner 404 khusus + pesan generic hook tak ditampilkan bersamaan.
+  const error = (apiMissing ? '' : listError) || actionError;
 
+  // Pesan aksi lama dibuang saat daftar dimuat ulang (filter berubah).
   useEffect(() => {
-    const t = setTimeout(load, 300);
-    return () => clearTimeout(t);
-  }, [load]);
+    setActionError('');
+    setPayMissing(false);
+  }, [page, status, search]);
 
   function onCheckout(r: Reservation) {
     setPendingCheckout(r);
   }
 
   function onUpdate(id: string, next: 'ready' | 'cancelled') {
+    setPayMissing(false);
     const row = rows.find((x) => x.id === id);
     if (row) setPendingUpdate({ row, next });
   }
@@ -104,7 +92,7 @@ export default function ReservasiPage() {
     // Gagal => rollback penuh; message server persis ditampilkan inline.
     setActingId(r.id);
     setNotice('');
-    setError('');
+    setActionError('');
     try {
       const out = await checkoutReservation(
         {
@@ -121,7 +109,7 @@ export default function ReservasiPage() {
       setNotice(`Reservasi ${r.members?.member_code ?? '-'} selesai — buku dipinjamkan.`);
       load();
     } catch (e) {
-      setError((e as Error).message);
+      setActionError((e as Error).message);
     } finally {
       setActingId(null);
     }
@@ -134,7 +122,7 @@ export default function ReservasiPage() {
     const { row, next } = pending;
     setActingId(row.id);
     setNotice('');
-    setError('');
+    setActionError('');
     try {
       const res = await fetch(`/api/reservations/${row.id}`, {
         method: 'PUT',
@@ -143,18 +131,18 @@ export default function ReservasiPage() {
       });
       const json = await res.json().catch(() => ({}));
       if (res.status === 404) {
-        setApiMissing(true);
-        setError('API /api/reservations belum tersedia di backend.');
+        setPayMissing(true);
+        setActionError('API /api/reservations belum tersedia di backend.');
         return;
       }
       if (!res.ok) {
-        setError(errMsg(json));
+        setActionError(errMsg(json));
         return;
       }
       setNotice(`Reservasi diperbarui: ${NEXT_ACTION_LABEL[next]}.`);
       load();
     } catch (e) {
-      setError((e as Error).message);
+      setActionError((e as Error).message);
     } finally {
       setActingId(null);
     }
@@ -168,7 +156,7 @@ export default function ReservasiPage() {
     if (candidates.length === 0) return;
     setSweeping(true);
     setNotice('');
-    setError('');
+    setActionError('');
     try {
       const out = await sweepExpiredReservations(
         {
@@ -183,7 +171,7 @@ export default function ReservasiPage() {
         { candidates: candidates.map((r) => ({ id: r.id })) }
       );
       if (out.failed > 0) {
-        setError(
+        setActionError(
           `${out.succeeded} ditandai kedaluwarsa, ${out.failed} gagal: ${out.errors
             .map((e) => `${e.id}: ${e.message}`)
             .join('; ')}`
@@ -193,7 +181,7 @@ export default function ReservasiPage() {
       }
       load();
     } catch (e) {
-      setError((e as Error).message);
+      setActionError((e as Error).message);
     } finally {
       setSweeping(false);
     }
@@ -212,7 +200,7 @@ export default function ReservasiPage() {
         </p>
       </div>
 
-      {apiMissing && (
+      {(apiMissing || payMissing) && (
         <div
           role="alert"
           className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800"

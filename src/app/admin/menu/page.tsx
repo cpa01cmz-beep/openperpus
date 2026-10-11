@@ -1,12 +1,13 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import DataTable from '@/components/admin/DataTable';
 import ConfirmModal from '@/components/admin/ConfirmModal';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Pagination from '@/components/ui/Pagination';
 import Badge from '@/components/ui/Badge';
+import { useAdminList } from '@/hooks/useAdminList';
 import { errMsg } from '@/lib/admin-errors';
 
 type Menu = {
@@ -21,10 +22,8 @@ type Menu = {
 };
 
 export default function MenuPage() {
-  const [rows, setRows] = useState<Menu[]>([]);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [form, setForm] = useState({
     label: '',
     url: '',
@@ -38,24 +37,13 @@ export default function MenuPage() {
   const [loading, setLoading] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<Menu | null>(null);
 
-  const load = useCallback(async () => {
-    const q = new URLSearchParams({ all: '1', page: String(page), per_page: '50', q: search });
-    const res = await fetch(`/api/menus?${q}`);
-    const json = (await res.json()) as {
-      data?: Menu[];
-      pagination?: { totalPages?: number };
-      meta?: { totalPages?: number };
-    };
-    if (res.ok) {
-      setRows(json.data ?? []);
-      setTotalPages(json.pagination?.totalPages ?? 1);
-    }
-  }, [search, page]);
-
-  useEffect(() => {
-    const t = setTimeout(load, 300);
-    return () => clearTimeout(t);
-  }, [load]);
+  const list = useAdminList<Menu>({
+    path: '/api/menus',
+    params: { all: '1', page: String(page), q: search },
+    debounceMs: 300,
+    errorMessage: 'Gagal memuat menu.',
+  });
+  const { rows, totalPages, error: listError, reload: load } = list;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -255,6 +243,11 @@ export default function MenuPage() {
           }}
         />
       </div>
+      {listError && (
+        <p role="alert" className="text-sm text-red-600">
+          {listError}
+        </p>
+      )}
       {actionError && (
         <p role="alert" className="text-sm text-red-600">
           {actionError}

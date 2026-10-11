@@ -1,13 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import DataTable from '@/components/admin/DataTable';
 import Pagination from '@/components/ui/Pagination';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import ConfirmModal from '@/components/admin/ConfirmModal';
 import Badge from '@/components/ui/Badge';
+import { useAdminList } from '@/hooks/useAdminList';
 import { errMsg } from '@/lib/admin-errors';
 
 type Banner = {
@@ -19,7 +20,6 @@ type Banner = {
 };
 
 export default function BannerPage() {
-  const [rows, setRows] = useState<Banner[]>([]);
   const [form, setForm] = useState({
     title: '',
     subtitle: '',
@@ -30,29 +30,18 @@ export default function BannerPage() {
   const [sort, setSort] = useState('sort_order');
   const [order, setOrder] = useState('asc');
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [formError, setFormError] = useState('');
   const [actionError, setActionError] = useState('');
   const [notice, setNotice] = useState('');
   const [pendingDelete, setPendingDelete] = useState<Banner | null>(null);
 
-  const load = useCallback(async () => {
-    const q = new URLSearchParams({ sort, order, page: String(page), per_page: '20' });
-    const res = await fetch(`/api/banners?${q}`);
-    const json = (await res.json()) as {
-      data?: Banner[];
-      pagination?: { totalPages?: number };
-      meta?: { totalPages?: number };
-    };
-    if (res.ok) {
-      setRows(json.data ?? []);
-      setTotalPages(json.pagination?.totalPages ?? 1);
-    }
-  }, [sort, order, page]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
+  // #62: satu hook daftar — ukuran halaman tunggal dari src/lib/pagination.ts.
+  const list = useAdminList<Banner>({
+    path: '/api/banners',
+    params: { sort, order, page: String(page) },
+    errorMessage: 'Gagal memuat banner.',
+  });
+  const { rows, totalPages, error: listError, reload: load } = list;
 
   function onSort(col: string) {
     if (sort === col) {
@@ -123,6 +112,11 @@ export default function BannerPage() {
   return (
     <div className="grid gap-4">
       <h1 className="text-2xl font-bold">Banner</h1>
+      {listError && (
+        <p role="alert" className="text-sm text-red-600">
+          {listError}
+        </p>
+      )}
       {notice && (
         <div
           role="status"

@@ -914,26 +914,26 @@ paths:
           description: ok
           content:
             application/json:
-               schema:
-                 type: object
-                 required: [data, pagination]
-                 properties:
-                   data:
-                     type: array
-                     items:
-                       type: object
-                       properties:
-                         is_overdue:
-                           type: boolean
-                           description: Derived late flag (active loan past due_at).
-                         effective_status:
-                           type: string
-                           enum: [borrowed, overdue, returned, lost]
-                           description: Display status — 'overdue' when derived, else the status column.
-                         fine_preview:
-                           type: number
-                           description: Estimated fine at the configured per-day rate.
-                   pagination:
+              schema:
+                type: object
+                required: [data, pagination]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        is_overdue:
+                          type: boolean
+                          description: Derived late flag (active loan past due_at).
+                        effective_status:
+                          type: string
+                          enum: [borrowed, overdue, returned, lost]
+                          description: Display status — 'overdue' when derived, else the status column.
+                        fine_preview:
+                          type: number
+                          description: Estimated fine at the configured per-day rate.
+                  pagination:
                     type: object
                     required: [page, limit, total, totalPages]
                     properties:

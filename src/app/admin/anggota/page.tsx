@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import DataTable, { type SortDir } from '@/components/admin/DataTable';
 import ConfirmModal from '@/components/admin/ConfirmModal';
 import Button from '@/components/ui/Button';
@@ -8,7 +8,10 @@ import Input from '@/components/ui/Input';
 import Pagination from '@/components/ui/Pagination';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { sanitizeIlike } from '@/lib/search';
+import { useAdminList } from '@/hooks/useAdminList';
 import { errMsg } from '@/lib/admin-errors';
+import { formatRp } from '@/lib/format';
+import { SEARCH_PER_PAGE } from '@/lib/pagination';
 
 type Member = {
   id: string;
@@ -24,7 +27,7 @@ type Member = {
   overdue_loans?: number | null;
 };
 
-const fmtRp = (v: number | null | undefined) => `Rp${Number(v ?? 0).toLocaleString('id-ID')}`;
+const fmtRp = formatRp;
 
 type PickOption = { user_id: string; label: string; sub: string };
 
@@ -36,17 +39,14 @@ const SORT_KEY_MAP: Record<string, string> = {
 };
 
 export default function AnggotaPage() {
-  const [rows, setRows] = useState<Member[]>([]);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [sortKey, setSortKey] = useState('');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [form, setForm] = useState({ user_id: '', member_code: '', phone: '', address: '' });
   const [formError, setFormError] = useState('');
   const [actionError, setActionError] = useState('');
-  const [loadError, setLoadError] = useState('');
   const [notice, setNotice] = useState('');
   const [loading, setLoading] = useState(false);
   const [bulkLoading, setBulkLoading] = useState(false);
@@ -60,35 +60,21 @@ export default function AnggotaPage() {
   const pickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pickerListId = useId();
 
-  const load = useCallback(async () => {
-    setLoadError('');
-    try {
-      // Sort ditangani server — bukan client sort halaman-aktif (menyesatkan).
-      const q = new URLSearchParams({
-        page: String(page),
-        per_page: '10',
-        q: search,
-        ...(sortKey && SORT_KEY_MAP[sortKey]
-          ? { sort: SORT_KEY_MAP[sortKey], order: sortDir }
-          : {}),
-      });
-      const res = await fetch(`/api/members?${q}`);
-      const json = (await res.json().catch(() => ({}))) as {
-        data?: Member[];
-        pagination?: { totalPages?: number };
-      };
-      if (!res.ok) throw new Error(errMsg(json, 'Gagal memuat anggota.'));
-      setRows(json.data ?? []);
-      setTotalPages(json.pagination?.totalPages ?? 1);
-    } catch (e) {
-      setLoadError((e as Error).message);
-    }
-  }, [search, page, sortKey, sortDir]);
-
-  useEffect(() => {
-    const t = setTimeout(load, 300);
-    return () => clearTimeout(t);
-  }, [load]);
+  // #62: satu hook daftar — termasuk sort server (bukan client sort
+  // halaman-aktif, yang menyesatkan) dan daftar non-dipaginate.
+  const list = useAdminList<Member>({
+    path: '/api/members',
+    params: {
+      page: String(page),
+      q: search,
+      all: '1',
+      ...(sortKey && SORT_KEY_MAP[sortKey] ? { sort: SORT_KEY_MAP[sortKey], order: sortDir } : {}),
+    },
+    debounceMs: 300,
+    errorMessage: 'Gagal memuat anggota.',
+  });
+  // Error pemuatan daftar dibaca langsung dari hook (bukan alias lokal).
+  const { rows, totalPages, reload: load, clearError } = list;
 
   useEffect(() => {
     return () => {
@@ -106,7 +92,7 @@ export default function AnggotaPage() {
     }
     pickTimer.current = setTimeout(async () => {
       try {
-        const params = new URLSearchParams({ q: clean, per_page: '10' });
+        const params = new URLSearchParams({ q: clean, per_page: String(SEARCH_PER_PAGE) });
         const res = await fetch(`/api/members?${params}`);
         if (!res.ok) return;
         const json = (await res.json().catch(() => ({}))) as { data?: Member[] };
@@ -186,7 +172,7 @@ export default function AnggotaPage() {
     if (!row) return;
     setPendingDelete(null);
     setActionError('');
-    setLoadError('');
+    clearError();
     setNotice('');
     try {
       const res = await fetch(`/api/members/${row.id}`, { method: 'DELETE' });
@@ -241,7 +227,7 @@ export default function AnggotaPage() {
   async function confirmBulkDelete() {
     setPendingBulkDelete(false);
     setActionError('');
-    setLoadError('');
+    clearError();
     setNotice('');
     setBulkLoading(true);
     try {
@@ -311,9 +297,9 @@ export default function AnggotaPage() {
           {notice}
         </div>
       )}
-      {loadError && (
+      {list.error && (
         <p role="alert" className="text-sm text-red-600">
-          {loadError}
+          {list.error}
         </p>
       )}
       {actionError && (
