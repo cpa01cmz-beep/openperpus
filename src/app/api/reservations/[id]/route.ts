@@ -9,7 +9,7 @@ type Ctx = { params: Promise<{ id: string }> };
 
 /**
  * GET /api/reservations/[id] — pemilik / pustakawan+
- * PATCH /api/reservations/[id] {status:"batal"|..., notes?} — pemilik hanya boleh batal
+ * PATCH /api/reservations/[id] {status:"cancelled"|..., notes?} — pemilik hanya boleh batal
  * PUT /api/reservations/[id] — alias PATCH (staf penuh)
  * DELETE /api/reservations/[id] — pemilik / pustakawan+
  *
@@ -22,13 +22,7 @@ type Ctx = { params: Promise<{ id: string }> };
 const STATUSES = ['pending', 'ready', 'completed', 'cancelled', 'expired'] as const;
 
 function normStatus(v: unknown): string {
-  const s = String(v ?? '')
-    .trim()
-    .toLowerCase();
-  if (s === 'batal' || s === 'cancel') return 'cancelled';
-  if (s === 'menunggu') return 'pending';
-  if (s === 'selesai') return 'completed';
-  return s;
+  return String(v ?? '').trim().toLowerCase();
 }
 
 function revalidated(): string[] {

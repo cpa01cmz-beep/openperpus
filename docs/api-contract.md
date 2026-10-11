@@ -10,14 +10,14 @@
   `{ "data": [...], "pagination": { "page": 1, "limit": 20, "total": 123, "totalPages": 7 } }`.
   Envelope `meta` (`page/per_page/total`) sudah **dihapus** (issue #61) — jangan tambal fallback ganda di klien.
 - **Format error:** `{ "error": { "code":"FORBIDDEN", "message":"..." }, "details"?: {...} }` + HTTP status tepat (400/401/403/404/409/422/500).
-- **Pagination:** `?page=1&per_page=20`. `per_page` 1–100 (`limit` alias kompatibilitas). Default per route:
+- **Pagination:** `?page=1&per_page=20`. `per_page` 1–100. Default per route:
 
   | Default | Route                                                                                                                                             |
   | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------- |
   | 10      | `/api/books`, `/api/loans`, `/api/members`, `/api/banners`, `/api/articles`                                                                       |
   | 20      | `/api/categories`, `/api/racks`, `/api/faqs`, `/api/services`, `/api/pages`, `/api/menus`, `/api/testimonials`, `/api/reservations`, `/api/fines` |
 
-- **Nama field kanonis = bahasa Inggris** (`title`, `author`, `status`, `book_id`, ...). Beberapa route masih **menerima alias Indonesia** pada body (`judul|title`, `penulis|author`, `nama|name`, `batal|cancelled`) untuk kompatibilitas klien lama — alias ini tidak lagi didokumentasikan sebagai kontrak dan akan dibekukan (issue #71).
+- **Nama field kanonis = bahasa Inggris** (`title`, `author`, `status`, `book_id`, ...). Tulis hanya EN; baca hanya EN (issue #71).
 - **Transport ID (issue #54):** semua single-resource `PUT/PATCH/DELETE` WAJIB lewat path REST `/api/<resource>/{id}`. Parameter `?id=` untuk operasi tulis **dihapus** — request lama mendapat `405` (handler koleksi hanya GET/POST). Id di path divalidasi UUID: bukan UUID → `400 VALIDATION`. Satu-satunya `?id=` yang masih ada adalah bulk `DELETE /api/books?id=<uuid>[,<uuid>...]` (multi-resource). `GET /api/<resource>/[id]` menerima id **atau** slug bila resource punya slug.
 - **Cache:** GET publik `/api/books` kirim `Cache-Control: public, s-maxage=300, stale-while-revalidate=60`; GET admin `no-store`. Mutasi memanggil `revalidateTag` (mis. `books`, `settings`, `max`).
 
@@ -271,7 +271,7 @@
 
 ### `PUT /api/reservations/{id}` — pemilik reservasi / pustakawan+
 
-- `{status: "batal"|"cancelled"}` (alias) untuk membatalkan; staf dapat `pending → ready` dan mengubah `expires_at`. Non-staf tidak boleh set `ready`.
+- `{status: "cancelled"}` untuk membatalkan; staf dapat `pending → ready` dan mengubah `expires_at`. Non-staf tidak boleh set `ready`.
 - **Tidak lagi menerima `completed`** (422) — status itu hanya lewat endpoint checkout.
 
 ### `POST /api/reservations/{id}/checkout` — pustakawan+ (atomik, issue #73)
