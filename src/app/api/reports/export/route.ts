@@ -40,11 +40,17 @@ async function fetchChunk(
   chunkIndex: number
 ): Promise<FetchOk | FetchErr> {
   const [from, to] = chunkRange(chunkIndex);
-  const { data, error } = await supabase
-    .from(def.table)
-    .select(def.select)
-    .order(def.order, { ascending: false })
-    .range(from, to);
+  // ORDER BY deterministik WAJIB (kolom utama + tiebreaker unik `id`):
+  // chunking `range()` memakai offset, dan offset hanya stabil bila urutan
+  // kolom non-unik tidak bisa berubah antar query — kalau tidak, baris
+  // ber-key-sama bisa pindah posisi dan ekspor jadi berisi baris GANDA plus
+  // baris yang HILANG tanpa tanda apa pun (review PR #105).
+  const [primary, ...tiebreaks] = def.order;
+  let query = supabase.from(def.table).select(def.select).order(primary, { ascending: false });
+  for (const col of tiebreaks) {
+    query = query.order(col, { ascending: false });
+  }
+  const { data, error } = await query.range(from, to);
   if (error) return { error: error.message };
   // select string dinamis -> tipe PostgREST generik; cast lewat unknown.
   return { rows: (data ?? []) as unknown as Record<string, unknown>[] };
