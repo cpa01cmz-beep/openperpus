@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import DataTable from '@/components/admin/DataTable';
 import ExportCsvButton from '@/components/admin/ExportCsvButton';
 import ConfirmModal from '@/components/admin/ConfirmModal';
@@ -10,6 +10,8 @@ import Input from '@/components/ui/Input';
 import Modal from '@/components/ui/Modal';
 import Pagination from '@/components/ui/Pagination';
 import Badge from '@/components/ui/Badge';
+import { useAdminList } from '@/hooks/useAdminList';
+import { useAdminSubmit } from '@/hooks/useAdminSubmit';
 import { errMsg } from '@/lib/admin-errors';
 import type { Book } from '@/lib/types';
 
@@ -29,14 +31,9 @@ type OpnameResult = {
 };
 
 export default function BukuPage() {
-  const [rows, setRows] = useState<BukuRow[]>([]);
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [bulkLoading, setBulkLoading] = useState(false);
   // Pengganti window.confirm/prompt: dialog per aksi destruktif.
   const [pendingDelete, setPendingDelete] = useState<BukuRow | null>(null);
   const [pendingBulkDelete, setPendingBulkDelete] = useState(false);
@@ -45,32 +42,30 @@ export default function BukuPage() {
   const [opnameAvail, setOpnameAvail] = useState('');
   const [opnameError, setOpnameError] = useState('');
   const [notice, setNotice] = useState('');
-  const [actionError, setActionError] = useState('');
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const q = new URLSearchParams({ page: String(page), per_page: '10', q: search });
-      const res = await fetch(`/api/books?${q}`);
-      const json = (await res.json().catch(() => ({}))) as {
-        data?: BukuRow[];
-        pagination?: { totalPages?: number };
-      };
-      if (!res.ok) throw new Error(errMsg(json, 'Gagal memuat buku.'));
-      setRows(json.data ?? []);
-      setTotalPages(json.pagination?.totalPages ?? 1);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, search]);
-
+  // #62: satu hook daftar — muat awal tetap ditunda 300 ms seperti biasa,
+  // tapi reload() setelah aksi tulis tidak ikut tertunda.
+  const list = useAdminList<BukuRow>({
+    path: '/api/books',
+    params: { page: String(page), q: search },
+    debounceMs: 300,
+    errorMessage: 'Gagal memuat buku.',
+  });
+  const { rows, totalPages, loading, reload: load } = list;
+  // Aksi tulis berbagi status sibuk + pesan error (pola #60 memindahkan
+  // confirm/prompt ke Modal; state sibuknya kini terpusat di hook ini).
+  const {
+    busy: bulkLoading,
+    error: actionError,
+    run: submitAction,
+    clearError: clearActionError,
+  } = useAdminSubmit();
+  // Pesan aksi tulis lebih baru daripada pesan pemuatan daftar -> urutan ini.
+  const error = actionError || list.error;
+  // Pergantian halaman/kata kunci memuat ulang daftar -> buang pesan aksi lama.
   useEffect(() => {
-    const t = setTimeout(load, 300);
-    return () => clearTimeout(t);
-  }, [load]);
+    clearActionError();
+  }, [clearActionError, page, search]);
 
   function toggleSelect(id: string) {
     setSelected((prev) => {
@@ -90,43 +85,31 @@ export default function BukuPage() {
     if (!row) return;
     setPendingDelete(null);
     setNotice('');
-    setActionError('');
-    const res = await fetch(`/api/books/${row.id}`, { method: 'DELETE' });
-    const json = (await res.json().catch(() => ({}))) as DeleteResult;
-    if (!res.ok) {
-      setActionError(errMsg(json));
-      return;
-    }
-    setNotice(`Buku "${row.title}" dihapus.`);
-    load();
+    await submitAction(async () => {
+      const res = await fetch(`/api/books/${row.id}`, { method: 'DELETE' });
+      const json = (await res.json().catch(() => ({}))) as DeleteResult;
+      if (!res.ok) throw new Error(errMsg(json));
+      setNotice(`Buku "${row.title}" dihapus.`);
+      load();
+    });
   }
 
   async function confirmBulkDelete() {
     setPendingBulkDelete(false);
-    setBulkLoading(true);
-    setError('');
     setNotice('');
-    setActionError('');
-    try {
+    await submitAction(async () => {
       const res = await fetch(`/api/books?id=${[...selected].join(',')}`, { method: 'DELETE' });
       const json = (await res.json().catch(() => ({}))) as DeleteResult;
-      if (!res.ok) {
-        setActionError(errMsg(json));
-        return;
-      }
+      if (!res.ok) throw new Error(errMsg(json));
       const skipped = json.data?.skipped ?? [];
       if (skipped.length > 0)
-        setActionError(
+        throw new Error(
           `${json.data?.deleted?.length ?? 0} dihapus, ${skipped.length} dilewati (masih dipinjam).`
         );
-      else setNotice(`${json.data?.deleted?.length ?? 0} buku dihapus.`);
+      setNotice(`${json.data?.deleted?.length ?? 0} buku dihapus.`);
       setSelected(new Set());
       load();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBulkLoading(false);
-    }
+    });
   }
 
   function openOpname() {
@@ -149,9 +132,7 @@ export default function BukuPage() {
       return;
     }
     setOpnameError('');
-    setBulkLoading(true);
-    setError('');
-    try {
+    await submitAction(async () => {
       const items = [...selected].map((id) => ({ id, stock_total: st, stock_available: sa }));
       const res = await fetch('/api/books', {
         method: 'PUT',
@@ -159,28 +140,21 @@ export default function BukuPage() {
         body: JSON.stringify({ action: 'stock_opname', items }),
       });
       const json = (await res.json().catch(() => ({}))) as OpnameResult;
-      if (!res.ok) {
-        setOpnameError(errMsg(json));
-        return;
-      }
+      if (!res.ok) throw new Error(errMsg(json));
       const updated = json.data?.updated ?? [];
       const skipped = json.data?.skipped ?? [];
       setOpnameOpen(false);
       if (skipped.length > 0)
-        setActionError(
+        throw new Error(
           `${updated.length} terupdate, ${skipped.length} dilewati (${skipped
             .slice(0, 3)
             .map((s: { reason: string }) => s.reason)
             .join('; ')}).`
         );
-      else setNotice(`${updated.length} buku di-opname menjadi ${sa}/${st}.`);
+      setNotice(`${updated.length} buku di-opname menjadi ${sa}/${st}.`);
       setSelected(new Set());
       load();
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setBulkLoading(false);
-    }
+    });
   }
 
   return (

@@ -34,7 +34,7 @@ export async function GET(req: Request) {
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
   const { supabase } = guard as { supabase: ReturnType<typeof createClient> };
 
-  const { sp, page, perPage, q, from, to } = parsePaging(req.url, 10);
+  const { sp, page, perPage, q, from, to } = parsePaging(req.url);
   const status = (sp.get('status') ?? '').trim();
 
   // Sort server-side (whitelist kolom) — urutan konsisten lintas halaman.
@@ -51,7 +51,7 @@ export async function GET(req: Request) {
     sort === 'full_name' ? 'profiles!inner(id,full_name)' : 'profiles(id,full_name)';
   let query = supabase
     .from('members')
-    .select(`*, ${profileEmbed}`, { count: 'exact' })
+    .select(`*, ${profileEmbed}`, { count: 'estimated' }) // #68: exact -> estimated (seq-scan)
     .range(from, to);
   query =
     sort === 'full_name'
@@ -89,7 +89,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const log = createLogger(requestIdFromHeaders(req.headers));
-  const guard = await requireStaff(['admin', 'librarian']);
+  const guard = await requireStaff();
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
   const { supabase } = guard as { supabase: ReturnType<typeof createClient> };
 

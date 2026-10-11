@@ -57,7 +57,7 @@ src/
 │   │   └── logs/page.tsx           # RSC force-dynamic, baca activity_logs LANGSUNG (bukan /api/logs — 404)
 │   ├── daftar/page.tsx             # registrasi anggota (publik)
 │   ├── login/{page,layout}.tsx
-│   ├── api/                        # 41 route handler — REST contract (lihat docs/api-contract.md + openapi.yaml)
+│   ├── api/                        # 42 route handler — REST contract (lihat docs/api-contract.md + openapi.yaml)
 │   │   ├── settings/route.ts       # GET public (whitelist field) + PUT admin
 │   │   ├── settings/theme/route.ts # admin only, layout-only
 │   │   ├── books/route.ts + [id]/route.ts
@@ -83,7 +83,7 @@ src/
 │   ├── supabase/                   # client.ts (browser) | server.ts (RSC/route) | middleware.ts (refresh)
 │   ├── settings.ts                 # getLibrarySettings() cached + helper (jam operasional, sosmed, fine rate)
 │   ├── supabase/auth.ts            # guard kanonis: requireStaff/getSession + jsonError + slugify
-│   ├── paging.ts                   # parsePaging (page/per_page|limit, maks 100) — SATU kontrak pagination
+│   ├── paging.ts                   # parsePaging (page/per_page|limit, default 24, maks 50) — SATU kontrak pagination
 │   ├── loans-overdue.ts            # definisi tunggal status terlambat (issue #57)
 │   ├── loan-eligibility.ts         # gate kelayakan pinjam (issue #56)
 │   ├── returnLoan.ts / loans-return.ts # pengembalian (kondisi RPC 0011)
@@ -190,8 +190,8 @@ Browser → middleware.ts (refresh session + role gate staff) → admin/layout.t
 
 ## 7. Storage (Supabase Buckets)
 
-| Bucket           | Public?     | Isi                                                                                              | Aturan                                                                                                                                                                             |
-| ---------------- | ----------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Bucket           | Public?     | Isi                                                                                              | Aturan                                                                                                                                                                                                                 |
+| ---------------- | ----------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `library-assets` | public read | cover buku (`books/{id}/cover.webp`), logo, favicon, banner slider, gambar artikel, foto anggota | anon SELECT; tulis hanya pustakawan+admin (foto anggota: user boleh tulis folder `auth.uid()` miliknya); batas 10MB, mimetype jpeg/png/webp/gif + pdf (svg ditolak 0007); pakai transform `?width=400` untuk thumbnail |
 
 - Upload via admin UI → Supabase Storage langsung (signed) lalu simpan `cover_url`/`logo_url` ke DB. Jangan proxy binary lewat Next route (boros Workers subrequest).

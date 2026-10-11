@@ -4,6 +4,7 @@ import { jsonError, parsePaging } from '@/lib/supabase/auth';
 import { isUuid, createWriteLog } from '@/lib/api-utils';
 import { checkMemberLoanEligibility } from '@/lib/loan-eligibility';
 import { sanitizeIlike } from '@/lib/search';
+import { resolveReservationExpiresAt } from '@/lib/reservation-expiry';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 import { getSession } from '@/lib/session';
 
@@ -53,7 +54,7 @@ export async function GET(req: Request) {
   if ('errorResponse' in s) return s.errorResponse;
   const { supabase, memberId, isStaff } = s.session;
 
-  const { sp, page, perPage, q, from, to } = parsePaging(req.url, 20);
+  const { sp, page, perPage, q, from, to } = parsePaging(req.url);
   const status = (sp.get('status') ?? '').trim();
   const bookId = (sp.get('book_id') ?? '').trim();
   let memberFilter = (sp.get('member_id') ?? '').trim();
@@ -63,7 +64,8 @@ export async function GET(req: Request) {
 
   let query = supabase
     .from('reservations')
-    .select('*, books(id,title,slug), members(id,member_code)', { count: 'exact' })
+    // #68: exact -> estimated — count exact seq-scan di reservations mahal.
+    .select('*, books(id,title,slug), members(id,member_code)', { count: 'estimated' })
     .order('reserved_at', { ascending: false })
     .range(from, to);
 
@@ -160,14 +162,13 @@ export async function POST(req: Request) {
     });
   }
 
-  const expiresRaw = body.expires_at as string | undefined;
-  let expires_at: string | null = null;
-  if (expiresRaw) {
-    const d = new Date(expiresRaw);
-    if (Number.isNaN(d.getTime())) return jsonError('VALIDATION', 'expires_at tidak valid.', 422);
-    if (d.getTime() <= Date.now())
-      return jsonError('VALIDATION', 'expires_at harus di masa depan.', 422);
-    expires_at = d.toISOString();
+  // Isu #76 + migrasi 0028: tanpa expires_at → default +3 hari (kolom NOT NULL).
+  // Helper melempar pesan yang sama dengan gate 422 lama.
+  let expires_at: string;
+  try {
+    expires_at = resolveReservationExpiresAt(body.expires_at, new Date(Date.now()));
+  } catch (e) {
+    return jsonError('VALIDATION', (e as Error).message, 422);
   }
 
   const notesRaw = body.notes;

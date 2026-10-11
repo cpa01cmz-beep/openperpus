@@ -1,6 +1,6 @@
-export function formatRp(n: number): string {
-  return `Rp${(n ?? 0).toLocaleString('id-ID')}`;
-}
+import { formatRp } from '@/lib/format';
+
+export { formatRp };
 
 export function buildDunningMessage(args: {
   title: string;

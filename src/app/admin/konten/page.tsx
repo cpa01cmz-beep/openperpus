@@ -3,10 +3,11 @@
 import { useCallback, useEffect, useState } from 'react';
 import Button from '@/components/ui/Button';
 import Pagination from '@/components/ui/Pagination';
+import { useAdminList } from '@/hooks/useAdminList';
 import { PagesTab } from './PagesTab';
 import { FaqsTab } from './FaqsTab';
 import { TestimonialsTab } from './TestimonialsTab';
-import { apiList, onAdd, onToggle, onDelete } from '@/lib/konten-api';
+import { onAdd, onToggle, onDelete } from '@/lib/konten-api';
 
 type Tab = 'pages' | 'faqs' | 'testimonials';
 
@@ -36,48 +37,74 @@ type Testimonial = {
 export default function KontenPage() {
   const [tab, setTab] = useState<Tab>('pages');
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [pages, setPages] = useState<PageItem[]>([]);
-  const [faqs, setFaqs] = useState<Faq[]>([]);
-  const [testis, setTestis] = useState<Testimonial[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [missing, setMissing] = useState<Record<Tab, boolean>>({
-    pages: false,
-    faqs: false,
-    testimonials: false,
+  // State aksi tulis (bukan pemuatan): 404 per-tab + pesan error mutasi.
+  const [actionError, setActionError] = useState('');
+  const [tabMissing, setTabMissing] = useState<Partial<Record<Tab, boolean>>>({});
+
+  // #62: satu hook daftar dipakai ketiga tab — tidak lagi fetch tiga endpoint
+  // sendiri-sendiri. Halaman ini memang butuh tiga resource sekaligus, jadi
+  // hook-nya dipanggial tiga kali dengan `path` berbeda.
+  const pagesList = useAdminList<PageItem>({
+    path: '/api/pages',
+    params: { page: String(page) },
+    noStore: true,
+    errorMessage: 'Gagal memuat halaman.',
   });
-  const [error, setError] = useState('');
+  const faqsList = useAdminList<Faq>({
+    path: '/api/faqs',
+    params: { page: String(page) },
+    noStore: true,
+    errorMessage: 'Gagal memuat FAQ.',
+  });
+  const testisList = useAdminList<Testimonial>({
+    path: '/api/testimonials',
+    params: { page: String(page) },
+    noStore: true,
+    errorMessage: 'Gagal memuat testimoni.',
+  });
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const [p, f, t] = await Promise.all([
-        apiList<PageItem>('/api/pages', page),
-        apiList<Faq>('/api/faqs', page),
-        apiList<Testimonial>('/api/testimonials', page),
-      ]);
-      setTotalPages(Math.max(p.totalPages, f.totalPages, t.totalPages));
-      setPages(p.rows);
-      setFaqs(f.rows);
-      setTestis(t.rows);
-      setMissing({ pages: p.missing, faqs: f.missing, testimonials: t.missing });
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }, [page]);
+  const { rows: pages } = pagesList;
+  const { rows: faqs } = faqsList;
+  const { rows: testis } = testisList;
+  const loading = pagesList.loading || faqsList.loading || testisList.loading;
+  const missing: Record<Tab, boolean> = {
+    pages: pagesList.missing || tabMissing.pages === true,
+    faqs: faqsList.missing || tabMissing.faqs === true,
+    testimonials: testisList.missing || tabMissing.testimonials === true,
+  };
+  // Halaman ini sudah punya banner 404 amber per-tab, jadi pesan generic
+  // hook TIDAK ditampilkan untuk tab yang sedang ber-404 (sama seperti
+  // admin/denda, admin/reservasi, admin/peminjaman, dan (public)/denda).
+  // Sebaliknya ketiga daftar bisa gagal sendiri-sendiri, jadi pesan yang
+  // bukan 404 tetap ditampilkan semuanya — bukan cuma satu yang tersaring.
+  const listErrors = [
+    { key: 'pages', label: 'Halaman', msg: pagesList.missing ? '' : pagesList.error },
+    { key: 'faqs', label: 'FAQ', msg: faqsList.missing ? '' : faqsList.error },
+    { key: 'testimonials', label: 'Testimoni', msg: testisList.missing ? '' : testisList.error },
+  ].filter((x) => x.msg !== '');
+  const totalPages = Math.max(pagesList.totalPages, faqsList.totalPages, testisList.totalPages);
 
+  // Muat ulang ketiga tab sekaligus (dipakai setelah aksi tambah/ubah/hapus).
+  const load = useCallback(() => {
+    pagesList.reload();
+    faqsList.reload();
+    testisList.reload();
+    // Muat ulang yang sukses membuat banner 404 per-tab bisa hilang lagi —
+    // meniru setMissing({...}) yang dulu dihitung ulang tiap load().
+    setTabMissing({});
+    setActionError('');
+  }, [pagesList.reload, faqsList.reload, testisList.reload]);
+
+  // Berganti halaman juga memuat ulang daftar: buang pesan aksi lama.
   useEffect(() => {
-    load();
-  }, [load]);
+    setActionError('');
+  }, [page]);
 
   const handleAdd = useCallback(
     (kind: Tab, body: Record<string, unknown>) =>
       onAdd(kind, body, {
-        onMissing: (k) => setMissing((m) => ({ ...m, [k]: true })),
-        onError: (m) => setError(m),
+        onMissing: (k) => setTabMissing((m) => ({ ...m, [k]: true })),
+        onError: (m) => setActionError(m),
         onSuccess: load,
       }),
     [load]
@@ -86,8 +113,8 @@ export default function KontenPage() {
   const handleToggle = useCallback(
     (kind: Tab, id: string, is_active: boolean) =>
       onToggle(kind, id, is_active, {
-        onMissing: (k) => setMissing((m) => ({ ...m, [k]: true })),
-        onError: (m) => setError(m),
+        onMissing: (k) => setTabMissing((m) => ({ ...m, [k]: true })),
+        onError: (m) => setActionError(m),
         onSuccess: load,
       }),
     [load]
@@ -96,8 +123,8 @@ export default function KontenPage() {
   const handleDelete = useCallback(
     (kind: Tab, id: string) =>
       onDelete(kind, id, {
-        onMissing: (k) => setMissing((m) => ({ ...m, [k]: true })),
-        onError: (m) => setError(m),
+        onMissing: (k) => setTabMissing((m) => ({ ...m, [k]: true })),
+        onError: (m) => setActionError(m),
         onSuccess: load,
       }),
     [load]
@@ -140,14 +167,23 @@ export default function KontenPage() {
           belum tersedia di backend (404). Sudah dilaporkan ke mandor.
         </div>
       )}
-      {error && (
+      {actionError && (
         <div
           role="alert"
           className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
         >
-          {error}
+          {actionError}
         </div>
       )}
+      {listErrors.map(({ key, label, msg }) => (
+        <div
+          key={key}
+          role="alert"
+          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        >
+          {label}: {msg}
+        </div>
+      ))}
 
       <div role="tablist" aria-label="Jenis konten" className="flex flex-wrap gap-2">
         {tabs.map((t) => (

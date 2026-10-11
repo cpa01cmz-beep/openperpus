@@ -31,7 +31,7 @@ export async function GET(req: Request) {
   if ('errorResponse' in s) return s.errorResponse;
   const { supabase, isStaff, memberId } = s.session;
 
-  const { sp, page, perPage, q, from, to } = parsePaging(req.url, 20);
+  const { sp, page, perPage, q, from, to } = parsePaging(req.url);
   const status = (sp.get('status') ?? '').trim();
   let memberFilter = (sp.get('member_id') ?? '').trim();
   if (!isStaff) memberFilter = memberId ?? '__none__';
@@ -49,7 +49,8 @@ export async function GET(req: Request) {
 
   let query = supabase
     .from('fines')
-    .select(selectCols, { count: 'exact' })
+    // #68: exact -> estimated — tabel fines bisa besar, paginasi cukup perkiraan.
+    .select(selectCols, { count: 'estimated' })
     .order('issued_at', { ascending: false })
     .range(from, to);
 
@@ -78,7 +79,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const log = createLogger(requestIdFromHeaders(req.headers));
-  const guard = await requireStaff(['admin', 'librarian']);
+  const guard = await requireStaff();
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
   const { supabase, user } = guard as {
     supabase: ReturnType<typeof createClient>;
