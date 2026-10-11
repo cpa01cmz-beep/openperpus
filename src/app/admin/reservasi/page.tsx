@@ -1,10 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import DataTable from '@/components/admin/DataTable';
 import StatCard from '@/components/admin/StatCard';
 import Pagination from '@/components/ui/Pagination';
+import { useAdminList } from '@/hooks/useAdminList';
 import { checkoutReservation } from '@/lib/reservation-checkout';
+import { PER_PAGE } from '@/lib/pagination';
 import { findExpiredCandidates, sweepExpiredReservations } from '@/lib/reservation-sweep';
 import { errMsg } from '@/lib/admin-errors';
 
@@ -23,50 +25,24 @@ type Reservation = {
 const STATUS_OPTS = ['', 'pending', 'ready', 'completed', 'cancelled', 'expired'];
 
 export default function ReservasiPage() {
-  const [rows, setRows] = useState<Reservation[]>([]);
   const [status, setStatus] = useState('');
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [loading, setLoading] = useState(true);
   const [actingId, setActingId] = useState<string | null>(null);
-  const [apiMissing, setApiMissing] = useState(false);
-  const [error, setError] = useState('');
+  // 404 dari aksi (bukan dari pemuatan daftar).
+  const [payMissing, setPayMissing] = useState(false);
   const [sweeping, setSweeping] = useState(false);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const q = new URLSearchParams({
-        page: String(page),
-        per_page: '20',
-        ...(status ? { status } : {}),
-      });
-      const res = await fetch(`/api/reservations?${q}`, { cache: 'no-store' });
-      if (res.status === 404) {
-        setApiMissing(true);
-        setRows([]);
-        return;
-      }
-      const json = (await res.json()) as {
-        data?: Reservation[];
-        pagination?: { totalPages?: number };
-        meta?: { totalPages?: number };
-      };
-      if (!res.ok) throw new Error(errMsg(json));
-      setApiMissing(false);
-      setRows(json.data ?? []);
-      setTotalPages(json.pagination?.totalPages ?? 1);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, status]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
+  // #62: satu hook daftar — termasuk memisahkan 404 (API belum tersedia).
+  const list = useAdminList<Reservation>({
+    path: '/api/reservations',
+    params: { page: String(page), per_page: PER_PAGE, ...(status ? { status } : {}) },
+    noStore: true,
+    errorMessage: 'Gagal memuat reservasi.',
+  });
+  const { rows, loading, missing: apiMissing, totalPages, error, reload: load } = list;
+  // Banner 404 khas halaman sudah menjelaskan "API belum ada"; pesan generic
+  // dari hook tidak diduplikasi untuk kasus itu.
+  const listError = apiMissing ? '' : error;
 
   async function onCheckout(r: Reservation) {
     // #73: checkout atomik 1-klik — POST /api/reservations/{id}/checkout
@@ -100,6 +76,9 @@ export default function ReservasiPage() {
     const label = next === 'ready' ? 'setujui (siap diambil)' : 'batalkan';
     if (!confirm(`Yakin ${label} reservasi ini?`)) return;
     setActingId(id);
+    // 404 pada aksi berarti endpoint belum ada; load() berikutnya yang
+    // menentukan apakah banner tetap perlu tampil.
+    setPayMissing(false);
     try {
       const res = await fetch(`/api/reservations/${id}`, {
         method: 'PUT',
@@ -108,7 +87,7 @@ export default function ReservasiPage() {
       });
       const json = await res.json().catch(() => ({}));
       if (res.status === 404) {
-        setApiMissing(true);
+        setPayMissing(true);
         return alert('API /api/reservations belum tersedia di backend.');
       }
       if (!res.ok) return alert(errMsg(json));
@@ -165,7 +144,7 @@ export default function ReservasiPage() {
         </p>
       </div>
 
-      {apiMissing && (
+      {(apiMissing || payMissing) && (
         <div
           role="alert"
           className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800"
@@ -174,12 +153,12 @@ export default function ReservasiPage() {
           Daftar &amp; aksi approve/batal menunggu worker backend. Sudah dilaporkan ke mandor.
         </div>
       )}
-      {error && (
+      {listError && (
         <div
           role="alert"
           className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
         >
-          {error}
+          {listError}
         </div>
       )}
 

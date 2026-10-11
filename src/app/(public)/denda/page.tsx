@@ -4,6 +4,10 @@ import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import Breadcrumb from '@/components/public/Breadcrumb';
 import Modal from '@/components/ui/Modal';
+import { useAdminList } from '@/hooks/useAdminList';
+import { useFineRate } from '@/hooks/useFineRate';
+import { formatRp, num } from '@/lib/format';
+import { PER_PAGE } from '@/lib/pagination';
 import { errMsg } from '@/lib/admin-errors';
 
 type Fine = {
@@ -20,8 +24,7 @@ type Fine = {
 const STATUS_OPTS = ['', 'unpaid', 'partial', 'paid', 'waived'];
 const METHOD_OPTS = ['tunai', 'transfer', 'qris'] as const;
 
-const num = (v: number | string | null | undefined) => Number(v ?? 0) || 0;
-const fmtRp = (v: number | string | null | undefined) => `Rp${num(v).toLocaleString('id-ID')}`;
+const fmtRp = formatRp;
 const methodOf = (notes: string | null) => {
   if (!notes) return '—';
   const m = notes.match(/Dibayar via ([^.]+)/i);
@@ -29,15 +32,13 @@ const methodOf = (notes: string | null) => {
 };
 
 export default function DendaSayaPage() {
-  const [rows, setRows] = useState<Fine[]>([]);
   const [status, setStatus] = useState('');
   const [method, setMethod] = useState<(typeof METHOD_OPTS)[number]>('qris');
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [openTotal, setOpenTotal] = useState(0);
-  const [loading, setLoading] = useState(true);
   const [payingId, setPayingId] = useState<string | null>(null);
-  const [needLogin, setNeedLogin] = useState(false);
+  // 401 saat menyiapkan pembayaran (bukan saat memuat riwayat).
+  const [payNeedLogin, setPayNeedLogin] = useState(false);
   const [error, setError] = useState('');
   const [pendingPay, setPendingPay] = useState<Fine | null>(null);
   const [receipt, setReceipt] = useState<
@@ -45,18 +46,22 @@ export default function DendaSayaPage() {
   >(null);
   const [copied, setCopied] = useState(false);
   const [downloadError, setDownloadError] = useState('');
-  const [finePerDay, setFinePerDay] = useState(1000);
   const [memberId, setMemberId] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetch('/api/settings')
-      .then((r) => r.json() as Promise<{ data?: { fine_per_day?: unknown } }>)
-      .then((j) => {
-        const v = Number(j.data?.fine_per_day);
-        if (Number.isFinite(v) && v > 0) setFinePerDay(v);
-      })
-      .catch(() => {});
-  }, []);
+  // #62: tarif denda dari satu hook pengaturan (bukan salinan fetch per halaman).
+  const { finePerDay } = useFineRate();
+
+  // #62: satu hook daftar — termasuk mendeteksi 401 (belum login).
+  const list = useAdminList<Fine>({
+    path: '/api/fines',
+    params: { page: String(page), per_page: PER_PAGE, ...(status ? { status } : {}) },
+    noStore: true,
+    errorMessage: 'Gagal memuat riwayat denda.',
+  });
+  const { rows, loading, denied: needLogin, totalPages, error: listError, reload: load } = list;
+  // Halaman ini sudah punya banner login khas untuk 401/403 (`needLogin`),
+  // jadi pesan error generic dari hook tidak diduplikasi untuk kasus itu.
+  const listErrorShown = needLogin ? '' : listError;
 
   // Fetch member ID for RPC call
   useEffect(() => {
@@ -92,44 +97,17 @@ export default function DendaSayaPage() {
     } catch {}
   }, [memberId]);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const q = new URLSearchParams({
-        page: String(page),
-        per_page: '20',
-        ...(status ? { status } : {}),
-      });
-      const res = await fetch(`/api/fines?${q}`, { cache: 'no-store' });
-      if (res.status === 401) {
-        setNeedLogin(true);
-        setRows([]);
-        return;
-      }
-      const json = (await res.json()) as {
-        data?: Fine[];
-        pagination?: { totalPages?: number };
-        meta?: { totalPages?: number };
-      };
-      if (!res.ok) throw new Error(errMsg(json));
-      setNeedLogin(false);
-      setRows(json.data ?? []);
-      setTotalPages(json.pagination?.totalPages ?? 1);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, status]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
-
+  // Total tagihan terbuka biasanya hanya bergantung pada member id (perilaku
+  // lama: effect terpisah), jadi JANGAN ikut page/status.
   useEffect(() => {
     loadTotals();
   }, [loadTotals]);
+
+  // Pesan error aksi dibuang saat daftar dimuat ulang, seperti setError('')
+  // di awal load() pada kode lama.
+  useEffect(() => {
+    setError('');
+  }, [page, status]);
 
   async function onPay(f: Fine) {
     setPendingPay(f);
@@ -142,6 +120,8 @@ export default function DendaSayaPage() {
     const usedMethod = method;
     setPayingId(f.id);
     setPendingPay(null);
+    // 401 pada aksi bisa hilang setelah login ulang.
+    setPayNeedLogin(false);
     try {
       const res = await fetch(`/api/fines/${f.id}/pay`, {
         method: 'POST',
@@ -150,7 +130,7 @@ export default function DendaSayaPage() {
       });
       const json = await res.json().catch(() => ({}));
       if (res.status === 401) {
-        setNeedLogin(true);
+        setPayNeedLogin(true);
         return;
       }
       if (!res.ok) {
@@ -364,7 +344,7 @@ export default function DendaSayaPage() {
         </p>
       </div>
 
-      {needLogin && (
+      {(needLogin || payNeedLogin) && (
         <div
           role="alert"
           className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800"
@@ -376,12 +356,12 @@ export default function DendaSayaPage() {
           sebagai anggota untuk melihat denda Anda.
         </div>
       )}
-      {error && (
+      {(listErrorShown || error) && (
         <div
           role="alert"
           className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
         >
-          {error}
+          {listErrorShown || error}
         </div>
       )}
 

@@ -339,24 +339,29 @@ describe('#59 kontrak sumber (cover upload + ekspor + 3 halaman)', () => {
     const src = read('src/components/admin/ExportCsvButton.tsx');
     expect(src).toMatch(/Ekspor halaman ini/);
     expect(src).not.toMatch(/Ekspor CSV/);
-    expect(src, 'filename pakai tanggal lokal YYYY-MM-DD').toMatch(
-      /toLocaleDateString\('sv-SE'\)/
-    );
+    expect(src, 'filename pakai tanggal lokal YYYY-MM-DD').toMatch(/toLocaleDateString\('sv-SE'\)/);
   });
 
-  it('buku/anggota/peminjaman: load punya catch + error state role=alert', () => {
+  it('buku/anggota/peminjaman: error pemuatan tampil role=alert, kontrak dijaga hook daftar', () => {
+    // #62: blok fetch/pagination tiap halaman pindah ke src/hooks/useAdminList.ts.
+    // Kontrak "gagal pemuatan terlihat" kini diuji di HOOK tersebut (sekali),
+    // dan setiap halaman hanya perlu memakai hook + menampilkan pesannya.
+    const hook = read('src/hooks/useAdminList.ts');
+    expect(hook, 'hook daftar harus catch').toMatch(/catch \(/);
+    expect(hook, 'hook: !res.ok melempar pesan').toMatch(
+      /if \(!res\.ok\) throw new Error\(errMsg\(json, errorMessage\)/
+    );
     for (const f of [
       'src/app/admin/buku/page.tsx',
       'src/app/admin/anggota/page.tsx',
       'src/app/admin/peminjaman/page.tsx',
     ]) {
       const s = read(f);
-      expect(s, `${f}: load harus catch`).toMatch(/catch \(/);
-      expect(s, `${f}: pesan via state`).toMatch(/set(Error|LoadError)\(/);
+      expect(s, `${f}: pakai hook daftar`).toMatch(/useAdminList</);
+      expect(s, `${f}: pesan error dari hook`).toMatch(/list\.error/);
       expect(s, `${f}: tampil role=alert`).toContain('role="alert"');
-      expect(s, `${f}: !res.ok di-load melempar pesan`).toMatch(
-        /if \(!res\.ok\) throw new Error\(errMsg\(json, 'Gagal/
-      );
+      // Pesan gagal khas halaman, bukan default generik 'Gagal memuat data.'
+      expect(s, `${f}: errorMessage khas`).toMatch(/errorMessage:\s*'Gagal/);
     }
   });
 

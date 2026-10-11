@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
+import { formatRp } from '@/lib/format';
 
 /**
  * Isu #56 — gate kelayakan checkout (pinjam/reservasi).
@@ -47,10 +48,8 @@ function toNumber(v: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-/** Format rupiah ringkas untuk pesan blokir (id-ID). */
-export function formatRp(v: number): string {
-  return `Rp${Math.round(v).toLocaleString('id-ID')}`;
-}
+/** Format rupiah ringkas untuk pesan blokir (id-ID) — bersama di src/lib/format.ts. */
+export { formatRp };
 
 /**
  * Keputusan murni (tanpa I/O) — inti aturan #56, siap diuji unit.

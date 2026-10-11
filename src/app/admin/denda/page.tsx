@@ -6,7 +6,13 @@ import ExportCsvButton from '@/components/admin/ExportCsvButton';
 import StatCard from '@/components/admin/StatCard';
 import Modal from '@/components/ui/Modal';
 import Pagination from '@/components/ui/Pagination';
+import { useAdminList } from '@/hooks/useAdminList';
+import { useFineRate } from '@/hooks/useFineRate';
 import { errMsg } from '@/lib/admin-errors';
+import { formatRp, num } from '@/lib/format';
+import { PER_PAGE } from '@/lib/pagination';
+
+const fmtRp = formatRp;
 
 type Payment = {
   id: string;
@@ -43,9 +49,6 @@ const STATUS_OPTS = ['', 'unpaid', 'partial', 'paid', 'waived'];
 const METHOD_OPTS = ['tunai', 'transfer', 'qris'];
 const REASON_MIN = 10;
 
-const num = (v: number | string | null | undefined) => Number(v ?? 0) || 0;
-const fmtRp = (v: number | string | null | undefined) => `Rp${num(v).toLocaleString('id-ID')}`;
-
 /** Kwitansi terbaru sebuah denda (immutable, issue #72). */
 function receiptNoOf(f: Fine): string | null {
   const rows = f.payments ?? [];
@@ -58,17 +61,15 @@ function pendingWaiverOf(f: Fine): Waiver | null {
 }
 
 export default function DendaPage() {
-  const [rows, setRows] = useState<Fine[]>([]);
   const [status, setStatus] = useState('');
   const [method, setMethod] = useState('tunai');
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [loading, setLoading] = useState(true);
   const [payingId, setPayingId] = useState<string | null>(null);
-  const [apiMissing, setApiMissing] = useState(false);
-  const [error, setError] = useState('');
+  const [payMissing, setPayMissing] = useState(false);
+  // Pesan error dari AKSI TULIS (bayar/waive/decision). Error pemuatan
+  // daftar datang dari useAdminList dan digabung pada `error` di bawah.
+  const [actionError, setActionError] = useState('');
   const [notice, setNotice] = useState('');
-  const [finePerDay, setFinePerDay] = useState(1000);
   const [tagihanTotal, setTagihanTotal] = useState(0);
   // Identitas admin pemakai: dasar segregation-of-duties pengajuan waive.
   const [myUserId, setMyUserId] = useState<string | null>(null);
@@ -84,15 +85,21 @@ export default function DendaPage() {
   const [decisionNote, setDecisionNote] = useState('');
   const [decisionBusy, setDecisionBusy] = useState(false);
 
-  useEffect(() => {
-    fetch('/api/settings')
-      .then((r) => r.json() as Promise<{ data?: { fine_per_day?: unknown } }>)
-      .then((j) => {
-        const v = Number(j.data?.fine_per_day);
-        if (Number.isFinite(v) && v > 0) setFinePerDay(v);
-      })
-      .catch(() => {});
-  }, []);
+  // #62: tarif denda dari satu hook pengaturan (bukan salinan fetch per halaman).
+  const { finePerDay } = useFineRate();
+
+  // #62: satu hook daftar — termasuk memisahkan 404 (API belum tersedia).
+  const list = useAdminList<Fine>({
+    path: '/api/fines',
+    params: { page: String(page), per_page: PER_PAGE, ...(status ? { status } : {}) },
+    noStore: true,
+    errorMessage: 'Gagal memuat denda.',
+  });
+  // Pesan pemuatan daftar + pesan aksi tulis digabung di satu tempat tampil.
+  const { rows, loading, missing: apiMissing, totalPages, error: listError, reload: load } = list;
+  // Banner 404 khas halaman sudah menjelaskan "API belum ada", jadi pesan
+  // generic dari hook tidak diduplikasi. Sebaliknya aksi tulis tetap didahulukan.
+  const error = (apiMissing ? '' : listError) || actionError;
 
   // Siapa yang login (id profil) + apakah admin — untuk aturan approver ≠ pengaju.
   useEffect(() => {
@@ -129,48 +136,27 @@ export default function DendaPage() {
     } catch {}
   }, []);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const q = new URLSearchParams({
-        page: String(page),
-        per_page: '20',
-        ...(status ? { status } : {}),
-      });
-      const res = await fetch(`/api/fines?${q}`, { cache: 'no-store' });
-      if (res.status === 404) {
-        setApiMissing(true);
-        setRows([]);
-        return;
-      }
-      const json = (await res.json()) as {
-        data?: Fine[];
-        pagination?: { totalPages?: number };
-        meta?: { totalPages?: number };
-      };
-      if (!res.ok) throw new Error(errMsg(json));
-      setApiMissing(false);
-      setRows(json.data ?? []);
-      setTotalPages(json.pagination?.totalPages ?? 1);
-    } catch (e) {
-      setError((e as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }, [page, status]);
-
+  // Total tagihan disegarkan setiap filter/halaman berubah (perilaku lama:
+  // ikut load()), sedangkan daftarnya diurus useAdminList.
   useEffect(() => {
-    load();
     loadTotals();
-  }, [load, loadTotals]);
+  }, [loadTotals, page, status]);
+
+  // Pesan aksi lama dibuang saat daftar dimuat ulang, seperti state error
+  // tunggal sebelum #62.
+  useEffect(() => {
+    setActionError('');
+  }, [page, status]);
 
   async function confirmPay() {
     const f = pendingPay;
     if (!f) return;
     if (payingId) return;
     setPayingId(f.id);
-    setError('');
+    setActionError('');
+    // 404 pada aksi berarti endpoint belum ada; daftar yang sukses nanti
+    // membuang banner ini (bukan menempel selamanya).
+    setPayMissing(false);
     setNotice('');
     try {
       const res = await fetch(`/api/fines/${f.id}/pay`, {
@@ -180,11 +166,11 @@ export default function DendaPage() {
       });
       const json = await res.json().catch(() => ({}));
       if (res.status === 404) {
-        setApiMissing(true);
+        setPayMissing(true);
         return;
       }
       if (!res.ok) {
-        setError(errMsg(json));
+        setActionError(errMsg(json));
         return;
       }
       // #72: kwitansi bernomor dari tabel payments.
@@ -204,11 +190,11 @@ export default function DendaPage() {
     if (!f) return;
     if (waiveBusy) return;
     if (waiveReason.trim().length < REASON_MIN) {
-      setError(`Alasan pembebasan wajib diisi minimal ${REASON_MIN} karakter.`);
+      setActionError(`Alasan pembebasan wajib diisi minimal ${REASON_MIN} karakter.`);
       return;
     }
     setWaiveBusy(true);
-    setError('');
+    setActionError('');
     setNotice('');
     try {
       const res = await fetch(`/api/fines/${f.id}/waive`, {
@@ -218,7 +204,7 @@ export default function DendaPage() {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(errMsg(json));
+        setActionError(errMsg(json));
         return;
       }
       setWaiveTarget(null);
@@ -235,7 +221,7 @@ export default function DendaPage() {
     if (!d) return;
     if (decisionBusy) return;
     setDecisionBusy(true);
-    setError('');
+    setActionError('');
     setNotice('');
     try {
       const res = await fetch(`/api/fines/waivers/${d.waiver.id}/decision`, {
@@ -245,7 +231,7 @@ export default function DendaPage() {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(errMsg(json));
+        setActionError(errMsg(json));
         return;
       }
       setDecision(null);
@@ -272,7 +258,7 @@ export default function DendaPage() {
         </p>
       </div>
 
-      {apiMissing && (
+      {(apiMissing || payMissing) && (
         <div
           role="alert"
           className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800"
@@ -466,7 +452,7 @@ export default function DendaPage() {
                       type="button"
                       disabled={payingId === r.id}
                       onClick={() => {
-                        setError('');
+                        setActionError('');
                         setNotice('');
                         setPendingPay(r);
                       }}
@@ -478,7 +464,7 @@ export default function DendaPage() {
                     <button
                       type="button"
                       onClick={() => {
-                        setError('');
+                        setActionError('');
                         setNotice('');
                         setWaiveReason('');
                         setWaiveTarget(r);
