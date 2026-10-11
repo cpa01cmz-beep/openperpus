@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { createClient } from '@/lib/supabase/server';
 import { calcFine, FINE_PER_DAY } from '@/lib/finecalc';
+import { formatRp, num } from '@/lib/format';
 import { effectiveLoanStatus } from '@/lib/loans-overdue';
 import StatCard from '@/components/admin/StatCard';
 
@@ -34,22 +35,21 @@ export default async function AdminDashboard() {
     { data: statsData, error: statsError },
     { data: recent, error: recentError },
     { data: overdueQueue, error: overdueError },
-  ] =
-    await Promise.all([
-      supabase.rpc('get_dashboard_stats', { p_days: 7 }),
-      supabase
-        .from('loans')
-        .select('id,borrowed_at,due_at,status,fine_amount,members(id,member_code),books(title)')
-        .order('borrowed_at', { ascending: false })
-        .limit(8),
-      supabase
-        .from('loans')
-        .select('id,due_at,status,fine_amount,members(id,member_code),books(title)')
-        .in('status', ['borrowed', 'overdue'])
-        .lt('due_at', now.toISOString())
-        .order('due_at', { ascending: true })
-        .limit(8),
-    ]);
+  ] = await Promise.all([
+    supabase.rpc('get_dashboard_stats', { p_days: 7 }),
+    supabase
+      .from('loans')
+      .select('id,borrowed_at,due_at,status,fine_amount,members(id,member_code),books(title)')
+      .order('borrowed_at', { ascending: false })
+      .limit(8),
+    supabase
+      .from('loans')
+      .select('id,due_at,status,fine_amount,members(id,member_code),books(title)')
+      .in('status', ['borrowed', 'overdue'])
+      .lt('due_at', now.toISOString())
+      .order('due_at', { ascending: true })
+      .limit(8),
+  ]);
 
   type StatsRow = {
     total_books: number | string | null;
@@ -77,10 +77,6 @@ export default async function AdminDashboard() {
     console.error('[dashboard] overdue queue gagal', overdueError.message);
   }
 
-  const num = (v: number | string | null | undefined, d = 0) => {
-    const x = Number(v);
-    return Number.isFinite(x) ? x : d;
-  };
   const totalBooks = num(stats?.total_books);
   const totalMembers = num(stats?.total_members);
   const dipinjam = num(stats?.active_loans);
@@ -114,7 +110,6 @@ export default async function AdminDashboard() {
     books: { title: string } | { title: string }[] | null;
   };
   const overdue = (overdueQueue ?? []) as OverdueRow[];
-  const fmtRp = (n: number) => `Rp${(n ?? 0).toLocaleString('id-ID')}`;
 
   return (
     <div className="grid gap-6">
@@ -126,8 +121,8 @@ export default async function AdminDashboard() {
         <StatCard
           label="Terlambat"
           value={terlambat}
-          hint={`Denda Rp${fineRate.toLocaleString('id-ID')}/hari${
-            finesOpen === null ? '' : ` · tagihan terbuka ${fmtRp(finesOpen)}`
+          hint={`Denda ${formatRp(fineRate)}/hari${
+            finesOpen === null ? '' : ` · tagihan terbuka ${formatRp(finesOpen)}`
           }`}
         />
       </div>
@@ -164,7 +159,7 @@ export default async function AdminDashboard() {
                   <span className="ml-1 text-xs text-red-700">telat {lateDays} hari</span>
                 </span>
                 <span className="shrink-0 text-xs font-semibold tabular-nums">
-                  {fmtRp(preview)}
+                  {formatRp(preview)}
                 </span>
               </li>
             );

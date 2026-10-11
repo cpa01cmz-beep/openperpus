@@ -1,14 +1,20 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react';
 import nextDynamic from 'next/dynamic';
+import { useSearchParams } from 'next/navigation';
 import DataTable, { type SortDir } from '@/components/admin/DataTable';
 import DunningButton from '@/components/admin/DunningButton';
 import ExportCsvButton from '@/components/admin/ExportCsvButton';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
 import Pagination from '@/components/ui/Pagination';
+import { useAdminList } from '@/hooks/useAdminList';
+import { useAdminSubmit } from '@/hooks/useAdminSubmit';
+import { useFineRate } from '@/hooks/useFineRate';
 import { errMsg } from '@/lib/admin-errors';
+import { formatRp } from '@/lib/format';
+import { PER_PAGE } from '@/lib/pagination';
 import { effectiveLoanStatus } from '@/lib/loans-overdue';
 
 const LoanForm = nextDynamic(() => import('@/components/admin/LoanForm'), {
@@ -34,9 +40,22 @@ function statusOf(loan: Loan): string {
   return loan.effective_status ?? effectiveLoanStatus(loan);
 }
 
-export default function PeminjamanPage() {
-  const [loans, setLoans] = useState<Loan[]>([]);
-  const [error, setError] = useState('');
+/** Isu #62: satu hook daftar, satu hook tarif/pengaturan, satu hook aksi tulis. */
+function PeminjamanInner() {
+  const searchParams = useSearchParams();
+  const [status, setStatus] = useState('');
+  // ?overdue=1 diteruskan dari antrean terlambat di dashboard.
+  const [overdueOnly, setOverdueOnly] = useState(() => searchParams.get('overdue') === '1');
+  const [page, setPage] = useState(1);
+  const [sortKey, setSortKey] = useState('');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [pendingReturn, setPendingReturn] = useState<string | null>(null);
+  const [pendingExtend, setPendingExtend] = useState<string | null>(null);
+  const [extendDays, setExtendDays] = useState('7');
+  const [notice, setNotice] = useState<string | null>(null);
+  const [optionsError, setOptionsError] = useState('');
+  const [returnKondisi, setReturnKondisi] = useState('baik');
   const [members, setMembers] = useState<
     {
       id: string;
@@ -48,107 +67,41 @@ export default function PeminjamanPage() {
     }[]
   >([]);
   const [books, setBooks] = useState<{ id: string; label: string; stock?: number }[]>([]);
-  const [status, setStatus] = useState('');
-  const [overdueOnly, setOverdueOnly] = useState(false);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [sortKey, setSortKey] = useState('');
-  const [sortDir, setSortDir] = useState<SortDir>('desc');
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [pendingReturn, setPendingReturn] = useState<string | null>(null);
-  const [finePerDay, setFinePerDay] = useState(1000);
-  // Isu #74: kebijakan pinjam dari settings (bukan angka mati di kode).
-  const [loanDays, setLoanDays] = useState(14);
-  const [maxExtensions, setMaxExtensions] = useState(2);
-  const [replacementFees, setReplacementFees] = useState({ rusak: 0, hilang: 0 });
-  const [returnKondisi, setReturnKondisi] = useState('baik');
-  // State terpisah dari `error`: pesan tarif default non-fatal tidak boleh
-  // ditimpa/dihapus oleh load() berikutnya (dan sebaliknya).
-  const [fineNotice, setFineNotice] = useState('');
-  useEffect(() => {
-    fetch('/api/settings')
-      .then((r) => {
-        if (!r.ok) throw new Error('Gagal memuat tarif denda; memakai tarif default.');
-        return r.json().catch(() => {
-          throw new Error('Gagal memuat tarif denda; memakai tarif default.');
-        }) as Promise<{
-          data?: {
-            fine_per_day?: unknown;
-            loan_days?: unknown;
-            max_extensions?: unknown;
-            replacement_fee_damaged?: unknown;
-            replacement_fee_lost?: unknown;
-          };
-        }>;
-      })
-      .then((j) => {
-        const v = Number(j.data?.fine_per_day);
-        if (Number.isFinite(v) && v > 0) setFinePerDay(v);
-        const days = Number(j.data?.loan_days);
-        if (Number.isFinite(days) && days > 0) setLoanDays(days);
-        const maxExt = Number(j.data?.max_extensions);
-        if (Number.isFinite(maxExt) && maxExt >= 0) setMaxExtensions(maxExt);
-        const feeRusak = Number(j.data?.replacement_fee_damaged);
-        const feeHilang = Number(j.data?.replacement_fee_lost);
-        setReplacementFees({
-          rusak: Number.isFinite(feeRusak) && feeRusak > 0 ? feeRusak : 0,
-          hilang: Number.isFinite(feeHilang) && feeHilang > 0 ? feeHilang : 0,
-        });
-      })
-      .catch((e: Error) => setFineNotice(e.message));
-  }, []);
-  const [pendingExtend, setPendingExtend] = useState<string | null>(null);
-  const [extendDays, setExtendDays] = useState('7');
-  const [notice, setNotice] = useState<string | null>(null);
-  const [optionsError, setOptionsError] = useState('');
-  const [denied, setDenied] = useState(false);
   const optionsLoaded = useRef(false);
 
-  useEffect(() => {
-    try {
-      const sp = new URLSearchParams(window.location.search);
-      if (sp.get('overdue') === '1') setOverdueOnly(true);
-    } catch {
-      /* abaikan */
-    }
-  }, []);
+  // Isu #74: kebijakan pinjam dari settings (bukan angka mati di kode) —
+  // kini lewat satu hook bersama, bukan salinan fetch('/api/settings').
+  const {
+    finePerDay,
+    loanDays,
+    maxExtensions,
+    replacementFees,
+    notice: fineNotice,
+  } = useFineRate();
 
-  const load = useCallback(async () => {
-    setError('');
-    try {
-      const q = new URLSearchParams({
-        page: String(page),
-        per_page: '10',
-        ...(overdueOnly ? { overdue: '1' } : status ? { status } : {}),
-        ...(sortKey ? { sort: sortKey, order: sortDir } : {}),
-      });
-      const res = await fetch(`/api/loans?${q}`);
-      if (res.status === 401 || res.status === 403) {
-        setDenied(true);
-        setLoans([]);
-        return;
-      }
-      setDenied(false);
-      const json = (await res.json().catch(() => ({}))) as {
-        data?: Loan[];
-        pagination?: { totalPages?: number };
-        meta?: { totalPages?: number };
-      };
-      if (!res.ok) throw new Error(errMsg(json, 'Gagal memuat peminjaman.'));
-      setLoans(json.data ?? []);
-      setTotalPages(json.pagination?.totalPages ?? 1);
-    } catch (e) {
-      setError((e as Error).message);
-    }
-  }, [status, overdueOnly, page, sortKey, sortDir]);
+  // Isu #62: satu hook daftar — fetch, pagination, dan penanganan 401/403
+  // (bukan petugas) tak ditulis ulang per halaman.
+  const list = useAdminList<Loan>({
+    path: '/api/loans',
+    params: {
+      page: String(page),
+      ...(overdueOnly ? { overdue: '1' } : status ? { status } : {}),
+      ...(sortKey ? { sort: sortKey, order: sortDir } : {}),
+    },
+    errorMessage: 'Gagal memuat peminjaman.',
+  });
+  // Aksi tulis (kembalikan/perpanjang) berbagi pesan error dengan daftar.
+  const { error: actionError, run: submitAction } = useAdminSubmit();
+  const { rows: loans, totalPages, denied, reload: load, clearError } = list;
+  const error = list.error || actionError;
 
   // Gagal -> optionsLoaded TIDAK diset (retry oleh "Muat ulang"/force berikutnya).
   const loadOptions = useCallback(async (force = false) => {
     if (optionsLoaded.current && !force) return;
     try {
       const [mr, br] = await Promise.all([
-        fetch('/api/members?per_page=20'),
-        fetch('/api/books?per_page=20'),
+        fetch(`/api/members?per_page=${PER_PAGE}`),
+        fetch(`/api/books?per_page=${PER_PAGE}`),
       ]);
       const m = (await mr.json().catch(() => ({}))) as {
         data?: {
@@ -200,9 +153,6 @@ export default function PeminjamanPage() {
   }, []);
 
   useEffect(() => {
-    load();
-  }, [load]);
-  useEffect(() => {
     loadOptions();
   }, [loadOptions]);
 
@@ -241,8 +191,8 @@ export default function PeminjamanPage() {
     const id = pendingReturn;
     if (!id) return;
     setPendingReturn(null);
-    setError('');
-    try {
+    clearError();
+    await submitAction(async () => {
       // Isu #74: kondisi buku dikirim eksplisit (baik|rusak|hilang).
       // rusak/hilang mengurangi stok buku + menambah denda ganti rugi.
       const res = await fetch(`/api/loans/${id}`, {
@@ -254,26 +204,23 @@ export default function PeminjamanPage() {
         data?: { fine_amount?: number } | null;
       };
       if (!res.ok) {
-        setError(errMsg(json, 'Gagal memproses pengembalian.'));
-        return;
+        throw new Error(errMsg(json, 'Gagal memproses pengembalian.'));
       }
       const kondisiLabel =
         returnKondisi === 'baik' ? 'baik' : returnKondisi === 'rusak' ? 'rusak' : 'hilang';
       setNotice(
-        `Dikembalikan (kondisi: ${kondisiLabel}). Denda: Rp${(json.data?.fine_amount ?? 0).toLocaleString('id-ID')}`
+        `Dikembalikan (kondisi: ${kondisiLabel}). Denda: ${formatRp(json.data?.fine_amount ?? 0)}`
       );
       void Promise.all([load(), loadOptions(true)]);
-    } catch (e) {
-      setError((e as Error).message);
-    }
+    });
   }
 
   async function confirmExtend() {
     const id = pendingExtend;
     if (!id) return;
     setPendingExtend(null);
-    setError('');
-    try {
+    clearError();
+    await submitAction(async () => {
       const days = Number(extendDays);
       const res = await fetch(`/api/loans/${id}`, {
         method: 'PUT',
@@ -284,8 +231,7 @@ export default function PeminjamanPage() {
         data?: { due_at?: string; extension_count?: number } | null;
       };
       if (!res.ok) {
-        setError(errMsg(json, 'Gagal memproses perpanjangan.'));
-        return;
+        throw new Error(errMsg(json, 'Gagal memproses perpanjangan.'));
       }
       const due = json.data?.due_at ? new Date(json.data.due_at).toLocaleDateString('id-ID') : '-';
       // Isu #74: hitungan perpanjangan kini milik kolom loans.extend_count.
@@ -295,12 +241,8 @@ export default function PeminjamanPage() {
         `Diperpanjang ${Number.isFinite(days) ? days : '?'} hari. Tempo baru: ${due}.${usedLabel}`
       );
       void Promise.all([load(), loadOptions(true)]);
-    } catch (e) {
-      setError((e as Error).message);
-    }
+    });
   }
-
-  const fmtRp = (n: number) => `Rp${(n ?? 0).toLocaleString('id-ID')}`;
 
   return (
     <div className="grid gap-6">
@@ -540,7 +482,7 @@ export default function PeminjamanPage() {
             sortable: true,
             render: (r) => statusOf(r),
           },
-          { key: 'fine_amount', header: 'Denda', render: (r) => fmtRp(r.fine_amount) },
+          { key: 'fine_amount', header: 'Denda', render: (r) => formatRp(r.fine_amount) },
           {
             key: 'aksi',
             header: 'Aksi',
@@ -589,5 +531,14 @@ export default function PeminjamanPage() {
       />
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
     </div>
+  );
+}
+
+/** useSearchParams butuh batas Suspense (pola sama dengan halaman login). */
+export default function PeminjamanPage() {
+  return (
+    <Suspense fallback={null}>
+      <PeminjamanInner />
+    </Suspense>
   );
 }
