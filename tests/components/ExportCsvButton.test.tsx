@@ -269,9 +269,17 @@ describe('ExportCsvButton (#78/#133)', () => {
     expect((clickSpy.mock.instances[0] as HTMLAnchorElement).download).toBe('Laporan Akhir.CSV');
   });
 
-  it('filename* nama reserved Windows dengan/tanpa spasi (CON.csv, NUL .csv, COM1, LPT1) ditolak', async () => {
+  it('filename* seluruh nama reserved Windows (CON/PRN/AUX/NUL/COM1/LPT1, dengan & tanpa spasi) ditolak', async () => {
     const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
-    for (const raw of ['CON.csv', 'CON%20.csv', 'NUL%20.csv', 'COM1.csv', 'LPT1.csv']) {
+    for (const raw of [
+      'CON.csv',
+      'CON%20.csv',
+      'NUL%20.csv',
+      'COM1.csv',
+      'LPT1.csv',
+      'PRN.csv',
+      'AUX.csv',
+    ]) {
       clickSpy.mockClear();
       vi.stubGlobal(
         'fetch',
