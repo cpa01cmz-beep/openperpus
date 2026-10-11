@@ -42,6 +42,27 @@ export default function LogsTable({ rows, caption }: { rows: LogRow[]; caption?:
           render: (r) => <code className="font-mono text-xs">{r.action}</code>,
         },
         {
+          // Isu #69: request-id disimpan handler API di metadata.requestId;
+          // kolom ini memetakan trace response/log ke baris audit.
+          key: 'trace',
+          header: 'Trace',
+          render: (r) => {
+            const rid = r.metadata?.['requestId'];
+            if (typeof rid !== 'string' || !rid) {
+              return <span className="text-xs text-slate-400">-</span>;
+            }
+            return (
+              <a
+                href={`/admin/logs?rid=${encodeURIComponent(rid)}`}
+                title={`Telusuri request ${rid}`}
+                className="font-mono text-[11px] text-brand underline-offset-2 hover:underline"
+              >
+                {rid.slice(0, 8)}…
+              </a>
+            );
+          },
+        },
+        {
           key: 'entitas',
           header: 'Entitas',
           render: (r) => (

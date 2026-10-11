@@ -4,6 +4,10 @@ import { jsonError } from '@/lib/supabase/auth';
 import { isUuid } from '@/lib/api-utils';
 import { getSession } from '@/lib/session';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
+import { withSli } from '@/lib/sli';
+
+/** Route key metrik SLI (bentuk path OpenAPI, lihat tests/issue-69-*). */
+const ROUTE = '/api/fines/{id}/pay';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -45,9 +49,19 @@ function fallbackReceiptNo(): string {
  *   denda orang lain + waive tetap staf saja (403/404).
  *   #72: setiap pembayaran menulis baris payments IMMUTABLE dengan
  *   receipt_no unik — balasan memuat { data: fine, payment }.
+ *
+ *   #69: handler dibungkus withSli() agar durasi + status respons tercatat
+ *   di registry SLI (p95/5xx-rate), dan `x-request-id` selalu ada di respons.
+ *   requestId yang sama ditulis ke metadata.requestId pada baris audit
+ *   activity_logs, sehingga satu insiden pembayaran bisa ditelusuri dari
+ *   response -> log aplikasi -> /admin/logs.
  */
 
-export async function POST(req: Request, { params }: Ctx) {
+export async function POST(req: Request, { params }: Ctx): Promise<NextResponse> {
+  return withSli(ROUTE, req, () => handlePay(req, { params }));
+}
+
+async function handlePay(req: Request, { params }: Ctx): Promise<NextResponse> {
   const { id } = await params;
   const log = createLogger(requestIdFromHeaders(req.headers));
   const s = await getSession();
@@ -227,6 +241,7 @@ export async function POST(req: Request, { params }: Ctx) {
       entity_type: 'fines',
       entity_id: id,
       metadata: {
+        requestId: log.requestId ?? null,
         loan_id: f.loan_id,
         member_id: f.member_id,
         amount: payAmount,

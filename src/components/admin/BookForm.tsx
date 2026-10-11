@@ -6,6 +6,8 @@ import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import UploadInput from './UploadInput';
 import { errMsg } from '@/lib/admin-errors';
+// Isu #69: simpan buku tidak boleh menggantung bila API lambat.
+import { clientFetch } from '@/lib/api-client';
 
 /** Option lists for dropdowns (fetched server-side in tambah/edit pages). */
 export type CategoryOption = { id: string; name: string };
@@ -122,7 +124,7 @@ export default function BookForm({
         is_active: form.is_active === undefined ? true : Boolean(form.is_active),
       };
       const url = mode === 'create' ? '/api/books' : `/api/books/${initial?.id}`;
-      const res = await fetch(url, {
+      const res = await clientFetch(url, {
         method: mode === 'create' ? 'POST' : 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

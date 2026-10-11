@@ -6,7 +6,8 @@
  * via `wrangler tail --format json` (Tail integration) tanpa perubahan kode.
  *
  * Sentry (opsional): set `SENTRY_DSN` — event level `error`/`fatal`
- * diteruskan ke Sentry via `captureException`. Tanpa DSN, no-op.
+ * diteruskan ke Sentry via `captureException`. Tanpa DSN, baris JSON di
+ * bawah TETAP ditulis (isu #69) sehingga insiden tetap punya jejak.
  */
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'fatal';
@@ -22,13 +23,10 @@ function emit(level: LogLevel, msg: string, requestId: string | undefined, ctx?:
     ...ctx,
   });
   if (level === 'error' || level === 'fatal') {
-    // eslint-disable-next-line no-console
     console.error(line);
   } else if (level === 'warn') {
-    // eslint-disable-next-line no-console
     console.warn(line);
   } else {
-    // eslint-disable-next-line no-console
     console.log(line);
   }
 }

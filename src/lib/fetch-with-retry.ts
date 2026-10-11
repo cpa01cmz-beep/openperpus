@@ -98,8 +98,15 @@ export function recordCircuitFailure(key: string, threshold = DEFAULT_BREAKER_TH
   if (s.failures >= threshold) s.openedAt = Date.now();
 }
 
-/** Timeout untuk promise non-fetch (mis. Supabase RPC) via Promise.race. */
-export function withTimeout<T>(promise: Promise<T>, timeoutMs = DEFAULT_TIMEOUT_MS): Promise<T> {
+/**
+ * Timeout untuk promise non-fetch (mis. Supabase RPC / query builder yang
+ * thenable) via Promise.race. Menerima PromiseLike agar query builder
+ * @supabase/ssr (PostgrestFilterBuilder) bisa dipakai tanpa Promise.resolve.
+ */
+export function withTimeout<T>(
+  promise: PromiseLike<T>,
+  timeoutMs = DEFAULT_TIMEOUT_MS
+): Promise<T> {
   let t: ReturnType<typeof setTimeout>;
   const timeout = new Promise<never>((_, reject) => {
     t = setTimeout(() => reject(new DOMException('Timeout', 'TimeoutError')), timeoutMs);

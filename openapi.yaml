@@ -183,7 +183,10 @@ paths:
                     type: number
   /api/readyz:
     get:
-      summary: Readiness probe (Supabase ping)
+      summary: >-
+        Readiness probe (Supabase ping). Ping dibatasi READYZ_TIMEOUT_MS (default 3000) dan
+        respons selalu Cache-Control no-store (issue #69). Bila READYZ_TOKEN di-set, probe
+        membutuhkan Authorization Bearer dan mengembalikan 401 tanpa token yang benar.
       responses:
         '200':
           description: ready
@@ -205,6 +208,26 @@ paths:
                         enum: [ok]
                       latencyMs:
                         type: number
+        '401':
+          description: READYZ_TOKEN di-set dan bearer tidak dikirim/salah
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ready, checks]
+                properties:
+                  ready:
+                    type: boolean
+                    enum: [false]
+                  checks:
+                    type: object
+                    required: [supabase]
+                    properties:
+                      supabase:
+                        type: string
+                        enum: [error]
+                      detail:
+                        type: string
         '503':
           description: not ready
           content:
@@ -225,16 +248,47 @@ paths:
                         enum: [error]
                       detail:
                         type: string
+                        description: ping failed | timeout | unreachable
+                      timeoutMs:
+                        type: number
   /api/metrics:
     get:
-      summary: Prometheus metrics endpoint (Bearer METRICS_TOKEN when METRICS_TOKEN is set)
+      summary: >-
+        Prometheus metrics endpoint (Bearer METRICS_TOKEN when METRICS_TOKEN is set). Default
+        teks Prometheus; ?format=json mengembalikan dashboard SLI (availability, 5xx-rate,
+        p50/p95/p99, readyz, burn-rate) — issue #69.
       responses:
         '200':
-          description: Prometheus text format metrics
+          description: >-
+            Prometheus text format metrics (default) atau dashboard SLI JSON saat
+            ?format=json dikirim.
           content:
             text/plain:
               schema:
                 type: string
+            application/json:
+              schema:
+                type: object
+                required: [generatedAt, windowMs, slo, readyz, totals, routes, alerts]
+                properties:
+                  generatedAt:
+                    type: string
+                  windowMs:
+                    type: number
+                  slo:
+                    type: object
+                  readyz:
+                    type: object
+                  totals:
+                    type: object
+                  routes:
+                    type: array
+                    items:
+                      type: object
+                  alerts:
+                    type: array
+                    items:
+                      type: object
         '401':
           description: Missing or invalid METRICS_TOKEN bearer token
           content:
