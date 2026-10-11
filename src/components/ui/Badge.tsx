@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-type Tone = 'emerald' | 'amber' | 'rose' | 'slate' | 'sky';
+export type Tone = 'emerald' | 'amber' | 'rose' | 'slate' | 'sky';
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
   tone?: Tone;

@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import DataTable from '@/components/admin/DataTable';
+import ConfirmModal from '@/components/admin/ConfirmModal';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Pagination from '@/components/ui/Pagination';
+import Badge from '@/components/ui/Badge';
 import { errMsg } from '@/lib/admin-errors';
 
 type Rack = {
@@ -25,6 +27,7 @@ export default function RakPage() {
   const [formError, setFormError] = useState('');
   const [actionError, setActionError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState<Rack | null>(null);
 
   const load = useCallback(async () => {
     const q = new URLSearchParams({ all: '1', page: String(page), per_page: '50', q: search });
@@ -94,11 +97,13 @@ export default function RakPage() {
     load();
   }
 
-  async function onDelete(id: string) {
-    if (!confirm('Hapus rak ini?')) return;
+  async function confirmDelete() {
+    const row = pendingDelete;
+    if (!row) return;
+    setPendingDelete(null);
     setActionError('');
-    const res = await fetch(`/api/racks/${id}`, { method: 'DELETE' });
-    const json = await res.json();
+    const res = await fetch(`/api/racks/${row.id}`, { method: 'DELETE' });
+    const json = await res.json().catch(() => ({}));
     if (!res.ok) {
       setActionError(errMsg(json));
       return;
@@ -193,7 +198,9 @@ export default function RakPage() {
                 aria-pressed={r.is_active}
                 className="inline-flex min-h-[44px] items-center rounded-full border px-3 text-xs hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
-                {r.is_active ? 'Aktif' : 'Nonaktif'}
+                <Badge tone={r.is_active ? 'emerald' : 'slate'}>
+                  {r.is_active ? 'Aktif' : 'Nonaktif'}
+                </Badge>
               </button>
             ),
           },
@@ -203,7 +210,7 @@ export default function RakPage() {
             render: (r) => (
               <button
                 type="button"
-                onClick={() => onDelete(r.id)}
+                onClick={() => setPendingDelete(r)}
                 aria-label={`Hapus rak ${r.code}`}
                 className="inline-flex min-h-[44px] items-center text-red-600 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
@@ -216,6 +223,19 @@ export default function RakPage() {
         getRowKey={(r) => r.id}
       />
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
+
+      <ConfirmModal
+        open={pendingDelete !== null}
+        onClose={() => setPendingDelete(null)}
+        onConfirm={() => void confirmDelete()}
+        title="Hapus rak"
+        description="Buku yang menunjuk ke rak ini akan kehilangan rak."
+        confirmLabel="Ya, hapus"
+      >
+        <p>
+          Hapus rak <strong>{pendingDelete?.code}</strong> ({pendingDelete?.name})?
+        </p>
+      </ConfirmModal>
     </div>
   );
 }

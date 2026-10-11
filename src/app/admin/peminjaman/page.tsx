@@ -5,9 +5,11 @@ import nextDynamic from 'next/dynamic';
 import DataTable, { type SortDir } from '@/components/admin/DataTable';
 import DunningButton from '@/components/admin/DunningButton';
 import ExportCsvButton from '@/components/admin/ExportCsvButton';
+import FilterBar from '@/components/admin/FilterBar';
 import Button from '@/components/ui/Button';
 import Modal from '@/components/ui/Modal';
 import Pagination from '@/components/ui/Pagination';
+import StatusBadge from '@/components/ui/StatusBadge';
 import { errMsg } from '@/lib/admin-errors';
 import { effectiveLoanStatus } from '@/lib/loans-overdue';
 
@@ -50,6 +52,7 @@ export default function PeminjamanPage() {
   const [books, setBooks] = useState<{ id: string; label: string; stock?: number }[]>([]);
   const [status, setStatus] = useState('');
   const [overdueOnly, setOverdueOnly] = useState(false);
+  const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [sortKey, setSortKey] = useState('');
@@ -118,8 +121,9 @@ export default function PeminjamanPage() {
     try {
       const q = new URLSearchParams({
         page: String(page),
-        per_page: '10',
+        per_page: '20',
         ...(overdueOnly ? { overdue: '1' } : status ? { status } : {}),
+        ...(search ? { q: search } : {}),
         ...(sortKey ? { sort: sortKey, order: sortDir } : {}),
       });
       const res = await fetch(`/api/loans?${q}`);
@@ -132,7 +136,6 @@ export default function PeminjamanPage() {
       const json = (await res.json().catch(() => ({}))) as {
         data?: Loan[];
         pagination?: { totalPages?: number };
-        meta?: { totalPages?: number };
       };
       if (!res.ok) throw new Error(errMsg(json, 'Gagal memuat peminjaman.'));
       setLoans(json.data ?? []);
@@ -140,7 +143,7 @@ export default function PeminjamanPage() {
     } catch (e) {
       setError((e as Error).message);
     }
-  }, [status, overdueOnly, page, sortKey, sortDir]);
+  }, [status, overdueOnly, search, page, sortKey, sortDir]);
 
   // Gagal -> optionsLoaded TIDAK diset (retry oleh "Muat ulang"/force berikutnya).
   const loadOptions = useCallback(async (force = false) => {
@@ -200,7 +203,8 @@ export default function PeminjamanPage() {
   }, []);
 
   useEffect(() => {
-    load();
+    const t = setTimeout(load, 300);
+    return () => clearTimeout(t);
   }, [load]);
   useEffect(() => {
     loadOptions();
@@ -447,7 +451,36 @@ export default function PeminjamanPage() {
         </p>
       )}
       <LoanForm members={members} books={books} loanDays={loanDays} />
-      <div className="flex flex-wrap items-end gap-2 text-sm">
+      <FilterBar
+        search={{
+          id: 'peminjaman-search',
+          label: 'Cari peminjaman',
+          placeholder: 'Cari kode anggota / judul buku…',
+          value: search,
+          onChange: (v) => {
+            setPage(1);
+            setSearch(v);
+          },
+        }}
+        onReload={() => {
+          void Promise.all([load(), loadOptions(true)]);
+        }}
+        actions={
+          <ExportCsvButton
+            filename="peminjaman.csv"
+            headers={['ID', 'Anggota', 'Buku', 'Pinjam', 'Tempo', 'Status', 'Denda']}
+            rows={loans.map((r) => [
+              r.id,
+              r.members?.member_code ?? '',
+              r.books?.title ?? '',
+              r.borrowed_at,
+              r.due_at,
+              statusOf(r),
+              r.fine_amount,
+            ])}
+          />
+        }
+      >
         <div className="grid gap-1">
           <label htmlFor="peminjaman-status" className="text-sm font-semibold text-slate-700">
             Filter status
@@ -477,29 +510,7 @@ export default function PeminjamanPage() {
         >
           Terlambat saja
         </button>
-        <button
-          type="button"
-          onClick={() => {
-            void Promise.all([load(), loadOptions(true)]);
-          }}
-          className="inline-flex min-h-[44px] items-center justify-center rounded-md border border-slate-200 bg-white px-3 font-semibold text-slate-700 transition hover:border-brand hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
-        >
-          Muat ulang
-        </button>
-        <ExportCsvButton
-          filename="peminjaman.csv"
-          headers={['ID', 'Anggota', 'Buku', 'Pinjam', 'Tempo', 'Status', 'Denda']}
-          rows={loans.map((r) => [
-            r.id,
-            r.members?.member_code ?? '',
-            r.books?.title ?? '',
-            r.borrowed_at,
-            r.due_at,
-            statusOf(r),
-            r.fine_amount,
-          ])}
-        />
-      </div>
+      </FilterBar>
       <DataTable<Loan>
         sortKey={sortKey}
         sortDir={sortDir}
@@ -538,7 +549,7 @@ export default function PeminjamanPage() {
             key: 'status',
             header: 'Status',
             sortable: true,
-            render: (r) => statusOf(r),
+            render: (r) => <StatusBadge status={statusOf(r)} />,
           },
           { key: 'fine_amount', header: 'Denda', render: (r) => fmtRp(r.fine_amount) },
           {
@@ -585,7 +596,14 @@ export default function PeminjamanPage() {
         ]}
         rows={loans}
         getRowKey={(r) => r.id}
-        emptyText="Belum ada peminjaman."
+        emptyState={{
+          title: 'Belum ada peminjaman',
+          description: search
+            ? `Tidak ada peminjaman yang cocok dengan "${search}". Coba kode anggota atau judul buku lain.`
+            : overdueOnly
+              ? 'Tidak ada pinjaman terlambat. Semua buku masih dalam tempo.'
+              : 'Pinjaman yang dicatat akan muncul di sini.',
+        }}
       />
       <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
     </div>
