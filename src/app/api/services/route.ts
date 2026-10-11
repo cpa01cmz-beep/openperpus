@@ -71,7 +71,7 @@ function revalidateServices(): string[] {
 export async function GET(req: Request) {
   const log = createLogger(requestIdFromHeaders(req.headers));
   const supabase = createClient();
-  const { sp, page, perPage, q, from, to } = parsePaging(req.url, 20);
+  const { sp, page, perPage, q, from, to } = parsePaging(req.url);
   const all = sp.get('all');
   const id = (sp.get('id') ?? '').trim();
 
