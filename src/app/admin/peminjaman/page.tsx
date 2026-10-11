@@ -263,7 +263,7 @@ function PeminjamanInner() {
         open={pendingReturn !== null}
         onClose={() => setPendingReturn(null)}
         title="Proses pengembalian"
-        description={`Denda dihitung otomatis Rp${finePerDay.toLocaleString('id-ID')}/hari telat (tarif denda_per_hari).`}
+        description={`Denda dihitung otomatis ${formatRp(finePerDay)}/hari telat (tarif denda_per_hari).`}
         footer={
           <>
             <Button
@@ -298,7 +298,7 @@ function PeminjamanInner() {
               value: 'rusak',
               label: `Rusak — stok berkurang${
                 replacementFees.rusak > 0
-                  ? ` + denda ganti rugi Rp${replacementFees.rusak.toLocaleString('id-ID')}`
+                  ? ` + denda ganti rugi ${formatRp(replacementFees.rusak)}`
                   : ''
               }`,
             },
@@ -306,7 +306,7 @@ function PeminjamanInner() {
               value: 'hilang',
               label: `Hilang — stok berkurang${
                 replacementFees.hilang > 0
-                  ? ` + denda ganti rugi Rp${replacementFees.hilang.toLocaleString('id-ID')}`
+                  ? ` + denda ganti rugi ${formatRp(replacementFees.hilang)}`
                   : ''
               }`,
             },
@@ -425,6 +425,7 @@ function PeminjamanInner() {
         actions={
           <ExportCsvButton
             filename="peminjaman.csv"
+            scope="loans"
             headers={['ID', 'Anggota', 'Buku', 'Pinjam', 'Tempo', 'Status', 'Denda']}
             rows={loans.map((r) => [
               r.id,

@@ -68,8 +68,11 @@ describe('#62 modul bersama ada', () => {
   });
 });
 
-describe('#62 AC2: nol duplikasi fmtRp/num', () => {
-  it('tidak ada definisi inline formatter rupiah di src (hanya src/lib/format.ts)', () => {
+describe('#62 AC2: nol duplikasi fmtRp', () => {
+  it('tidak ada definisi inline formatter RUPIAH di src (hanya src/lib/format.ts)', () => {
+    // Yang dilarang adalah formatter mata uang (`fmtRp`/`formatRp`) — itulah
+    // duplikasi yang disebut isu. Helper `num` kecil milik modul CSV/ekspor
+    // (mis. src/lib/report-export.ts) bukan duplikasi formatter.
     const offenders: string[] = [];
     const walk = (dir: string) => {
       for (const entry of readdirSync(join(ROOT, dir), { withFileTypes: true })) {
@@ -81,12 +84,10 @@ describe('#62 AC2: nol duplikasi fmtRp/num', () => {
         if (!/\.tsx?$/.test(entry.name)) continue;
         const src = read(rel);
         for (const line of src.split('\n')) {
-          // Definisinya sendiri (bukan pemakaian), dan bukan file kanonis.
           if (
             rel !== 'src/lib/format.ts' &&
-            /(const|function|let|var)\s+(fmtRp|formatRp|num)\b/.test(line) &&
-            !/^const fmtRp = formatRp;/.test(line.trim()) &&
-            !/= formatRp;/.test(line)
+            /(const|function|let|var)\s+(fmtRp|formatRp)\b/.test(line) &&
+            !/= formatRp;$/.test(line.trim())
           ) {
             offenders.push(`${rel}: ${line.trim()}`);
           }
@@ -96,8 +97,15 @@ describe('#62 AC2: nol duplikasi fmtRp/num', () => {
     walk('src');
     expect(
       offenders,
-      `formatter rupiah/angka seharusnya mengimpor src/lib/format.ts: ${offenders.join(' | ')}`
+      `formatter rupiah seharusnya mengimpor src/lib/format.ts: ${offenders.join(' | ')}`
     ).toEqual([]);
+  });
+
+  it('halaman daftar tak lagi menulis formula rupiah inline', () => {
+    for (const f of LIST_PAGES) {
+      const s = readCode(f);
+      expect(s, `${f}: tanpa formula rupiah inline`).not.toMatch(/Rp\$\{/);
+    }
   });
 
   it('wa-dunning & loan-eligibility tetap mengekspor formatRp (konsumen lama aman)', async () => {

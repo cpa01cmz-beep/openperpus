@@ -325,6 +325,7 @@ export default function DendaPage() {
         actions={
           <ExportCsvButton
             filename="denda.csv"
+            scope="fines"
             headers={['ID', 'Anggota', 'Tagihan', 'Dibayar', 'Status', 'No. struk', 'Terbit']}
             rows={rows.map((r) => [
               r.id,
