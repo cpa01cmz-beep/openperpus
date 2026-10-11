@@ -47,7 +47,7 @@ export async function GET(req: Request) {
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
   const { supabase } = guard as { supabase: ReturnType<typeof createClient> };
 
-  const { sp, page, perPage, from, to } = parsePaging(req.url, 10);
+  const { sp, page, perPage, from, to } = parsePaging(req.url);
 
   const SORTABLE = ['title', 'sort_order', 'created_at'] as const;
   const sortParam = (sp.get('sort') ?? '').trim();
@@ -80,7 +80,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const log = createLogger(requestIdFromHeaders(req.headers));
-  const guard = await requireStaff(['admin', 'librarian']);
+  const guard = await requireStaff();
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
   const { supabase, user } = guard as {
     supabase: ReturnType<typeof createClient>;

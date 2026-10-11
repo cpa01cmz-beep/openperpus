@@ -34,7 +34,7 @@ async function writeLog(
 
 export async function GET(req: Request) {
   const log = createLogger(requestIdFromHeaders(req.headers));
-  const { sp, page, perPage, q, from, to } = parsePaging(req.url, 10);
+  const { sp, page, perPage, q, from, to } = parsePaging(req.url);
   const status = (sp.get('status') ?? '').trim();
   const all = (sp.get('all') ?? '').trim();
 
@@ -79,7 +79,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const log = createLogger(requestIdFromHeaders(req.headers));
-  const guard = await requireStaff(['admin', 'librarian']);
+  const guard = await requireStaff();
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
   const { supabase, user } = guard as {
     supabase: ReturnType<typeof createClient>;

@@ -165,7 +165,8 @@ async function fetchBooksUncached(opts: FetchBooksOpts): Promise<Book[]> {
     if (opts.availableOnly) query = query.gt('stock_available', 0);
     if (opts.page && opts.perPage) {
       const page = Math.max(1, Math.floor(opts.page));
-      const perPage = Math.min(100, Math.max(1, Math.floor(opts.perPage)));
+      // #68: plafon 50 baris/halaman — selaras parsePaging MAX_PER_PAGE.
+      const perPage = Math.min(50, Math.max(1, Math.floor(opts.perPage)));
       query = query.range((page - 1) * perPage, page * perPage - 1);
     } else if (opts.limit) {
       query = query.limit(opts.limit);
@@ -191,7 +192,7 @@ async function fetchBooksPagedUncached(opts: FetchBooksOpts): Promise<PagedBooks
   try {
     const supabase = createClient();
     const page = Math.max(1, Math.floor(opts.page ?? 1));
-    const perPage = Math.min(100, Math.max(1, Math.floor(opts.perPage ?? 24)));
+    const perPage = Math.min(50, Math.max(1, Math.floor(opts.perPage ?? 24)));
     const from = (page - 1) * perPage;
     const to = page * perPage - 1;
     const needle = sanitizeIlike(opts.q ?? opts.search ?? '');

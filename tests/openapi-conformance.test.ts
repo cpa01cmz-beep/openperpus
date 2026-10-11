@@ -219,7 +219,7 @@ function usedErrorCodes(): Set<string> {
 }
 
 describe('openapi path/method parity', () => {
-  it('mirrors all 41 route modules in both directions', () => {
+  it('mirrors all 42 route modules in both directions', () => {
     const routePaths = new Set(ROUTE_FILES.map(specPathOf));
     const specPaths = new Set(Object.keys(SPEC.paths));
     // Wave2 menambah 2 modul route (/api/services + /api/services/{id}),
@@ -227,8 +227,9 @@ describe('openapi path/method parity', () => {
     // issue #54 menambah /api/{members,articles,banners}/[id];
     // issue #72 menambah /api/fines/[id]/waive + /api/fines/waivers/[id]/decision;
     // issue #78 menambah /api/reports/export;
+    // isu #76 menambah GET /api/cron/sweep-reservations (Vercel Cron).
     // angka ini detektor perubahan, bukan kunci perilaku — ikut bertambah.
-    expect(ROUTE_FILES).toHaveLength(41);
+    expect(ROUTE_FILES).toHaveLength(42);
     expect([...routePaths].filter((p) => !specPaths.has(p))).toEqual([]);
     expect([...specPaths].filter((p) => !routePaths.has(p))).toEqual([]);
   });
@@ -283,10 +284,10 @@ describe('articles contract', () => {
     expect(articles).not.toContain('meta: { page, per_page');
   });
 
-  it('GET per_page defaults to 10 like parsePaging in the handler', () => {
+  it('GET per_page defaults to 24 like parsePaging in the handler (#68)', () => {
     const perPage = SPEC.components.parameters['PerPageParam'] as Obj;
-    expect(((perPage['schema'] as Obj) ?? {})['default']).toBe(10);
-    expect(articles).toContain('parsePaging(req.url, 10)');
+    expect(((perPage['schema'] as Obj) ?? {})['default']).toBe(24);
+    expect(articles).toContain('parsePaging(req.url)');
   });
 
   it('POST body: title+content_md required, slug optional/auto, status default draft with archived', () => {

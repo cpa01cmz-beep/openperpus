@@ -1,33 +1,17 @@
 /**
- * src/lib/konten-api.ts — API helpers untuk halaman admin/konten.
+ * src/lib/konten-api.ts — API helpers MUTASI untuk halaman admin/konten.
  * Diekstrak verbatim dari page.tsx (behavior-preserving).
  * Mengembalikan true bila sukses, false bila gagal/dibatalkan.
+ *
+ * Pembacaan daftar TIDAK lagi di sini: halaman konten memakai
+ * src/hooks/useAdminList.ts seperti halaman admin lainnya (issue #62),
+ * sehingga `apiList()` lokal dihapus dan tidak ada dua jalur baca.
  */
 import { errMsg } from '@/lib/admin-errors';
 
 export type KontenTab = 'pages' | 'faqs' | 'testimonials';
 
 export { errMsg };
-
-type ApiListResult<T> =
-  { missing: true; rows: T[]; totalPages: 1 } | { missing: false; rows: T[]; totalPages: number };
-
-export async function apiList<T>(path: string, page = 1): Promise<ApiListResult<T>> {
-  const q = new URLSearchParams({ page: String(page), per_page: '10' });
-  const res = await fetch(`${path}?${q}`, { cache: 'no-store' });
-  if (res.status === 404) return { missing: true, rows: [], totalPages: 1 };
-  const json = (await res.json()) as {
-    data?: T[];
-    pagination?: { totalPages?: number };
-    meta?: { totalPages?: number };
-  };
-  if (!res.ok) throw new Error(errMsg(json));
-  return {
-    missing: false,
-    rows: (json.data ?? []) as T[],
-    totalPages: json.pagination?.totalPages ?? 1,
-  };
-}
 
 function pathForKind(kind: KontenTab): string {
   return kind === 'pages' ? '/api/pages' : kind === 'faqs' ? '/api/faqs' : '/api/testimonials';

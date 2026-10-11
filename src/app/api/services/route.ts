@@ -71,7 +71,7 @@ function revalidateServices(): string[] {
 export async function GET(req: Request) {
   const log = createLogger(requestIdFromHeaders(req.headers));
   const supabase = createClient();
-  const { sp, page, perPage, q, from, to } = parsePaging(req.url, 20);
+  const { sp, page, perPage, q, from, to } = parsePaging(req.url);
   const all = sp.get('all');
   const id = (sp.get('id') ?? '').trim();
 
@@ -125,7 +125,7 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const log = createLogger(requestIdFromHeaders(req.headers));
-  const guard = await requireStaff(['admin', 'librarian']);
+  const guard = await requireStaff();
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
   const { supabase, user } = guard as {
     supabase: ReturnType<typeof createClient>;

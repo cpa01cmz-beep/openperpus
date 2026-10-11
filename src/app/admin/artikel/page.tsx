@@ -1,21 +1,20 @@
 'use client';
 
 import Link from 'next/link';
-import { useCallback, useEffect, useState } from 'react';
+import { useState } from 'react';
 import DataTable from '@/components/admin/DataTable';
 import ConfirmModal from '@/components/admin/ConfirmModal';
 import Button from '@/components/ui/Button';
 import Input from '@/components/ui/Input';
 import Pagination from '@/components/ui/Pagination';
 import StatusBadge from '@/components/ui/StatusBadge';
+import { useAdminList } from '@/hooks/useAdminList';
 import { errMsg } from '@/lib/admin-errors';
 
 type Article = { id: string; title: string; slug: string; status: string };
 
 export default function ArtikelPage() {
-  const [rows, setRows] = useState<Article[]>([]);
   const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [form, setForm] = useState({
     title: '',
     content_md: '',
@@ -29,23 +28,13 @@ export default function ArtikelPage() {
   const [notice, setNotice] = useState('');
   const [pendingDelete, setPendingDelete] = useState<Article | null>(null);
 
-  const load = useCallback(async () => {
-    const q = new URLSearchParams({ page: String(page), per_page: '10' });
-    const res = await fetch(`/api/articles?${q}`);
-    const json = (await res.json()) as {
-      data?: Article[];
-      pagination?: { totalPages?: number };
-      meta?: { totalPages?: number };
-    };
-    if (res.ok) {
-      setRows(json.data ?? []);
-      setTotalPages(json.pagination?.totalPages ?? 1);
-    }
-  }, [page]);
-
-  useEffect(() => {
-    load();
-  }, [load]);
+  // #62: satu hook daftar — ukuran halaman tunggal dari src/lib/pagination.ts.
+  const list = useAdminList<Article>({
+    path: '/api/articles',
+    params: { page: String(page) },
+    errorMessage: 'Gagal memuat artikel.',
+  });
+  const { rows, totalPages, error: listError, reload: load } = list;
 
   async function onAdd(e: React.FormEvent) {
     e.preventDefault();
@@ -99,6 +88,11 @@ export default function ArtikelPage() {
   return (
     <div className="grid gap-4">
       <h1 className="text-2xl font-bold">Artikel</h1>
+      {listError && (
+        <p role="alert" className="text-sm text-red-600">
+          {listError}
+        </p>
+      )}
       {notice && (
         <div
           role="status"

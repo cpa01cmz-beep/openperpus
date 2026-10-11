@@ -17,7 +17,7 @@ type Ctx = { params: Promise<{ id: string }> };
 export async function POST(req: Request, { params }: Ctx) {
   const { id } = await params;
   const log = createLogger(requestIdFromHeaders(req.headers));
-  const guard = await requireStaff(['admin', 'librarian']);
+  const guard = await requireStaff();
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
   const { supabase, user } = guard as {
     supabase: ReturnType<typeof createClient>;
