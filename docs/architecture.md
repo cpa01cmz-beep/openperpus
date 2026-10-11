@@ -169,6 +169,7 @@ Browser → middleware.ts (refresh session + role gate staff) → admin/layout.t
 - Public JANGAN pakai `cookies()`-dependent fetch yang memaksa dynamic — pisahkan komponen settings (cached) dari komponen user-specific.
 - Semua query list wajib paginasi (`range()`) + `order()` eksplisit. Count: `estimated` untuk `/api/books`, `exact` untuk list staf ber-total (loans/members/fines/reservations) — satu envelope `pagination` untuk semua (issue #61).
 - N+1 dilarang: pakai embed PostgREST (mis. `select('*, categories(id,name,slug), racks(code,name,location)')`) atau RPC agregat (`get_dashboard_stats`, `search_books`) — view `books_with_stock` sudah tidak ada.
+- **Satu sumber tampilan (issue #79):** tanggal/angka WAJIB lewat `src/lib/format.ts` (`formatTanggal`, `formatWaktu`, `formatNum`, `formatRp`, `formatStamp`) — `toLocale*` inline ditolak ESLint (`openperpus/no-inline-format`). Label status WAJIB dari `src/lib/enums.ts` (value EN + label ID + tone), dipakai bersama dropdown filter dan `StatusBadge`. Dialog native (`alert`/`confirm`/`prompt`) dilarang di seluruh `src` (`no-alert`); konfirmasi destruktif memakai `components/admin/ConfirmModal`.
 
 ---
 

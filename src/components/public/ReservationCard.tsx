@@ -3,25 +3,15 @@
 import { useState } from 'react';
 import { BookmarkX, CalendarClock, Loader2 } from 'lucide-react';
 import type { MyLoan, MyReservation } from '@/lib/reservations-client';
+import { statusLabel } from '@/components/ui/StatusBadge';
+import { formatTanggalRingkas } from '@/lib/format';
 
+// Label status dari satu sumber enum (src/lib/enums.ts via StatusBadge) —
+// tidak ada kamus lokal kedua (issue #79).
 function fmtDate(iso: string | null | undefined): string {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return '—';
-  return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' });
+  const out = formatTanggalRingkas(iso);
+  return out === '-' ? '—' : out;
 }
-
-const STATUS_LABEL: Record<string, string> = {
-  pending: 'Menunggu',
-  ready: 'Siap diambil',
-  completed: 'Selesai',
-  cancelled: 'Dibatalkan',
-  expired: 'Kedaluwarsa',
-  borrowed: 'Dipinjam',
-  overdue: 'Terlambat',
-  returned: 'Dikembalikan',
-  lost: 'Hilang',
-};
 
 function StatusBadge({ status }: { status: string }) {
   const tone =
@@ -35,7 +25,7 @@ function StatusBadge({ status }: { status: string }) {
       data-testid="reservation-status"
       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-bold ${tone}`}
     >
-      {STATUS_LABEL[status] ?? status}
+      {statusLabel(status)}
     </span>
   );
 }

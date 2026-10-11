@@ -6,6 +6,13 @@
  * Pembacaan daftar TIDAK lagi di sini: halaman konten memakai
  * src/hooks/useAdminList.ts seperti halaman admin lainnya (issue #62),
  * sehingga `apiList()` lokal dihapus dan tidak ada dua jalur baca.
+ *
+ * Isu #79: TIDAK ADA dialog native (alert/confirm/prompt) di sini. Semua
+ * kegagalan mengalir lewat callback `onMissing`/`onError` milik pemanggil
+ * (satu-satunya pemanggil — admin/konten/page.tsx — selalu mengirim
+ * keduanya, jadi perilaku tampilan tidak berubah: pesan tampil sebagai
+ * banner inline, bukan dialog native). Konfirmasi hapus adalah milik UI
+ * (ConfirmModal di tab), bukan helper transport.
  */
 import { errMsg } from '@/lib/admin-errors';
 
@@ -18,7 +25,9 @@ function pathForKind(kind: KontenTab): string {
 }
 
 export interface KontenMutateOpts {
+  /** 404 — endpoint belum tersedia; pemanggil menampilkan banner per-tab. */
   onMissing?: (kind: KontenTab) => void;
+  /** Kegagalan lain — pemanggil menampilkan banner error inline. */
   onError?: (msg: string) => void;
   onSuccess?: () => void;
 }
@@ -37,13 +46,10 @@ export async function onAdd(
   const json = await res.json().catch(() => ({}));
   if (res.status === 404) {
     opts?.onMissing?.(kind);
-    alert(`API ${path} belum tersedia di backend.`);
     return false;
   }
   if (!res.ok) {
-    const m = errMsg(json);
-    if (opts?.onError) opts.onError(m);
-    else alert(m);
+    opts?.onError?.(errMsg(json, 'Gagal menambah data.'));
     return false;
   }
   opts?.onSuccess?.();
@@ -65,12 +71,11 @@ export async function onToggle(
   });
   if (res.status === 404) {
     opts?.onMissing?.(kind);
-    alert(`API ${path} belum tersedia di backend.`);
     return false;
   }
   if (!res.ok) {
-    if (opts?.onError) opts.onError('Gagal update.');
-    else alert('Gagal update.');
+    const json = await res.json().catch(() => ({}));
+    opts?.onError?.(errMsg(json, 'Gagal update.'));
     return false;
   }
   opts?.onSuccess?.();
@@ -82,18 +87,18 @@ export async function onDelete(
   id: string,
   opts?: KontenMutateOpts
 ): Promise<boolean> {
-  if (!confirm('Hapus data ini?')) return false;
+  // Konfirmasi hapus ada di UI (ConfirmModal per tab) sebelum fungsi ini
+  // dipanggil — helper transport tidak lagi memunculkan dialog native.
   const path = pathForKind(kind);
   // Satu transport ID (issue #54): DELETE via path REST /{id}, bukan ?id=.
   const res = await fetch(`${path}/${id}`, { method: 'DELETE' });
   if (res.status === 404) {
     opts?.onMissing?.(kind);
-    alert(`API ${path} belum tersedia di backend.`);
     return false;
   }
   if (!res.ok) {
-    if (opts?.onError) opts.onError('Gagal menghapus.');
-    else alert('Gagal menghapus.');
+    const json = await res.json().catch(() => ({}));
+    opts?.onError?.(errMsg(json, 'Gagal menghapus.'));
     return false;
   }
   opts?.onSuccess?.();
