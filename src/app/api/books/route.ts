@@ -21,7 +21,7 @@ export async function GET(req: Request) {
   // PUBLIK: tanpa requireStaff. Keamanan dipegang RLS (is_active=true).
   const supabase = createClient();
 
-  const { sp, page, perPage, q, from, to } = parsePaging(req.url, 10);
+  const { sp, page, perPage, q, from, to } = parsePaging(req.url);
   const kategori = (sp.get('kategori') ?? sp.get('category') ?? '').trim();
   const rak = (sp.get('rak') ?? '').trim();
   const tersedia = sp.get('tersedia');

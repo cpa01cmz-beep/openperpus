@@ -2,7 +2,8 @@ import { unstable_cache } from 'next/cache';
 import { createPublicClient as createClient } from '@/lib/supabase/public';
 import { cachedFetch } from '@/lib/fetch-cache';
 import { DEFAULT_THEME } from '@/lib/themes';
-import { isAllowedLinkUrl } from '@/lib/validation/content';
+// Issue #68: helper URL pure dari leaf (barrel content menarik sanitize-html).
+import { isAllowedLinkUrl } from '@/lib/validation/url';
 import {
   FALLBACK_SETTINGS,
   normalizeOperationalHours,

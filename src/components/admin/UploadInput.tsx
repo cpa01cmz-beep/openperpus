@@ -3,7 +3,9 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
-import { isAllowedImageUrl } from '@/lib/validation';
+// Issue #68: impor leaf pure — barrel '@/lib/validation' menarik sanitize-html
+// (server-only) ke bundle client.
+import { isAllowedImageUrl } from '@/lib/validation/url';
 
 const BUCKET = 'library-assets';
 const MAX_SIZE = 10485760; // 10MB — matches supabase/migrations/0004_storage.sql
