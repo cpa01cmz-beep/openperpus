@@ -7,9 +7,9 @@ import { createLogger, requestIdFromHeaders } from '@/lib/logger';
 type Ctx = { params: Promise<{ id: string }> };
 
 /**
- * GET /api/members/[id] — pustakawan+
- * PUT /api/members/[id] — pustakawan+ (partial update: status/address/phone)
- * DELETE /api/members/[id] — admin (tolak bila ada loan borrowed/overdue)
+ * GET /api/members/[id] — pustakawan+ (404 bila soft-deleted)
+ * PUT /api/members/[id] — pustakawan+ (partial update: status/address/phone; 404 bila soft-deleted)
+ * DELETE /api/members/[id] — admin SOFT (deleted_at + anonimisasi; tolak 409 bila loan aktif)
  *
  * Satu transport ID (issue #54): id hanya via path REST, bukan ?id=.
  * Kolom mengikuti migrasi 0001; nama/email ada di profiles.full_name.
@@ -31,7 +31,7 @@ export async function GET(_req: Request, { params }: Ctx) {
     .select('*, profiles(id,full_name)')
     .eq('id', id)
     .single();
-  if (error || !data) {
+  if (error || !data || (data as { deleted_at?: string | null }).deleted_at) {
     log.warn('members.id.not_found', { detail: error?.message ?? 'not-found' });
     return jsonError('NOT_FOUND', 'Anggota tidak ditemukan.', 404, { requestId: log.requestId });
   }
@@ -47,6 +47,13 @@ export async function PUT(req: Request, { params }: Ctx) {
   // #54: id path WAJIB UUID — tolak 400 lebih awal, bukan string sembaran ke query.
   if (!isUuid(id)) return jsonError('VALIDATION', 'ID anggota tidak valid (harus UUID).', 400);
   if (!isUuid(id)) return jsonError('VALIDATION', 'ID anggota tidak valid (harus UUID).', 400);
+  const { data: cur } = await supabase
+    .from('members')
+    .select('id,deleted_at')
+    .eq('id', id)
+    .single();
+  if ((cur as { deleted_at?: string | null } | null)?.deleted_at)
+    return jsonError('NOT_FOUND', 'Anggota tidak ditemukan.', 404);
 
   let body: Record<string, unknown>;
   try {
@@ -100,7 +107,18 @@ export async function DELETE(_req: Request, { params }: Ctx) {
     .in('status', ['borrowed', 'overdue']);
   if ((count ?? 0) > 0) return jsonError('CONFLICT', 'Anggota masih punya pinjaman berjalan.', 409);
 
-  const { error } = await supabase.from('members').delete().eq('id', id);
+  const { data: cur } = await supabase
+    .from('members')
+    .select('id,deleted_at')
+    .eq('id', id)
+    .single();
+  if ((cur as { deleted_at?: string | null } | null)?.deleted_at)
+    return jsonError('NOT_FOUND', 'Anggota tidak ditemukan.', 404);
+
+  const { error } = await supabase
+    .from('members')
+    .update({ deleted_at: new Date().toISOString(), phone: null, address: null })
+    .eq('id', id);
   if (error) {
     log.error('members.id.delete_failed', { detail: error.message });
     return jsonError('DELETE_FAILED', 'Gagal menghapus anggota.', 500, {

@@ -163,8 +163,11 @@ export async function POST(req: Request) {
  * PUT /api/books { action: 'stock_opname', items: [{ id, stock_total, stock_available }] }
  * Stok opname massal: update stok per baris, lewati buku dengan loan aktif,
  * baris invalid (available > total / negatif) dilewati dengan reason.
- * Audit books.stock_opname best-effort per baris terupdate.
- * Balikan: { data: { updated: string[], skipped: [{ id, reason }] } }.
+ * Selisih dihitung SEBELUM upsert -> { diffs: [{ id, old_available, new_available }] }
+ * + 1 audit row berisi full diff di metadata. Clamp available <= total - active.
+ * ponytail: naikkan ke RPC atomik (row lock + single round-trip) + approval
+ * dua langkah bila opname jadi SOP sensitif — cukup bila bulk <= 100 manual.
+ * Balikan: { data: { updated: string[], skipped: [{ id, reason }], diffs: [...] } }.
  */
 export async function PUT(req: Request) {
   const log = createLogger(requestIdFromHeaders(req.headers));
@@ -201,7 +204,10 @@ export async function PUT(req: Request) {
     .select('book_id')
     .in('book_id', validIds)
     .in('status', ['borrowed', 'overdue']);
-  const blocked = new Set(((active ?? []) as { book_id: string }[]).map((r) => r.book_id));
+  const activeBookIds = ((active ?? []) as { book_id: string }[]).map((r) => r.book_id);
+  const blocked = new Set(activeBookIds);
+  const activeCounts = new Map<string, number>();
+  for (const b of activeBookIds) activeCounts.set(b, (activeCounts.get(b) ?? 0) + 1);
 
   const skipped: { id: string; reason: string }[] = [];
   const rows: { id: string; stock_total: number; stock_available: number }[] = [];
@@ -226,14 +232,34 @@ export async function PUT(req: Request) {
       skipped.push({ id, reason: 'Stok tersedia melebihi stok total.' });
       continue;
     }
-    if (!rows.some((r) => r.id === id)) rows.push({ id, stock_total: st, stock_available: sa });
+    const maxAvail = Math.max(0, st - (activeCounts.get(id) ?? 0));
+    const clamped = Math.min(sa, maxAvail);
+    if (!rows.some((r) => r.id === id))
+      rows.push({ id, stock_total: st, stock_available: clamped });
   }
   let updated: string[] = [];
+  let diffs: { id: string; old_available: number | null; new_available: number }[] = [];
   if (rows.length > 0) {
+    const { data: cur } = await supabase
+      .from('books')
+      .select('id,stock_available')
+      .in(
+        'id',
+        rows.map((r) => r.id)
+      );
+    const oldMap = new Map<string, number>();
+    for (const b of (cur ?? []) as { id: string; stock_available: number }[])
+      oldMap.set(b.id, b.stock_available);
+    diffs = rows.map((r) => ({
+      id: r.id,
+      old_available: oldMap.has(r.id) ? (oldMap.get(r.id) as number) : null,
+      new_available: r.stock_available,
+    }));
     const { error } = await supabase.from('books').upsert(rows, { onConflict: 'id' });
     if (error) {
       log.error('books.stock_opname_failed', { detail: error.message });
       for (const r of rows) skipped.push({ id: r.id, reason: 'Gagal menyimpan.' });
+      diffs = [];
     } else {
       updated = rows.map((r) => r.id);
       try {
@@ -242,7 +268,7 @@ export async function PUT(req: Request) {
           action: 'books.stock_opname',
           entity_type: 'books',
           entity_id: updated[0] as string,
-          metadata: { ids: updated, bulk: items.length > 1 },
+          metadata: { ids: updated, diffs, bulk: items.length > 1 },
         });
       } catch {
         /* best-effort */
@@ -250,13 +276,13 @@ export async function PUT(req: Request) {
     }
   }
   revalidateTag('books', 'max');
-  return NextResponse.json({ data: { updated, skipped } });
+  return NextResponse.json({ data: { updated, skipped, diffs } });
 }
 
 /**
- * DELETE /api/books?id=<uuid>[,<uuid>...] -> staf (admin/librarian).
- * Bulk delete: lewati buku yang masih dipinjam (borrowed/overdue),
- * audit books.delete best-effort untuk tiap buku yang terhapus.
+ * DELETE /api/books?id=<uuid>[,<uuid>...] -> staf (admin/librarian) SOFT.
+ * Bulk soft-delete (is_active=false): lewati buku yang masih dipinjam
+ * (borrowed/overdue), audit books.delete best-effort.
  * Balikan: { data: { deleted: string[], skipped: string[] } }.
  */
 export async function DELETE(req: Request) {
@@ -292,7 +318,7 @@ export async function DELETE(req: Request) {
   const skipped = ids.filter((id) => blocked.has(id));
 
   if (deletable.length > 0) {
-    const { error } = await supabase.from('books').delete().in('id', deletable);
+    const { error } = await supabase.from('books').update({ is_active: false }).in('id', deletable);
     if (error) {
       log.error('books.delete_failed', { detail: error.message });
       return jsonError('DELETE_FAILED', 'Gagal menghapus buku.', 500, { requestId: log.requestId });

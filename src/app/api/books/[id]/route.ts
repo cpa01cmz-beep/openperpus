@@ -148,7 +148,7 @@ export async function DELETE(_req: Request, { params }: Ctx) {
   if ((count ?? 0) > 0)
     return jsonError('CONFLICT', 'Buku masih dipinjam, tidak bisa dihapus.', 409);
 
-  const { error } = await supabase.from('books').delete().eq('id', id);
+  const { error } = await supabase.from('books').update({ is_active: false }).eq('id', id);
   if (error)
     return jsonError('DELETE_FAILED', 'Gagal menghapus buku.', 500, { requestId: log.requestId });
   await writeLog(supabase, user?.id, 'books.delete', id);

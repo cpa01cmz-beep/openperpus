@@ -139,7 +139,7 @@ function setStaffMock(seen: Seen, opts?: { session?: boolean }): void {
       return { select: () => ({ eq: () => maybeSingleish({ id: 'M-1' }) }) };
     }
     const c: Record<string, unknown> = {};
-    for (const m of ['eq', 'in', 'lt', 'gt', 'gte', 'range', 'ilike']) c[m] = () => c;
+    for (const m of ['eq', 'in', 'lt', 'gt', 'gte', 'range', 'ilike', 'is']) c[m] = () => c;
     c.select = () => c;
     c.order = (col: string, o?: unknown) => {
       seen.order.push({ col, opts: o });
