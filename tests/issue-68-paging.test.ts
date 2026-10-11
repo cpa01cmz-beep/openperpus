@@ -129,7 +129,10 @@ describe('#68 sanitize-html server-only (first-load JS)', () => {
     const leaf = read('src/lib/validation/url.ts');
     expect(leaf).toContain('export function isAllowedImageUrl');
     expect(leaf).toContain('export function isAllowedLinkUrl');
-    expect(leaf, 'leaf tidak boleh menarik sanitize-html').not.toContain('sanitize-html');
+    expect(leaf, 'leaf tidak boleh mengimpor sanitize-html').not.toMatch(
+      /from\s+['"]sanitize-html['"]/
+    );
+    expect(leaf, 'leaf bebas dependency (zero import)').not.toMatch(/^\s*import\s/m);
   });
 
   it("tidak ada berkas 'use client' yang mengimpor barrel/content ber-sanitize-html", () => {

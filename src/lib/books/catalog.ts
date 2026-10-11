@@ -192,7 +192,6 @@ async function fetchBooksPagedUncached(opts: FetchBooksOpts): Promise<PagedBooks
   try {
     const supabase = createClient();
     const page = Math.max(1, Math.floor(opts.page ?? 1));
-    // #68: plafon 50 baris/halaman — selaras parsePaging MAX_PER_PAGE.
     const perPage = Math.min(50, Math.max(1, Math.floor(opts.perPage ?? 24)));
     const from = (page - 1) * perPage;
     const to = page * perPage - 1;
@@ -203,9 +202,6 @@ async function fetchBooksPagedUncached(opts: FetchBooksOpts): Promise<PagedBooks
       const books = await searchBooksViaRpc(supabase, needle, perPage, from);
       // For total count, we still need a separate query or use max limit
       // Since RPC is limited to 100, fetch up to 100 for total
-      // ponytail: probe 100 sengaja > plafon halaman 50 — memang untuk TOTAL
-      // (bukan page size). RTT ganda (page + total) masih ada; penggabungan ke
-      // satu RPC (window count) butuh migrasi DB — dicatat sebagai sisa #68.
       const allBooks = await searchBooksViaRpc(supabase, needle, 100, 0);
       const total = allBooks.length;
       return { books, total };
