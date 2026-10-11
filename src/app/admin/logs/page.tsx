@@ -22,7 +22,9 @@ type Log = {
 export default async function LogsPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ page?: string; action?: string; entity?: string }>;
+  // Isu #69: `rid` = filter request-id (metadata->>requestId) supaya satu
+  // insiden bisa ditelusuri dari response `x-request-id` ke baris audit ini.
+  searchParams?: Promise<{ page?: string; action?: string; entity?: string; rid?: string }>;
 }) {
   const sp = (await searchParams) ?? {};
   const supabase = createClient();
@@ -58,6 +60,7 @@ export default async function LogsPage({
   const to = from + PER_PAGE - 1;
   const actionFilter = (sp.action ?? '').trim();
   const entityFilter = (sp.entity ?? '').trim();
+  const ridFilter = (sp.rid ?? '').trim().slice(0, 64);
 
   let query = supabase
     .from('activity_logs')
@@ -65,6 +68,9 @@ export default async function LogsPage({
     .order('created_at', { ascending: false });
   if (actionFilter) query = query.eq('action', actionFilter);
   if (entityFilter) query = query.eq('entity_type', entityFilter);
+  // Isu #69: korelasikan request-id (client API memakai pola yang sama —
+  // lihat requestIdFromHeaders + withSli di src/lib/sli.ts).
+  if (ridFilter) query = (query as typeof query).ilike('metadata->>requestId', ridFilter);
 
   const { data, count, error } = await query.range(from, to);
 
@@ -74,6 +80,7 @@ export default async function LogsPage({
     const sp = new URLSearchParams({ page: String(p) });
     if (actionFilter) sp.set('action', actionFilter);
     if (entityFilter) sp.set('entity', entityFilter);
+    if (ridFilter) sp.set('rid', ridFilter);
     return `/admin/logs?${sp}`;
   };
 
@@ -141,7 +148,10 @@ export default async function LogsPage({
         <h1 className="text-2xl font-bold">Log Aktivitas</h1>
         <p className="text-sm text-slate-500">
           Jejak audit read-only (tabel <code className="font-mono">activity_logs</code>), khusus
-          admin. Total {count ?? 0} baris.
+          admin. Total {count ?? 0} baris. Kolom <strong>Trace</strong> menautkan{' '}
+          <code className="font-mono">metadata.requestId</code> — salin{' '}
+          <code className="font-mono">x-request-id</code> dari respons API yang gagal untuk
+          menelusuri seluruh langkah satu insiden.
         </p>
       </div>
 
@@ -189,10 +199,25 @@ export default async function LogsPage({
             ))}
           </select>
         </div>
+        <div className="grid gap-1">
+          <label htmlFor="log-rid" className="text-sm font-semibold text-slate-700">
+            ID Request
+          </label>
+          <input
+            id="log-rid"
+            name="rid"
+            type="search"
+            inputMode="search"
+            maxLength={64}
+            defaultValue={ridFilter}
+            placeholder="x-request-id / trace"
+            className="h-11 min-h-[44px] rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
+          />
+        </div>
         <Button type="submit" size="sm">
           Filter
         </Button>
-        {(actionFilter || entityFilter) && (
+        {(actionFilter || entityFilter || ridFilter) && (
           <Link
             href="/admin/logs"
             className="inline-flex min-h-[44px] items-center justify-center rounded-md border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 transition hover:border-brand hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"

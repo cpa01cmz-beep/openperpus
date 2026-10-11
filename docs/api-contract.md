@@ -340,11 +340,42 @@ Semua list memakai envelope pagination tunggal (§Konvensi). Body kanonis (alias
 ## 8. Logs audit (BUKAN REST)
 
 - **`/api/logs` tidak ada** (memanggilnya = `404`). Halaman `/admin/logs` adalah React Server Component (`force-dynamic`, `revalidate = 0`) yang membaca tabel `activity_logs` **langsung** via Supabase server client (Privileged by RLS staf), memfilter `?action=&entity=&page=` dengan `PER_PAGE = 20`.
+- **Filter `?rid=` (issue #69):** menyaring `activity_logs.metadata->>requestId` (ilike) supaya satu insiden bisa ditelusuri dari header `x-request-id` pada respons API ke baris auditnya. Kolom **Trace** pada tabel menautkan tiap baris ke filter yang sama.
 - Menambah log hanya dari aplikasi (`writeLog` best-effort di server/lib). Jika logs perlu diekspos API, buat route baru + dokumentasikan di `openapi.yaml`.
 
 ---
 
-## Contoh curl (worker wajib jadikan smoke test)
+## 9. Reliability & SLI (issue #69)
+
+- **`GET /api/readyz`** — ping Supabase dibatasi `READYZ_TIMEOUT_MS` (default `3000`, minimum `250`).
+  Melewati batas → `503 { ready:false, checks:{ supabase:"error", detail:"timeout", timeoutMs } }`
+  sehingga probe LB/orchestrator tidak menggantung. Respons **selalu** `Cache-Control: no-store`
+  dan `x-request-id`. Bila `READYZ_TOKEN` di-set, probe perlu `Authorization: Bearer <READYZ_TOKEN>`
+  (tanpa token → `401`); kosong = probe publik.
+- **`GET /api/metrics`** — default teks Prometheus. `?format=json` mengembalikan **dashboard SLI**
+  JSON: `{ generatedAt, windowMs, slo, process, readyz, totals, routes[], breakers, alerts[] }`.
+  Per-route memuat `window { requests, errors, errorRate, availability }`, `latency { p50, p95, p99, max }`,
+  `supabase { count, p95Ms }`, `burnRate`, dan `slo { availabilityMet, p95Met, p99Met, supabaseMet, met }`.
+- **Target SLO** (`src/lib/sli.ts`): availability `99.9%`, `p95 < 300ms`, `p99 < 500ms`,
+  `supabase p95 < 800ms`, window agregasi 5 menit. `alerts` memuat pelanggaran availability,
+  **burn-rate** (`errorRate / (1 - target)` ≥ 1 = error budget habis), latensi, dan readyz.
+- **Instrumentasi** (opsional per route, tanpa mengubah bentuk respons): `withSli(route, req, handler)`
+  dari `src/lib/sli.ts` mencatat `{route, status, durationMs}` + menambahkan `x-request-id`.
+  `/api/readyz`, `/api/metrics`, dan `POST /api/fines/{id}/pay` sudah memakainya; route lain
+  mengikuti pola yang sama saat dibutuhkan. Registry in-memory per isolate (sama seperti
+  `src/lib/rate-limit.ts`) — agregasi anti-PoP adalah tugas scraper, bukan aplikasi.
+- **Korelasi insiden:** setiap handler memakai `createLogger(requestIdFromHeaders(req.headers))`;
+  balasan error membawa `requestId`. Baris audit `activity_logs` dari `POST /api/fines/{id}/pay`
+  menyimpan `metadata.requestId`, dan `/admin/logs` punya filter `?rid=` + kolom **Trace** untuk
+  menelusuri satu insiden dari response API ke jejak audit.
+- **Fetch klien:** form admin/publik memakai `clientFetch()` (`src/lib/api-client.ts`) —
+  `fetch` biasa + batas waktu 10s lewat `AbortController`, tanpa retry — lihat alasan lengkap
+  di modul. Tulisan sengaja tidak di-retry; bila perlu, wiring retry khusus `GET` melalui
+  `fetchWithRetry`.
+- **Observability:** tanpa `SENTRY_DSN`, `captureException()` tetap memancarkan baris JSON
+  terstruktur (`error` + `stack` + ctx) lewat logger bersama — tidak lagi dibuang.
+
+---
 
 ```bash
 curl /api/settings

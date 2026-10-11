@@ -3,6 +3,8 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { errMsg } from '@/lib/admin-errors';
+// Isu #69: simpan pengaturan dibatasi waktu (tanpa AbortController dulu).
+import { clientFetch } from '@/lib/api-client';
 
 /** Kolom canonical migrasi 0001 (library_settings). */
 export type SettingsRow = {
@@ -143,7 +145,7 @@ export default function SettingsForm({ initial }: { initial: SettingsRow }) {
         replacement_fee_damaged: feeDamaged,
         replacement_fee_lost: feeLost,
       };
-      const res = await fetch('/api/settings', {
+      const res = await clientFetch('/api/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),

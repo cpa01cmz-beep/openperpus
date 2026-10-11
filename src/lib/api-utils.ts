@@ -41,18 +41,24 @@ export type WriteLogArgs = {
   entityType: string;
   entityId: string;
   metadata?: Record<string, unknown>;
+  /**
+   * Isu #69: request-id dari header `x-request-id` (lihat requestIdFromHeaders).
+   * Disimpan sebagai metadata.requestId supaya viewer /admin/logs bisa
+   * menelusuri satu insiden lintas log aplikasi + baris audit.
+   */
+  requestId?: string;
 };
 
 /** Audit-log generik (best-effort). Untuk call-site lama yang stabil,
  *  pakai createWriteLog(entityType) agar argumen posisional tak berubah. */
 export async function writeLog(supabase: SupabaseServerClient, args: WriteLogArgs): Promise<void> {
-  const { userId, action, entityType, entityId, metadata = {} } = args;
+  const { userId, action, entityType, entityId, metadata = {}, requestId } = args;
   await insertLog(supabase, {
     user_id: userId ?? null,
     action,
     entity_type: entityType,
     entity_id: entityId,
-    metadata,
+    metadata: requestId ? { requestId, ...metadata } : metadata,
   });
 }
 
@@ -65,14 +71,15 @@ export function createWriteLog(entityType: string) {
     userId: string | null | undefined,
     action: string,
     entityId: string,
-    metadata: Record<string, unknown> = {}
+    metadata: Record<string, unknown> = {},
+    requestId?: string
   ): Promise<void> {
     await insertLog(supabase, {
       user_id: userId ?? null,
       action,
       entity_type: entityType,
       entity_id: entityId,
-      metadata,
+      metadata: requestId ? { requestId, ...metadata } : metadata,
     });
   };
 }

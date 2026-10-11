@@ -3,6 +3,9 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { BookmarkCheck, Loader2, MessageCircle } from 'lucide-react';
+// Isu #69: reservasi 1-klik dibatasi waktu — tamu dapat pesan, bukan spinner
+// yang menggantung, dan fallback WhatsApp tetap tersedia.
+import { clientFetch } from '@/lib/api-client';
 
 type Props = {
   bookId: string;
@@ -22,7 +25,7 @@ export default function ReserveButton({ bookId, slug, title, waHref }: Props) {
     setState('loading');
     setMsg(null);
     try {
-      const res = await fetch('/api/reservations', {
+      const res = await clientFetch('/api/reservations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ book_id: bookId }),

@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { THEMES, getTheme, themes } from '@/lib/themes';
 import { errMsg } from '@/lib/admin-errors';
+// Isu #69: PUT tema dibatasi waktu; kegagalan tetap tampil di blok error.
+import { clientFetch } from '@/lib/api-client';
 
 export default function ThemeSwitcher({ current }: { current: string }) {
   const router = useRouter();
@@ -22,7 +24,7 @@ export default function ThemeSwitcher({ current }: { current: string }) {
     if (id === active) return;
     setSavingId(id);
     try {
-      const res = await fetch('/api/settings/theme', {
+      const res = await clientFetch('/api/settings/theme', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ active_theme: id }),

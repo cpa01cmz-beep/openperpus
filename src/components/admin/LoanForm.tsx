@@ -4,6 +4,9 @@ import { useMemo, useState } from 'react';
 import Button from '@/components/ui/Button';
 import SearchCombobox, { type SearchOption } from './SearchCombobox';
 import { evaluateLoanEligibility } from '@/lib/loan-eligibility';
+// Isu #69: POST checkout dibatasi waktu agar form tidak menggantung selamanya
+// ketika Supabase lambat (pesan timeout tampil di blok error yang sama).
+import { clientFetch } from '@/lib/api-client';
 
 export type Option = {
   id: string;
@@ -72,7 +75,7 @@ export default function LoanForm({
     if (selectedBook && (selectedBook.stock ?? 1) <= 0) return setErr('Stok buku habis.');
     setLoading(true);
     try {
-      const res = await fetch('/api/loans', {
+      const res = await clientFetch('/api/loans', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ member_id: memberId, book_id: bookId, notes: notes || undefined }),
