@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import Button from '@/components/ui/Button';
 import Pagination from '@/components/ui/Pagination';
 import { useAdminList } from '@/hooks/useAdminList';
@@ -48,23 +48,28 @@ export default function KontenPage() {
     path: '/api/pages',
     params: { page: String(page) },
     noStore: true,
+    errorMessage: 'Gagal memuat halaman.',
   });
   const faqsList = useAdminList<Faq>({
     path: '/api/faqs',
     params: { page: String(page) },
     noStore: true,
+    errorMessage: 'Gagal memuat FAQ.',
   });
   const testisList = useAdminList<Testimonial>({
     path: '/api/testimonials',
     params: { page: String(page) },
     noStore: true,
+    errorMessage: 'Gagal memuat testimoni.',
   });
 
   const { rows: pages } = pagesList;
   const { rows: faqs } = faqsList;
   const { rows: testis } = testisList;
   const loading = pagesList.loading || faqsList.loading || testisList.loading;
-  const error = pagesList.error || faqsList.error || testisList.error || actionError;
+  // Ketiga daftar bisa gagal sendiri-sendiri; semua pesannya ditampilkan
+  // (jangan cuma satu yang ikut tersaring).
+  const listErrors = [pagesList.error, faqsList.error, testisList.error].filter(Boolean);
   const missing: Record<Tab, boolean> = {
     pages: pagesList.missing || tabMissing.pages === true,
     faqs: faqsList.missing || tabMissing.faqs === true,
@@ -77,7 +82,18 @@ export default function KontenPage() {
     pagesList.reload();
     faqsList.reload();
     testisList.reload();
-  }, [pagesList.reload, faqsList.reload, testisList.reload]);
+    // Muat ulang yang sukses membuat banner 404 per-tab bisa hilang lagi —
+    // meniru setMissing({...}) yang dulu dihitung ulang tiap load().
+    setTabMissing({});
+    setActionError('');
+    // Objek daftar ikut jadi dependensi agar `load` tidak membeku mengikuti
+    // reload fungsi lama (lihat keluhan eslint exhaustive-deps).
+  }, [pagesList, faqsList, testisList]);
+
+  // Berganti halaman juga memuat ulang daftar: buang pesan aksi lama.
+  useEffect(() => {
+    setActionError('');
+  }, [page]);
 
   const handleAdd = useCallback(
     (kind: Tab, body: Record<string, unknown>) =>
@@ -146,14 +162,23 @@ export default function KontenPage() {
           belum tersedia di backend (404). Sudah dilaporkan ke mandor.
         </div>
       )}
-      {error && (
+      {actionError && (
         <div
           role="alert"
           className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
         >
-          {error}
+          {actionError}
         </div>
       )}
+      {listErrors.map((msg) => (
+        <div
+          key={msg}
+          role="alert"
+          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+        >
+          {msg}
+        </div>
+      ))}
 
       <div role="tablist" aria-label="Jenis konten" className="flex flex-wrap gap-2">
         {tabs.map((t) => (

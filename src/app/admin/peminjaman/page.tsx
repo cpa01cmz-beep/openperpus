@@ -91,9 +91,22 @@ function PeminjamanInner() {
     errorMessage: 'Gagal memuat peminjaman.',
   });
   // Aksi tulis (kembalikan/perpanjang) berbagi pesan error dengan daftar.
-  const { error: actionError, run: submitAction } = useAdminSubmit();
+  const {
+    error: actionError,
+    run: submitAction,
+    busy,
+    clearError: clearActionError,
+  } = useAdminSubmit();
   const { rows: loans, totalPages, denied, reload: load, clearError } = list;
-  const error = list.error || actionError;
+  // Pesan aksi tulis lebih baru daripada pesan pemuatan daftar, jadi ia yang
+  // ditampilkan lebih dulu (dulu satu state, selalu ditimpa yang terbaru).
+  const error = actionError || list.error;
+
+  // Daftar dimuat ulang karena filter/halaman berubah -> pesan aksi lama
+  // dibuang, seperti perilaku load() lama.
+  useEffect(() => {
+    clearActionError();
+  }, [clearActionError, page, status, overdueOnly, sortKey, sortDir]);
 
   // Gagal -> optionsLoaded TIDAK diset (retry oleh "Muat ulang"/force berikutnya).
   const loadOptions = useCallback(async (force = false) => {
@@ -261,7 +274,13 @@ function PeminjamanInner() {
             >
               Batal
             </Button>
-            <Button type="button" size="sm" onClick={() => void confirmReturn()}>
+            <Button
+              type="button"
+              size="sm"
+              disabled={busy}
+              aria-busy={busy}
+              onClick={() => void confirmReturn()}
+            >
               Ya, kembalikan
             </Button>
           </>
@@ -327,7 +346,13 @@ function PeminjamanInner() {
             >
               Batal
             </Button>
-            <Button type="button" size="sm" onClick={() => void confirmExtend()}>
+            <Button
+              type="button"
+              size="sm"
+              disabled={busy}
+              aria-busy={busy}
+              onClick={() => void confirmExtend()}
+            >
               Ya, perpanjang
             </Button>
           </>

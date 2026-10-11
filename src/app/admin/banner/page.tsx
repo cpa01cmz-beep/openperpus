@@ -33,6 +33,7 @@ export default function BannerPage() {
   const list = useAdminList<Banner>({
     path: '/api/banners',
     params: { sort, order, page: String(page) },
+    errorMessage: 'Gagal memuat banner.',
   });
   // #62: error pemuatan daftar ikut tampil (sebelumnya gagal load diabaikan diam-diam).
   const { rows, totalPages, error: listError, reload: load } = list;

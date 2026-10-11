@@ -26,6 +26,7 @@ export default function ArtikelPage() {
   const list = useAdminList<Article>({
     path: '/api/articles',
     params: { page: String(page) },
+    errorMessage: 'Gagal memuat artikel.',
   });
   // #62: error pemuatan daftar ikut tampil (sebelumnya gagal load diabaikan diam-diam).
   const { rows, totalPages, error: listError, reload: load } = list;

@@ -357,9 +357,11 @@ describe('#59 kontrak sumber (cover upload + ekspor + 3 halaman)', () => {
       'src/app/admin/peminjaman/page.tsx',
     ]) {
       const s = read(f);
-      expect(s, `${f}: pakai hook daftar`).toContain('useAdminList');
+      expect(s, `${f}: pakai hook daftar`).toMatch(/useAdminList</);
       expect(s, `${f}: pesan error dari hook`).toMatch(/list\.error/);
       expect(s, `${f}: tampil role=alert`).toContain('role="alert"');
+      // Pesan gagal khas halaman, bukan default generik 'Gagal memuat data.'
+      expect(s, `${f}: errorMessage khas`).toMatch(/errorMessage:\s*'Gagal/);
     }
   });
 
