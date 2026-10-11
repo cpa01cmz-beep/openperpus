@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useRef, useState } from 'react';
 import { sanitizeIlike } from '@/lib/search';
+import { SEARCH_PER_PAGE } from '@/lib/pagination';
 
 export type SearchKind = 'members' | 'books';
 export type SearchOption = { id: string; label: string; sub?: string; stock?: number };
@@ -36,7 +37,7 @@ export async function fetchSearchOptions(
 ): Promise<SearchOption[]> {
   const clean = sanitizeIlike(q);
   if (!clean) return [];
-  const params = new URLSearchParams({ q: clean, per_page: '10' });
+  const params = new URLSearchParams({ q: clean, per_page: String(SEARCH_PER_PAGE) });
   const res = await fetch(
     kind === 'members' ? `/api/members?${params}` : `/api/books?${params}`,
     init

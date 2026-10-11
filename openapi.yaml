@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: OpenPerpus API
   version: 0.1.0
-  description: CMS Perpustakaan — 36 route handler (31 resource + health/readyz/docs/metrics/register). Deploy utama Vercel (ADR-002), Cloudflare Workers alternatif; preview lokal via `npm run dev` / `npm run cf:preview`. Enforced bidirectionally by tests/openapi-conformance.test.ts.
+  description: CMS Perpustakaan — 42 route modules (35 resource + health/readyz/docs/metrics/register + cron/sweep-reservations + reports/export). Deploy utama Vercel (ADR-002), Cloudflare Workers alternatif; preview lokal via `npm run dev` / `npm run cf:preview`. Enforced bidirectionally by tests/openapi-conformance.test.ts.
 servers:
   - url: http://localhost:3000
     description: local
@@ -31,6 +31,8 @@ components:
                   CONFLICT,
                   UNAUTHORIZED,
                   FORBIDDEN,
+                  CRON_NOT_CONFIGURED,
+                  SWEEP_FAILED,
                   THEME_FORBIDDEN,
                   HINT_USE_THEME_ENDPOINT,
                   INTERNAL,
@@ -332,6 +334,36 @@ paths:
       responses:
         '200':
           description: html
+  /api/cron/sweep-reservations:
+    get:
+      summary: Vercel Cron harian — tandai reservasi pending/ready lewat expires_at sebagai expired via RPC sweep_expired_reservations (migrasi 0028, isu #76). Guard Bearer CRON_SECRET.
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: object
+                    required: [swept]
+                    properties:
+                      swept:
+                        type: integer
+        '401':
+          description: Cron secret tidak valid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: CRON_NOT_CONFIGURED atau SWEEP_FAILED
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
   /api/articles:
     get:
       summary: List articles (public published; draft/archived staff)
@@ -882,26 +914,26 @@ paths:
           description: ok
           content:
             application/json:
-               schema:
-                 type: object
-                 required: [data, pagination]
-                 properties:
-                   data:
-                     type: array
-                     items:
-                       type: object
-                       properties:
-                         is_overdue:
-                           type: boolean
-                           description: Derived late flag (active loan past due_at).
-                         effective_status:
-                           type: string
-                           enum: [borrowed, overdue, returned, lost]
-                           description: Display status — 'overdue' when derived, else the status column.
-                         fine_preview:
-                           type: number
-                           description: Estimated fine at the configured per-day rate.
-                   pagination:
+              schema:
+                type: object
+                required: [data, pagination]
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        is_overdue:
+                          type: boolean
+                          description: Derived late flag (active loan past due_at).
+                        effective_status:
+                          type: string
+                          enum: [borrowed, overdue, returned, lost]
+                          description: Display status — 'overdue' when derived, else the status column.
+                        fine_preview:
+                          type: number
+                          description: Estimated fine at the configured per-day rate.
+                  pagination:
                     type: object
                     required: [page, limit, total, totalPages]
                     properties:
