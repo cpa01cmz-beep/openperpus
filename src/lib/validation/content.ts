@@ -33,6 +33,14 @@ export const CONTENT_LIMITS = {
 } as const;
 
 import sanitizeHtml from 'sanitize-html';
+// Issue #68: helper URL pure dipindah ke ./url agar komponen client bisa
+// memakannya tanpa menarik sanitize-html ke bundle. isAllowedLinkUrl masih
+// dipakai di berkas ini (sanitizeContentPayload).
+import { isAllowedLinkUrl } from './url';
+
+// Re-export kompatibilitas: import lama `from './validation/content'` tetap
+// jalan. Konsumen CLIENT wajib impor langsung dari '@/lib/validation/url'.
+export { isAllowedImageUrl, isAllowedLinkUrl } from './url';
 
 export type ContentEntity = keyof typeof CONTENT_LIMITS;
 
@@ -102,38 +110,9 @@ function regexStrip(input: string): string {
 }
 
 /**
- * Allowlist URL gambar tempel (client + server berbagi fungsi ini).
- * - Relative "/..." (single-slash) -> boleh (mis. /og-default.jpg).
- * - Absolute -> wajib https: + hostname *.supabase.co.
- * - Tolak javascript:/data:/blob:/vbscript:/file: dan http polos.
- * - String kosong -> true (field opsional; kosong berarti "tanpa gambar").
+ * Allowlist URL gambar tempel — implementasi tinggal di ./url (pure).
+ * Dipakai content.ts ini via import di atas dan client via '@/lib/validation/url'.
  */
-export function isAllowedImageUrl(url: unknown): boolean {
-  if (typeof url !== 'string') return false;
-  const trimmed = url.trim();
-  if (trimmed === '') return true;
-  const lower = trimmed.toLowerCase();
-  if (
-    lower.startsWith('javascript:') ||
-    lower.startsWith('data:') ||
-    lower.startsWith('blob:') ||
-    lower.startsWith('vbscript:') ||
-    lower.startsWith('file:')
-  ) {
-    return false;
-  }
-  // Relative single-slash (tolak protocol-relative "//evil").
-  if (trimmed.startsWith('/')) return !trimmed.startsWith('//');
-  let parsed: URL;
-  try {
-    parsed = new URL(trimmed);
-  } catch {
-    return false;
-  }
-  if (parsed.protocol !== 'https:') return false;
-  const host = parsed.hostname.toLowerCase();
-  return host.endsWith('.supabase.co');
-}
 
 type FieldMap = Record<string, unknown>;
 
@@ -167,34 +146,15 @@ export function escapeJsonLd(value: unknown): string {
 
 /**
  * Guard skema URL untuk field link (mis. socials settings) yang dirender
- * sebagai `href`. Nilai berskema wajib https:/http:/mailto:/tel:/sms: —
- * javascript:, data:, vbscript:, file: dan skema tak dikenal ditolak. Nilai
- * tanpa skema (nomor telepon mis. socials.whatsapp, path relatif) dibiarkan
- * agar kompatibel dengan data yang ada. Protocol-relative (//evil), tab/newline
- * antar karakter skema, dan C0 control/DEL di mana pun (browser membuangnya
- * saat parse URL — WHATWG — sehingga guard lolos tapi render jadi `javascript:`)
- * ditolak fail-closed. String kosong = true.
+ * sebagai `href` — implementasi tinggal di ./url (pure, dipakai berkas ini
+ * lewat import di atas). Kontrak: nilai berskema wajib
+ * https:/http:/mailto:/tel:/sms:; javascript:, data:, vbscript:, file:, dan
+ * skema tak dikenal ditolak; nilai tanpa skema (nomor telepon mis.
+ * socials.whatsapp, path relatif) dibiarkan; protocol-relative (//evil),
+ * tab/newline antar karakter skema, dan C0 control/DEL di mana pun (browser
+ * membuangnya saat parse URL — WHATWG — sehingga guard lolos tapi render jadi
+ * `javascript:`) ditolak fail-closed; string kosong = true.
  */
-export function isAllowedLinkUrl(url: unknown): boolean {
-  if (typeof url !== 'string') return false;
-  // Browser membuang tab/newline di mana pun + C0 control/spasi di kedua ujung
-  // saat parse URL — fail-closed: tolak bila masih ada C0/DEL agar
-  // "<C0>javascript:..." tak lolos guard tapi jadi javascript: saat render.
-  const noTabNl = url.replace(/[\t\n\r]/g, '');
-  if (/[\x00-\x1F\x7F]/.test(noTabNl)) return false;
-  const cleaned = noTabNl.replace(/^[\x20]+|[\x20]+$/g, '');
-  if (cleaned === '') return true;
-  if (cleaned.startsWith('//')) return false;
-  const scheme = /^([a-z][a-z0-9+.-]*):/i.exec(cleaned)?.[1]?.toLowerCase();
-  if (!scheme) return true; // tanpa skema — bukan vektor skema-XSS
-  return (
-    scheme === 'https' ||
-    scheme === 'http' ||
-    scheme === 'mailto' ||
-    scheme === 'tel' ||
-    scheme === 'sms'
-  );
-}
 
 /**
  * Sanitasi in-place untuk field HTML bebas pada payload yang sudah dinormalisasi.

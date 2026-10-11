@@ -71,7 +71,7 @@ export async function GET(req: Request) {
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
   const { supabase } = guard as { supabase: ReturnType<typeof createClient> };
 
-  const { sp, page, perPage, q, from, to } = parsePaging(req.url, 10);
+  const { sp, page, perPage, q, from, to } = parsePaging(req.url);
   const status = (sp.get('status') ?? '').trim();
   const memberId = (sp.get('member_id') ?? '').trim();
   const overdue = sp.get('overdue');
@@ -96,7 +96,9 @@ export async function GET(req: Request) {
         "CASE WHEN status IN ('borrowed','overdue') AND due_at < NOW() THEN 'overdue' ELSE status END AS effective_status, " +
         "CASE WHEN status IN ('borrowed','overdue') AND due_at < NOW() " +
         `THEN GREATEST((EXTRACT(EPOCH FROM (NOW() - due_at)) / 86400)::int, 0) * ${fineRate} ELSE 0 END AS fine_preview`,
-      { count: 'exact' }
+      // #68: count estimated (seq-scan exact mahal di tabel loans besar);
+      // total tetap dipakai paginasi admin sebagai perkiraan.
+      { count: 'estimated' }
     )
     .order('borrowed_at', { ascending: false })
     .range(from, to);
