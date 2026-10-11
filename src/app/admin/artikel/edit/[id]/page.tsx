@@ -4,6 +4,8 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { ARTICLE_STATUS } from '@/lib/enums';
+import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
 import { errMsg } from '@/lib/admin-errors';
 
 export const dynamic = 'force-dynamic';
@@ -75,7 +77,8 @@ export default function EditArtikelPage({ params }: { params: { id: string } }) 
     }
   }
 
-  const input = 'w-full rounded-lg border px-3 py-2 text-sm';
+  const rawInput =
+    'h-11 min-h-[44px] w-full rounded-md border border-slate-200 bg-white px-4 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1';
   if (loading) return <p className="text-sm text-slate-500">Memuat artikel…</p>;
 
   return (
@@ -83,65 +86,81 @@ export default function EditArtikelPage({ params }: { params: { id: string } }) 
       <h1 className="text-2xl font-bold">Edit Artikel</h1>
       <form onSubmit={onSubmit} className="grid max-w-2xl gap-2 rounded-2xl border bg-white p-4">
         {err && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{err}</p>}
-        <input
-          className={input}
+        <Input
+          id="artikel-title"
+          label="Judul"
           placeholder="Judul*"
           value={form.title}
           onChange={(e) => setForm({ ...form, title: e.target.value })}
           required
         />
-        <input
-          className={input}
+        <Input
+          id="artikel-slug"
+          label="Slug"
           placeholder="Slug (otomatis dari judul bila kosong)"
           value={form.slug}
           onChange={(e) => setForm({ ...form, slug: e.target.value })}
         />
-        <div className="flex gap-2">
-          <input
-            className={input}
-            placeholder="URL Sampul"
-            value={form.cover_url}
-            onChange={(e) => setForm({ ...form, cover_url: e.target.value })}
-          />
-          <input
-            className={input}
-            placeholder="Kategori"
-            value={form.category}
-            onChange={(e) => setForm({ ...form, category: e.target.value })}
-          />
+        <div className="flex flex-wrap gap-2">
+          <div className="min-w-[200px] flex-1">
+            <Input
+              id="artikel-cover-url"
+              label="URL Sampul"
+              placeholder="URL Sampul"
+              value={form.cover_url}
+              onChange={(e) => setForm({ ...form, cover_url: e.target.value })}
+            />
+          </div>
+          <div className="min-w-[160px] flex-1">
+            <Input
+              id="artikel-category"
+              label="Kategori"
+              placeholder="Kategori"
+              value={form.category}
+              onChange={(e) => setForm({ ...form, category: e.target.value })}
+            />
+          </div>
         </div>
-        <input
-          className={input}
+        <Input
+          id="artikel-excerpt"
+          label="Ringkasan"
           placeholder="Ringkasan (excerpt)"
           value={form.excerpt}
           onChange={(e) => setForm({ ...form, excerpt: e.target.value })}
         />
         <textarea
-          className={input}
+          className={rawInput}
           rows={6}
           placeholder="Konten markdown* (content_md)"
           value={form.content_md}
           onChange={(e) => setForm({ ...form, content_md: e.target.value })}
           required
+          aria-label="Konten markdown"
         />
-        <div className="flex gap-2">
-          <select
-            className={input}
-            value={form.status}
-            onChange={(e) => setForm({ ...form, status: e.target.value })}
-          >
-            {ARTICLE_STATUS.map((s) => (
-              <option key={s.value} value={s.value}>
-                {s.label}
-              </option>
-            ))}
-          </select>
-          <button
-            disabled={saving}
-            className="rounded-lg bg-slate-900 px-4 py-2 text-sm text-white disabled:opacity-50"
-          >
-            {saving ? 'Menyimpan…' : 'Simpan Perubahan'}
-          </button>
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="grid gap-1">
+            <label
+              htmlFor="artikel-status"
+              className="mb-1.5 block text-sm font-semibold text-slate-700"
+            >
+              Status
+            </label>
+            <select
+              id="artikel-status"
+              className={rawInput}
+              value={form.status}
+              onChange={(e) => setForm({ ...form, status: e.target.value })}
+            >
+              {ARTICLE_STATUS.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <Button type="submit" loading={saving}>
+            Simpan Perubahan
+          </Button>
         </div>
         {publishedAt && <p className="text-xs text-slate-500">published_at: {publishedAt}</p>}
       </form>

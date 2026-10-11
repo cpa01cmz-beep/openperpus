@@ -48,8 +48,8 @@ export default function Sidebar({ libraryName = 'Perpustakaan' }: { libraryName?
             href={m.href}
             onClick={() => setOpen(false)}
             aria-current={active ? 'page' : undefined}
-            className={`flex min-h-[44px] items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-              active ? 'bg-slate-900 text-white' : 'text-slate-700 hover:bg-slate-100'
+            className={`flex min-h-[44px] items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
+              active ? 'bg-brand text-white' : 'text-ink hover:bg-slate-100'
             }`}
           >
             {m.label}
@@ -58,7 +58,7 @@ export default function Sidebar({ libraryName = 'Perpustakaan' }: { libraryName?
       })}
       <Link
         href="/"
-        className="mt-4 flex min-h-[44px] items-center rounded-lg px-3 py-2 text-sm text-slate-500 hover:bg-slate-100"
+        className="mt-4 flex min-h-[44px] items-center rounded-lg px-3 py-2 text-sm text-ink hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
       >
         ← Lihat Situs
       </Link>
@@ -68,11 +68,11 @@ export default function Sidebar({ libraryName = 'Perpustakaan' }: { libraryName?
   return (
     <>
       {/* Topbar mobile */}
-      <div className="sticky top-0 z-30 flex items-center justify-between border-b bg-white px-4 py-3 lg:hidden">
+      <div className="sticky top-0 z-30 flex items-center justify-between border-b bg-surface px-4 py-3 lg:hidden">
         <span className="font-semibold">{libraryName} · Admin</span>
         <button
           onClick={() => setOpen((v) => !v)}
-          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border px-3 py-1.5 text-sm"
+          className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-lg border px-3 py-1.5 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           aria-label="Toggle menu"
           aria-expanded={open}
           aria-controls="admin-mobile-nav"
@@ -81,7 +81,7 @@ export default function Sidebar({ libraryName = 'Perpustakaan' }: { libraryName?
         </button>
       </div>
       {/* Desktop */}
-      <aside className="hidden min-h-screen w-60 shrink-0 border-r bg-white lg:block">{nav}</aside>
+      <aside className="hidden min-h-screen w-60 shrink-0 border-r bg-surface lg:block">{nav}</aside>
       {/* Mobile drawer */}
       {open && (
         <div className="fixed inset-0 z-40 lg:hidden">
@@ -93,7 +93,7 @@ export default function Sidebar({ libraryName = 'Perpustakaan' }: { libraryName?
           />
           <aside
             id="admin-mobile-nav"
-            className="absolute left-0 top-0 h-full w-64 bg-white shadow-xl"
+            className="absolute left-0 top-0 h-full w-64 bg-surface shadow-xl"
           >
             {nav}
           </aside>

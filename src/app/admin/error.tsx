@@ -2,6 +2,8 @@
 
 import Link from 'next/link';
 import { House, RotateCcw, TriangleAlert } from 'lucide-react';
+import Button from '@/components/ui/Button';
+import Badge from '@/components/ui/Badge';
 
 export interface ErrorPageProps {
   error: Error & { digest?: string };
@@ -16,13 +18,11 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
       role="alert"
       className="mx-auto flex w-full max-w-xl flex-col items-center gap-4 py-16 text-center sm:py-24"
     >
-      <span className="grid h-16 w-16 place-items-center rounded-3xl bg-amber-400 text-emerald-950 shadow-lg">
+      <span className="grid h-16 w-16 place-items-center rounded-3xl bg-accent text-ink shadow-lg">
         <TriangleAlert className="h-8 w-8" aria-hidden="true" />
       </span>
-      <p className="rounded-full border border-rose-200 bg-rose-100 px-3 py-1 text-xs font-bold uppercase tracking-widest text-rose-800">
-        Terjadi kendala
-      </p>
-      <h1 id="err-title" className="font-serif text-3xl font-bold text-slate-900 sm:text-4xl">
+      <Badge tone="rose">Terjadi kendala</Badge>
+      <h1 id="err-title" className="font-serif text-3xl font-bold text-ink sm:text-4xl">
         Maaf, halaman admin mengalami gangguan.
       </h1>
       <p className="max-w-md text-sm leading-relaxed text-slate-500 sm:text-base">
@@ -34,17 +34,13 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
         </p>
       )}
       <div className="mt-2 flex flex-wrap items-center justify-center gap-3">
-        <button
-          type="button"
-          onClick={reset}
-          className="inline-flex h-11 items-center gap-2 rounded-xl bg-emerald-700 px-5 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
-        >
+        <Button type="button" variant="primary" size="lg" onClick={reset}>
           <RotateCcw className="h-4 w-4" aria-hidden="true" />
           Coba lagi
-        </button>
+        </Button>
         <Link
           href="/admin"
-          className="inline-flex h-11 items-center gap-2 rounded-xl border border-emerald-700/30 bg-white px-5 text-sm font-semibold text-emerald-800 transition hover:border-emerald-700 hover:bg-emerald-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2"
+          className="inline-flex min-h-[48px] items-center gap-2 rounded-md border border-brand/30 bg-white px-6 py-3 text-base font-semibold text-brand transition hover:border-brand hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
         >
           <House className="h-4 w-4" aria-hidden="true" />
           Kembali ke Dashboard
