@@ -93,7 +93,11 @@ export async function GET(req: Request) {
   let query = supabase
     .from('loans')
     .select(
-      '*, members(id,member_code), books(id,title,slug), ' +
+      // #68: kolom sempit (bukan `*`) — list admin hanya butuh id, relasi
+      // (member_code/title), tanggal, status, denda + notes utk pencarian;
+      // `*` juga menarik kolom tak terpakai. Embed sempit: books.slug &
+      // members.id tidak dikonsumsi halaman sirkulasi.
+      'id,book_id,member_id,borrowed_at,due_at,returned_at,status,fine_amount,notes,members(member_code),books(title), ' +
         "CASE WHEN status IN ('borrowed','overdue') AND due_at < NOW() THEN true ELSE false END AS is_overdue, " +
         "CASE WHEN status IN ('borrowed','overdue') AND due_at < NOW() THEN 'overdue' ELSE status END AS effective_status, " +
         "CASE WHEN status IN ('borrowed','overdue') AND due_at < NOW() " +
