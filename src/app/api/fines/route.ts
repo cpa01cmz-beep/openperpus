@@ -49,6 +49,8 @@ export async function GET(req: Request) {
 
   let query = supabase
     .from('fines')
+    // ponytail: count exact dipertahankan (UI butuh total pasti utk totalPages;
+    // estimated hanya aman bila tabel >1000 row + UI toleran angka kira-kira).
     .select(selectCols, { count: 'exact' })
     .order('issued_at', { ascending: false })
     .range(from, to);

@@ -165,7 +165,7 @@ async function fetchBooksUncached(opts: FetchBooksOpts): Promise<Book[]> {
     if (opts.availableOnly) query = query.gt('stock_available', 0);
     if (opts.page && opts.perPage) {
       const page = Math.max(1, Math.floor(opts.page));
-      const perPage = Math.min(100, Math.max(1, Math.floor(opts.perPage)));
+      const perPage = Math.min(50, Math.max(1, Math.floor(opts.perPage)));
       query = query.range((page - 1) * perPage, page * perPage - 1);
     } else if (opts.limit) {
       query = query.limit(opts.limit);
@@ -191,7 +191,7 @@ async function fetchBooksPagedUncached(opts: FetchBooksOpts): Promise<PagedBooks
   try {
     const supabase = createClient();
     const page = Math.max(1, Math.floor(opts.page ?? 1));
-    const perPage = Math.min(100, Math.max(1, Math.floor(opts.perPage ?? 24)));
+    const perPage = Math.min(50, Math.max(1, Math.floor(opts.perPage ?? 24)));
     const from = (page - 1) * perPage;
     const to = page * perPage - 1;
     const needle = sanitizeIlike(opts.q ?? opts.search ?? '');
@@ -199,9 +199,9 @@ async function fetchBooksPagedUncached(opts: FetchBooksOpts): Promise<PagedBooks
     // Search path: use RPC (full-text + trigram), paginate via RPC offset/limit
     if (needle) {
       const books = await searchBooksViaRpc(supabase, needle, perPage, from);
-      // For total count, we still need a separate query or use max limit
-      // Since RPC is limited to 100, fetch up to 100 for total
-      const allBooks = await searchBooksViaRpc(supabase, needle, 100, 0);
+      // ponytail: total via window-fetch cap 50 (dulu 100) — 2 RTT tetap.
+      // Upgrade path: RPC window-count (SELECT count(*) OVER ()) jadi 1 RTT.
+      const allBooks = await searchBooksViaRpc(supabase, needle, 50, 0);
       const total = allBooks.length;
       return { books, total };
     }

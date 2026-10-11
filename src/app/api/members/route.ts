@@ -51,6 +51,8 @@ export async function GET(req: Request) {
     sort === 'full_name' ? 'profiles!inner(id,full_name)' : 'profiles(id,full_name)';
   let query = supabase
     .from('members')
+    // ponytail: count exact dipertahankan (UI butuh total pasti utk totalPages;
+    // estimated hanya aman bila tabel >1000 row + UI toleran angka kira-kira).
     .select(`*, ${profileEmbed}`, { count: 'exact' })
     .range(from, to);
   query =

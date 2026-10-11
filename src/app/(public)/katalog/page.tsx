@@ -49,7 +49,7 @@ type SearchParams = {
   tersedia?: string;
 };
 
-/** Katalog: server-paginated via searchParams page/per_page (<=24 baris/halaman). */
+/** Katalog: server-paginated via searchParams page/per_page (<=24 baris/halaman, cap 50). */
 export default async function KatalogPage({
   searchParams,
 }: {
@@ -57,7 +57,7 @@ export default async function KatalogPage({
 }) {
   const sp = (await searchParams) ?? {};
   const page = Math.max(1, Number(sp.page ?? 1) || 1);
-  const perPage = Math.min(48, Math.max(1, Number(sp.per_page ?? 24) || 24));
+  const perPage = Math.min(50, Math.max(1, Number(sp.per_page ?? 24) || 24));
   const q = (sp.q ?? '').trim();
   const kategori = (sp.kategori ?? '').trim() || undefined;
   const sortRaw = (sp.sort ?? 'terbaru').trim();

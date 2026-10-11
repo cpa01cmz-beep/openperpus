@@ -91,9 +91,11 @@ export async function GET(req: Request) {
   let query = supabase
     .from('loans')
     .select(
-      '*, members(id,member_code), books(id,title,slug), ' +
+      'id,book_id,member_id,borrowed_at,due_at,returned_at,status,fine_amount,notes,members(member_code),books(title,author), ' +
         "CASE WHEN status IN ('borrowed','overdue') AND due_at < NOW() THEN true ELSE false END AS is_overdue, " +
         "CASE WHEN status IN ('borrowed','overdue') AND due_at < NOW() THEN 'overdue' ELSE status END AS effective_status, " +
+        // ponytail: fine_preview masih di SQL (dikunci tests/loans-overdue-single-source + admin-overdue-fastlane).
+        // Upgrade path: hitung di JS dari due_at + fineRate via calcFine() lalu drop kolom SQL ini.
         "CASE WHEN status IN ('borrowed','overdue') AND due_at < NOW() " +
         `THEN GREATEST((EXTRACT(EPOCH FROM (NOW() - due_at)) / 86400)::int, 0) * ${fineRate} ELSE 0 END AS fine_preview`,
       { count: 'exact' }
@@ -123,10 +125,13 @@ export async function GET(req: Request) {
   }
 
   const total = count ?? 0;
-  return NextResponse.json({
-    data: data ?? [],
-    pagination: { page, limit: perPage, total, totalPages: Math.ceil(total / perPage) },
-  });
+  return NextResponse.json(
+    {
+      data: data ?? [],
+      pagination: { page, limit: perPage, total, totalPages: Math.ceil(total / perPage) },
+    },
+    { headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' } }
+  );
 }
 
 export async function POST(req: Request) {
