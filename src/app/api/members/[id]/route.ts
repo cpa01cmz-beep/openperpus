@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { requireStaff, jsonError } from '@/lib/supabase/auth';
 import { isUuid } from '@/lib/api-utils';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
+import { normalizeRole } from '@/lib/auth';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -43,9 +44,11 @@ export async function PUT(req: Request, { params }: Ctx) {
   const log = createLogger(requestIdFromHeaders(req.headers));
   const guard = await requireStaff();
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
-  const { supabase } = guard as { supabase: ReturnType<typeof createClient> };
+  const { supabase, profile } = guard as {
+    supabase: ReturnType<typeof createClient>;
+    profile: { role: string };
+  };
   // #54: id path WAJIB UUID — tolak 400 lebih awal, bukan string sembaran ke query.
-  if (!isUuid(id)) return jsonError('VALIDATION', 'ID anggota tidak valid (harus UUID).', 400);
   if (!isUuid(id)) return jsonError('VALIDATION', 'ID anggota tidak valid (harus UUID).', 400);
 
   let body: Record<string, unknown>;
@@ -66,7 +69,11 @@ export async function PUT(req: Request, { params }: Ctx) {
     }
     payload.status = body.status;
   }
-  if (body.member_code !== undefined) payload.member_code = body.member_code;
+  if (body.member_code !== undefined) {
+    if (normalizeRole(profile?.role) !== 'admin')
+      return jsonError('FORBIDDEN', 'Hanya admin yang dapat mengubah member_code.', 403);
+    payload.member_code = body.member_code;
+  }
 
   const { data, error } = await supabase
     .from('members')
@@ -90,7 +97,6 @@ export async function DELETE(_req: Request, { params }: Ctx) {
   if ('errorResponse' in guard && guard.errorResponse) return guard.errorResponse;
   const { supabase } = guard as { supabase: ReturnType<typeof createClient> };
   // #54: id path WAJIB UUID — tolak 400 lebih awal, bukan string sembaran ke query.
-  if (!isUuid(id)) return jsonError('VALIDATION', 'ID anggota tidak valid (harus UUID).', 400);
   if (!isUuid(id)) return jsonError('VALIDATION', 'ID anggota tidak valid (harus UUID).', 400);
 
   const { count } = await supabase

@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { updateSession } from '@/lib/supabase/middleware';
-import { checkRateLimit, WRITE_API_LIMIT, WRITE_API_WINDOW_MS } from '@/lib/rate-limit';
+<import { checkRateLimit, WRITE_API_LIMIT, WRITE_API_WINDOW_MS, READ_SENSITIVE_LIMIT, READ_SENSITIVE_WINDOW_MS, LOGIN_LIMIT, LOGIN_WINDOW_MS } from '@/lib/rate-limit';
 import { isStaffRole } from '@/lib/roles';
 import { ROLE_HEADER } from '@/lib/role-claim';
 
@@ -146,6 +146,37 @@ export function buildContentSecurityPolicy(nonce: string): string {
  * dengan client read-only — cookie sudah di-refresh updateSession, jadi
  * setAll cukup no-op. Fail-closed: query gagal / role hilang → non-staff.
  */
+function clientIp(request: NextRequest): string {
+  return (
+    request.headers.get('cf-connecting-ip') ??
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+    'unknown'
+  );
+}
+
+function rateLimited(limit: number, resetAfterMs: number) {
+  const retryAfter = Math.max(1, Math.ceil(resetAfterMs / 1000));
+  return NextResponse.json(
+    {
+      error: { code: 'RATE_LIMITED', message: 'Terlalu banyak permintaan. Coba lagi nanti.' },
+    },
+    {
+      status: 429,
+      headers: {
+        'Retry-After': String(retryAfter),
+        'X-RateLimit-Limit': String(limit),
+        'X-RateLimit-Remaining': '0',
+      },
+    }
+  );
+}
+
+const SENSITIVE_GET_PREFIXES = ['/api/loans', '/api/fines', '/api/members', '/api/reservations'];
+
+function isSensitiveGet(pathname: string, method: string): boolean {
+  if (method !== 'GET') return false;
+  return SENSITIVE_GET_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+}
 async function getProfileRole(request: NextRequest, userId: string): Promise<string | null> {
   try {
     const supabase = createServerClient(
@@ -175,9 +206,24 @@ export async function middleware(request: NextRequest) {
   const isApi = pathname === '/api' || pathname.startsWith('/api/');
   const isDev = process.env.NODE_ENV === 'development';
 
-  // Rate-limit + CSRF hanya untuk write API — read (GET/HEAD/OPTIONS) bebas.
+  if (isLogin) {
+    const result = checkRateLimit(`login:${clientIp(request)}`, LOGIN_LIMIT, LOGIN_WINDOW_MS);
+    if (!result.allowed) return rateLimited(LOGIN_LIMIT, result.resetAfterMs);
+  }
+
+  // Rate-limit + CSRF hanya untuk write API — read (GET/HEAD/OPTIONS) bebas,
+  // kecuali GET sensitif (#65) yang dibatasi 100/mnt.
   if (isApi) {
     const method = request.method.toUpperCase();
+    const ip = clientIp(request);
+    if (isSensitiveGet(pathname, method)) {
+      const result = checkRateLimit(
+        `sensitive:${ip}:${pathname}`,
+        READ_SENSITIVE_LIMIT,
+        READ_SENSITIVE_WINDOW_MS
+      );
+      if (!result.allowed) return rateLimited(READ_SENSITIVE_LIMIT, result.resetAfterMs);
+    }
     if (method === 'POST' || method === 'PUT' || method === 'PATCH' || method === 'DELETE') {
       if (!isSameOrigin(request)) {
         return NextResponse.json(
@@ -185,31 +231,12 @@ export async function middleware(request: NextRequest) {
           { status: 403 }
         );
       }
-      const ip =
-        request.headers.get('cf-connecting-ip') ??
-        request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
-        'unknown';
       const result = checkRateLimit(
         `write:${ip}:${pathname}`,
         WRITE_API_LIMIT,
         WRITE_API_WINDOW_MS
       );
-      if (!result.allowed) {
-        const retryAfter = Math.max(1, Math.ceil(result.resetAfterMs / 1000));
-        return NextResponse.json(
-          {
-            error: { code: 'RATE_LIMITED', message: 'Terlalu banyak permintaan. Coba lagi nanti.' },
-          },
-          {
-            status: 429,
-            headers: {
-              'Retry-After': String(retryAfter),
-              'X-RateLimit-Limit': String(WRITE_API_LIMIT),
-              'X-RateLimit-Remaining': '0',
-            },
-          }
-        );
-      }
+      if (!result.allowed) return rateLimited(WRITE_API_LIMIT, result.resetAfterMs);
     }
     if (pathname === '/api/docs') {
       const docsResponse = NextResponse.next();
