@@ -40,6 +40,29 @@
 ```
 
 - `active_theme`: satu dari `emerald|midnight|paper|brutalist|ocean|sketch`. `theme_overrides`: `null` (pakai bawaan `THEMES`) atau object layout-only `{layout:{headerVariant?,heroVariant?,footerVariant?,homepageSections?}}` — lihat `PUT /api/settings/theme`.
+- Kolom operasional sirkulasi (kanonis Inggris, migrasi `0023` + `0026`; label Indonesia hanya di UI admin):
+
+```json
+{
+  "data": {
+    "fine_per_day": 1000,
+    "loan_days": 14,
+    "max_extensions": 2,
+    "max_active_loans": 3,
+    "replacement_fee_damaged": 0,
+    "replacement_fee_lost": 0
+  }
+}
+```
+
+| Kolom                     | Dipakai di                             | Default |
+| ------------------------- | -------------------------------------- | ------- |
+| `fine_per_day`            | denda keterlambatan (`return_loan`)    | 1000    |
+| `loan_days`               | tempo default checkout (issue #74)     | 14      |
+| `max_extensions`          | batas perpanjangan per pinjaman (#74)  | 2       |
+| `max_active_loans`        | batas pinjaman aktif per anggota (#56) | 3       |
+| `replacement_fee_damaged` | ganti rugi saat buku rusak (#74)       | 0       |
+| `replacement_fee_lost`    | ganti rugi saat buku hilang (#74)      | 0       |
 
 ### `PUT /api/settings` — admin only
 
@@ -217,13 +240,16 @@
   `409 MEMBER_HAS_FINES` (tagihan belum lunas) / `409 MEMBER_OVERDUE` (pinjaman terlambat) / `409 MEMBER_LOAN_LIMIT` (batas pinjaman aktif `library_settings.max_active_loans`).
 - Idempoten: satu pasangan (buku, anggota) hanya 1 loan aktif → retry aman (409 `CONFLICT` "sudah meminjam buku ini").
 - Checkout atomik via RPC `checkout_loan` (migrasi 0005/0015: row lock + decrement stok + insert 1 transaksi). Stok habis / buku hilang → `409 CONFLICT`.
-- Default `borrowed_at = now`, `due_at = borrowed_at + 14 hari` (masih hardcode — memakai `library_settings.lama_pinjam_hari` diissue #74).
+- Default `borrowed_at = now`, `due_at = borrowed_at + library_settings.loan_days` (default 14 hari — migrasi `0026`, bukan angka mati di kode; pustakawan mengubahnya di Pengaturan).
 - `201 {data: loan}` + log `loans.create`.
 
 ### `PUT /api/loans/{id}` — pustakawan+
 
-- `{ "action": "extend", "days": 7 }` → perpanjang tempo. Limit perpanjangan dihitung dari `activity_logs` (`src/lib/extendLoan.ts`).
-- `{ "action": "return", "returned_at": "..." }` → pengembalian sederhana (kondisi selalu `baik`).
+- `{ "action": "extend", "days": 7 }` → perpanjang tempo. Batas perpanjangan = `library_settings.max_extensions`, hitungan dari kolom `loans.extend_count` (migrasi `0026`); tercapai → `409 CONFLICT` "Batas maksimum perpanjangan tercapai (maksimal N kali)". Hitungan dari `activity_logs` hanya dipakai bila kolom belum ada.
+- `{ "action": "return", "returned_at": "...", "kondisi": "baik|rusak|hilang" }` → pengembalian; `kondisi` absen = `baik` (perilaku lama). Diteruskan ke RPC `return_loan(p_kondisi)` (migrasi 0011/0026) yang:
+  - menghitung denda telat (hari × `fine_per_day`),
+  - menambah biaya ganti rugi untuk `rusak`/`hilang` dari `replacement_fee_damaged`/`replacement_fee_lost` dan menulis satu baris `fines` bila total > 0,
+  - menyesuaikan stok: `baik` → `stock_available` +1 (clamp `stock_total`); `rusak`/`hilang` → `stock_total` −1 dan `status` loan menjadi `lost` untuk `hilang`.
 - `200 {data: ...}` + log `loans.extend`/`loans.return`.
 
 ### `POST /api/loans/{id}/return` — pustakawan+ (kondisi eksplisit)

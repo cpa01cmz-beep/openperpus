@@ -23,6 +23,11 @@ export type SettingsRow = {
   seo_desc?: string | null;
   announcement?: string | null;
   fine_per_day?: number | null;
+  /** Kebijakan pinjam (issue #74, migrasi 0026). */
+  loan_days?: number | null;
+  max_extensions?: number | null;
+  replacement_fee_damaged?: number | null;
+  replacement_fee_lost?: number | null;
 };
 
 function toText(v: unknown): string {
@@ -68,6 +73,24 @@ export default function SettingsForm({ initial }: { initial: SettingsRow }) {
         ? initial.fine_per_day
         : 1000
     ),
+    loan_days: String(
+      typeof initial.loan_days === 'number' && initial.loan_days > 0 ? initial.loan_days : 14
+    ),
+    max_extensions: String(
+      typeof initial.max_extensions === 'number' && initial.max_extensions >= 0
+        ? initial.max_extensions
+        : 2
+    ),
+    replacement_fee_damaged: String(
+      typeof initial.replacement_fee_damaged === 'number' && initial.replacement_fee_damaged >= 0
+        ? initial.replacement_fee_damaged
+        : 0
+    ),
+    replacement_fee_lost: String(
+      typeof initial.replacement_fee_lost === 'number' && initial.replacement_fee_lost >= 0
+        ? initial.replacement_fee_lost
+        : 0
+    ),
   });
 
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }));
@@ -80,6 +103,21 @@ export default function SettingsForm({ initial }: { initial: SettingsRow }) {
     const rate = Number(form.fine_per_day);
     if (!Number.isFinite(rate) || rate <= 0)
       return setErr('Tarif denda per hari (denda_per_hari) harus lebih dari 0.');
+    const loanDays = Number(form.loan_days);
+    if (!Number.isInteger(loanDays) || loanDays < 1 || loanDays > 365)
+      return setErr('Lama pinjam (hari) harus bilangan bulat 1..365.');
+    const maxExtensions = Number(form.max_extensions);
+    if (!Number.isInteger(maxExtensions) || maxExtensions < 0 || maxExtensions > 10)
+      return setErr('Batas perpanjangan harus bilangan bulat 0..10.');
+    const feeDamaged = Number(form.replacement_fee_damaged);
+    const feeLost = Number(form.replacement_fee_lost);
+    for (const [label, v] of [
+      ['Biaya ganti rugi rusak', feeDamaged],
+      ['Biaya ganti rugi hilang', feeLost],
+    ] as const) {
+      if (!Number.isFinite(v) || v < 0)
+        return setErr(`${label} harus angka rupiah >= 0 (0 = tidak ada biaya).`);
+    }
     setLoading(true);
     try {
       const payload = {
@@ -100,6 +138,10 @@ export default function SettingsForm({ initial }: { initial: SettingsRow }) {
         seo_desc: form.seo_desc || null,
         announcement: form.announcement || null,
         fine_per_day: rate,
+        loan_days: loanDays,
+        max_extensions: maxExtensions,
+        replacement_fee_damaged: feeDamaged,
+        replacement_fee_lost: feeLost,
       };
       const res = await fetch('/api/settings', {
         method: 'PUT',
@@ -354,6 +396,71 @@ export default function SettingsForm({ initial }: { initial: SettingsRow }) {
             onChange={(e) => set('announcement', e.target.value)}
           />
         </label>
+      </section>
+      <section className="grid gap-4 rounded-2xl border bg-white p-6">
+        <h2 className="font-semibold">Sirkulasi (kebijakan pinjam)</h2>
+        <p className="text-sm text-slate-500">
+          Dipakai checkout, perpanjangan, dan pengembalian — mengubah nilai di sini langsung berlaku
+          tanpa deploy.
+        </p>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className={label} htmlFor="settings-loan-days">
+            Lama pinjam (hari)
+            <input
+              id="settings-loan-days"
+              aria-invalid={err ? true : undefined}
+              aria-describedby="settings-form-status"
+              className={input}
+              type="number"
+              min={1}
+              max={365}
+              value={form.loan_days}
+              onChange={(e) => set('loan_days', e.target.value)}
+            />
+          </label>
+          <label className={label} htmlFor="settings-max-extensions">
+            Batas perpanjangan per pinjaman
+            <input
+              id="settings-max-extensions"
+              aria-invalid={err ? true : undefined}
+              aria-describedby="settings-form-status"
+              className={input}
+              type="number"
+              min={0}
+              max={10}
+              value={form.max_extensions}
+              onChange={(e) => set('max_extensions', e.target.value)}
+            />
+          </label>
+          <label className={label} htmlFor="settings-replacement-fee-damaged">
+            Biaya ganti rugi rusak (Rp)
+            <input
+              id="settings-replacement-fee-damaged"
+              aria-invalid={err ? true : undefined}
+              aria-describedby="settings-form-status"
+              className={input}
+              type="number"
+              min={0}
+              step={1000}
+              value={form.replacement_fee_damaged}
+              onChange={(e) => set('replacement_fee_damaged', e.target.value)}
+            />
+          </label>
+          <label className={label} htmlFor="settings-replacement-fee-lost">
+            Biaya ganti rugi hilang (Rp)
+            <input
+              id="settings-replacement-fee-lost"
+              aria-invalid={err ? true : undefined}
+              aria-describedby="settings-form-status"
+              className={input}
+              type="number"
+              min={0}
+              step={1000}
+              value={form.replacement_fee_lost}
+              onChange={(e) => set('replacement_fee_lost', e.target.value)}
+            />
+          </label>
+        </div>
         <label className={label} htmlFor="settings-fine-per-day">
           Tarif denda per hari / denda_per_hari (Rp)
           <input

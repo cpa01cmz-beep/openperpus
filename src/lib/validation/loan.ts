@@ -11,8 +11,10 @@ function isUuid(v: unknown): boolean {
 
 const LOAN_STATUSES = ['borrowed', 'returned', 'overdue', 'lost'] as const;
 
-// ponytail: limit hardcode 2 — kalau admin perlu atur via UI, tambah kolom
-// library_settings.max_extensions (migrasi 0020) lalu baca dari settings.
+// ponytail: batas efektif kini dari library_settings.max_extensions (migrasi
+// 0026) dan dibaca src/lib/loan-settings.ts. Konstanta ini hanya default-nya
+// (dipertahankan agar importer lama tetap valid) — jangan pakai sebagai batas
+// runtime, baca settings.
 export const MAX_EXTEND_COUNT = 2;
 
 export function validateLoan(l: Record<string, unknown>, partial = false): string | null {

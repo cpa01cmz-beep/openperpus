@@ -57,6 +57,11 @@ export default function PeminjamanPage() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [pendingReturn, setPendingReturn] = useState<string | null>(null);
   const [finePerDay, setFinePerDay] = useState(1000);
+  // Isu #74: kebijakan pinjam dari settings (bukan angka mati di kode).
+  const [loanDays, setLoanDays] = useState(14);
+  const [maxExtensions, setMaxExtensions] = useState(2);
+  const [replacementFees, setReplacementFees] = useState({ rusak: 0, hilang: 0 });
+  const [returnKondisi, setReturnKondisi] = useState('baik');
   // State terpisah dari `error`: pesan tarif default non-fatal tidak boleh
   // ditimpa/dihapus oleh load() berikutnya (dan sebaliknya).
   const [fineNotice, setFineNotice] = useState('');
@@ -66,11 +71,29 @@ export default function PeminjamanPage() {
         if (!r.ok) throw new Error('Gagal memuat tarif denda; memakai tarif default.');
         return r.json().catch(() => {
           throw new Error('Gagal memuat tarif denda; memakai tarif default.');
-        }) as Promise<{ data?: { fine_per_day?: unknown } }>;
+        }) as Promise<{
+          data?: {
+            fine_per_day?: unknown;
+            loan_days?: unknown;
+            max_extensions?: unknown;
+            replacement_fee_damaged?: unknown;
+            replacement_fee_lost?: unknown;
+          };
+        }>;
       })
       .then((j) => {
         const v = Number(j.data?.fine_per_day);
         if (Number.isFinite(v) && v > 0) setFinePerDay(v);
+        const days = Number(j.data?.loan_days);
+        if (Number.isFinite(days) && days > 0) setLoanDays(days);
+        const maxExt = Number(j.data?.max_extensions);
+        if (Number.isFinite(maxExt) && maxExt >= 0) setMaxExtensions(maxExt);
+        const feeRusak = Number(j.data?.replacement_fee_damaged);
+        const feeHilang = Number(j.data?.replacement_fee_lost);
+        setReplacementFees({
+          rusak: Number.isFinite(feeRusak) && feeRusak > 0 ? feeRusak : 0,
+          hilang: Number.isFinite(feeHilang) && feeHilang > 0 ? feeHilang : 0,
+        });
       })
       .catch((e: Error) => setFineNotice(e.message));
   }, []);
@@ -184,6 +207,7 @@ export default function PeminjamanPage() {
   }, [loadOptions]);
 
   async function onReturn(id: string) {
+    setReturnKondisi('baik');
     setPendingReturn(id);
   }
 
@@ -219,10 +243,12 @@ export default function PeminjamanPage() {
     setPendingReturn(null);
     setError('');
     try {
+      // Isu #74: kondisi buku dikirim eksplisit (baik|rusak|hilang).
+      // rusak/hilang mengurangi stok buku + menambah denda ganti rugi.
       const res = await fetch(`/api/loans/${id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'return' }),
+        body: JSON.stringify({ action: 'return', kondisi: returnKondisi }),
       });
       const json = (await res.json().catch(() => ({}))) as {
         data?: { fine_amount?: number } | null;
@@ -231,7 +257,11 @@ export default function PeminjamanPage() {
         setError(errMsg(json, 'Gagal memproses pengembalian.'));
         return;
       }
-      setNotice(`Dikembalikan. Denda: Rp${(json.data?.fine_amount ?? 0).toLocaleString('id-ID')}`);
+      const kondisiLabel =
+        returnKondisi === 'baik' ? 'baik' : returnKondisi === 'rusak' ? 'rusak' : 'hilang';
+      setNotice(
+        `Dikembalikan (kondisi: ${kondisiLabel}). Denda: Rp${(json.data?.fine_amount ?? 0).toLocaleString('id-ID')}`
+      );
       void Promise.all([load(), loadOptions(true)]);
     } catch (e) {
       setError((e as Error).message);
@@ -250,13 +280,20 @@ export default function PeminjamanPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'extend', days }),
       });
-      const json = (await res.json().catch(() => ({}))) as { data?: { due_at?: string } | null };
+      const json = (await res.json().catch(() => ({}))) as {
+        data?: { due_at?: string; extension_count?: number } | null;
+      };
       if (!res.ok) {
         setError(errMsg(json, 'Gagal memproses perpanjangan.'));
         return;
       }
       const due = json.data?.due_at ? new Date(json.data.due_at).toLocaleDateString('id-ID') : '-';
-      setNotice(`Diperpanjang ${Number.isFinite(days) ? days : '?'} hari. Tempo baru: ${due}.`);
+      // Isu #74: hitungan perpanjangan kini milik kolom loans.extend_count.
+      const used = Number(json.data?.extension_count);
+      const usedLabel = Number.isFinite(used) && used > 0 ? ` (perpanjangan ke-${used})` : '';
+      setNotice(
+        `Diperpanjang ${Number.isFinite(days) ? days : '?'} hari. Tempo baru: ${due}.${usedLabel}`
+      );
       void Promise.all([load(), loadOptions(true)]);
     } catch (e) {
       setError((e as Error).message);
@@ -289,12 +326,55 @@ export default function PeminjamanPage() {
         }
       >
         <p>Proses pengembalian buku ini?</p>
+        {/* Isu #74: kondisi buku dipilih sebelum submit — 'baik' default
+            (perilaku lama), rusak/hilang mengurangi stok buku dan menagih
+            biaya ganti rugi dari pengaturan. */}
+        <fieldset className="grid gap-1">
+          <legend className="text-sm font-semibold text-slate-700">Kondisi buku</legend>
+          {[
+            { value: 'baik', label: 'Baik — stok kembali tersedia' },
+            {
+              value: 'rusak',
+              label: `Rusak — stok berkurang${
+                replacementFees.rusak > 0
+                  ? ` + denda ganti rugi Rp${replacementFees.rusak.toLocaleString('id-ID')}`
+                  : ''
+              }`,
+            },
+            {
+              value: 'hilang',
+              label: `Hilang — stok berkurang${
+                replacementFees.hilang > 0
+                  ? ` + denda ganti rugi Rp${replacementFees.hilang.toLocaleString('id-ID')}`
+                  : ''
+              }`,
+            },
+          ].map((opt) => (
+            <label key={opt.value} className="flex items-center gap-2 text-sm text-slate-700">
+              <input
+                type="radio"
+                name="return-kondisi"
+                value={opt.value}
+                checked={returnKondisi === opt.value}
+                onChange={() => setReturnKondisi(opt.value)}
+                className="h-4 w-4"
+              />
+              {opt.label}
+            </label>
+          ))}
+        </fieldset>
+        {returnKondisi !== 'baik' && (
+          <p className="text-sm text-amber-700">
+            Konfirmasi: buku {returnKondisi === 'hilang' ? 'hilang' : 'rusak'} tidak kembali
+            tersedia dipinjam dan anggota dikenai biaya ganti rugi bila diatur di Pengaturan.
+          </p>
+        )}
       </Modal>
       <Modal
         open={pendingExtend !== null}
         onClose={() => setPendingExtend(null)}
         title="Perpanjang pinjaman"
-        description="Tempo mundur sejauh jumlah hari yang dipilih."
+        description={`Tempo mundur sejauh jumlah hari yang dipilih (maksimal ${maxExtensions} kali per pinjaman).`}
         footer={
           <>
             <Button
@@ -366,7 +446,7 @@ export default function PeminjamanPage() {
           {fineNotice}
         </p>
       )}
-      <LoanForm members={members} books={books} />
+      <LoanForm members={members} books={books} loanDays={loanDays} />
       <div className="flex flex-wrap items-end gap-2 text-sm">
         <div className="grid gap-1">
           <label htmlFor="peminjaman-status" className="text-sm font-semibold text-slate-700">

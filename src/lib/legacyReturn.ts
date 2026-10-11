@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { calcFine, jsonError, FINE_PER_DAY } from '@/lib/supabase/auth';
+import { getReplacementFee } from '@/lib/loan-settings';
 import { createLogger } from '@/lib/logger';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
@@ -83,17 +84,27 @@ export async function legacyReturnLoan(
     return jsonError('CONFLICT', 'Sudah dikembalikan.', 409);
 
   const rate = await getFineRate(supabase);
-  const fine = calcFine(l.due_at, returnedAt, rate);
+  const lateFine = calcFine(l.due_at, returnedAt, rate);
+  // Isu #74: rusak/hilang dikenakan biaya ganti rugi dari settings
+  // (library_settings.replacement_fee_damaged / replacement_fee_lost).
+  // Jalur utama (RPC return_loan) menghitungnya sendiri di DB — ini jalur
+  // fallback bila fungsi belum terdeploy.
+  const replacement = await getReplacementFee(supabase, kondisi);
+  const fine = lateFine + replacement;
 
   const cleanNotes = typeof opts.notes === 'string' ? opts.notes.trim().slice(0, 500) : '';
   const noteExtra = cleanNotes ? ` | ${cleanNotes}` : '';
+  const replacementNote =
+    replacement > 0
+      ? ` | Biaya ganti rugi (${kondisi}): Rp${replacement.toLocaleString('id-ID')}`
+      : '';
 
   const updatePayload: Record<string, unknown> = hasKondisi
     ? {
         returned_at: returnedAt.toISOString(),
         status: kondisi === 'hilang' ? 'lost' : 'returned',
         fine_amount: fine,
-        notes: `Kondisi kembali: ${kondisi}${noteExtra}`,
+        notes: `Kondisi kembali: ${kondisi}${replacementNote}${noteExtra}`,
       }
     : {
         returned_at: returnedAt.toISOString(),
@@ -176,9 +187,10 @@ export async function legacyReturnLoan(
       member_id: l.member_id,
       amount: fine,
       status: 'unpaid',
-      notes: hasKondisi
-        ? `Denda keterlambatan otomatis Rp${rate}/hari (due ${l.due_at}). Kondisi: ${kondisi}.`
-        : `Denda keterlambatan otomatis Rp${rate}/hari (due ${l.due_at}).`,
+      notes:
+        `Denda keterlambatan otomatis Rp${rate}/hari (due ${l.due_at}).` +
+        (replacement > 0 ? ` Biaya ganti rugi (${kondisi}): Rp${replacement}.` : '') +
+        (hasKondisi ? ` Kondisi: ${kondisi}.` : ''),
     });
     if (fineErr) {
       const loanReverted = await tryRevertLoanReturn(supabase, id);
@@ -195,7 +207,9 @@ export async function legacyReturnLoan(
     action: 'loans.return',
     entity_type: 'loans',
     entity_id: id,
-    metadata: hasKondisi ? { fine, kondisi, book_id: l.book_id } : { fine },
+    metadata: hasKondisi
+      ? { fine, late_fine: lateFine, replacement_fee: replacement, kondisi, book_id: l.book_id }
+      : { fine, late_fine: lateFine },
   };
   const firstAudit = await supabase.from('activity_logs').insert(auditPayload);
   if (firstAudit.error) {

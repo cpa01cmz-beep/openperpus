@@ -33,6 +33,11 @@ const ALLOWED: Record<string, string> = {
   announcement: 'announcement',
   active_theme: 'active_theme',
   fine_per_day: 'fine_per_day',
+  // kebijakan pinjam (issue #74) — kolom kanonis Inggris, lihat migrasi 0026
+  loan_days: 'loan_days',
+  max_extensions: 'max_extensions',
+  replacement_fee_damaged: 'replacement_fee_damaged',
+  replacement_fee_lost: 'replacement_fee_lost',
   // alias Indonesia (docs) -> canonical
   nama: 'name',
   nama_perpus: 'name',
@@ -156,6 +161,38 @@ export async function PUT(req: Request) {
       return jsonError('VALIDATION', 'Tarif denda per hari harus lebih dari 0.', 422);
     }
     payload.fine_per_day = rate;
+  }
+  // Kebijakan pinjam (issue #74): integer/rupiah dengan rentang sama seperti
+  // CHECK constraint di migrasi 0026 — nilai di luar rentang ditolak 422,
+  // bukan dipotong senyap oleh DB.
+  if ('loan_days' in payload) {
+    const v = payload.loan_days;
+    const n = typeof v === 'string' && v.trim() !== '' ? Number(v) : Number(v);
+    if (v === null || !Number.isInteger(n) || n < 1 || n > 365) {
+      return jsonError('VALIDATION', 'Lama pinjam (hari) harus bilangan bulat 1..365.', 422);
+    }
+    payload.loan_days = n;
+  }
+  if ('max_extensions' in payload) {
+    const v = payload.max_extensions;
+    const n = typeof v === 'string' && v.trim() !== '' ? Number(v) : Number(v);
+    if (v === null || !Number.isInteger(n) || n < 0 || n > 10) {
+      return jsonError(
+        'VALIDATION',
+        'Batas maksimum perpanjangan harus bilangan bulat 0..10.',
+        422
+      );
+    }
+    payload.max_extensions = n;
+  }
+  for (const f of ['replacement_fee_damaged', 'replacement_fee_lost'] as const) {
+    if (!(f in payload)) continue;
+    const v = payload[f];
+    const n = typeof v === 'string' && v.trim() !== '' ? Number(v) : Number(v);
+    if (v !== null && (!Number.isFinite(n) || n < 0)) {
+      return jsonError('VALIDATION', `${f} harus angka rupiah >= 0.`, 422);
+    }
+    payload[f] = v === null ? 0 : n;
   }
   if (
     payload.active_theme !== undefined &&
