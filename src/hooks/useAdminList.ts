@@ -38,11 +38,6 @@ export type UseAdminListOptions = {
   params?: ListParams;
   /** Tunda request (ms) — dipakai search-as-you-type. */
   debounceMs?: number;
-  /**
-   * Jangan dipakai lagi (issue #79): no-store kini selalu aktif via
-   * `listFetch` di dalam hook. Dibiarkan agar pemanggil lama tak pecah.
-   */
-  noStore?: boolean;
   /** Pesan gagal khas halaman ini. */
   errorMessage?: string;
 };
