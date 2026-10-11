@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase/server';
 import { requireStaff, jsonError } from '@/lib/supabase/auth';
 import { isUuid } from '@/lib/api-utils';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
-import { normalizeRole } from '@/lib/auth';
+import { isAdminRole } from '@/lib/roles';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -70,7 +70,7 @@ export async function PUT(req: Request, { params }: Ctx) {
     payload.status = body.status;
   }
   if (body.member_code !== undefined) {
-    if (normalizeRole(profile?.role) !== 'admin')
+    if (!isAdminRole(profile?.role))
       return jsonError('FORBIDDEN', 'Hanya admin yang dapat mengubah member_code.', 403);
     payload.member_code = body.member_code;
   }
