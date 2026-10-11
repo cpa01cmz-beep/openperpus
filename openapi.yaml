@@ -739,6 +739,32 @@ paths:
       summary: Create loan (borrow, staff)
       security:
         - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [member_id, book_id]
+              properties:
+                member_id:
+                  type: string
+                  format: uuid
+                book_id:
+                  type: string
+                  format: uuid
+                notes:
+                  type: string
+                borrowed_at:
+                  type: string
+                  format: date-time
+                  description: Defaults to now.
+                due_at:
+                  type: string
+                  format: date-time
+                  description: >-
+                    Defaults to borrowed_at + library_settings.loan_days
+                    (14 days, migration 0026 / issue #74).
       responses:
         '201':
           description: created
@@ -786,6 +812,15 @@ paths:
                   type: string
                   format: date-time
                   description: 'action=return: return timestamp'
+                kondisi:
+                  type: string
+                  enum: [baik, rusak, hilang]
+                  default: baik
+                  description: >-
+                    action=return: book condition (issue #74). Absent = 'baik'.
+                    'rusak'/'hilang' reduce book stock and add a replacement fee
+                    from library_settings.replacement_fee_damaged /
+                    library_settings.replacement_fee_lost to the fine.
                 notes:
                   type: string
       responses:

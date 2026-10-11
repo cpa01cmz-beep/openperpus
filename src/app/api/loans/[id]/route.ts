@@ -13,8 +13,10 @@ type Ctx = { params: Promise<{ id: string }> };
 /**
  * GET /api/loans/[id] — pustakawan+ (atau pemilik? kontrak: anggota otomatis miliknya).
  *   Di sini: staf penuh; anggota boleh bila loan miliknya.
- * PUT /api/loans/[id] {action:"return", returned_at?, notes?} — pustakawan+
+ * PUT /api/loans/[id] {action:"return", returned_at?, notes?, kondisi?} — pustakawan+
  *   (satu-satunya transport write issue #54; varian koleksi ?id= dihapus)
+ *   kondisi: baik|rusak|hilang (issue #74). Absen = 'baik'; rusak/hilang
+ *   mengurangi stok buku dan menambah denda ganti rugi dari settings.
  * DELETE /api/loans/[id] — admin (hanya returned/lost)
  */
 
@@ -102,12 +104,18 @@ export async function PUT(req: Request, { params }: Ctx) {
   }
   if (body.action !== 'return') return jsonError('VALIDATION', "Kirim { action: 'return' }.", 422);
 
+  // Isu #74: kondisi buku (baik|rusak|hilang) ikut dari body supaya tombol
+  // "Kembalikan" di admin bisa menandai rusak/hilang. Absen = 'baik'
+  // (perilaku lama). Validasi + biaya ganti rugi di returnLoan/return_loan.
+  const kondisiRaw = body.kondisi ?? body.condition;
+
   const res = await returnLoan({
     supabase,
     id: id,
     userId: user?.id ?? null,
     returnedAt: body.returned_at as string | undefined,
     notes: typeof body.notes === 'string' ? body.notes : undefined,
+    ...(typeof kondisiRaw === 'string' ? { kondisi: kondisiRaw } : {}),
   });
   if (res.status !== 200) {
     log.warn('loans.id.return_failed', { status: res.status });

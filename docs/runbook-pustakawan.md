@@ -32,7 +32,8 @@ laporkan lewat issue baru.
    pada opsi; stok 0 = tidak bisa dipilih).
 3. Opsional isi catatan. Kirim.
 4. Server membuat loan `borrowed`, stok buku −1, tempo otomatis
-   **+14 hari** dari hari pinjam (`src/app/api/loans/route.ts`).
+   **+`loan_days` hari** dari hari pinjam (`library_settings.loan_days` di
+   Pengaturan, default 14 — bukan angka mati di kode).
 5. Bila anggota sedang meminjam sampai batas atau statusnya tidak aktif,
    server menolak dengan pesan merah — tampilkan pesan itu kepada anggota,
    jangan akali.
@@ -44,20 +45,28 @@ laporkan lewat issue baru.
 1. Di tabel Peminjaman, baris berstatus `borrowed`/`overdue` punya tombol
    **Kembalikan** dan **Perpanjang**.
 2. Klik **Kembalikan** → modal konfirmasi menampilkan tarif
-   (`fine_per_day` dari Pengaturan, default Rp1.000/hari).
+   (`fine_per_day` dari Pengaturan, default Rp1.000/hari) **dan pilihan
+   kondisi buku**: `Baik` / `Rusak` / `Hilang`.
 3. Setelah dikonfirmasi, server (satu transaksi DB via RPC `return_loan`):
-   menutup loan, mengembalikan stok, menghitung denda
-   `hari_telat × fine_per_day`, membuat row denda `unpaid` bila > 0.
+   menutup loan, menyesuaikan stok sesuai kondisi, menghitung denda
+   `hari_telat × fine_per_day` **+ biaya ganti rugi** untuk `rusak`/`hilang`
+   (`replacement_fee_damaged`/`replacement_fee_lost`), membuat row denda
+   `unpaid` bila total > 0.
 4. Notifikasi hijau menampilkan nominal denda yang terbentuk.
-5. Baris berubah menjadi `returned`; kini alihkan ke alur **Bayar denda**.
+5. Baris berubah menjadi `returned` (`hilang` → `lost`); kini alihkan ke alur
+   **Bayar denda**.
 
-> API: `PUT /api/loans/{id} {action:"return"}`.
+> API: `PUT /api/loans/{id} {action:"return", kondisi?"baik|rusak|hilang"}`.
+> `kondisi` absen = `baik` (perilaku lama).
 > Sudah `returned`/`lost` → `409` (idempoten secara alami).
+> Stok: `baik` → `stock_available` +1; `rusak`/`hilang` → `stock_total` −1.
 
 ### 2.3 Perpanjang pinjaman
 
 Tombol **Perpanjang** → pilih 3/7/14/30 hari → tempo mundur sejauh itu.
 Hanya untuk status `borrowed`/`overdue`; yang sudah dikembalikan → `409`.
+Batasnya `library_settings.max_extensions` kali per pinjaman (default 2);
+hitungannya kolom `loans.extend_count` di DB — tercapai → `409`.
 
 > API: `PUT /api/loans/{id} {action:"extend", days}`.
 

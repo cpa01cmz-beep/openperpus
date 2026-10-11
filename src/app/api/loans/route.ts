@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@/lib/supabase/server';
 import { requireStaff, jsonError, addDaysISO, parsePaging } from '@/lib/supabase/auth';
 import { getFineRate } from '@/lib/loans-return';
+import { getLoanPolicy } from '@/lib/loan-settings';
 import { checkMemberLoanEligibility } from '@/lib/loan-eligibility';
 import { sanitizeIlike } from '@/lib/search';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
@@ -21,9 +22,11 @@ import { ACTIVE_LOAN_STATUSES, isLoanStatus, loansListFilter } from '@/lib/loans
  *   Response memuat is_overdue + effective_status per baris.
  * POST /api/loans { member_id, book_id, borrowed_at?, due_at?, notes? }
  *   -> gate kelayakan anggota (#56): denda belum lunas / pinjaman terlambat /
- *      batas pinjaman aktif -> 409; due auto +14 hari, stok_available -1 (guard >0)
- * PUT /api/loans/{id} { action:"return", returned_at?, notes? }
- *   -> denda otomatis tarif library_settings/hari (default Rp1000) + stok +1 + row fines bila denda >0
+ *      batas pinjaman aktif -> 409; due auto + library_settings.loan_days
+ *      (default 14 hari, issue #74), stok_available -1 (guard >0)
+ * PUT /api/loans/{id} { action:"return", returned_at?, notes?, kondisi? }
+ *   -> denda otomatis tarif library_settings/hari (default Rp1000) + stok +1 + row fines bila denda >0.
+ *      kondisi: baik|rusak|hilang (issue #74) — rusak/hilang menambah biaya ganti rugi.
  * PUT /api/loans/{id} { action:"extend", days? } -> due_at += N hari (1..90).
  * STATE-MACHINE (transisi legal, ilegal -> 409/422):
  *   return: borrowed|overdue -> returned|lost (sudah returned/lost -> 409).
@@ -152,9 +155,12 @@ export async function POST(req: Request) {
   const borrowedAt = body.borrowed_at ? new Date(body.borrowed_at as string) : new Date();
   if (Number.isNaN(borrowedAt.getTime()))
     return jsonError('VALIDATION', 'borrowed_at tidak valid.', 422);
+  // Isu #74: tempo default ikut library_settings.loan_days (default 14 hari),
+  // bukan angka mati di kode. Pustakawan mengubahnya di Pengaturan tanpa deploy.
+  const policy = await getLoanPolicy(supabase);
   const dueAt = body.due_at
     ? new Date(body.due_at as string)
-    : new Date(addDaysISO(14, borrowedAt));
+    : new Date(addDaysISO(policy.loanDays, borrowedAt));
   if (Number.isNaN(dueAt.getTime())) return jsonError('VALIDATION', 'due_at tidak valid.', 422);
   if (dueAt <= borrowedAt) return jsonError('VALIDATION', 'due_at harus sesudah borrowed_at.', 422);
 

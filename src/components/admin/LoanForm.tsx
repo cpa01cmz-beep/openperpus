@@ -18,9 +18,12 @@ export type Option = {
 export default function LoanForm({
   members,
   books,
+  loanDays = 14,
 }: {
   members: Option[];
   books: (Option & { stock?: number })[];
+  /** Lama pinjam dari library_settings.loan_days (issue #74). */
+  loanDays?: number;
 }) {
   const [memberId, setMemberId] = useState('');
   const [bookId, setBookId] = useState('');
@@ -32,13 +35,15 @@ export default function LoanForm({
   const [bookExtra, setBookExtra] = useState<(SearchOption & { stock?: number }) | undefined>(
     undefined
   );
+  const days = Number.isFinite(loanDays) && loanDays > 0 ? Math.floor(loanDays) : 14;
 
-  // Due date auto +14 hari
+  // Due date auto +N hari (library_settings.loan_days — server memakai angka
+  // yang sama, jadi preview ini tidak lagi hardcode +14).
   const duePreview = useMemo(() => {
     const d = new Date();
-    d.setDate(d.getDate() + 14);
+    d.setDate(d.getDate() + days);
     return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-  }, []);
+  }, [days]);
 
   const selectedBook =
     books.find((b) => b.id === bookId) ??
@@ -145,7 +150,8 @@ export default function LoanForm({
         />
       </label>
       <p className="text-xs text-slate-500">
-        Jatuh tempo otomatis: <strong>{duePreview}</strong> (+14 hari dari hari ini).
+        Jatuh tempo otomatis: <strong>{duePreview}</strong> (+{days} hari dari hari ini, sesuai
+        pengaturan lama pinjam).
       </p>
       <div className="grid gap-1 text-sm">
         <label htmlFor="loan-notes" className="text-sm font-semibold text-slate-700">

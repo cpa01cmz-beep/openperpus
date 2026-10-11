@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { jsonError } from '@/lib/supabase/auth';
 import { createLogger } from '@/lib/logger';
-import { MAX_EXTEND_COUNT } from '@/lib/validation/loan';
+import { getLoanPolicy } from '@/lib/loan-settings';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 type SupabaseLike = Pick<SupabaseClient, 'from'> & Partial<Pick<SupabaseClient, 'rpc'>>;
@@ -16,7 +16,33 @@ function retryableError(message: string, details?: unknown) {
   );
 }
 
-async function countExtensions(supabase: SupabaseLike, id: string): Promise<number> {
+/**
+ * Jumlah perpanjangan yang sudah dipakai, dari kolom `loans.extend_count`.
+ *
+ * Isu #74: dulu HANYA dihitung dari activity_logs — rapuh bila log diprune
+ * (retensi 180 hari) → anggota bisa memperpanjang tanpa batas. Kolom (migrasi
+ * 0026) ikut transaksi DB, jadi selalu konsisten dengan yang dihitung RPC
+ * `extend_loan`. Nilai `null` = kolom belum tersedia (DB lama / klien mock) →
+ * pemanggil kembali memakai hitungan `activity_logs` agar batas tidak
+ * mengendur saat migrasi belum jalan.
+ */
+async function readExtendCount(supabase: SupabaseLike, id: string): Promise<number | null> {
+  try {
+    const rows = supabase.from('loans');
+    if (typeof rows.select !== 'function') return null;
+    const { data } = await rows.select('due_at,extend_count').eq('id', id).single();
+    const raw = (data as { extend_count?: unknown } | null)?.extend_count;
+    if (raw === undefined || raw === null) return null; // kolom belum di-backfill / mock
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n < 0) return null;
+    return Math.floor(n);
+  } catch {
+    return null;
+  }
+}
+
+/** Hitungan cadangan dari activity_logs (kompatibilitas baris lama). */
+async function countExtensionsFromLogs(supabase: SupabaseLike, id: string): Promise<number> {
   try {
     const logs = supabase.from('activity_logs');
     if (typeof logs.select !== 'function') return 0;
@@ -31,8 +57,6 @@ async function countExtensions(supabase: SupabaseLike, id: string): Promise<numb
     }
     return count ?? 0;
   } catch {
-    // ponytail: count tak terbaca (mock/legacy tanpa select) -> anggap 0,
-    // batas tetap dijaga oleh kolom extend_count bila migrasi 0020 diambil.
     return 0;
   }
 }
@@ -50,7 +74,10 @@ export type ExtendLoanOptions = {
  * Aktif = borrowed|overdue. returned/lost -> 409. Audit loans.extend
  * dengan old_due_at + new_due_at. is_overdue dihitung ulang dari new due.
  * Primary: RPC extend_loan (SELECT FOR UPDATE, validasi DB). Fallback: optimistic-lock.
- * US-1: tolak dengan 409 CONFLICT bila jumlah loans.extend >= MAX_EXTEND_COUNT.
+ * Isu #74 (US-1): batas + hitungan perpanjangan dari
+ * library_settings.max_extensions dan kolom loans.extend_count (migrasi 0026),
+ * bukan activity_logs yang bisa diprune. Hitungan dari log hanya dipakai bila
+ * kolom belum tersedia (DB lama / klien mock).
  */
 export async function extendLoan(opts: ExtendLoanOptions): Promise<Response> {
   const { supabase, id } = opts;
@@ -60,11 +87,14 @@ export async function extendLoan(opts: ExtendLoanOptions): Promise<Response> {
     return jsonError('VALIDATION', 'days harus bilangan bulat 1..90.', 422);
   }
 
-  const extensionCount = await countExtensions(supabase, id);
-  if (extensionCount >= MAX_EXTEND_COUNT) {
+  const policy = await getLoanPolicy(supabase);
+  const maxExtensions = policy.maxExtensions;
+  const columnCount = await readExtendCount(supabase, id);
+  const extensionCount = columnCount ?? (await countExtensionsFromLogs(supabase, id));
+  if (extensionCount >= maxExtensions) {
     return jsonError(
       'CONFLICT',
-      `Batas maksimum perpanjangan tercapai (maksimal ${MAX_EXTEND_COUNT} kali).`,
+      `Batas maksimum perpanjangan tercapai (maksimal ${maxExtensions} kali).`,
       409
     );
   }
@@ -80,6 +110,7 @@ export async function extendLoan(opts: ExtendLoanOptions): Promise<Response> {
     const { data: rpcData, error: rpcError } = await supabase.rpc('extend_loan', {
       p_loan_id: id,
       p_days: days,
+      p_max_extend: maxExtensions,
     });
 
     // If RPC works, use its result
@@ -89,8 +120,12 @@ export async function extendLoan(opts: ExtendLoanOptions): Promise<Response> {
         due_at: string;
         status: string;
         is_overdue: boolean;
+        extend_count?: unknown;
         [key: string]: unknown;
       };
+      // Prefer angka dari DB (kolom extend_count yang baru dinaikkan RPC).
+      const rpcCount = Number(loan.extend_count);
+      const nextCount = Number.isFinite(rpcCount) && rpcCount > 0 ? rpcCount : extensionCount + 1;
 
       const auditPayload = {
         user_id: userId,
@@ -112,11 +147,16 @@ export async function extendLoan(opts: ExtendLoanOptions): Promise<Response> {
       }
 
       return NextResponse.json({
-        data: { ...loan, is_overdue: loan.is_overdue, extension_count: extensionCount + 1 },
+        data: {
+          ...loan,
+          is_overdue: loan.is_overdue,
+          extension_count: nextCount,
+          extend_count: nextCount,
+        },
       });
     }
 
-    // Handle RPC 409 (loan returned/lost) - return proper 409
+    // Handle RPC 409 (loan returned/lost / batas perpanjangan) - return proper 409
     const rpcMsg = (rpcError as { message?: string; code?: string } | null)?.message ?? '';
     const rpcCode = (rpcError as { code?: string } | null)?.code ?? '';
     if (
@@ -167,7 +207,13 @@ export async function extendLoan(opts: ExtendLoanOptions): Promise<Response> {
   // RACE-02: optimistic-lock — dua extend konkuren, hanya 1 yang menang.
   const { data, error } = await supabase
     .from('loans')
-    .update({ due_at: newDueIso, updated_at: new Date().toISOString() })
+    .update({
+      due_at: newDueIso,
+      updated_at: new Date().toISOString(),
+      // Isu #74: hitungan perpanjangan ikut naik di baris yang sama (kolom),
+      // bukan hanya menyandarkan diri pada activity_logs.
+      ...(columnCount === null ? {} : { extend_count: extensionCount + 1 }),
+    })
     .eq('id', id)
     .eq('due_at', l.due_at)
     .select()
@@ -209,5 +255,11 @@ export async function extendLoan(opts: ExtendLoanOptions): Promise<Response> {
     }
   }
 
-  return NextResponse.json({ data: { ...row, extension_count: extensionCount + 1 } });
+  return NextResponse.json({
+    data: {
+      ...row,
+      extension_count: extensionCount + 1,
+      ...(columnCount === null ? {} : { extend_count: extensionCount + 1 }),
+    },
+  });
 }

@@ -32,6 +32,7 @@
 
 - Index: PK saja. RLS: anon/authenticated SELECT; UPDATE hanya `admin`.
 - Seed awal 1 baris (nama generik — admin wajib ganti via CMS, bukan via kode).
+- Kolom operasional sirkulasi (kanonis Inggris, nilai aktual di migrasi; label Indonesia hanya di UI): `fine_per_day` (0014, tarif denda), `max_active_loans` (0023, batas pinjaman aktif), `loan_days` + `max_extensions` + `replacement_fee_damaged` + `replacement_fee_lost` (0026 — issue #74: tempo default, batas perpanjangan, biaya ganti rugi rusak/hilang).
 - CHECK `theme_overrides` (0022): `NULL` ATAU (`jsonb_typeof()='object'` DAN `octet_length(::text)<=8000` DAN top-level keys hanya `tokens|fonts|radius|shadow|spacing|layout`). Aturan "hanya layout" ditegakkan di API, bukan DB (DB mencadangkan 5 kunci lain untuk masa depan).
 - Contoh layout-only: `{"layout":{"headerVariant":"ocean-wave","heroVariant":"ocean-tide","footerVariant":"ocean-harbor","homepageSections":[{"id":"hero","enabled":true,"order":0},{"id":"news","enabled":false}]}}`.
 - Rollback 0022: `ALTER TABLE public.library_settings DROP CONSTRAINT IF EXISTS library_settings_theme_overrides_check; ALTER TABLE public.library_settings DROP COLUMN IF EXISTS theme_overrides;`
@@ -145,11 +146,13 @@
 | `status`              | text CHECK('dipinjam','kembali','terlambat','hilang') DEFAULT 'dipinjam' |
 | `denda`               | int DEFAULT 0                                                            |
 | `processed_by`        | uuid → profiles                                                          |
+| `extend_count`        | int NOT NULL DEFAULT 0 (migrasi `0026`, issue #74)                       |
 
 - Index: `(member_id, status)`, `(status, tanggal_jatuh_tempo)` untuk overdue job, `copy_id`.
 - Constraint: satu copy hanya 1 loan aktif (`UNIQUE(copy_id) WHERE tanggal_kembali IS NULL` partial).
 - RLS: anggota SELECT miliknya; pustakawan+admin full.
 - Trigger `loan_checkout`: tolak bila member cap `maks_pinjam` tercapai / status blokir / copy tak tersedia; set copy `dipinjam`. Trigger `loan_return`: set copy `tersedia`, hitung `denda = max(0, kembali - tempo) * denda_per_hari`, insert ke `fines`.
+- `extend_count` (0026): jumlah perpanjangan terpakai — dinaikkan atomik oleh RPC `extend_loan` bersama `due_at`, dan dijadikan batas (`max_extensions`) di DB sehingga penghitungan tidak lagi bergantung pada `activity_logs` yang bisa diprune. `return_loan` (0014/0026) menambahkan biaya ganti rugi `rusak`/`hilang` ke denda sebelum menulis baris `fines`.
 
 ### Status terlambat — TURUNAN, bukan kolom (issue #57)
 
