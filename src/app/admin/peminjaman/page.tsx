@@ -17,6 +17,7 @@ import { useAdminSubmit } from '@/hooks/useAdminSubmit';
 import { useFineRate } from '@/hooks/useFineRate';
 import { formatRp } from '@/lib/format';
 import { PER_PAGE } from '@/lib/pagination';
+import { LOAN_STATUS } from '@/lib/enums';
 import { effectiveLoanStatus } from '@/lib/loans-overdue';
 
 const LoanForm = nextDynamic(() => import('@/components/admin/LoanForm'), {
@@ -454,9 +455,11 @@ function PeminjamanInner() {
             disabled={overdueOnly}
           >
             <option value="">Semua</option>
-            <option value="borrowed">borrowed</option>
-            <option value="returned">returned</option>
-            <option value="lost">lost</option>
+            {LOAN_STATUS.filter((s) => s.value !== 'overdue').map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
           </select>
         </div>
         <button

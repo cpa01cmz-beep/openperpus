@@ -86,7 +86,9 @@ export async function GET(req: Request) {
 
   // Tarif denda dari library_settings (fallback FINE_PER_DAY) — jangan hardcode 1000.
   // Telat pakai EPOCH/86400 (hari penuh); EXTRACT(DAY) salah utk telat >31 hari.
-  const fineRate = await getFineRate(supabase);
+  const rawRate = await getFineRate(supabase);
+  const fineRate = Number.isFinite(rawRate) ? rawRate : 0;
+  if (!Number.isFinite(rawRate)) log.warn('loans.fine_rate_invalid', { rawRate: String(rawRate) });
 
   let query = supabase
     .from('loans')
@@ -125,10 +127,13 @@ export async function GET(req: Request) {
   }
 
   const total = count ?? 0;
-  return NextResponse.json({
-    data: data ?? [],
-    pagination: { page, limit: perPage, total, totalPages: Math.ceil(total / perPage) },
-  });
+  return NextResponse.json(
+    {
+      data: data ?? [],
+      pagination: { page, limit: perPage, total, totalPages: Math.ceil(total / perPage) },
+    },
+    { headers: { 'Cache-Control': 'public, s-maxage=30, stale-while-revalidate=60' } }
+  );
 }
 
 export async function POST(req: Request) {

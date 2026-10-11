@@ -68,7 +68,7 @@ export function TestimonialsTab({
             <Input
               id="konten-testi-role"
               label="Peran"
-              placeholder="Peran (ex: Mahasiswa)"
+              placeholder="Peran (cth: Mahasiswa)"
               value={testiForm.role}
               onChange={(e) => setTestiForm({ ...testiForm, role: e.target.value })}
             />

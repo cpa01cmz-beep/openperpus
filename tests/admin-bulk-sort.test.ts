@@ -58,6 +58,7 @@ function mockSupabase(opts: {
     if (table === 'books') {
       const c: Record<string, (...a: unknown[]) => unknown> = {};
       c.delete = () => c;
+      c.update = () => c;
       c.in = () => c;
       c.eq = () => c;
       (c as Record<string, unknown>).then = (res: (v: unknown) => unknown) =>

@@ -146,15 +146,15 @@ export default function BannerPage() {
         />
         <Input
           id="banner-subtitle"
-          label="Subtitle"
-          placeholder="Subtitle"
+          label="Subjudul"
+          placeholder="Subjudul"
           value={form.subtitle}
           onChange={(e) => setForm({ ...form, subtitle: e.target.value })}
         />
         <Input
           id="banner-image-url"
-          label="Image URL"
-          placeholder="Image URL* https://…"
+          label="URL Gambar"
+          placeholder="URL Gambar* https://…"
           value={form.image_url}
           onChange={(e) => setForm({ ...form, image_url: e.target.value })}
           required
@@ -163,8 +163,8 @@ export default function BannerPage() {
           <div className="min-w-[200px] flex-1">
             <Input
               id="banner-link"
-              label="Link URL"
-              placeholder="Link URL"
+              label="URL Tautan"
+              placeholder="URL Tautan"
               value={form.link}
               onChange={(e) => setForm({ ...form, link: e.target.value })}
             />

@@ -52,6 +52,7 @@ export async function GET(req: Request) {
   let query = supabase
     .from('members')
     .select(`*, ${profileEmbed}`, { count: 'estimated' }) // #68: exact -> estimated (seq-scan)
+    .is('deleted_at', null)
     .range(from, to);
   query =
     sort === 'full_name'

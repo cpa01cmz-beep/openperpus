@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
+import { ARTICLE_STATUS } from '@/lib/enums';
 import { errMsg } from '@/lib/admin-errors';
 
 export const dynamic = 'force-dynamic';
@@ -98,7 +99,7 @@ export default function EditArtikelPage({ params }: { params: { id: string } }) 
         <div className="flex gap-2">
           <input
             className={input}
-            placeholder="Cover URL"
+            placeholder="URL Sampul"
             value={form.cover_url}
             onChange={(e) => setForm({ ...form, cover_url: e.target.value })}
           />
@@ -129,9 +130,11 @@ export default function EditArtikelPage({ params }: { params: { id: string } }) 
             value={form.status}
             onChange={(e) => setForm({ ...form, status: e.target.value })}
           >
-            <option value="draft">draft</option>
-            <option value="published">published</option>
-            <option value="archived">archived</option>
+            {ARTICLE_STATUS.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
           </select>
           <button
             disabled={saving}

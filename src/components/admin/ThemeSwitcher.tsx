@@ -60,8 +60,9 @@ export default function ThemeSwitcher({ current }: { current: string }) {
               key={t.id}
               type="button"
               disabled={savingId !== null}
+              aria-pressed={isActive}
               onClick={() => onSelect(t.id)}
-              className={`grid gap-2 rounded-xl border p-4 text-left transition disabled:opacity-50 ${
+              className={`grid gap-2 rounded-xl border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 disabled:opacity-50 ${
                 isActive ? 'border-slate-900 ring-2 ring-slate-900' : 'hover:border-slate-400'
               }`}
             >

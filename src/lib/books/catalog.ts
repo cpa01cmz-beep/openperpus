@@ -200,7 +200,9 @@ async function fetchBooksPagedUncached(opts: FetchBooksOpts): Promise<PagedBooks
     // Search path: use RPC (full-text + trigram), paginate via RPC offset/limit
     if (needle) {
       const books = await searchBooksViaRpc(supabase, needle, perPage, from);
-      // For total count, we still need a separate query or use max limit
+      // ponytail: 2 RTT (page + total via fetch terpisah); upgrade path =
+      // window-count di RPC search_books (total OVER () dalam 1 call) —
+      // JANGAN refactor RPC di sini, PR susulan bila search_books mendukungnya.
       // Since RPC is limited to 100, fetch up to 100 for total
       const allBooks = await searchBooksViaRpc(supabase, needle, 100, 0);
       const total = allBooks.length;

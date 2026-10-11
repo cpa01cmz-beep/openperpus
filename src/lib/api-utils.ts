@@ -65,6 +65,23 @@ export async function writeLog(supabase: SupabaseServerClient, args: WriteLogArg
 /** Pabrik logger per-entity: `const writeLog = createWriteLog('loans')`
  *  menghasilkan fungsi (supabase, userId, action, entityId, metadata?)
  *  yang identik dengan salinan lokal lama di tiap route. */
+export function readAlias(
+  body: Record<string, unknown>,
+  enKey: string,
+  idKeys: string[]
+): { value: unknown; usedAlias: string | null } {
+  if (body[enKey] !== undefined) return { value: body[enKey], usedAlias: null };
+  for (const k of idKeys) {
+    if (body[k] !== undefined) {
+      console.warn(`deprecation: alias '${k}' untuk '${enKey}' dipakai; gunakan '${enKey}'`);
+      return { value: body[k], usedAlias: k };
+    }
+  }
+  return { value: undefined, usedAlias: null };
+}
+// ponytail: header 'Deprecation: true' + 'Sunset' penuh butuh akses response di tiap
+// route alias-ID; upgrade path = helper baca+header di PR susulan — JANGAN di sini.
+
 export function createWriteLog(entityType: string) {
   return async function writeEntityLog(
     supabase: SupabaseServerClient,

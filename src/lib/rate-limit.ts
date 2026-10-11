@@ -64,6 +64,12 @@ export function checkRateLimit(
 export const WRITE_API_LIMIT = 60; // request
 export const WRITE_API_WINDOW_MS = 60_000; // per menit
 
+export const READ_SENSITIVE_LIMIT = 100;
+export const READ_SENSITIVE_WINDOW_MS = 60_000;
+
+export const LOGIN_LIMIT = 5;
+export const LOGIN_WINDOW_MS = 900_000;
+
 /** Reset store — hanya untuk test (vitest). */
 export function __resetRateLimitStore(): void {
   store.clear();
