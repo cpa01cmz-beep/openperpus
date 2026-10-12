@@ -14,12 +14,15 @@ export type CsvCell = string | number | null;
  * tanpa gain keamanan (sisa review #154 — kaitannya: `\s` di JS jauh lebih
  * luas dari whitespace ASCII, cakupannya harus eksplisit).
  *
- * Alternatif `[\t\r\v\f]` menjaga sel berawalan kontrol TANPA penanda —
+ * Alternatif `[\t\r\n\v\f]` menjaga sel berawalan kontrol TANPA penanda —
  * beberapa engine memperlakukan sel berawalan kontrol sebagai formula
- * (hardening asli #152); set kontrol dibuat simetris dengan alternatif
- * pertama supaya klaim komentar ini benar untuk SELURUH karakter kontrol.
+ * (hardening asli #152). Set kontrol memuat SELURUH C0 whitespace
+ * (`\t\r\n`) plus VT/FF, simetris dengan run whitespace `[ \t\r\n]`
+ * alternatif pertama: LF-led TIDAK kebagian (sisa review #155 — dulu set
+ * `[\t\r\v\f]` hanya mengunci CR/VT/FF/TAB, klaim "benar untuk SELURUH
+ * karakter kontrol" di komentar ini jadi tidak benar untuk `\n`).
  */
-const FORMULA_LEAD = /^(?:[ \t\r\n]*[=+\-@]|[\t\r\v\f])/;
+const FORMULA_LEAD = /^(?:[ \t\r\n]*[=+\-@]|[\t\r\n\v\f])/;
 
 function esc(v: CsvCell): string {
   const s = v === null ? '' : String(v);
