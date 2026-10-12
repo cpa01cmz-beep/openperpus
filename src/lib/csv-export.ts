@@ -1,8 +1,21 @@
 export type CsvCell = string | number | null;
 
+/**
+ * Awal string yang dieksekusi Excel/LibreOffice/Google Sheets sebagai FORMULA
+ * begitu berkas CSV dibuka — CSV/formula injection (CWE-1236). TAB/CR disertakan
+ * karena beberapa engine memperlakukan sel berawalan kontrol sebagai formula.
+ */
+const FORMULA_LEAD = /^[=+\-@\t\r]/;
+
 function esc(v: CsvCell): string {
   const s = v === null ? '' : String(v);
-  return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  // Sel STRING berawalan karakter formula diberi prefix apostrof (mitigasi
+  // OWASP): Excel memperlakukan sel sebagai teks, bukan formula. Memakai
+  // quote RFC 4180 saja TIDAK menetralkan — "=1+1" yang dikutip tetap
+  // dieksekusi. Angka (typeof number) sengaja tidak disaring supaya ekspor
+  // numerik (termasuk nilai negatif) tetap utuh (issue #152).
+  const guarded = typeof v === 'string' && FORMULA_LEAD.test(s) ? `'${s}` : s;
+  return /[",\r\n]/.test(guarded) ? `"${guarded.replace(/"/g, '""')}"` : guarded;
 }
 
 export function toCSV(headers: string[], rows: CsvCell[][]): string {

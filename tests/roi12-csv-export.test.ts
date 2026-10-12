@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi, afterEach } from 'vitest';
-import { toCSV, downloadCSV } from '@/lib/csv-export';
+import { rowsToCSV, toCSV, downloadCSV } from '@/lib/csv-export';
 
 describe('toCSV (RFC4180)', () => {
   it('puts header row first', () => {
@@ -26,6 +26,40 @@ describe('toCSV (RFC4180)', () => {
 
   it('maps null/numbers to empty/string cells', () => {
     expect(toCSV(['a', 'b', 'c'], [[null, 42, 'x']])).toBe('a,b,c\r\n,42,x');
+  });
+});
+
+describe('formula injection (CWE-1236) dinetralkan di esc()', () => {
+  // Issue #152: sel string berawalan =/+/-/@/TAB/CR dieksekusi Excel/Sheets
+  // saat berkas dibuka. Quote RFC 4180 TIDAK menetralkan (sel "=1+1" yang
+  // dikutip tetap formula) — mitigasinya prefix apostrof OWASP.
+  it.each([
+    ["=cmd|'/c calc'!A1", "'=cmd|'/c calc'!A1"],
+    ['=HYPERLINK("http://evil","Klik")', '"\'=HYPERLINK(""http://evil"",""Klik"")"'],
+    ['+cmd', "'+cmd"],
+    ['-2+3+cmd', "'-2+3+cmd"],
+    ['@SUM(1+9)*cmd|', "'@SUM(1+9)*cmd|"],
+    ['\t=1+1', "'\t=1+1"],
+  ])('%p -> %p', (input, expected) => {
+    expect(toCSV(['h'], [[input]])).toBe(`h\r\n${expected}`);
+  });
+
+  it('sel angka (termasuk negatif) TIDAK diberi prefix — ekspor numerik utuh', () => {
+    expect(toCSV(['denda'], [[-1500]])).toBe('denda\r\n-1500');
+    expect(toCSV(['stok'], [[0]])).toBe('stok\r\n0');
+  });
+
+  it('string biasa dan null tidak berubah', () => {
+    expect(toCSV(['judul'], [['Dilan 1990']])).toBe('judul\r\nDilan 1990');
+    expect(toCSV(['kategori'], [[null]])).toBe('kategori\r\n');
+  });
+
+  it('payload hanya dinetralkan di AWAL sel, bukan di tengah string', () => {
+    expect(toCSV(['judul'], [['Raport = 1+1']])).toBe('judul\r\nRaport = 1+1');
+  });
+
+  it('jalur stream server (rowsToCSV) juga dinetralkan', () => {
+    expect(rowsToCSV([["=cmd|'/c calc'!A1"]])).toBe("'=cmd|'/c calc'!A1");
   });
 });
 
