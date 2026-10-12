@@ -87,8 +87,20 @@ describe('issue-79: src/lib/format.ts satu sumber format', () => {
   });
 
   it('formatStamp YYYY-MM-DD deterministik (nama berkas ekspor)', () => {
-    expect(formatStamp(new Date(2026, 9, 11))).toBe('2026-10-11');
+    // Input dipatok ke INSTANT mutlak, BUKAN new Date(2026, 9, 11): konstruksi
+    // "tengah malam lokal" bergeser harinya untuk runtime TZ di atas UTC
+    // (Asia/Shanghai +8: tengah malam lokal = 10-10 16:00Z = masih 10-10 di
+    // WIB), sehingga ekspektasi harus lewat instant + zona ekspor (WIB) yang
+    // sama — klaim "deterministik lintas TZ" hanya benar dengan input absolut
+    // (sisa review #134).
+    expect(formatStamp(new Date('2026-10-11T00:00:00Z'))).toBe('2026-10-11');
     expect(formatStamp('2026-01-05T00:00:00Z')).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+  });
+
+  it('formatStamp tetap YYYY-MM-DD untuk tahun < 1000 (year tak nol-padding oleh Intl)', () => {
+    // Intl 'numeric' memberi "999", bukan "0999" — kontrak nama berkas menuntut
+    // 4 digit, jadi formatStamp menambahkan padding sendiri (sisa review #134).
+    expect(formatStamp('0999-01-05T00:00:00Z')).toBe('0999-01-05');
   });
 
   it('formatStamp dipatok WIB — server (UTC) dan browser menghasilkan nama yang sama', () => {
