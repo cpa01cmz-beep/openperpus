@@ -27,6 +27,17 @@ export type CsvCell = string | number | null;
  * kontrol-led tanpa penanda meski ia memberi prefix apostrof pada sel yang
  * berawalan kontrol mentah: dicatat di komentar review PR #157 — fail-closed
  * dipilih karena tidak ada dasar membedakan LF dari CR/VT/FF di level engine.
+ *
+ * BATASAN YANG DIDOKUMENTASIKAN (sisa review #159): kontrol DI LUAR set guard
+ * (NUL/ESC/FS/GS/RS/US 0x1c–0x1f, dst. — 27 dari 32 kode C0) ditulis APA ADANYA
+ * ke keluaran CSV, tanpa prefix apostrof dan tanpa dikutip RFC 4180. RFC 4180
+ * `TEXTDATA` memang mengecualikan karakter kontrol, jadi pembaca ketat (Python
+ * `csv`, pandas, sebagian jalur impor Excel) bisa error atau terpotong pada
+ * NUL tertanam di dalam sel. Mengutip sel yang memuat kontrol TIDAK menutup
+ * lubang itu — NUL mentah tetap utuh di dalam tanda kutip, jadi memperlebar
+ * set kutip `esc()` tidak menolong. Remediasi sebenarnya ada di validasi
+ * MASUKAN (tolak kontrol pada judul/penulis/kategori), BUKAN di guard formula
+ * ini; batas ini dipin di `tests/roi12-csv-export.test.ts`.
  */
 const FORMULA_LEAD = /^(?:[ \t\r\n]*[=+\-@]|[\t\r\n\v\f])/;
 

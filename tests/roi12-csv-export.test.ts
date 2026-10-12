@@ -52,10 +52,10 @@ describe('formula injection (CWE-1236) dinetralkan di esc()', () => {
     // Sisa review #154: LF-led payload — LF ada di run whitespace ASCII, jadi
     // ikut disaring; sel dikutip RFC 4180 karena mengandung LF.
     ['\n=cmd', '"' + "'" + '\n' + '=cmd' + '"'],
-    // Sisa review #155: LF-led TANPA penanda formula kini juga di-guard — set
-    // kontrol `[\t\r\n\v\f]` menutup 5 kontrol C0 (TAB/CR/LF/VT/FF; NUL/ESC/
-    // separator \x1c–\x1f DI LUAR cakupan, lihat komentar guard). Dikutip
-    // RFC 4180 karena mengandung LF/CR.
+    // Sisa review #156 (PR #157, commit 2a40b36): LF-led TANPA penanda formula
+    // kini juga di-guard — set kontrol `[\t\r\n\v\f]` menutup 5 kontrol C0
+    // (TAB/CR/LF/VT/FF; NUL/ESC/separator \x1c–\x1f DI LUAR cakupan, lihat
+    // komentar guard). Dikutip RFC 4180 karena mengandung LF/CR.
     ['\n', '"' + "'" + '\n' + '"'],
     ['\n\n', '"' + "'" + '\n\n' + '"'],
     ['\n\rx', '"' + "'" + '\n\rx' + '"'],
@@ -96,8 +96,11 @@ describe('formula injection (CWE-1236) dinetralkan di esc()', () => {
   // Pasangan invarian di atas: kontrol-led murni TETAP di-guard (prefix
   // apostrof + kutip RFC 4180) sementara spasi-led murni tidak — dua rekan
   // dikunci bersama supaya klaim cakupan guard tidak bisa mengabur lagi.
+  // Catatan: kasus TAB-led (`'\t\t'`) DI SINI karena satu-satunya yang belum
+  // tercakup baris `esc()` mana pun — kasus `'\n'` sudah dipin di tabel
+  // `it.each` (baris 59), jadi tidak diulang (sisa review #159: hindari
+  // duplikasi pin yang bisa drift diam-diam).
   it('kontrol-led murni TETAP di-guard, beda perlakuan dari spasi-led murni', () => {
-    expect(toCSV(['h'], [['\n']])).toBe('h\r\n"' + "'" + '\n' + '"');
     expect(toCSV(['h'], [['\t\t']])).toBe('h\r\n' + "'\t\t");
   });
 
@@ -119,11 +122,37 @@ describe('formula injection (CWE-1236) dinetralkan di esc()', () => {
   // Sisa review #157: batas cakupan kontrol dikunci sesuai komentar guard —
   // hanya 5 kontrol C0 (TAB/CR/LF/VT/FF) yang di-guard. NUL/ESC-led dan
   // separator \x1c–\x1f TETAP data sah: tidak di-guard, tidak dikutip.
-  it('batas C0 eksplisit: kontrol di luar set guard (NUL/ESC/separator) tetap data sah', () => {
-    expect(toCSV(['h'], [['\x00foo']])).toBe('h\r\n\x00foo');
-    expect(toCSV(['h'], [['\x1bfoo']])).toBe('h\r\n\x1bfoo');
-    expect(toCSV(['h'], [['\x1cfoo']])).toBe('h\r\n\x1cfoo');
-    expect(toCSV(['h'], [['\x1ffoo']])).toBe('h\r\n\x1ffoo');
+  // Sisa review #159: ekspektasi TURUNAN dari klaim "5-dari-32" lewat loop
+  // atas SELURUH 32 kode C0 — bukan spot-check 4 kode. Dengan loop, edit yang
+  // tak sengaja memperluas kelas kontrol (mis. ke `[\x00-\x1f]`) langsung
+  // gagal, bukan lolos sambil melewatkan kode yang tak diuji.
+  it('batas C0 EKSPLISIT untuk seluruh 32 kode: hanya TAB/CR/LF/VT/FF di-guard', () => {
+    // Set kontrol yang diterima guard (TAB, LF, VT, FF, CR) — 5 dari 32 kode.
+    const guardedC0 = new Set(['\t', '\n', '\v', '\f', '\r']);
+    // Kontrol yang juga memicu kutip RFC 4180 di `esc()` (hanya CR/LF memicu
+    // set kutip `[",\r\n]`; TAB/VT/FF tidak).
+    const quotedByEsc = new Set(['\r', '\n']);
+    let guardedCount = 0;
+
+    for (let code = 0; code < 0x20; code++) {
+      const c = String.fromCharCode(code);
+      const out = toCSV(['h'], [[c + 'foo']]);
+      if (guardedC0.has(c)) {
+        guardedCount++;
+        const guarded = `'${c}foo`;
+        expect(out).toBe(`h\r\n${quotedByEsc.has(c) ? `"${guarded}"` : guarded}`);
+      } else {
+        // Di luar set guard: ditulis APA ADANYA — tanpa prefix, tanpa kutip.
+        // Ini batas yang DIDOKUMENTASIKAN di komentar guard (bukan cacat):
+        // RFC 4180 TEXTDATA mengecualikan kontrol, mitigasinya di validasi
+        // masukan (lihat `src/lib/csv-export.ts`).
+        expect(out).toBe(`h\r\n${c}foo`);
+      }
+    }
+
+    // Klausa "5-dari-32" di komentar guard TIDAK hanya narasi — dipaksa benar
+    // di sini: kalau guard melebar/menyempit, salah satu angka ini patah.
+    expect(guardedCount).toBe(5);
   });
 
   it('jalur stream server (rowsToCSV) juga dinetralkan', () => {
