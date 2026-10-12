@@ -193,12 +193,37 @@ describe('#105 ekspor: kegagalan/truncation tidak menyamar jadi sukses', () => {
 });
 
 describe('#133 backpressure: loop ekspor di pull(), bukan start()', () => {
+  /** Isi objek literal yang dilempar ke `new ReadableStream(...)` — kurung
+   *  kurawal diseimbangkan agar asersi menilai UNDERLYING SOURCE, bukan teks
+   *  mana pun di berkas (sisa review #134: toContain/not.toContain mentah
+   *  terlalu longgar — cocok substring di tempat tak relevan — sekaligus
+   *  terlalu ketat — komentar yang membahas start() membuat test merah). */
+  function readableStreamUnderlyingSource(src: string): string {
+    const open = src.indexOf('{', src.indexOf('new ReadableStream'));
+    if (open === -1) return '';
+    let depth = 0;
+    for (let i = open; i < src.length; i++) {
+      if (src[i] === '{') depth++;
+      else if (src[i] === '}' && --depth === 0) return src.slice(open + 1, i);
+    }
+    return '';
+  }
+
+  /** Buang komentar: dokumentasi route memang membahas start() vs pull(). */
+  function stripComments(src: string): string {
+    return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+  }
+
   it('chunk hanya ditarik saat konsumen meminta (tidak di-enqueue penuh di start)', () => {
     // Guard struktural: perilaku backpressure sulit diassert tanpa consumer
     // sungguhan, tapi regresi ke `start()` (seluruh CSV di-enqueue sekaligus,
     // menumpuk di memori worker untuk klien lambat) harus ketahuan.
-    const src = readFileSync(join(process.cwd(), 'src/app/api/reports/export/route.ts'), 'utf8');
-    expect(src, 'loop stream wajib di pull(), bukan start()').toContain('async pull(controller)');
-    expect(src, 'regresi ke start() = tanpa backpressure').not.toContain('async start(controller)');
+    const src = stripComments(
+      readFileSync(join(process.cwd(), 'src/app/api/reports/export/route.ts'), 'utf8')
+    );
+    const source = readableStreamUnderlyingSource(src);
+    expect(source, 'new ReadableStream dengan underlying source inline harus ada').not.toBe('');
+    expect(source, 'loop stream wajib di pull(), bukan start()').toMatch(/\bpull\s*\(/);
+    expect(source, 'regresi ke start() = tanpa backpressure').not.toMatch(/\bstart\s*\(/);
   });
 });
