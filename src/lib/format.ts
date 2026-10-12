@@ -111,6 +111,15 @@ export function formatStamp(v?: DateInput): string {
     month: '2-digit',
     day: '2-digit',
   }).formatToParts(d);
-  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '00';
-  return `${get('year')}-${get('month')}-${get('day')}`;
+  // Bagian wajib ADA — bukan fallback '00': nilai separuh jadi ('2026-00-00')
+  // lebih buruk daripada gagal keras, karena lolos jadi nama berkas tanpa tanda
+  // ada yang rusak (sisa review #134).
+  const get = (type: 'year' | 'month' | 'day') => {
+    const value = parts.find((p) => p.type === type)?.value;
+    if (!value) throw new Error(`formatStamp: Intl tidak mengembalikan bagian "${type}"`);
+    return value;
+  };
+  // year: 'numeric' tidak nol-padding: tahun < 1000 jadi "999-01-01" yang
+  // melanggar kontrak YYYY-MM-DD — dipatok 4 digit eksplisit.
+  return `${get('year').padStart(4, '0')}-${get('month')}-${get('day')}`;
 }

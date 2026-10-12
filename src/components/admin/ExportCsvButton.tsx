@@ -102,6 +102,15 @@ export default function ExportCsvButton({ filename, headers, rows, scope }: Prop
         const json = await res.json().catch(() => null);
         throw new Error(errMsg(json, 'Gagal mengekspor seluruh data.'));
       }
+      // Trade-off TERIMA (review PR #135): seluruh respons di-buffer via blob()
+      // — berbeda dari anchor download lama yang streaming ke disk. Ini harga
+      // yang dipilih sadar: (1) endpoint membatasi ekspor di
+      // EXPORT_MAX_CHUNKS x EXPORT_CHUNK = 50.000 baris (single-digit MB), dan
+      // (2) buffering adalah syarat memeriksa error SEBELUM berkas dibuat
+      // (#133: respons 401/422/500 dulu tersimpan sebagai berkas tak terbaca).
+      // Streaming ke disk tanpa buffer butuh File System Access API yang belum
+      // dipakai di codebase; spinner tombol (loading) adalah umpan balik
+      // selama ekspor multi-detik.
       const blob = await res.blob();
       downloadBlob(filenameFromHeader(res.headers.get('content-disposition'), dated), blob);
     } catch (e) {
