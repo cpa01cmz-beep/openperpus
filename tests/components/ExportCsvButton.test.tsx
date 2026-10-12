@@ -537,6 +537,53 @@ describe('ExportCsvButton (#78/#133)', () => {
     expect(URL.createObjectURL).not.toHaveBeenCalled();
   });
 
+  it('error dengan body non-JSON (halaman HTML dari proxy): pesan fallback tampil, tidak crash', async () => {
+    // res.json() melempar SyntaxError -> .catch(() => null) -> pesan fallback,
+    // bukan lemparan URI/JSON mentah ke UI (sisa review #135 item 2).
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 502,
+      headers: { get: () => null },
+      json: async () => {
+        throw new SyntaxError('Unexpected token < in JSON');
+      },
+    } as unknown as Response);
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<ExportCsvButton filename="buku.csv" headers={['ID']} rows={[['b1']]} scope="books" />);
+    fireEvent.click(exportAllButton());
+
+    await waitFor(() =>
+      expect(screen.getByRole('alert')).toHaveTextContent('Gagal mengekspor seluruh data.')
+    );
+    expect(URL.createObjectURL).not.toHaveBeenCalled();
+  });
+
+  it('klik ganda saat ekspor berjalan: tombol disabled + fetch hanya sekali', async () => {
+    // Guard submit ganda: saat exporting, Button loading -> disabled, jadi klik
+    // kedua tidak menembus (fetch tidak dipanggil ulang) (sisa review #135 item 3).
+    const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+    let release!: () => void;
+    const gate = new Promise<void>((r) => {
+      release = r;
+    });
+    const fetchMock = vi.fn(() => gate.then(() => okExport()));
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<ExportCsvButton filename="buku.csv" headers={['ID']} rows={[['b1']]} scope="books" />);
+    const btn = exportAllButton();
+    fireEvent.click(btn);
+    expect(btn).toBeDisabled();
+    // Klik kedua pada tombol disabled tidak memicu handler.
+    fireEvent.click(btn);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    release();
+    await waitFor(() => expect(clickSpy).toHaveBeenCalledTimes(1));
+    // Setelah selesai tombol aktif lagi (finally: setExporting(false)).
+    await waitFor(() => expect(btn).not.toBeDisabled());
+  });
+
   it('jaringan gagal melempar: pesan error tetap tampil', async () => {
     const fetchMock = vi.fn().mockRejectedValue(new Error('Network error'));
     vi.stubGlobal('fetch', fetchMock);
