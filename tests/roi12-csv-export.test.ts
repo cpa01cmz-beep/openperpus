@@ -97,9 +97,9 @@ describe('formula injection (CWE-1236) dinetralkan di esc()', () => {
   // apostrof + kutip RFC 4180) sementara spasi-led murni tidak — dua rekan
   // dikunci bersama supaya klaim cakupan guard tidak bisa mengabur lagi.
   // Catatan: kasus TAB-led (`'\t\t'`) DI SINI karena satu-satunya yang belum
-  // tercakup baris `esc()` mana pun — kasus `'\n'` sudah dipin di tabel
-  // `it.each` (baris 59), jadi tidak diulang (sisa review #159: hindari
-  // duplikasi pin yang bisa drift diam-diam).
+  // tercakup baris `esc()` mana pun — kasus `'\n'` polos sudah dipin di tabel
+  // `it.each`, jadi tidak diulang (sisa review #159: hindari duplikasi pin
+  // yang bisa drift diam-diam).
   it('kontrol-led murni TETAP di-guard, beda perlakuan dari spasi-led murni', () => {
     expect(toCSV(['h'], [['\t\t']])).toBe('h\r\n' + "'\t\t");
   });
@@ -137,8 +137,14 @@ describe('formula injection (CWE-1236) dinetralkan di esc()', () => {
     for (let code = 0; code < 0x20; code++) {
       const c = String.fromCharCode(code);
       const out = toCSV(['h'], [[c + 'foo']]);
+      // Hitungan diambil dari KELUARAN NYATA, bukan dari `guardedC0` di atas
+      // (sisa review #161): counter yang diturunkan dari literal tes sendiri
+      // tak pernah bisa gagal. Sel di-guard iff badan sel — setelah opsional
+      // satu tanda kutip RFC 4180 — berawalan apostrof prefix OWASP.
+      const body = out.slice('h\r\n'.length);
+      const isGuarded = body.startsWith(`'`) || (body[0] === '"' && body[1] === `'`);
+      if (isGuarded) guardedCount++;
       if (guardedC0.has(c)) {
-        guardedCount++;
         const guarded = `'${c}foo`;
         expect(out).toBe(`h\r\n${quotedByEsc.has(c) ? `"${guarded}"` : guarded}`);
       } else {
@@ -151,7 +157,8 @@ describe('formula injection (CWE-1236) dinetralkan di esc()', () => {
     }
 
     // Klausa "5-dari-32" di komentar guard TIDAK hanya narasi — dipaksa benar
-    // di sini: kalau guard melebar/menyempit, salah satu angka ini patah.
+    // di sini: kalau guard melebar/menyempit, salah satu angka ini patah
+    // (hitungan dari keluaran nyata, jadi assertion ini benar-benar bisa gagal).
     expect(guardedCount).toBe(5);
   });
 

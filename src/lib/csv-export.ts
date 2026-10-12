@@ -29,8 +29,9 @@ export type CsvCell = string | number | null;
  * dipilih karena tidak ada dasar membedakan LF dari CR/VT/FF di level engine.
  *
  * BATASAN YANG DIDOKUMENTASIKAN (sisa review #159): kontrol DI LUAR set guard
- * (NUL/ESC/FS/GS/RS/US 0x1c–0x1f, dst. — 27 dari 32 kode C0) ditulis APA ADANYA
- * ke keluaran CSV, tanpa prefix apostrof dan tanpa dikutip RFC 4180. RFC 4180
+ * di atas — komplemennya dari pernyataan cakupan tunggal tersebut, tanpa angka
+ * atau enumerasi ulang — ditulis APA ADANYA ke keluaran CSV, tanpa prefix
+ * apostrof dan tanpa dikutip RFC 4180. RFC 4180
  * `TEXTDATA` memang mengecualikan karakter kontrol, jadi pembaca ketat (Python
  * `csv`, pandas, sebagian jalur impor Excel) bisa error atau terpotong pada
  * NUL tertanam di dalam sel. Mengutip sel yang memuat kontrol TIDAK menutup
