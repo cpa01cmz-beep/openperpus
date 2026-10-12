@@ -2,16 +2,24 @@ export type CsvCell = string | number | null;
 
 /**
  * Awal string yang dieksekusi Excel/LibreOffice/Google Sheets sebagai FORMULA
- * begitu berkas CSV dibuka — CSV/formula injection (CWE-1236). TAB/CR disertakan
- * karena beberapa engine memperlakukan sel berawalan kontrol sebagai formula.
+ * begitu berkas CSV dibuka — CSV/formula injection (CWE-1236).
  *
- * Run whitespace (`\s*`) sebelum penanda formula WAJIB ikut disaring: engine
- * spreadsheet memotong spasi/TAB di depan sel saat memutuskan "apakah ini
- * formula", jadi ` =cmd` / `  +cmd` lolos penjaga karakter-awal saja dan tetap
- * tereksekusi (sisa review #153 — guard sebelumnya hanya `^[=+\-@\t\r]`).
- * Alternatif `[\t\r]` dipertahankan untuk sel berawalan kontrol tanpa penanda.
+ * Run whitespace ASCII (` `, TAB, CR, LF) sebelum penanda formula WAJIB ikut
+ * disaring: engine spreadsheet memotong spasi/TAB di depan sel saat memutuskan
+ * "apakah ini formula", jadi ` =cmd` / `  +cmd` lolos penjaga karakter-awal
+ * saja dan tetap tereksekusi (sisa review #153 — guard sebelumnya hanya
+ * `^[=+\-@\t\r]`). Whitespace NON-ASCII (NBSP/BOM/Unicode space separator)
+ * sengaja TIDAK disaring: tidak ada engine yang mengeksekusinya sebagai
+ * formula, jadi memfilternya hanya memutasi data legit (copy-paste web/Word)
+ * tanpa gain keamanan (sisa review #154 — kaitannya: `\s` di JS jauh lebih
+ * luas dari whitespace ASCII, cakupannya harus eksplisit).
+ *
+ * Alternatif `[\t\r\v\f]` menjaga sel berawalan kontrol TANPA penanda —
+ * beberapa engine memperlakukan sel berawalan kontrol sebagai formula
+ * (hardening asli #152); set kontrol dibuat simetris dengan alternatif
+ * pertama supaya klaim komentar ini benar untuk SELURUH karakter kontrol.
  */
-const FORMULA_LEAD = /^(?:\s*[=+\-@]|[\t\r])/;
+const FORMULA_LEAD = /^(?:[ \t\r\n]*[=+\-@]|[\t\r\v\f])/;
 
 function esc(v: CsvCell): string {
   const s = v === null ? '' : String(v);

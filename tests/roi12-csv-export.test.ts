@@ -49,6 +49,12 @@ describe('formula injection (CWE-1236) dinetralkan di esc()', () => {
     // CR tetap ikut set awal (engine memperlakukan kontrol sebagai formula);
     // sel juga dikutip RFC 4180 karena mengandung CR.
     ['\r=cmd', '"' + "'" + '\r' + '=cmd' + '"'],
+    // Sisa review #154: LF-led payload — LF ada di run whitespace ASCII, jadi
+    // ikut disaring; sel dikutip RFC 4180 karena mengandung LF.
+    ['\n=cmd', '"' + "'" + '\n' + '=cmd' + '"'],
+    // VT/FF-led: ditangkap alternatif kontrol (tanpa penanda pun) — pin.
+    ['\v=cmd', "'\v=cmd"],
+    ['\f', "'\f"],
   ])('%p -> %p', (input, expected) => {
     expect(toCSV(['h'], [[input]])).toBe(`h\r\n${expected}`);
   });
@@ -71,6 +77,15 @@ describe('formula injection (CWE-1236) dinetralkan di esc()', () => {
   it('string whitespace murni TIDAK dianggap payload — tidak over-guard', () => {
     expect(toCSV(['judul'], [['   ']])).toBe('judul\r\n   ');
     expect(toCSV(['judul'], [[' a=1']])).toBe('judul\r\n a=1');
+  });
+
+  // Sisa review #154: guard hanya menyaring whitespace ASCII. Tidak ada engine
+  // spreadsheet yang mengeksekusi sel berawalan whitespace NON-ASCII sebagai
+  // formula, jadi memfilternya murni memutasi data legit (copy-paste web/Word)
+  // tanpa gain keamanan — keputusan sadar, dipin di sini.
+  it('whitespace NON-ASCII (NBSP/BOM) TIDAK disaring — tidak over-guard', () => {
+    expect(toCSV(['judul'], [['\u00a0=cmd']])).toBe('judul\r\n\u00a0=cmd');
+    expect(toCSV(['judul'], [['\ufeff+cmd']])).toBe('judul\r\n\ufeff+cmd');
   });
 
   it('jalur stream server (rowsToCSV) juga dinetralkan', () => {
