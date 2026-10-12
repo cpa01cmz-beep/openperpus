@@ -207,7 +207,7 @@ describe('#105 ekspor: kegagalan/truncation tidak menyamar jadi sukses', () => {
  *  (`//`, `/*`) SELALU diperiksa lebih dulu, jadi `/*` tidak pernah terbaca
  *  sebagai pembuka regex. */
 const KEYWORD_BEFORE_REGEX =
-  /\b(return|typeof|case|in|of|new|delete|void|instanceof|do|else|yield|await)$/;
+  /\b(return|typeof|case|in|of|new|delete|void|instanceof|do|else|yield|await|throw)$/;
 function opensRegex(src: string, i: number): boolean {
   let j = i - 1;
   while (j >= 0 && /\s/.test(src[j]!)) j--;
@@ -215,6 +215,9 @@ function opensRegex(src: string, i: number): boolean {
   if (!/[A-Za-z0-9_$)\]}"'`]/.test(src[j]!)) return true;
   let k = j;
   while (k >= 0 && /[A-Za-z0-9_$]/.test(src[k]!)) k--;
+  // Kata berakhir tepat setelah '.' = nama properti (`stats.new / count`,
+  // `obj.do / 2`): itu pembagi biasa, bukan keyword yang menuntut regex.
+  if (k >= 0 && src[k] === '.') return false;
   const word = src.slice(k + 1, j + 1);
   return KEYWORD_BEFORE_REGEX.test(word);
 }
@@ -338,11 +341,17 @@ function readableStreamUnderlyingSource(src: string): string {
       i = skipLiteral(src, i);
       continue;
     }
-    // Batas belakang: jangan cocokkan PREFIX identifier lebih panjang
-    // (`new ReadableStreamDefaultController`, `new ReadableStreamBYOBReader`) —
-    // tanpa itu scan berhenti di konstruktor yang salah lalu `(` check gagal
-    // dan guard "harus ada" memerah pada kode yang benar (sisa review #148).
-    if (src.startsWith(marker, i) && !/[A-Za-z0-9_$]/.test(src[i + marker.length] ?? '')) {
+    // Batas dua sisi: jangan cocokkan PREFIX identifier lebih panjang
+    // (`new ReadableStreamDefaultController`, `new ReadableStreamBYOBReader`)
+    // dan jangan cocokkan AKHIRAN identifier (`renew ReadableStream`) — tanpa
+    // itu scan berhenti di konstruktor yang salah lalu `(` check gagal dan
+    // guard "harus ada" memerah pada kode yang benar, atau menilai blok yang
+    // bukan konstruktor sungguhan (sisa review #148/#149).
+    if (
+      src.startsWith(marker, i) &&
+      (i === 0 || !/[A-Za-z0-9_$]/.test(src[i - 1]!)) &&
+      !/[A-Za-z0-9_$]/.test(src[i + marker.length] ?? '')
+    ) {
       at = i;
       break;
     }
@@ -495,8 +504,24 @@ describe('#133 guard helper: jalur gagal scanner underlying source', () => {
     // mengembalikan '' — merah palsu pada kode yang benar (sisa review #148).
     const srcStr = "new ReadableStream({ pull() { const s = 'belum { tutup'; return s; } });";
     expect(readableStreamUnderlyingSource(srcStr)).toMatch(/\bpull\s*\(/);
-    const srcRe = 'new ReadableStream({ pull() { return /}{/.test(v); } });';
+    // Regex harus BERSIH NET tak seimbang ('}{/': satu '}' + satu '{', masih
+    // seimbang — tidak mengunci apa pun). '/{\d+/' hanya menambah '{': tanpa
+    // cabang regex di brace-balance ATAU tanpa aturan keyword `return` di
+    // opensRegex, '/'-nya terbaca pembagi lalu slash penutup menelan sisa
+    // berkas dan helper mengembalikan '' (sisa review #149).
+    const srcRe = 'new ReadableStream({ pull() { return /{\\d+/.test(v); } });';
     expect(readableStreamUnderlyingSource(srcRe)).toMatch(/\bpull\s*\(/);
+    // 'throw /[/' juga opening regex — keyword throw.
+    const srcThrow = 'new ReadableStream({ pull() { throw /[/.test(v); } });';
+    expect(readableStreamUnderlyingSource(srcThrow)).toMatch(/\bpull\s*\(/);
+  });
+
+  it('kata kunci sebagai nama properti tetap pembagi biasa, bukan pembuka regex', () => {
+    // stats.new / count: kata 'new' setelah '.' = nama properti -> division.
+    // Tanpa cek '.', '/' salah dibaca pembuka regex dan menelan sisa berkas
+    // (sisa review #149).
+    const src = 'const c = stats.new / count; new ReadableStream({ pull() {} });';
+    expect(readableStreamUnderlyingSource(src)).toMatch(/\bpull\s*\(/);
   });
 
   it('komentar dengan { di antara ( dan objek literal tidak menggeser open', () => {
@@ -524,6 +549,12 @@ describe('#133 guard helper: jalur gagal scanner underlying source', () => {
     const out = readableStreamUnderlyingSource(src);
     expect(out).toMatch(/\bpull\s*\(/);
     expect(readableStreamUnderlyingSource('const byob = new ReadableStreamBYOBReader();')).toBe('');
+    // Batas kiri simetris: identifier yang BERAKHIR 'new' tak boleh memicu
+    // kecocokan marker (sisa review #149).
+    const srcLeft = 'renew ReadableStream({ start() {} }); new ReadableStream({ pull() {} });';
+    const outLeft = readableStreamUnderlyingSource(srcLeft);
+    expect(outLeft).toMatch(/\bpull\s*\(/);
+    expect(outLeft).not.toMatch(/\bstart\s*\(/);
   });
 
   it('parameter generik berbasis objek tidak mengecoh: blok setelah ( yang diambil', () => {
