@@ -273,6 +273,12 @@ describe('ExportCsvButton (#78/#133)', () => {
     const clickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
     // Loop menutup SELURUH daftar reserved (sesuai klaim PR #142), bukan sampel:
     // empat nama tanpa digit + COM1-9 + LPT1-9, tiap nama dengan & tanpa spasi pemisah.
+    // Daftar di bawah adalah salinan SENGAJA dari spesifikasi nama berkas Windows
+    // (CON, PRN, AUX, NUL, COM1-9, LPT1-9) dan HARUS tetap independen dari
+    // WIN_RESERVED di ExportCsvButton.tsx — jangan diimpor/diturunkan dari regex
+    // yang diuji: menyempitkan guard (mis. AUX dibuang) harus membuat test ini
+    // MERAH, bukan ikut menyempit sehingga tautologis. Konsistensinya dijaga
+    // komentar ini, bukan impor.
     const reservedNames = [
       'CON',
       'PRN',
