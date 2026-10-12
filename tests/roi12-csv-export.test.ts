@@ -53,12 +53,15 @@ describe('formula injection (CWE-1236) dinetralkan di esc()', () => {
     // ikut disaring; sel dikutip RFC 4180 karena mengandung LF.
     ['\n=cmd', '"' + "'" + '\n' + '=cmd' + '"'],
     // Sisa review #155: LF-led TANPA penanda formula kini juga di-guard — set
-    // kontrol `[\t\r\n\v\f]` simetris dengan run whitespace `[ \t\r\n]`
-    // alternatif pertama; claim "seluruh karakter kontrol" di komentar guard
-    // akhirnya benar untuk LF. Dikutip RFC 4180 karena mengandung LF/CR.
+    // kontrol `[\t\r\n\v\f]` menutup 5 kontrol C0 (TAB/CR/LF/VT/FF; NUL/ESC/
+    // separator \x1c–\x1f DI LUAR cakupan, lihat komentar guard). Dikutip
+    // RFC 4180 karena mengandung LF/CR.
     ['\n', '"' + "'" + '\n' + '"'],
     ['\n\n', '"' + "'" + '\n\n' + '"'],
     ['\n\rx', '"' + "'" + '\n\rx' + '"'],
+    // Sisa review #157: teks LF-led REALISTIS (judul/catatan berawalan newline
+    // dari copy-paste) — kena stance kontrol-led fail-closed #152, bukan bug.
+    ['\nJudul', '"' + "'" + '\n' + 'Judul' + '"'],
     // VT/FF-led: ditangkap alternatif kontrol (tanpa penanda pun) — pin.
     ['\v=cmd', "'\v=cmd"],
     ['\f', "'\f"],
@@ -81,9 +84,21 @@ describe('formula injection (CWE-1236) dinetralkan di esc()', () => {
     expect(toCSV(['judul'], [['Nilai  = 1 + cmd']])).toBe('judul\r\nNilai  = 1 + cmd');
   });
 
-  it('string whitespace murni TIDAK dianggap payload — tidak over-guard', () => {
+  // Ruang lingkup invarian HARUS eksplisit (sisa review #157): yang murni-
+  // whitespace TIDAK di-guard adalah string SPASI-led; kontrol-led murni
+  // (`'\n'`) TETAP di-guard oleh stance fail-closed #152. Perbedaan dua kelas
+  // ini sengaja, dikunci di test berikutnya.
+  it('string whitespace murni SPASI-led TIDAK dianggap payload — tidak over-guard', () => {
     expect(toCSV(['judul'], [['   ']])).toBe('judul\r\n   ');
     expect(toCSV(['judul'], [[' a=1']])).toBe('judul\r\n a=1');
+  });
+
+  // Pasangan invarian di atas: kontrol-led murni TETAP di-guard (prefix
+  // apostrof + kutip RFC 4180) sementara spasi-led murni tidak — dua rekan
+  // dikunci bersama supaya klaim cakupan guard tidak bisa mengabur lagi.
+  it('kontrol-led murni TETAP di-guard, beda perlakuan dari spasi-led murni', () => {
+    expect(toCSV(['h'], [['\n']])).toBe('h\r\n"' + "'" + '\n' + '"');
+    expect(toCSV(['h'], [['\t\t']])).toBe('h\r\n' + "'\t\t");
   });
 
   // Sisa review #155: guard kontrol hanya berlaku di AWAL sel — LF di tengah
@@ -101,10 +116,24 @@ describe('formula injection (CWE-1236) dinetralkan di esc()', () => {
     expect(toCSV(['judul'], [['\ufeff+cmd']])).toBe('judul\r\n\ufeff+cmd');
   });
 
+  // Sisa review #157: batas cakupan kontrol dikunci sesuai komentar guard —
+  // hanya 5 kontrol C0 (TAB/CR/LF/VT/FF) yang di-guard. NUL/ESC-led dan
+  // separator \x1c–\x1f TETAP data sah: tidak di-guard, tidak dikutip.
+  it('batas C0 eksplisit: kontrol di luar set guard (NUL/ESC/separator) tetap data sah', () => {
+    expect(toCSV(['h'], [['\x00foo']])).toBe('h\r\n\x00foo');
+    expect(toCSV(['h'], [['\x1bfoo']])).toBe('h\r\n\x1bfoo');
+    expect(toCSV(['h'], [['\x1cfoo']])).toBe('h\r\n\x1cfoo');
+    expect(toCSV(['h'], [['\x1ffoo']])).toBe('h\r\n\x1ffoo');
+  });
+
   it('jalur stream server (rowsToCSV) juga dinetralkan', () => {
     expect(rowsToCSV([["=cmd|'/c calc'!A1"]])).toBe("'=cmd|'/c calc'!A1");
     // whitespace lalu penanda formula harus tetap netral di jalur server
     expect(rowsToCSV([['  +cmd']])).toBe("'  +cmd");
+    // Sisa review #157: LF-led juga dinetralkan di jalur stream — dengan
+    // penanda dan tanpa penanda (stance kontrol-led fail-closed #152).
+    expect(rowsToCSV([['\n=cmd']])).toBe('"' + "'" + '\n' + '=cmd' + '"');
+    expect(rowsToCSV([['\ncatatan']])).toBe('"' + "'" + '\ncatatan' + '"');
   });
 });
 

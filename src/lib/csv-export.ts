@@ -15,12 +15,18 @@ export type CsvCell = string | number | null;
  * luas dari whitespace ASCII, cakupannya harus eksplisit).
  *
  * Alternatif `[\t\r\n\v\f]` menjaga sel berawalan kontrol TANPA penanda —
- * beberapa engine memperlakukan sel berawalan kontrol sebagai formula
- * (hardening asli #152). Set kontrol memuat SELURUH C0 whitespace
- * (`\t\r\n`) plus VT/FF, simetris dengan run whitespace `[ \t\r\n]`
- * alternatif pertama: LF-led TIDAK kebagian (sisa review #155 — dulu set
- * `[\t\r\v\f]` hanya mengunci CR/VT/FF/TAB, klaim "benar untuk SELURUH
- * karakter kontrol" di komentar ini jadi tidak benar untuk `\n`).
+ * stance fail-closed yang diterima sejak issue #152 ("beberapa engine
+ * memperlakukan sel berawalan kontrol sebagai formula"), diperluas ke LF di
+ * review #156. Cakupan kontrolnya EKSPLISIT dan TERBATAS: hanya 5 kontrol C0
+ * (TAB, CR, LF, VT, FF) — SELURUH C0 lain (NUL, ESC, separator \x1c–\x1f,
+ * dst.) sengaja TIDAK ditutup, guard ini TIDAK mengklaim cakupan penuh
+ * "semua karakter kontrol". Himpunan kontrol ini menimpa TAB/CR/LF yang juga
+ * ada di run whitespace alternatif pertama, dan menambah VT/FF plus kasus
+ * kontrol-led tanpa penanda — jadi ini tidak "simetris" dengan run
+ * `[ \t\r\n]` (VT/FF ekstra, spasi absen). Putusan mempertahankan stance
+ * kontrol-led tanpa penanda meski ia memberi prefix apostrof pada sel yang
+ * berawalan kontrol mentah: dicatat di komentar review PR #157 — fail-closed
+ * dipilih karena tidak ada dasar membedakan LF dari CR/VT/FF di level engine.
  */
 const FORMULA_LEAD = /^(?:[ \t\r\n]*[=+\-@]|[\t\r\n\v\f])/;
 
