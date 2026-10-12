@@ -198,15 +198,25 @@ describe('#105 ekspor: kegagalan/truncation tidak menyamar jadi sukses', () => {
 // ---------------------------------------------------------------------------
 
 /** Heuristik pembuka literal regex: '/' yang TIDAK didahului operand
- *  (angka/huruf/_/$/`)`/`]`/`}`/tanda kutip) — sisanya dianggap pembagi.
- *  Heuristik sederhana: kegagalan hanya membuat literal regex tertentu ikut
- *  ter-scan seperti kode, tidak menjatuhkan guard. Komentar (`//`, `/*`) SELALU
- *  diperiksa lebih dulu, jadi `/*` tidak pernah terbaca sebagai pembuka regex. */
+ *  (angka/huruf/_/$/`)`/`]`/`}`/tanda kutip) — sisanya dianggap pembagi —
+ *  KECUALI token sebelumnya keyword yang menuntut ekspresi (`return`, `typeof`,
+ *  `case`, `in`, `of`, `new`, ...): di situ '/' justru pembuka regex, dan tanpa
+ *  aturan itu slash penutup regex terbaca sebagai pembuka baru dan "menelan"
+ *  sisa berkas. Heuristik sederhana: kegagalan hanya membuat literal regex
+ *  tertentu ikut ter-scan seperti kode, tidak menjatuhkan guard. Komentar
+ *  (`//`, `/*`) SELALU diperiksa lebih dulu, jadi `/*` tidak pernah terbaca
+ *  sebagai pembuka regex. */
+const KEYWORD_BEFORE_REGEX =
+  /\b(return|typeof|case|in|of|new|delete|void|instanceof|do|else|yield|await)$/;
 function opensRegex(src: string, i: number): boolean {
   let j = i - 1;
   while (j >= 0 && /\s/.test(src[j]!)) j--;
   if (j < 0) return true;
-  return !/[A-Za-z0-9_$)\]}"'`]/.test(src[j]!);
+  if (!/[A-Za-z0-9_$)\]}"'`]/.test(src[j]!)) return true;
+  let k = j;
+  while (k >= 0 && /[A-Za-z0-9_$]/.test(src[k]!)) k--;
+  const word = src.slice(k + 1, j + 1);
+  return KEYWORD_BEFORE_REGEX.test(word);
 }
 
 /** Lewati literal string/regex dari posisi pembuka; kembalikan indeks SETELAH
@@ -241,6 +251,24 @@ function skipComment(src: string, i: number): number | null {
     return Math.min(j + 2, src.length);
   }
   return null;
+}
+
+/** Indeks karakter non-trivia pertama dari `from` (lewati spasi + komentar). */
+function skipTrivia(src: string, from: number): number {
+  let i = from;
+  while (i < src.length) {
+    if (/\s/.test(src[i]!)) {
+      i++;
+      continue;
+    }
+    const afterComment = skipComment(src, i);
+    if (afterComment !== null) {
+      i = afterComment;
+      continue;
+    }
+    return i;
+  }
+  return i;
 }
 
 /** Buang komentar TANPA menyentuh literal string/regex: pemotong `//` naif ikut
@@ -310,38 +338,75 @@ function readableStreamUnderlyingSource(src: string): string {
       i = skipLiteral(src, i);
       continue;
     }
-    if (src.startsWith(marker, i)) {
+    // Batas belakang: jangan cocokkan PREFIX identifier lebih panjang
+    // (`new ReadableStreamDefaultController`, `new ReadableStreamBYOBReader`) —
+    // tanpa itu scan berhenti di konstruktor yang salah lalu `(` check gagal
+    // dan guard "harus ada" memerah pada kode yang benar (sisa review #148).
+    if (src.startsWith(marker, i) && !/[A-Za-z0-9_$]/.test(src[i + marker.length] ?? '')) {
       at = i;
       break;
     }
     i++;
   }
   if (at === -1) return '';
-  // Lewati spasi + parameter generik <...> bila ada, lalu minta '(' — jangan
-  // '{' pertama: itu bisa brace dari tipe generik, bukan objek literal.
-  let j = at + marker.length;
-  while (j < src.length && /\s/.test(src[j]!)) j++;
+  // Lewati trivia (spasi + komentar) -> parameter generik <...> bila ada
+  // (literal + komentar di dalamnya juga dilewati) -> trivia -> WAJIB '('.
+  let j = skipTrivia(src, at + marker.length);
   if (src[j] === '<') {
     let depth = 0;
     while (j < src.length) {
-      if (src[j] === '<') depth++;
-      else if (src[j] === '>' && --depth === 0) {
+      const c = src[j]!;
+      if (c === "'" || c === '"' || c === '`') {
+        j = skipLiteral(src, j);
+        continue;
+      }
+      const afterComment = skipComment(src, j);
+      if (afterComment !== null) {
+        j = afterComment;
+        continue;
+      }
+      if (c === '<') depth++;
+      else if (c === '>' && --depth === 0) {
         j++;
         break;
       }
       j++;
     }
-    while (j < src.length && /\s/.test(src[j]!)) j++;
+    j = skipTrivia(src, j);
   }
   if (src[j] !== '(') return '';
-  const open = src.indexOf('{', j);
+  // '{' PERTAMA dalam posisi KODE setelah '(' — bukan indexOf mentah: komentar
+  // atau literal di antara '(' dan objek literal bisa memuat '{'.
+  let k = j + 1;
+  let open = -1;
+  while (k < src.length) {
+    const c = src[k]!;
+    if (c === "'" || c === '"' || c === '`') {
+      k = skipLiteral(src, k);
+      continue;
+    }
+    const afterComment = skipComment(src, k);
+    if (afterComment !== null) {
+      k = afterComment;
+      continue;
+    }
+    if (c === '/' && opensRegex(src, k)) {
+      k = skipLiteral(src, k);
+      continue;
+    }
+    if (c === '{') {
+      open = k;
+      break;
+    }
+    k++;
+  }
   if (open === -1) return '';
   // Sama: brace-balance sadar literal + komentar. Hasil akhir dibersihkan dari
   // komentar (literal dipertahankan) supaya catatan DI DALAM underlying source
   // yang menyebut `start()` tidak memerahkan guard palsu (sisa review #134).
   let depth = 0;
   let end = -1;
-  let k = open;
+  k = open;
   while (k < src.length) {
     const c = src[k]!;
     if (c === "'" || c === '"' || c === '`') {
@@ -424,9 +489,41 @@ describe('#133 guard helper: jalur gagal scanner underlying source', () => {
     expect(out2).not.toMatch(/\bstart\s*\(/);
   });
 
-  it('regex literal dengan brace tak seimbang tidak menggeser hitungan', () => {
-    const src = 'const re = /}/{ \d{2,3}/; new ReadableStream({ pull() {} });';
+  it('regex/string dengan brace tak seimbang DI DALAM underlying source tidak menggeser brace-balance', () => {
+    // Tanpa cabang literal-aware di dalam loop brace-balance, '{' di dalam
+    // string/regex menambah depth: objek literal "tak pernah tutup" dan helper
+    // mengembalikan '' — merah palsu pada kode yang benar (sisa review #148).
+    const srcStr = "new ReadableStream({ pull() { const s = 'belum { tutup'; return s; } });";
+    expect(readableStreamUnderlyingSource(srcStr)).toMatch(/\bpull\s*\(/);
+    const srcRe = 'new ReadableStream({ pull() { return /}{/.test(v); } });';
+    expect(readableStreamUnderlyingSource(srcRe)).toMatch(/\bpull\s*\(/);
+  });
+
+  it('komentar dengan { di antara ( dan objek literal tidak menggeser open', () => {
+    // indexOf('{') mentah akan mendarat di dalam komentar dan mengembalikan
+    // isinya — merah palsu (sisa review #148).
+    const src = 'new ReadableStream(\n  // { jangan start() }\n  { async pull(controller) {} }\n);';
+    const out = readableStreamUnderlyingSource(src);
+    expect(out).toMatch(/\bpull\s*\(/);
+    expect(out).not.toMatch(/\bstart\s*\(/);
+  });
+
+  it('komentar DI DALAM parameter generik tidak mengakhiri generik lebih dulu', () => {
+    // '>' di dalam komentar generik tadinya menutup generik lebih awal, '('
+    // check gagal, helper mengembalikan '' — merah palsu (sisa review #148).
+    const src = 'new ReadableStream</* -> */ Uint8Array>({ async pull(controller) {} });';
     expect(readableStreamUnderlyingSource(src)).toMatch(/\bpull\s*\(/);
+  });
+
+  it('penanda adalah kata utuh: konstruktor lebih panjang tidak membajak scan', () => {
+    // new ReadableStreamDefaultController/BYOBReader memuat marker sebagai
+    // prefix; scan harus melewatinya dan tetap menemukan konstruktor sungguhan
+    // (sisa review #148).
+    const src =
+      'const c = new ReadableStreamDefaultController(); new ReadableStream({ pull() {} });';
+    const out = readableStreamUnderlyingSource(src);
+    expect(out).toMatch(/\bpull\s*\(/);
+    expect(readableStreamUnderlyingSource('const byob = new ReadableStreamBYOBReader();')).toBe('');
   });
 
   it('parameter generik berbasis objek tidak mengecoh: blok setelah ( yang diambil', () => {
