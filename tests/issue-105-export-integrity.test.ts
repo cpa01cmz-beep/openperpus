@@ -192,90 +192,183 @@ describe('#105 ekspor: kegagalan/truncation tidak menyamar jadi sukses', () => {
   });
 });
 
-describe('#133 backpressure: loop ekspor di pull(), bukan start()', () => {
-  /** Buang komentar TANPA menyentuh string literal: pemotong `//` naif ikut
-   *  memotong isi string (mis. URL "https://…" di route) dan bisa membuat
-   *  brace tidak seimbang, sehingga scan di bawah salah titik (sisa review
-   *  #146). */
-  function stripCommentsKeepStrings(src: string): string {
-    let out = '';
-    let i = 0;
-    while (i < src.length) {
-      const c = src[i];
-      if (c === "'" || c === '"' || c === '`') {
-        let j = i + 1;
-        while (j < src.length) {
-          if (src[j] === '\\') {
-            j += 2;
-            continue;
-          }
-          if (src[j] === c) {
-            j++;
-            break;
-          }
-          j++;
-        }
-        out += src.slice(i, j);
-        i = j;
-        continue;
-      }
-      if (c === '/' && src[i + 1] === '/') {
-        while (i < src.length && src[i] !== '\n') i++;
-        continue;
-      }
-      if (c === '/' && src[i + 1] === '*') {
-        i += 2;
-        while (i < src.length && !(src[i] === '*' && src[i + 1] === '/')) i++;
-        i += 2;
-        continue;
-      }
-      out += c;
-      i++;
-    }
-    return out;
-  }
+// ---------------------------------------------------------------------------
+// Helper guard backpressure (dipakai dua suite di bawah; jalur gagalnya
+// sendiri punya test — sisa review #134/#146/#147).
+// ---------------------------------------------------------------------------
 
-  /** Isi objek literal yang dilempar ke `new ReadableStream(...)` — asersi
-   *  menilai UNDERLYING SOURCE, bukan teks mana pun di berkas (sisa review
-   *  #134: toContain/not.toContain mentah terlalu longgar — cocok substring di
-   *  tempat tak relevan — sekaligus terlalu ketat — komentar yang membahas
-   *  start() membuat test merah). Penanda `new ReadableStream` diperiksa
-   *  eksplisit: indexOf dengan fromIndex -1 akan clamp ke 0 dan tanpa ini
-   *  guard "harus ada" tidak bisa gagal sebagaimana mestinya (sisa review
-   *  #146). Brace di dalam string literal tidak dihitung. */
-  function readableStreamUnderlyingSource(src: string): string {
-    const code = stripCommentsKeepStrings(src);
-    const marker = 'new ReadableStream';
-    const at = code.indexOf(marker);
-    if (at === -1) return '';
-    const open = code.indexOf('{', at + marker.length);
-    if (open === -1) return '';
+/** Heuristik pembuka literal regex: '/' yang TIDAK didahului operand
+ *  (angka/huruf/_/$/`)`/`]`/`}`/tanda kutip) — sisanya dianggap pembagi.
+ *  Heuristik sederhana: kegagalan hanya membuat literal regex tertentu ikut
+ *  ter-scan seperti kode, tidak menjatuhkan guard. Komentar (`//`, `/*`) SELALU
+ *  diperiksa lebih dulu, jadi `/*` tidak pernah terbaca sebagai pembuka regex. */
+function opensRegex(src: string, i: number): boolean {
+  let j = i - 1;
+  while (j >= 0 && /\s/.test(src[j]!)) j--;
+  if (j < 0) return true;
+  return !/[A-Za-z0-9_$)\]}"'`]/.test(src[j]!);
+}
+
+/** Lewati literal string/regex dari posisi pembuka; kembalikan indeks SETELAH
+ *  penutup (atau akhir berkas bila literal tak pernah tutup). */
+function skipLiteral(src: string, i: number): number {
+  const quote = src[i]!;
+  let j = i + 1;
+  while (j < src.length) {
+    if (src[j] === '\\') {
+      j += 2;
+      continue;
+    }
+    if (src[j] === quote) return j + 1;
+    // string & regex literal taklintas baris; hanya template boleh.
+    if (src[j] === '\n' && quote !== '`') return j;
+    j++;
+  }
+  return src.length;
+}
+
+/** Indeks setelah komentar bila komentar mulai di sini (`//` atau `/*`), else null. */
+function skipComment(src: string, i: number): number | null {
+  if (src[i] !== '/') return null;
+  if (src[i + 1] === '/') {
+    let j = i;
+    while (j < src.length && src[j] !== '\n') j++;
+    return j;
+  }
+  if (src[i + 1] === '*') {
+    let j = i + 2;
+    while (j < src.length && !(src[j] === '*' && src[j + 1] === '/')) j++;
+    return Math.min(j + 2, src.length);
+  }
+  return null;
+}
+
+/** Buang komentar TANPA menyentuh literal string/regex: pemotong `//` naif ikut
+ *  memotong isi literal (mis. URL "https://…") dan bisa membuat brace tidak
+ *  seimbang; komentar DI DALAM underlying source juga tidak boleh ikut
+ *  diassert — komentar yang membahas `start()` akan memerahkan guard secara
+ *  palsu (sisa review #134). */
+function stripCommentsKeepStrings(src: string): string {
+  let out = '';
+  let i = 0;
+  while (i < src.length) {
+    const c = src[i]!;
+    // Urutan: string literal -> KOMENTAR -> heuristik regex. Komentar lebih
+    // dulu supaya `/*` tidak salah dibaca sebagai pembuka regex literal.
+    if (c === "'" || c === '"' || c === '`') {
+      const j = skipLiteral(src, i);
+      out += src.slice(i, j);
+      i = j;
+      continue;
+    }
+    const afterComment = skipComment(src, i);
+    if (afterComment !== null) {
+      i = afterComment;
+      continue;
+    }
+    if (c === '/' && opensRegex(src, i)) {
+      const j = skipLiteral(src, i);
+      out += src.slice(i, j);
+      i = j;
+      continue;
+    }
+    out += c;
+    i++;
+  }
+  return out;
+}
+
+/**
+ * Isi objek literal underlying source `new ReadableStream<Generic?>({...})` —
+ * asersi menilai IMPLEMENTASI stream, bukan teks mana pun di berkas (sisa
+ * review #134: toContain/not.toContain mentah terlalu longgar — cocok substring
+ * di tempat tak relevan — sekaligus terlalu ketat — komentar yang membahas
+ * start() membuat test merah). Scanner sadar literal + komentar (sisa review
+ * #146/#147): penanda hanya dicocokkan di KODE, bukan di dalam string/regex
+ * literal; blok diambil setelah `(` terdekat sehingga parameter generik
+ * berbasis objek (`new ReadableStream<{...}>({...})`) tidak mengecoh; brace di
+ * dalam literal tidak dihitung. Penanda yang HILANG menghasilkan '' — bukan
+ * blok `{...}` lain (indexOf fromIndex -1 clamp ke 0) — supaya guard "harus
+ * ada" benar-benar bisa gagal.
+ */
+function readableStreamUnderlyingSource(src: string): string {
+  const marker = 'new ReadableStream';
+  let at = -1;
+  let i = 0;
+  while (i < src.length) {
+    const c = src[i]!;
+    if (c === "'" || c === '"' || c === '`') {
+      i = skipLiteral(src, i);
+      continue;
+    }
+    const afterComment = skipComment(src, i);
+    if (afterComment !== null) {
+      i = afterComment;
+      continue;
+    }
+    if (c === '/' && opensRegex(src, i)) {
+      i = skipLiteral(src, i);
+      continue;
+    }
+    if (src.startsWith(marker, i)) {
+      at = i;
+      break;
+    }
+    i++;
+  }
+  if (at === -1) return '';
+  // Lewati spasi + parameter generik <...> bila ada, lalu minta '(' — jangan
+  // '{' pertama: itu bisa brace dari tipe generik, bukan objek literal.
+  let j = at + marker.length;
+  while (j < src.length && /\s/.test(src[j]!)) j++;
+  if (src[j] === '<') {
     let depth = 0;
-    let i = open;
-    while (i < code.length) {
-      const c = code[i];
-      if (c === "'" || c === '"' || c === '`') {
-        i++;
-        while (i < code.length) {
-          if (code[i] === '\\') {
-            i += 2;
-            continue;
-          }
-          if (code[i] === c) {
-            i++;
-            break;
-          }
-          i++;
-        }
-        continue;
+    while (j < src.length) {
+      if (src[j] === '<') depth++;
+      else if (src[j] === '>' && --depth === 0) {
+        j++;
+        break;
       }
-      if (c === '{') depth++;
-      else if (c === '}' && --depth === 0) return code.slice(open + 1, i);
-      i++;
+      j++;
     }
-    return '';
+    while (j < src.length && /\s/.test(src[j]!)) j++;
   }
+  if (src[j] !== '(') return '';
+  const open = src.indexOf('{', j);
+  if (open === -1) return '';
+  // Sama: brace-balance sadar literal + komentar. Hasil akhir dibersihkan dari
+  // komentar (literal dipertahankan) supaya catatan DI DALAM underlying source
+  // yang menyebut `start()` tidak memerahkan guard palsu (sisa review #134).
+  let depth = 0;
+  let end = -1;
+  let k = open;
+  while (k < src.length) {
+    const c = src[k]!;
+    if (c === "'" || c === '"' || c === '`') {
+      k = skipLiteral(src, k);
+      continue;
+    }
+    const afterComment = skipComment(src, k);
+    if (afterComment !== null) {
+      k = afterComment;
+      continue;
+    }
+    if (c === '/' && opensRegex(src, k)) {
+      k = skipLiteral(src, k);
+      continue;
+    }
+    if (c === '{') depth++;
+    else if (c === '}' && --depth === 0) {
+      end = k;
+      break;
+    }
+    k++;
+  }
+  if (end === -1) return '';
+  return stripCommentsKeepStrings(src.slice(open + 1, end));
+}
 
+describe('#133 backpressure: loop ekspor di pull(), bukan start()', () => {
   it('chunk hanya ditarik saat konsumen meminta (tidak di-enqueue penuh di start)', () => {
     // Guard struktural: perilaku backpressure sulit diassert tanpa consumer
     // sungguhan, tapi regresi ke `start()` (seluruh CSV di-enqueue sekaligus,
@@ -285,5 +378,63 @@ describe('#133 backpressure: loop ekspor di pull(), bukan start()', () => {
     expect(source, 'new ReadableStream dengan underlying source inline harus ada').not.toBe('');
     expect(source, 'loop stream wajib di pull(), bukan start()').toMatch(/\bpull\s*\(/);
     expect(source, 'regresi ke start() = tanpa backpressure').not.toMatch(/\bstart\s*\(/);
+  });
+});
+
+// Nilai guard backpressure justru terletak di jalur GAGAL scanner — kasus
+// negatif di bawah dulu hanya diklaim di deskripsi PR, kini terkunci test
+// (sisa review #147).
+describe('#133 guard helper: jalur gagal scanner underlying source', () => {
+  it('penanda hilang -> string kosong, bukan blok {...} lain di berkas', () => {
+    expect(readableStreamUnderlyingSource('const a = { pull() {} };')).toBe('');
+    expect(readableStreamUnderlyingSource('')).toBe('');
+  });
+
+  it('penanda di dalam string literal (pesan log) tidak mengecoh', () => {
+    const src =
+      "const log = 'jangan new ReadableStream { start(controller) }'; " +
+      'new ReadableStream({ pull(controller) {} });';
+    const out = readableStreamUnderlyingSource(src);
+    expect(out).toMatch(/\bpull\s*\(/);
+    expect(out).not.toMatch(/\bstart\s*\(/);
+  });
+
+  it('string dengan URL + brace tak seimbang tidak menggeser slice', () => {
+    const src = "const u = 'https://contoh/{ belum-tutup'; new ReadableStream({ pull() {} });";
+    expect(readableStreamUnderlyingSource(src)).toMatch(/\bpull\s*\(/);
+  });
+
+  it('komentar yang menyebut start() tidak membuat guard merah', () => {
+    const src =
+      '// catatan: jangan kembali ke start(controller)\nnew ReadableStream({ pull() {} });';
+    const out = readableStreamUnderlyingSource(src);
+    expect(out).toMatch(/\bpull\s*\(/);
+    expect(out).not.toMatch(/\bstart\s*\(/);
+  });
+
+  it('komentar DI DALAM underlying source yang menyebut start() juga tidak memerahkan', () => {
+    const src =
+      'new ReadableStream({ /* catatan: kembali ke start(controller) = buruk */ pull() {} });';
+    const out = readableStreamUnderlyingSource(src);
+    expect(out).toMatch(/\bpull\s*\(/);
+    expect(out).not.toMatch(/\bstart\s*\(/);
+    const src2 = 'new ReadableStream({ // catatan: kembali ke start(controller)\n  pull() {} });';
+    const out2 = readableStreamUnderlyingSource(src2);
+    expect(out2).toMatch(/\bpull\s*\(/);
+    expect(out2).not.toMatch(/\bstart\s*\(/);
+  });
+
+  it('regex literal dengan brace tak seimbang tidak menggeser hitungan', () => {
+    const src = 'const re = /}/{ \d{2,3}/; new ReadableStream({ pull() {} });';
+    expect(readableStreamUnderlyingSource(src)).toMatch(/\bpull\s*\(/);
+  });
+
+  it('parameter generik berbasis objek tidak mengecoh: blok setelah ( yang diambil', () => {
+    const src = 'new ReadableStream<{ controller: X }>({ pull(controller) {} });';
+    expect(readableStreamUnderlyingSource(src)).toMatch(/\bpull\s*\(/);
+  });
+
+  it('tanpa tanda ( setelah penanda -> string kosong', () => {
+    expect(readableStreamUnderlyingSource('new ReadableStream<{ a: X }>')).toBe('');
   });
 });
