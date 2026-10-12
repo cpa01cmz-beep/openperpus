@@ -193,34 +193,94 @@ describe('#105 ekspor: kegagalan/truncation tidak menyamar jadi sukses', () => {
 });
 
 describe('#133 backpressure: loop ekspor di pull(), bukan start()', () => {
-  /** Isi objek literal yang dilempar ke `new ReadableStream(...)` — kurung
-   *  kurawal diseimbangkan agar asersi menilai UNDERLYING SOURCE, bukan teks
-   *  mana pun di berkas (sisa review #134: toContain/not.toContain mentah
-   *  terlalu longgar — cocok substring di tempat tak relevan — sekaligus
-   *  terlalu ketat — komentar yang membahas start() membuat test merah). */
-  function readableStreamUnderlyingSource(src: string): string {
-    const open = src.indexOf('{', src.indexOf('new ReadableStream'));
-    if (open === -1) return '';
-    let depth = 0;
-    for (let i = open; i < src.length; i++) {
-      if (src[i] === '{') depth++;
-      else if (src[i] === '}' && --depth === 0) return src.slice(open + 1, i);
+  /** Buang komentar TANPA menyentuh string literal: pemotong `//` naif ikut
+   *  memotong isi string (mis. URL "https://…" di route) dan bisa membuat
+   *  brace tidak seimbang, sehingga scan di bawah salah titik (sisa review
+   *  #146). */
+  function stripCommentsKeepStrings(src: string): string {
+    let out = '';
+    let i = 0;
+    while (i < src.length) {
+      const c = src[i];
+      if (c === "'" || c === '"' || c === '`') {
+        let j = i + 1;
+        while (j < src.length) {
+          if (src[j] === '\\') {
+            j += 2;
+            continue;
+          }
+          if (src[j] === c) {
+            j++;
+            break;
+          }
+          j++;
+        }
+        out += src.slice(i, j);
+        i = j;
+        continue;
+      }
+      if (c === '/' && src[i + 1] === '/') {
+        while (i < src.length && src[i] !== '\n') i++;
+        continue;
+      }
+      if (c === '/' && src[i + 1] === '*') {
+        i += 2;
+        while (i < src.length && !(src[i] === '*' && src[i + 1] === '/')) i++;
+        i += 2;
+        continue;
+      }
+      out += c;
+      i++;
     }
-    return '';
+    return out;
   }
 
-  /** Buang komentar: dokumentasi route memang membahas start() vs pull(). */
-  function stripComments(src: string): string {
-    return src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/[^\n]*/g, '');
+  /** Isi objek literal yang dilempar ke `new ReadableStream(...)` — asersi
+   *  menilai UNDERLYING SOURCE, bukan teks mana pun di berkas (sisa review
+   *  #134: toContain/not.toContain mentah terlalu longgar — cocok substring di
+   *  tempat tak relevan — sekaligus terlalu ketat — komentar yang membahas
+   *  start() membuat test merah). Penanda `new ReadableStream` diperiksa
+   *  eksplisit: indexOf dengan fromIndex -1 akan clamp ke 0 dan tanpa ini
+   *  guard "harus ada" tidak bisa gagal sebagaimana mestinya (sisa review
+   *  #146). Brace di dalam string literal tidak dihitung. */
+  function readableStreamUnderlyingSource(src: string): string {
+    const code = stripCommentsKeepStrings(src);
+    const marker = 'new ReadableStream';
+    const at = code.indexOf(marker);
+    if (at === -1) return '';
+    const open = code.indexOf('{', at + marker.length);
+    if (open === -1) return '';
+    let depth = 0;
+    let i = open;
+    while (i < code.length) {
+      const c = code[i];
+      if (c === "'" || c === '"' || c === '`') {
+        i++;
+        while (i < code.length) {
+          if (code[i] === '\\') {
+            i += 2;
+            continue;
+          }
+          if (code[i] === c) {
+            i++;
+            break;
+          }
+          i++;
+        }
+        continue;
+      }
+      if (c === '{') depth++;
+      else if (c === '}' && --depth === 0) return code.slice(open + 1, i);
+      i++;
+    }
+    return '';
   }
 
   it('chunk hanya ditarik saat konsumen meminta (tidak di-enqueue penuh di start)', () => {
     // Guard struktural: perilaku backpressure sulit diassert tanpa consumer
     // sungguhan, tapi regresi ke `start()` (seluruh CSV di-enqueue sekaligus,
     // menumpuk di memori worker untuk klien lambat) harus ketahuan.
-    const src = stripComments(
-      readFileSync(join(process.cwd(), 'src/app/api/reports/export/route.ts'), 'utf8')
-    );
+    const src = readFileSync(join(process.cwd(), 'src/app/api/reports/export/route.ts'), 'utf8');
     const source = readableStreamUnderlyingSource(src);
     expect(source, 'new ReadableStream dengan underlying source inline harus ada').not.toBe('');
     expect(source, 'loop stream wajib di pull(), bukan start()').toMatch(/\bpull\s*\(/);
