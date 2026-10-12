@@ -511,8 +511,12 @@ describe('#133 guard helper: jalur gagal scanner underlying source', () => {
     // berkas dan helper mengembalikan '' (sisa review #149).
     const srcRe = 'new ReadableStream({ pull() { return /{\\d+/.test(v); } });';
     expect(readableStreamUnderlyingSource(srcRe)).toMatch(/\bpull\s*\(/);
-    // 'throw /[/' juga opening regex — keyword throw.
-    const srcThrow = 'new ReadableStream({ pull() { throw /[/.test(v); } });';
+    // 'throw /=/' juga opening regex — keyword throw. Fixture harus JS valid:
+    // '/[/' TIDAK (slash di dalam character class tak menutup literal).
+    // Tanpa 'throw' di keyword list, pembuka terbaca pembagi lalu slash
+    // penutup (didahului '=' — bukan operand) terbaca pembuka baru, menelan
+    // sisa berkas, helper -> '' (sisa review #150).
+    const srcThrow = 'new ReadableStream({ pull() { throw /=/.test(v); } });';
     expect(readableStreamUnderlyingSource(srcThrow)).toMatch(/\bpull\s*\(/);
   });
 
