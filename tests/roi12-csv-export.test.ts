@@ -52,6 +52,13 @@ describe('formula injection (CWE-1236) dinetralkan di esc()', () => {
     // Sisa review #154: LF-led payload — LF ada di run whitespace ASCII, jadi
     // ikut disaring; sel dikutip RFC 4180 karena mengandung LF.
     ['\n=cmd', '"' + "'" + '\n' + '=cmd' + '"'],
+    // Sisa review #155: LF-led TANPA penanda formula kini juga di-guard — set
+    // kontrol `[\t\r\n\v\f]` simetris dengan run whitespace `[ \t\r\n]`
+    // alternatif pertama; claim "seluruh karakter kontrol" di komentar guard
+    // akhirnya benar untuk LF. Dikutip RFC 4180 karena mengandung LF/CR.
+    ['\n', '"' + "'" + '\n' + '"'],
+    ['\n\n', '"' + "'" + '\n\n' + '"'],
+    ['\n\rx', '"' + "'" + '\n\rx' + '"'],
     // VT/FF-led: ditangkap alternatif kontrol (tanpa penanda pun) — pin.
     ['\v=cmd', "'\v=cmd"],
     ['\f', "'\f"],
@@ -77,6 +84,12 @@ describe('formula injection (CWE-1236) dinetralkan di esc()', () => {
   it('string whitespace murni TIDAK dianggap payload — tidak over-guard', () => {
     expect(toCSV(['judul'], [['   ']])).toBe('judul\r\n   ');
     expect(toCSV(['judul'], [[' a=1']])).toBe('judul\r\n a=1');
+  });
+
+  // Sisa review #155: guard kontrol hanya berlaku di AWAL sel — LF di tengah
+  // string tetap data sah, dikutip RFC 4180, TANPA prefix apostrof.
+  it('LF di tengah string TIDAK di-guard — hanya karakter awal yang diperiksa', () => {
+    expect(toCSV(['judul'], [['Judul\nbaris dua']])).toBe('judul\r\n"Judul\nbaris dua"');
   });
 
   // Sisa review #154: guard hanya menyaring whitespace ASCII. Tidak ada engine
