@@ -40,6 +40,15 @@ describe('formula injection (CWE-1236) dinetralkan di esc()', () => {
     ['-2+3+cmd', "'-2+3+cmd"],
     ['@SUM(1+9)*cmd|', "'@SUM(1+9)*cmd|"],
     ['\t=1+1', "'\t=1+1"],
+    // Sisa review #153: Excel/Sheets/LibreOffice memotong whitespace di depan
+    // sel saat memutuskan formula — penanda yang telanjang TIDAK cukup.
+    [" =cmd|'/c calc'!A1", "' =cmd|'/c calc'!A1"],
+    ['   +cmd', "'   +cmd"],
+    [' \t-calc', "' \t-calc"],
+    ['  @SUM(1+9)', "'  @SUM(1+9)"],
+    // CR tetap ikut set awal (engine memperlakukan kontrol sebagai formula);
+    // sel juga dikutip RFC 4180 karena mengandung CR.
+    ['\r=cmd', '"' + "'" + '\r' + '=cmd' + '"'],
   ])('%p -> %p', (input, expected) => {
     expect(toCSV(['h'], [[input]])).toBe(`h\r\n${expected}`);
   });
@@ -56,10 +65,18 @@ describe('formula injection (CWE-1236) dinetralkan di esc()', () => {
 
   it('payload hanya dinetralkan di AWAL sel, bukan di tengah string', () => {
     expect(toCSV(['judul'], [['Raport = 1+1']])).toBe('judul\r\nRaport = 1+1');
+    expect(toCSV(['judul'], [['Nilai  = 1 + cmd']])).toBe('judul\r\nNilai  = 1 + cmd');
+  });
+
+  it('string whitespace murni TIDAK dianggap payload — tidak over-guard', () => {
+    expect(toCSV(['judul'], [['   ']])).toBe('judul\r\n   ');
+    expect(toCSV(['judul'], [[' a=1']])).toBe('judul\r\n a=1');
   });
 
   it('jalur stream server (rowsToCSV) juga dinetralkan', () => {
     expect(rowsToCSV([["=cmd|'/c calc'!A1"]])).toBe("'=cmd|'/c calc'!A1");
+    // whitespace lalu penanda formula harus tetap netral di jalur server
+    expect(rowsToCSV([['  +cmd']])).toBe("'  +cmd");
   });
 });
 
