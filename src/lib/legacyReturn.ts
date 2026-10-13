@@ -7,6 +7,29 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 
 export type SupabaseLike = Pick<SupabaseClient, 'from'> & Partial<Pick<SupabaseClient, 'rpc'>>;
 
+/**
+ * KOSAKATA status hasil penulisan MAJU return — SATU-SATUNYA sumber, dipakai
+ * BERSAMA oleh penulisan maju (`status: 'returned' | 'lost'`) dan guard
+ * kompensasi `tryRevertLoanReturn` (`.in('status', …)`).
+ *
+ * Sebelumnya keduanya menuliskan `['returned', 'lost']` secara independen
+ * (sisa review #171): perubahan kosakata di masa depan — misalnya kondisi
+ * baru yang menulis status lain — membuat guard kompensasi diam-diam cocok 0
+ * baris SELAMANYA, dan setiap return gagal lalu selalu berakhir 500 +
+ * `needsReconciliation: true` tanpa satu tes pun yang menjelaskan kenapa.
+ * Satu konstanta + tipe di bawahnya menutup drift itu dari dua sisi: nilai
+ * status maju WAJIB anggota daftar (gagal saat typecheck), dan guard
+ * kompensasi memfilter dengan daftar yang sama.
+ */
+export const RETURNED_LOAN_STATUSES = ['returned', 'lost'] as const;
+/** Status yang boleh ditulis penulisan maju return (dan dipulihkan kompensasi). */
+export type ReturnedLoanStatus = (typeof RETURNED_LOAN_STATUSES)[number];
+
+/** true bila `value` anggota kosakata status hasil return. */
+export function isReturnedLoanStatus(value: unknown): value is ReturnedLoanStatus {
+  return typeof value === 'string' && (RETURNED_LOAN_STATUSES as readonly string[]).includes(value);
+}
+
 export function retryableError(message: string, details?: unknown) {
   return NextResponse.json(
     {
@@ -57,7 +80,8 @@ export async function getFineRate(supabase: SupabaseLike): Promise<number> {
  * Guard optimistic-lock/status (paritas penuh dengan guard CAS stok di
  * `tryRevertLoanStock`): penulisan absolut `status: 'borrowed'` hanya
  * dilakukan pada baris yang MASIH berstatus yang baru KITA tulis
- * (`returned`/`lost`) lewat `.in('status', ['returned', 'lost'])`. Tanpa
+ * (`returned`/`lost`) lewat `.in('status', [...RETURNED_LOAN_STATUSES])` —
+ * kosakata yang SAMA dengan penulisan maju, satu sumber (sisa review #171). Tanpa
  * guard ini gerbang jumlah baris hanya bisa mendeteksi kasus "baris hilang"
  * (0 baris karena `DELETE`), bukan "baris masih ada tetapi statusnya sudah
  * berubah konkuren sehingga TIDAK seharusnya dibalik" — penulisan absolutnya
@@ -80,8 +104,11 @@ export async function tryRevertLoanReturn(supabase: SupabaseLike, id: string): P
       // MASIH `returned`/`lost` — status yang baru DITULIS penulisan maju.
       // Bentuknya sama seperti guard `.in('status', ['borrowed','overdue'])`
       // pada penulisan maju dan guard CAS stok, jadi baris yang berubah
-      // konkuren gagal (0 baris) alih-alih ditimpa absolut.
-      .in('status', ['returned', 'lost'])
+      // konkuren gagal (0 baris) alih-alih ditimpa absolut. Kosakata status
+      // diambil dari RETURNED_LOAN_STATUSES — konstanta yang SAMA dipakai
+      // penulisan maju, supaya perubahan kosakata tak lagi membuat guard ini
+      // diam-diam cocok 0 baris selamanya (sisa review #171).
+      .in('status', [...RETURNED_LOAN_STATUSES])
       .select('id');
     return rowsRestored(error, data);
   } catch {
@@ -239,16 +266,24 @@ export async function legacyReturnLoan(
     replacement > 0 ? ` | Biaya ganti rugi (${kondisi}): ${formatRp(replacement)}` : '';
   const capNote = capped.capped ? ` | Denda dipatok maksimum ${formatRp(fineMax)}` : '';
 
+  // Status maju diikat tipe ke RETURNED_LOAN_STATUSES (sisa review #171):
+  // nilai di luar kosakata itu gagal saat typecheck, jadi guard kompensasi
+  // (`tryRevertLoanReturn`) mustahil lagi ketinggalan dari status yang
+  // ditulis di sini — keduanya memakai konstanta yang SAMA, bukan dua daftar
+  // yang ditulis independen dan bisa menyimpang tanpa terdeteksi.
+  const forwardStatus: ReturnedLoanStatus =
+    hasKondisi && kondisi === 'hilang' ? 'lost' : 'returned';
+
   const updatePayload: Record<string, unknown> = hasKondisi
     ? {
         returned_at: returnedAt.toISOString(),
-        status: kondisi === 'hilang' ? 'lost' : 'returned',
+        status: forwardStatus,
         fine_amount: fine,
         notes: `Kondisi kembali: ${kondisi}${replacementNote}${capNote}${noteExtra}`,
       }
     : {
         returned_at: returnedAt.toISOString(),
-        status: 'returned',
+        status: forwardStatus,
         fine_amount: fine,
         ...(cleanNotes ? { notes: cleanNotes } : {}),
       };
