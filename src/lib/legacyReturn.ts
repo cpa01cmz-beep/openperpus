@@ -49,6 +49,50 @@ export async function tryRevertLoanReturn(supabase: SupabaseLike, id: string): P
   }
 }
 
+/**
+ * Kolom stok yang bisa tersentuh jalur fallback pengembalian. Untuk kondisi
+ * "baik" `stock_total` diisi nilai yang SAMA (tidak ditulis): kolom itu hanya
+ * ikut jadi guard CAS saat pembalikan, di mana jejak dua kolom membuat
+ * penulisan absolut di atas aman terhadap perubahan konkuren.
+ */
+type StockCols = { stock_available: number; stock_total: number };
+
+/** Jejak penulisan stok: nilai SEBELUM (untuk pulih) + SESUDAH (untuk CAS). */
+type StockWrite = { prior: StockCols; wrote: StockCols };
+
+/**
+ * KOMPENSASI stok (issue #164): kembalikan kolom yang sudah DITULIS ke nilai
+ * SEBELUM pengembalian. Dipanggil bila langkah SETELAH penulisan stok
+ * (catat denda) gagal — kalau loan saja yang dibatalkan, `stock_available`
+ * tetap bertambah pada peminjaman yang sudah kembali `borrowed`, sehingga
+ * eksemplar yang masih dipinjam terhitung tersedia.
+ *
+ * Guard CAS `.eq(col, wrote[col])`: kembalikan nilai lama HANYA bila baris
+ * masih memuat nilai yang kita tulis — pola yang sama dengan guard
+ * `.in('status', ['borrowed','overdue'])` untuk loan di atas dan
+ * `.eq('due_at', …)` optimistic-lock di `extendLoan.ts`. Tanpa guard,
+ * penulisan absolut akan menimpa penambahan stok dari pengembalian lain.
+ * 0-baris / error / throw = false → pemanggil set needsReconciliation.
+ */
+export async function tryRevertLoanStock(
+  supabase: SupabaseLike,
+  bookId: string,
+  prior: StockCols,
+  wrote: StockCols
+): Promise<boolean> {
+  try {
+    const { error } = await supabase
+      .from('books')
+      .update({ stock_available: prior.stock_available, stock_total: prior.stock_total })
+      .eq('id', bookId)
+      .eq('stock_available', wrote.stock_available)
+      .eq('stock_total', wrote.stock_total);
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
 export type ReturnLoanOptions = {
   supabase: SupabaseLike;
   id: string;
@@ -150,39 +194,44 @@ export async function legacyReturnLoan(
     .select('stock_available,stock_total')
     .eq('id', l.book_id)
     .single();
+  // Catat nilai stok SEBELUM/SESUDAH penulisan: kalau langkah BERIKUTNYA
+  // (denda) gagal, kompensasi wajib mengembalikan nilai SEBELUM, bukan hanya
+  // membatalkan loan (issue #164).
+  let stockWrite: StockWrite | null = null;
+
   if (book) {
     const b = book as { stock_available: number; stock_total: number };
-    if (hasKondisi && kondisi !== 'baik') {
-      const nextTotal = Math.max(0, b.stock_total - 1);
-      const { error: stockErr } = await supabase
-        .from('books')
-        .update({
-          stock_total: nextTotal,
-          stock_available: Math.min(Math.max(0, b.stock_available), nextTotal),
-        })
-        .eq('id', l.book_id);
-      if (stockErr) {
-        const reverted = await tryRevertLoanReturn(supabase, id);
-        return retryableError('Pengembalian tersimpan, stok gagal diperbarui. Silakan coba lagi.', {
-          reason: stockErr.message,
-          reverted,
-          needsReconciliation: !reverted,
-        });
-      }
-    } else {
-      const { error: stockErr } = await supabase
-        .from('books')
-        .update({ stock_available: Math.min(b.stock_total, b.stock_available + 1) })
-        .eq('id', l.book_id);
-      if (stockErr) {
-        const reverted = await tryRevertLoanReturn(supabase, id);
-        return retryableError('Pengembalian tersimpan, stok gagal diperbarui. Silakan coba lagi.', {
-          reason: stockErr.message,
-          reverted,
-          needsReconciliation: !reverted,
-        });
-      }
+    const prior: StockCols = {
+      stock_available: b.stock_available,
+      stock_total: b.stock_total,
+    };
+    // Rusak/hilang: satu eksemplar keluar dari peredaran — keduanya berubah.
+    // Baik: satu eksemplar kembali ke rak — hanya stock_available yang
+    // ditulis (bentuk payload sama seperti sebelum isu #164).
+    const damaged = hasKondisi && kondisi !== 'baik';
+    const wrote: StockCols = damaged
+      ? {
+          stock_total: Math.max(0, b.stock_total - 1),
+          stock_available: Math.min(Math.max(0, b.stock_available), Math.max(0, b.stock_total - 1)),
+        }
+      : {
+          stock_available: Math.min(b.stock_total, b.stock_available + 1),
+          stock_total: prior.stock_total,
+        };
+    const payload = damaged
+      ? { stock_total: wrote.stock_total, stock_available: wrote.stock_available }
+      : { stock_available: wrote.stock_available };
+    const { error: stockErr } = await supabase.from('books').update(payload).eq('id', l.book_id);
+    if (stockErr) {
+      // Penulisan stok GAGAL — tak ada yang perlu dibalik dari tabel books.
+      const reverted = await tryRevertLoanReturn(supabase, id);
+      return retryableError('Pengembalian tersimpan, stok gagal diperbarui. Silakan coba lagi.', {
+        reason: stockErr.message,
+        reverted,
+        needsReconciliation: !reverted,
+      });
     }
+    stockWrite = { prior, wrote };
   }
 
   if (fine > 0) {
@@ -199,10 +248,23 @@ export async function legacyReturnLoan(
     });
     if (fineErr) {
       const loanReverted = await tryRevertLoanReturn(supabase, id);
+      // KOMPENSASI STOK (issue #164): penulisan stok SUDAH sukses sebelum
+      // denda dicatat, jadi ia wajib ikut dibatalkan. Tanpa ini loan kembali
+      // ke `borrowed` sementara `stock_available` tetap bertambah — eksemplar
+      // yang masih dipinjam terhitung tersedia, lalu checkout berikutnya
+      // membuat dua pinjaman aktif untuk satu eksemplar, dan korupsinya tidak
+      // pernah pulih sendiri (pengembalian berikutnya menjepit dengan
+      // Math.min(stock_total, …)). `book` null = stok tak pernah dibaca/
+      // ditulis, tak ada yang perlu dibalik.
+      const stockReverted = stockWrite
+        ? await tryRevertLoanStock(supabase, l.book_id, stockWrite.prior, stockWrite.wrote)
+        : true;
       return retryableError('Pengembalian tersimpan, denda gagal dicatat. Silakan coba lagi.', {
         reason: fineErr.message,
         reverted: loanReverted,
-        needsReconciliation: !loanReverted,
+        stockReverted,
+        // "Konsisten" hanya bila KEDUA kompensasi sukses — bukan loan saja.
+        needsReconciliation: !loanReverted || !stockReverted,
       });
     }
   }
