@@ -78,12 +78,26 @@ describe('isZeroRows — kontrak satu sumber', () => {
 describe('paritas statis — ketiga titik impor helper yang sama', () => {
   /** Baris KODE saja (baris komentar dibuang) — larangan kosakata tak boleh
    * mengganggu dokumentasi: menyebut `406` di komentar untuk menjelaskan
-   * mengapa TIDAK dipakai justru perilaku yang benar (sisa review #184). */
+   * mengapa TIDAK dipakai justru perilaku yang benar (sisa review #184).
+   *
+   * Blok komentar dibuang LEBIH DULU: memfilter per-baris saja masih salah
+   * hitung blok `/* ... *\/` yang barisnya tidak berawalan `*`/`//` (mis.
+   * menyorot potongan kode mati sebagai dokumentasi) — itu memunculkan
+   * kegagalan CI palsu dari dokumentasi, persis lubang #2 yang issue ini tutup. */
   const codeLines = (src: string) =>
     src
+      .replace(/\/\*[\s\S]*?\*\//g, '')
       .split('\n')
-      .filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l))
+      .filter((l) => !/^\s*(\/\/|\*)/.test(l))
       .join('\n');
+
+  /** PERBANDINGAN kode error terhadap '406' — bentuk cabang dead-code yang
+   * dibuang dari helper (#183/#184). Harus tahan bentuk: identifier bertitik
+   * (`error.code`), camelCase (`errorCode`), urutan terbalik, kutip ganda, dan
+   * `==`/`===`/`!=`/`!==`. Hanya '406' literal; bukan token `406` mentah, jadi
+   * menyebut angka itu di komentar/dokumentasi tetap sah. */
+  const CODE_COMPARE_406 =
+    /\b[\w.]*code\w*\s*(?:!==?|===?)\s*['"`]406['"`]|['"`]406['"`]\s*(?:!==?|===?)\s*[\w.]*code/i;
 
   it.each(SITES)('%s mengimpor @/lib/zero-rows tanpa salinan lokal', (_name, file) => {
     const src = read(file);
@@ -112,10 +126,14 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
     // Sisa review #184: tanpa ini, berkas site boleh MEMBUKA LAGI cabang
     // dead-code `error.code === '406'` yang baru dibuang dari helper tanpa satu
     // assertion pun gagal. Bentuk persisnya: perbandingan kode terhadap '406'.
+    // Bentuk yang setara harus ikut kena: `errorCode`, urutan terbalik
+    // `'406' === error.code`, kutip ganda, dan `==`/`!==` — kalau hanya
+    // `\bcode\w* === '406'`, ketiga bentuk itu membuka kembali dead code tanpa
+    // satu assertion pun gagal.
     expect(
       code,
       `${file} tak boleh membandingkan kode error dengan '406' (dead code, milik kontrak helper)`
-    ).not.toMatch(/\bcode\w*\s*===\s*'406'|'406'\s*===\s*\b\w*code/i);
+    ).not.toMatch(CODE_COMPARE_406);
   });
 
   it('helper hanya menguji frasa kanonik di message tanpa membangun regex dinamis', () => {
@@ -129,6 +147,12 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
       /\.test\([^)]*(\$\{|`|\+)/
     );
     expect(helper, 'regex wajib menguji message').toMatch(/\.test\(error\.message\b/);
+    // `new RegExp(\`${msg} ${code}\`)` duduk DI LUAR `.test(...)`, jadi guard di
+    // atas tak pernah melihatnya: tanpa larangan eksplisit di sini, kelas
+    // bahaya #179 kembali lewat konstruktor regex, bukan lewat `.test()`.
+    expect(helper, 'helper tak boleh membangun regex dinamis dari field error').not.toContain(
+      'new RegExp('
+    );
   });
 });
 
