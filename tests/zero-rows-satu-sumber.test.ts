@@ -76,6 +76,15 @@ describe('isZeroRows — kontrak satu sumber', () => {
 });
 
 describe('paritas statis — ketiga titik impor helper yang sama', () => {
+  /** Baris KODE saja (baris komentar dibuang) — larangan kosakata tak boleh
+   * mengganggu dokumentasi: menyebut `406` di komentar untuk menjelaskan
+   * mengapa TIDAK dipakai justru perilaku yang benar (sisa review #184). */
+  const codeLines = (src: string) =>
+    src
+      .split('\n')
+      .filter((l) => !/^\s*(\/\/|\*|\/\*)/.test(l))
+      .join('\n');
+
   it.each(SITES)('%s mengimpor @/lib/zero-rows tanpa salinan lokal', (_name, file) => {
     const src = read(file);
     expect(src, `${file} wajib memakai helper bersama`).toContain(
@@ -86,9 +95,10 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
     // alternatif) akan memuat salah satu kosakata di bawah — termasuk bentuk
     // dinamis `new RegExp(msg + ' ' + code)`, yang tidak terdeteksi oleh
     // larangan teks seperti `| 406` (issue #183).
+    const code = codeLines(src);
     for (const vocab of ['PGRST116', 'concurrent winner', 'multiple (or no) rows', '0 rows']) {
       expect(
-        src,
+        code,
         `${file} tak boleh memuat kosakata 0-baris "${vocab}" (milik helper)`
       ).not.toContain(vocab);
     }
@@ -99,14 +109,26 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
     expect(src, `${file} tak boleh membangun regex dinamis dari field error`).not.toContain(
       'new RegExp('
     );
+    // Sisa review #184: tanpa ini, berkas site boleh MEMBUKA LAGI cabang
+    // dead-code `error.code === '406'` yang baru dibuang dari helper tanpa satu
+    // assertion pun gagal. Bentuk persisnya: perbandingan kode terhadap '406'.
+    expect(
+      code,
+      `${file} tak boleh membandingkan kode error dengan '406' (dead code, milik kontrak helper)`
+    ).not.toMatch(/\bcode\w*\s*===\s*'406'|'406'\s*===\s*\b\w*code/i);
   });
 
-  it('helper hanya menguji frasa kanonik di message, bukan interpolasi msg/code', () => {
+  it('helper hanya menguji frasa kanonik di message tanpa membangun regex dinamis', () => {
     const helper = read('src/lib/zero-rows.ts');
     expect(helper).toContain("error.code === 'PGRST116'");
-    // Larang interpolasi variabel error sebagai INPUT regex — bukan semua
-    // template literal (template literal sah di masa depan, issue #183).
-    expect(helper).not.toMatch(/\$\{\s*(msg|code)\b/i);
+    // Invarian berbentuk, bukan per-identifier (sisa review #184): input regex
+    // WAJIB statis. Interpolasi/konkatenasi/template literal di dalam `.test()`
+    // berarti input regex dibangun dinamis — persis kelas bahaya #179 —
+    // apapun nama variabelnya.
+    expect(helper, 'input regex wajib statis (tak boleh dibangun dinamis)').not.toMatch(
+      /\.test\([^)]*(\$\{|`|\+)/
+    );
+    expect(helper, 'regex wajib menguji message').toMatch(/\.test\(error\.message\b/);
   });
 });
 
