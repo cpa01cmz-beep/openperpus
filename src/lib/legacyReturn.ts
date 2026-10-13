@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { calcFine, jsonError, FINE_PER_DAY } from '@/lib/supabase/auth';
 import { capLateFine, getFineMax, getReplacementFee } from '@/lib/loan-settings';
 import { ACTIVE_LOAN_STATUSES } from '@/lib/loans-overdue';
+import { isZeroRows } from '@/lib/zero-rows';
 import { formatRp } from '@/lib/format';
 import { createLogger } from '@/lib/logger';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -306,14 +307,12 @@ export async function legacyReturnLoan(
     .select()
     .single();
   if (error || !data) {
-    const msg = (error as { message?: string; code?: string } | null)?.message ?? '';
-    const code = (error as { code?: string } | null)?.code ?? '';
-    // 0-baris = pemenang konkuren sudah memproses (PGRST116/406 atau null) -> 409.
-    if (
-      !data &&
-      (!error ||
-        /concurrent winner|PGRST116|406|0 rows|multiple \(or no\) rows/i.test(`${msg} ${code}`))
-    ) {
+    // 0-baris = pemenang konkuren sudah memproses -> 409. Klasifikasi SATU
+    // SUMBER dengan PUT reservasi + extend (@/lib/zero-rows): kode PERSIS +
+    // frasa kanonik, bukan substring gabungan `message + code` yang membuat
+    // kegagalan DB sungguhan (`22P02 … "406"`, `22001 … 406`) ikut jadi 409
+    // (issue #179, masih hidup di berkas ini sampai issue #181).
+    if (!data && isZeroRows(error)) {
       return jsonError('CONFLICT', 'Peminjaman sudah diproses peminjam lain.', 409);
     }
     return retryableError(
