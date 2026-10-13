@@ -18,6 +18,10 @@
  * `log.error` + requestId hilang, staf disuruh "muat ulang"/"coba lagi"
  * padahal penulisan TIDAK terjadi (issue #179, dulu hidup di ketiga berkas).
  *
+ * Kontrak kode: PERSIS `PGRST116` (satu-satunya). `406` sengaja TIDAK diterima
+ * sebagai kode — di pustaka itu STATUS HTTP, dan menerimanya adalah dead code
+ * sekaligus jalan masuk kembali kelas masking (issue #183).
+ *
  * Perilaku postgrest-js@2.117.3 (`dist/index.cjs`, `processResponse`):
  * `.single()` 0 baris pada respons 200 `[]` → `data = null` dengan `error`
  * dibiarkan null; hanya cabang `> 1 baris` yang men-set `code: 'PGRST116'`
@@ -46,11 +50,13 @@ const ZERO_ROWS_PHRASE = /multiple \(or no\) rows|PGRST116|concurrent winner/i;
 export function isZeroRows(error: ZeroRowsError): boolean {
   // 200 + [] dari postgrest-js@2: miss guard asli TIDAK menghasilkan error.
   if (!error) return true;
-  // Kode PERSIS. `406` adalah bentuk HTTP ("Not Acceptable") yang beberapa
-  // klien/proxy sampaikan sebagai kode string; aman karena tak ada body error
-  // PostgREST yang ber-`code: '406'` (terverifikasi di node_modules, lihat
-  // komentar berkas) — bukan jalang penyelubungan kegagalan tulis.
-  if (error.code === 'PGRST116' || error.code === '406') return true;
+  // Kode PERSIS — HANYA PGRST116. Sifatnya "406" adalah STATUS HTTP, bukan
+  // `error.code` (terverifikasi di postgrest-js@2.117.3 processResponse), jadi
+  // cabang `code === '406'` yang dulu ada di sini adalah dead code yang justru
+  // melawan kontrak berkas ini: tak bisa menyala dari pustaka, sementara lapisan
+  // baru yang menyampaikan status HTTP sebagai `code` akan membuka lagi jalur
+  // masking kegagalan tulis jadi 409 (issue #183).
+  if (error.code === 'PGRST116') return true;
   // Frasa kanonik di message SAJA (bukan digabung dengan code).
   return ZERO_ROWS_PHRASE.test(error.message ?? '');
 }
