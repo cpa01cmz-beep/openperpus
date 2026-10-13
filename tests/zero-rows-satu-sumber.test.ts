@@ -37,7 +37,6 @@ describe('isZeroRows — kontrak satu sumber', () => {
     expect(isZeroRows(null)).toBe(true);
     expect(isZeroRows(undefined)).toBe(true);
     expect(isZeroRows({ code: 'PGRST116' })).toBe(true);
-    expect(isZeroRows({ code: '406' })).toBe(true);
     expect(
       isZeroRows({
         code: 'PGRST116',
@@ -46,6 +45,13 @@ describe('isZeroRows — kontrak satu sumber', () => {
     ).toBe(true);
     // Bentuk zero-rows yang dipakai tests/coredata2-races.test.ts:41 (tanpa kode).
     expect(isZeroRows({ message: 'concurrent winner' })).toBe(true);
+  });
+
+  it('kode "406" BUKAN zero-rows (status HTTP, bukan error.code) -> false', () => {
+    // issue #183: di postgrest-js@2, 406 adalah `status`, bukan `error.code`;
+    // menerimanya sebagai kode adalah dead code sekaligus jalan masuk kembali
+    // masking kegagalan tulis jadi 409. Arahnya harus fail-loud (500).
+    expect(isZeroRows({ code: '406' })).toBe(false);
   });
 
   it('kegagalan DB sungguhan -> false (bukan 409), termasuk angka 406 di detail', () => {
@@ -75,19 +81,32 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
     expect(src, `${file} wajib memakai helper bersama`).toContain(
       "import { isZeroRows } from '@/lib/zero-rows'"
     );
-    // Bahaya #179: `406` / `0 rows` sebagai alternatif substring regex.
-    expect(src, `${file} tak boleh mencocokkan 406 sebagai substring`).not.toMatch(/\|\s*406\b/);
-    expect(src, `${file} tak boleh mencocokkan "0 rows" sebagai substring`).not.toMatch(
-      /\|\s*0 rows\b/
+    // Invarian yang benar: KOSAKATA klasifikasi 0-baris hanya boleh hidup di
+    // helper. Salinan lokal yang dulu menjadi sumber bahaya #179 (regex
+    // alternatif) akan memuat salah satu kosakata di bawah — termasuk bentuk
+    // dinamis `new RegExp(msg + ' ' + code)`, yang tidak terdeteksi oleh
+    // larangan teks seperti `| 406` (issue #183).
+    for (const vocab of ['PGRST116', 'concurrent winner', 'multiple (or no) rows', '0 rows']) {
+      expect(
+        src,
+        `${file} tak boleh memuat kosakata 0-baris "${vocab}" (milik helper)`
+      ).not.toContain(vocab);
+    }
+    // Bentuk dinamis `new RegExp(msg + ' ' + code)` TIDAK memuat kosakata
+    // literal, jadi dilacak terpisah: larang konstruksi regex dinamis di
+    // berkas site. (Regex literal yang sudah ada untuk deteksi RPC-hilang di
+    // extendLoan.ts tetap sah — yang dilarang adalah regex dari field error.)
+    expect(src, `${file} tak boleh membangun regex dinamis dari field error`).not.toContain(
+      'new RegExp('
     );
   });
 
-  it('helper tidak menguji regex atas gabungan message + code', () => {
+  it('helper hanya menguji frasa kanonik di message, bukan interpolasi msg/code', () => {
     const helper = read('src/lib/zero-rows.ts');
     expect(helper).toContain("error.code === 'PGRST116'");
-    expect(helper, 'tak boleh ada interpolasi ${msg}/${code} sebagai input regex').not.toMatch(
-      /\$\{/
-    );
+    // Larang interpolasi variabel error sebagai INPUT regex — bukan semua
+    // template literal (template literal sah di masa depan, issue #183).
+    expect(helper).not.toMatch(/\$\{\s*(msg|code)\b/i);
   });
 });
 
