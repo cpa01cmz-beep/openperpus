@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { jsonError } from '@/lib/supabase/auth';
 import { createLogger } from '@/lib/logger';
 import { getLoanPolicy } from '@/lib/loan-settings';
+import { isZeroRows } from '@/lib/zero-rows';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 type SupabaseLike = Pick<SupabaseClient, 'from'> & Partial<Pick<SupabaseClient, 'rpc'>>;
@@ -242,13 +243,11 @@ export async function extendLoan(opts: ExtendLoanOptions): Promise<Response> {
     .select()
     .single();
   if (error || !data) {
-    const msg2 = (error as { message?: string; code?: string } | null)?.message ?? '';
-    const code2 = (error as { code?: string } | null)?.code ?? '';
-    if (
-      !data &&
-      (!error ||
-        /concurrent winner|PGRST116|406|0 rows|multiple \(or no\) rows/i.test(`${msg2} ${code2}`))
-    ) {
+    // 0-baris = pemenang konkuren sudah memperpanjang -> 409. Klasifikasi SATU
+    // SUMBER dengan PUT reservasi + legacyReturn (@/lib/zero-rows): substring
+    // gabungan `message + code` yang dulu ada di sini memasukkan kegagalan DB
+    // sungguhan (`22P02 … "406"`, `P0001`, `42883`) ke jalur 409 (issue #181).
+    if (!data && isZeroRows(error)) {
       return jsonError('CONFLICT', 'Peminjaman sudah diperpanjang pihak lain.', 409);
     }
     return retryableError(

@@ -4,6 +4,7 @@ import { jsonError } from '@/lib/supabase/auth';
 import { isUuid } from '@/lib/api-utils';
 import { getSession } from '@/lib/session';
 import { createLogger, requestIdFromHeaders } from '@/lib/logger';
+import { isZeroRows } from '@/lib/zero-rows';
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -48,31 +49,6 @@ function revalidated(): string[] {
     /* abaikan */
   }
   return done;
-}
-
-/**
- * 0-baris dari PostgREST (guard optimistik-lock tak cocok) — dipakai untuk
- * memisahkan KONFLIK dari kegagalan DB sungguhan (issue #179).
- *
- * Hanya kode PERSIS yang dipercaya, BUKAN substring pesan: detail Postgres bisa
- * memuat angka acak (`22P02 invalid input syntax for type integer: "406"`,
- * `22001 value too long for type character varying(406)`), dan substring `406`
- * seperti itu membuat kegagalan server salah-klasifikasi jadi konflik —
- * `log.error` + requestId yang dibutuhkan untuk menindaklanjuti hilang, staf
- * malah melihat "muat ulang" padahal penulisan tidak terjadi.
- *
- * - kode eksak `PGRST116` / `406` (bentuk PostgREST untuk `.single()` 0-baris)
- * - frasa kanonik PGRST116 di `message`
- * - `{ data: null, error: null }` (beberapa klien/mock) juga dihitung 0-baris —
- *   kelonggaran yang SAMA dengan deteksi pemenang konkuren `legacyReturn.ts:313-316`
- *
- * Kode lain (23505, 42501, 22P02, 22001, …) BUKAN 0-baris -> 500.
- */
-function isZeroRows(error: unknown): boolean {
-  const e = error as { code?: string; message?: string } | null;
-  if (!e) return true;
-  if (e.code === 'PGRST116' || e.code === '406') return true;
-  return /multiple \(or no\) rows|PGRST116/i.test(e.message ?? '');
 }
 
 async function scoped(id: string) {
@@ -195,8 +171,11 @@ async function updateById(req: Request, id: string) {
   if (error || !data) {
     // 0-baris pada conditional write = pemenang konkuren (checkout/sweep lain)
     // sudah memproses baris ini -> minta muat ulang, jangan 500.
-    // #179: klasifikasi memakai KODE PERSIS / frasa kanonik, bukan substring
-    // pesan — lihat isZeroRows().
+    // #179: klasifikasi memakai KODE PERSIS / frasa kanonik, BUKAN substring
+    // pesan — detail Postgres bisa memuat angka acuan ("406") yang membuat
+    // kegagalan server salah-klasifikasi jadi konflik. Kontraknya SATU SUMBER
+    // bersama legacyReturn/extendLoan di @/lib/zero-rows (issue #181): salinan
+    // lokal bisa basi bersama tanpa satu tes pun gagal.
     if (payload.status !== undefined && !data && isZeroRows(error)) {
       log.warn('reservations.id.status_conflict', { id, from: cur.status });
       return jsonError('CONFLICT', 'Status reservasi sudah berubah, muat ulang dulu.', 409, {
