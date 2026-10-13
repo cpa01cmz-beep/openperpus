@@ -292,4 +292,25 @@ describe('loans-return legacy compensation (chaos)', () => {
     // Penulisan pembalikan memang dicoba, hanya tidak mengenai baris mana pun.
     expect(booksWrites.filter((w) => w.kind === 'revert')).toHaveLength(1);
   });
+
+  it('CHAOS-09 kondisi rusak + guard CAS tak cocok (0 baris) → cabang 2 kolom juga gagal terlihat', async () => {
+    const log: string[] = [];
+    const booksWrites: BookWrite[] = [];
+    const { j } = await chaosResponse(
+      { log, booksWrites, failFinesInsert: true, stockRevertNoRows: true },
+      'rusak'
+    );
+    expect(j.details.stockReverted).toBe(false);
+    expect(j.details.needsReconciliation).toBe(true);
+    const revert = booksWrites.filter((w) => w.kind === 'revert');
+    expect(revert).toHaveLength(1);
+    // Cabang rusak/hilang tetap menulis DUA kolom walau guard tidak kena —
+    // pembalikan parsial tidak boleh kelihatan "berhasil".
+    expect(revert[0]?.payload).toEqual({ stock_available: 1, stock_total: 5 });
+    expect(revert[0]?.guards).toEqual([
+      ['id', BID],
+      ['stock_available', 1],
+      ['stock_total', 4],
+    ]);
+  });
 });

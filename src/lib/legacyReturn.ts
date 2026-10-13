@@ -90,6 +90,13 @@ function rowsRestored(error: unknown, data: unknown): boolean {
  *    `stock_available` masih bertambah. Itu justru bentuk divergensi diam-diam
  *    yang ditutup isu #164, jadi "tidak ada baris" harus berarti gagal.
  *
+ *    Catatan trade-off (review PR #167): nol baris juga bisa berarti baris
+ *    TIDAK terlihat oleh RLS/SELECT klien walau penulisan berhasil. Itu gagal
+ *    ke arah AMAN — laporan gagal memicu rekonsiliasi manual, bukan
+ *    ketenangan palsu. Yang lebih buruk adalah sebaliknya, jadi orientasi
+ *    inilah yang dipilih. Klien staf yang menulis di sini juga sama dengan
+ *    yang membaca `books` di daftar/ekspor, jadi visibilitasnya identik.
+ *
  * Hanya kolom yang benar-benar ditulis yang dipulihkan & dijaga: perubahan
  * tak terkait di baris yang sama (mis. `stock_total` digerakkan pengembalian
  * rusak lain) tidak boleh ikut menggagalkan pemulihan `stock_available`.
