@@ -34,8 +34,14 @@ vi.mock('next/cache', () => ({
 // guard kompensasi, dikunci tes paritas dua arah; (2) penulisan MAJU loan
 // kini juga di-assert (guard `.eq` + `.in` RACE-01), bukan hanya dikoleksi;
 // (3) CHAOS-11 meng-assert status/payload respons seperti chaos test lain.
+//
+// Issue #174 (sisa review #173): filter RACE-01 penulisan maju kini memakai
+// `ACTIVE_LOAN_STATUSES` — satu sumber yang sama dengan produksi DAN
+// `DELETE /api/loans/[id]` — alih-alih daftar literal yang ditulis ulang di
+// produksi dan di tes (basi bersama tanpa tes yang gagal).
 
 import { isReturnedLoanStatus, RETURNED_LOAN_STATUSES } from '@/lib/legacyReturn';
+import { ACTIVE_LOAN_STATUSES } from '@/lib/loans-overdue';
 import { returnLoan } from '@/lib/loans-return';
 
 const MID = '11111111-1111-4111-8111-111111111111';
@@ -232,7 +238,7 @@ function expectLoanRevertShape(loanWrites: LoanWrite[]) {
  * Bentuk penulisan MAJU return yang BENAR (sisa review #171). Mock memang
  * mencatat entri `loanWrites` `kind: 'forward'`, tapi sebelumnya TIDAK ada tes
  * yang meng-assert-nya — koleksi tanpa assertion, sehingga drop guard RACE-01
- * `.in('status', ['borrowed','overdue'])` (`legacyReturn.ts:297`) masih lolos
+ * `.in('status', ['borrowed','overdue'])` (`legacyReturn.ts:305`) masih lolos
  * SEMUA chaos test. Asimetris dengan `BookWrite` maju yang sudah di-assert;
  * helper ini menutupinya:
  *   - drop `.eq('id', id)`      → guards tak lagi `[['id','L-9']]`
@@ -240,12 +246,18 @@ function expectLoanRevertShape(loanWrites: LoanWrite[]) {
  *   - status maju di luar `RETURNED_LOAN_STATUSES` → paritas kosakata gagal
  *     (guard kompensasi tak akan pernah cocok baris itu lagi, dan setiap
  *     return gagal jadi 500 + needsReconciliation tanpa penjelasan).
+ *
+ * Filter RACE-01 dicocokkan dengan `ACTIVE_LOAN_STATUSES` — konstanta yang SAMA
+ * dipakai produksi DAN `DELETE /api/loans/[id]` (issue #174). Daftar yang ditulis
+ * ulang di sini justru yang bisa basi BERSAMA dengan daftar produksi: status
+ * aktif baru masuk konstanta tetapi keduanya tetap literal lama → tes hijau
+ * padahal return berstatus itu 0-baris → 409 selamanya tanpa penjelasan.
  */
 function expectLoanForwardShape(loanWrites: LoanWrite[]) {
   const forward = loanWrites.filter((w) => w.kind === 'forward');
   expect(forward).toHaveLength(1);
   expect(forward[0]?.guards).toEqual([['id', 'L-9']]);
-  expect(forward[0]?.in).toEqual([['status', ['borrowed', 'overdue']]]);
+  expect(forward[0]?.in).toEqual([['status', [...ACTIVE_LOAN_STATUSES]]]);
   expect(isReturnedLoanStatus(forward[0]?.payload.status)).toBe(true);
 }
 
@@ -493,7 +505,7 @@ describe('loans-return legacy compensation (chaos)', () => {
     expect(j.error.message).toContain('stok gagal diperbarui');
     expect(log).toContain('revert-loan');
     // Gerbang 0-baris (issue #168) juga wajib terlihat di cabang STOK-gagal
-    // (legacyReturn.ts:354, needsReconciliation: !reverted di :358) — bukan
+    // (legacyReturn.ts:362, needsReconciliation: !reverted di :366) — bukan
     // hanya cabang denda-gagal yang sudah dicakup CHAOS-10. CHAOS-01 menguji
     // cabang ini dengan revert loan SUKSES; di sini revert loan 0-baris → gagal
     // terlihat.

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { calcFine, jsonError, FINE_PER_DAY } from '@/lib/supabase/auth';
 import { capLateFine, getFineMax, getReplacementFee } from '@/lib/loan-settings';
+import { ACTIVE_LOAN_STATUSES } from '@/lib/loans-overdue';
 import { formatRp } from '@/lib/format';
 import { createLogger } from '@/lib/logger';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -294,7 +295,14 @@ export async function legacyReturnLoan(
     .eq('id', id)
     // RACE-01: conditional write — dua return konkuren, hanya 1 yang menang.
     // Mock lama tanpa .in tetap lolos (chainable); 0-baris/error -> 409.
-    .in('status', ['borrowed', 'overdue'])
+    // Daftar status AKTIF diambil dari ACTIVE_LOAN_STATUSES — satu sumber yang
+    // SAMA dipakai DELETE /api/loans/[id] (isActiveLoanStatus) dan dikunci
+    // sebagai cermin CHECK DB (0001_core.sql:152). Daftar literal di sini + di
+    // tes (expectLoanForwardShape) dulu bisa basi BERSAMA tanpa satu tes pun
+    // gagal: status aktif baru masuk ACTIVE_LOAN_STATUSES tapi filter penulisan
+    // maju tetap tidak mengenalnya → return 0-baris → 409 "sudah diproses
+    // peminjam lain" SELAMNYA tanpa tes yang menjelaskan (issue #174).
+    .in('status', [...ACTIVE_LOAN_STATUSES])
     .select()
     .single();
   if (error || !data) {
