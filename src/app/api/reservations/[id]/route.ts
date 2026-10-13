@@ -17,12 +17,18 @@ type Ctx = { params: Promise<{ id: string }> };
  * status='completed' TIDAK bisa lewat PUT — hanya via checkout atomik
  * POST /api/reservations/{id}/checkout (RPC checkout_reservation_tx, migrasi
  * 0024) yang membuat loan + menandai completed dalam satu transaksi.
+ *
+ * #176: 'completed' adalah status TERMINAL (memuat loan hidup) dan setiap
+ * penulisan status wajib dibawa guard optimistic-lock — lihat catatan di
+ * `updateById`.
  */
 
 const STATUSES = ['pending', 'ready', 'completed', 'cancelled', 'expired'] as const;
 
 function normStatus(v: unknown): string {
-  return String(v ?? '').trim().toLowerCase();
+  return String(v ?? '')
+    .trim()
+    .toLowerCase();
 }
 
 function revalidated(): string[] {
@@ -40,6 +46,21 @@ function revalidated(): string[] {
     /* abaikan */
   }
   return done;
+}
+
+/**
+ * 0-baris dari PostgREST (guard optimistic-lock tak cocok) — dipakai untuk
+ * memisahkan konflik dari kegagalan DB sungguhan. Bentuk sama seperti
+ * deteksi pemenang konkuren di legacyReturn.ts:308-318: PGRST116 / 406 /
+ * "no rows", dan `{ data: null, error: null }` (beberapa klien/mock) juga
+ * dihitung 0-baris. Kode lain (23505, 42501, …) BUKAN 0-baris -> 500.
+ */
+function isZeroRows(error: unknown): boolean {
+  const e = error as { code?: string; message?: string } | null;
+  if (!e) return true;
+  const code = e.code ?? '';
+  const msg = e.message ?? '';
+  return /PGRST116|406|0 rows|multiple \(or no\) rows/i.test(`${code} ${msg}`);
 }
 
 async function scoped(id: string) {
@@ -122,6 +143,22 @@ async function updateById(req: Request, id: string) {
     if (!allowed) {
       return jsonError('VALIDATION', `Transisi status ${from}->${st} tidak diizinkan.`, 422);
     }
+    // #176: 'completed' adalah baris dengan loan HIDUP (checkout atomik
+    // checkout_reservation_tx, migrasi 0024) dan bersifat TERMINAL. Membalikkannya
+    // ke cancelled/expired memutus tautan loan<->reservasi serta menghapus jejak
+    // "reservasi selesai" sementara loan tetap berjalan — arah kebalikan dari
+    // invariant #73 (completed hanya lahir bersama loan). DELETE di bawah sudah
+    // menolak baris yang "sudah diproses"; transisi status wajib konsisten.
+    // Koreksi kesalahan input tetap mungkin: proses pinjamannya lewat
+    // pengembalian (PUT /api/loans/{id}) — reservasi tetap 'completed' sebagai
+    // audit, sama seperti loan 'returned' yang tidak bisa dibuka kembali.
+    if (from === 'completed') {
+      return jsonError(
+        'VALIDATION',
+        'Reservasi ini sudah selesai (loan tercatat). Pembatalan/kedaluwarsa hanya untuk reservasi tanpa loan — proses pinjamannya lewat pengembalian.',
+        422
+      );
+    }
     payload.status = st;
   }
   if (body.notes !== undefined) payload.notes = body.notes as string | null;
@@ -139,13 +176,33 @@ async function updateById(req: Request, id: string) {
     }
   }
 
-  const { data, error } = await supabase
-    .from('reservations')
-    .update(payload)
-    .eq('id', id)
-    .select()
-    .single();
-  if (error) {
+  // #176: penulisan STATUS wajib dibawa guard optimistic-lock. Status yang
+  // diperiksa di atas berasal dari SELECT di scoped(); tanpa kondisi pada
+  // UPDATE, baris yang bergerak di antara keduanya (checkout_reservation_tx
+  // atau sweep "Tandai kedaluwarsa" konkuren, src/lib/reservation-sweep.ts)
+  // ditimpa ABSOLUT: reservasi 'completed' + loan_id bisa diam-diam menjadi
+  // 'expired'/'cancelled'. Bentuknya sama seperti guard `.eq('due_at', …)` di
+  // extendLoan, `.in('status', ACTIVE_LOAN_STATUSES)` di legacyReturn, dan
+  // `.in('status', ['unpaid','partial'])` di pay — reservations adalah satu
+  // state-machine terakhir yang ditulis tanpa kondisi.
+  // 0-baris = baris sudah berubah di bawah kita -> 409 CONFLICT (klien memuat
+  // ulang), bukan sukses palsu dan bukan 500. Penulisan TANPA perubahan status
+  // (mis. hanya notes/expires_at) TIDAK dijaga supaya edit biasa tidak gagal
+  // karena status yang bergerak di belakangnya.
+  const changingStatus = payload.status !== undefined;
+  let write = supabase.from('reservations').update(payload).eq('id', id);
+  if (changingStatus) write = write.eq('status', cur.status);
+
+  const { data, error } = await write.select().single();
+  if (error || !data) {
+    if (changingStatus && !data && isZeroRows(error)) {
+      log.warn('reservations.id.status_conflict', {
+        detail: (error as { message?: unknown })?.message ?? '0 baris cocok guard status',
+      });
+      return jsonError('CONFLICT', 'Reservasi sudah berubah status, muat ulang dulu.', 409, {
+        requestId: log.requestId,
+      });
+    }
     log.error('reservations.id.save_failed', {
       detail: (error as { message?: unknown })?.message ?? String(error),
     });
