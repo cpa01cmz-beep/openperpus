@@ -50,6 +50,31 @@ function revalidated(): string[] {
   return done;
 }
 
+/**
+ * 0-baris dari PostgREST (guard optimistik-lock tak cocok) — dipakai untuk
+ * memisahkan KONFLIK dari kegagalan DB sungguhan (issue #179).
+ *
+ * Hanya kode PERSIS yang dipercaya, BUKAN substring pesan: detail Postgres bisa
+ * memuat angka acak (`22P02 invalid input syntax for type integer: "406"`,
+ * `22001 value too long for type character varying(406)`), dan substring `406`
+ * seperti itu membuat kegagalan server salah-klasifikasi jadi konflik —
+ * `log.error` + requestId yang dibutuhkan untuk menindaklanjuti hilang, staf
+ * malah melihat "muat ulang" padahal penulisan tidak terjadi.
+ *
+ * - kode eksak `PGRST116` / `406` (bentuk PostgREST untuk `.single()` 0-baris)
+ * - frasa kanonik PGRST116 di `message`
+ * - `{ data: null, error: null }` (beberapa klien/mock) juga dihitung 0-baris —
+ *   kelonggaran yang SAMA dengan deteksi pemenang konkuren `legacyReturn.ts:313-316`
+ *
+ * Kode lain (23505, 42501, 22P02, 22001, …) BUKAN 0-baris -> 500.
+ */
+function isZeroRows(error: unknown): boolean {
+  const e = error as { code?: string; message?: string } | null;
+  if (!e) return true;
+  if (e.code === 'PGRST116' || e.code === '406') return true;
+  return /multiple \(or no\) rows|PGRST116/i.test(e.message ?? '');
+}
+
 async function scoped(id: string) {
   const s = await getSession();
   if ('errorResponse' in s) return { errorResponse: s.errorResponse };
@@ -168,16 +193,11 @@ async function updateById(req: Request, id: string) {
   if (payload.status !== undefined) updateQuery = updateQuery.eq('status', cur.status);
   const { data, error } = await updateQuery.select().single();
   if (error || !data) {
-    const msg = (error as { message?: string; code?: string } | null)?.message ?? '';
-    const code = (error as { code?: string } | null)?.code ?? '';
     // 0-baris pada conditional write = pemenang konkuren (checkout/sweep lain)
     // sudah memproses baris ini -> minta muat ulang, jangan 500.
-    if (
-      payload.status !== undefined &&
-      !data &&
-      (!error ||
-        /PGRST116|406|0 rows|multiple \(or no\) rows|concurrent winner/i.test(`${msg} ${code}`))
-    ) {
+    // #179: klasifikasi memakai KODE PERSIS / frasa kanonik, bukan substring
+    // pesan — lihat isZeroRows().
+    if (payload.status !== undefined && !data && isZeroRows(error)) {
       log.warn('reservations.id.status_conflict', { id, from: cur.status });
       return jsonError('CONFLICT', 'Status reservasi sudah berubah, muat ulang dulu.', 409, {
         requestId: log.requestId,
