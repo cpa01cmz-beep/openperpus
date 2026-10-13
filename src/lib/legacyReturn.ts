@@ -91,11 +91,21 @@ function rowsRestored(error: unknown, data: unknown): boolean {
  *    yang ditutup isu #164, jadi "tidak ada baris" harus berarti gagal.
  *
  *    Catatan trade-off (review PR #167): nol baris juga bisa berarti baris
- *    TIDAK terlihat oleh RLS/SELECT klien walau penulisan berhasil. Itu gagal
- *    ke arah AMAN — laporan gagal memicu rekonsiliasi manual, bukan
- *    ketenangan palsu. Yang lebih buruk adalah sebaliknya, jadi orientasi
- *    inilah yang dipilih. Klien staf yang menulis di sini juga sama dengan
- *    yang membaca `books` di daftar/ekspor, jadi visibilitasnya identik.
+ *    TIDAK terlihat oleh SELECT klien walau penulisan berhasil. Itu gagal ke
+ *    arah AMAN — laporan gagal memicu rekonsiliasi manual, bukan ketenangan
+ *    palsu. Arah sebaliknya (menenangkan palsu) adalah bentuk bug #164, jadi
+ *    orientasi inilah yang dipilih.
+ *
+ *    Visibilitas di jalur ini justru PALING LONGGAR antara pembaca `books`:
+ *    klien yang menjalankan kompensasi adalah klien staf, dan kebijakan
+ *    `staff read books` / `staff update books` (migrasi 0002_rls.sql) tanpa
+ *    predikat `is_active` — jadi baris yang baru ditulis klien itu sendiri
+ *    tetap terlihat olehnya. Pembaca lain lebih sempit, BUKAN sama:
+ *    `GET /api/books` memakai klien anon dengan RLS `is_active = TRUE`, dan
+ *    `/api/reports/export` menambah filter `is_active` di query
+ *    (`report-export.ts`). Celah hanya muncul bila kebijakan staf kelak
+ *    dipisah per-status, dan gejalanya TERLIAT (kompensasi gagal) alih-alih
+ *    senyap.
  *
  * Hanya kolom yang benar-benar ditulis yang dipulihkan & dijaga: perubahan
  * tak terkait di baris yang sama (mis. `stock_total` digerakkan pengembalian
