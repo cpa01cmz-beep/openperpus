@@ -232,7 +232,7 @@ function expectLoanRevertShape(loanWrites: LoanWrite[]) {
  * Bentuk penulisan MAJU return yang BENAR (sisa review #171). Mock memang
  * mencatat entri `loanWrites` `kind: 'forward'`, tapi sebelumnya TIDAK ada tes
  * yang meng-assert-nya — koleksi tanpa assertion, sehingga drop guard RACE-01
- * `.in('status', ['borrowed','overdue'])` (`legacyReturn.ts:262`) masih lolos
+ * `.in('status', ['borrowed','overdue'])` (`legacyReturn.ts:297`) masih lolos
  * SEMUA chaos test. Asimetris dengan `BookWrite` maju yang sudah di-assert;
  * helper ini menutupinya:
  *   - drop `.eq('id', id)`      → guards tak lagi `[['id','L-9']]`
@@ -493,7 +493,7 @@ describe('loans-return legacy compensation (chaos)', () => {
     expect(j.error.message).toContain('stok gagal diperbarui');
     expect(log).toContain('revert-loan');
     // Gerbang 0-baris (issue #168) juga wajib terlihat di cabang STOK-gagal
-    // (legacyReturn.ts:319, needsReconciliation: !reverted di :323) — bukan
+    // (legacyReturn.ts:354, needsReconciliation: !reverted di :358) — bukan
     // hanya cabang denda-gagal yang sudah dicakup CHAOS-10. CHAOS-01 menguji
     // cabang ini dengan revert loan SUKSES; di sini revert loan 0-baris → gagal
     // terlihat.
