@@ -17,12 +17,20 @@ type Ctx = { params: Promise<{ id: string }> };
  * status='completed' TIDAK bisa lewat PUT — hanya via checkout atomik
  * POST /api/reservations/{id}/checkout (RPC checkout_reservation_tx, migrasi
  * 0024) yang membuat loan + menandai completed dalam satu transaksi.
+ *
+ * #176: completed = status TERMINAL. Transisi KELUAR dari completed lewat
+ * PUT/PATCH ditolak 422 (loan hasil checkout tetap hidup; jejak audit jangan
+ * hilang). Penulisan status juga dijaga optimistic-lock (.eq('status', from))
+ * — pecat 0-baris -> 409, mengikuti pola legacyReturn/fines-pay. Penulisan
+ * tanpa perubahan status (mis. notes saja) sengaja TIDAK dijaga guard itu.
  */
 
 const STATUSES = ['pending', 'ready', 'completed', 'cancelled', 'expired'] as const;
 
 function normStatus(v: unknown): string {
-  return String(v ?? '').trim().toLowerCase();
+  return String(v ?? '')
+    .trim()
+    .toLowerCase();
 }
 
 function revalidated(): string[] {
@@ -114,6 +122,17 @@ async function updateById(req: Request, id: string) {
       );
     }
     const from = cur.status;
+    // #176: completed TERMINAL — keluar dari completed hanya lewat siklus
+    // pinjaman (pengembalian), bukan PUT. Baris completed selalu punya
+    // loan_id (migrasi 0024); menimpanya jadi cancelled/expired membuat
+    // loan yatim audit. DELETE sudah menolak completed dengan alasan sama.
+    if (from === 'completed') {
+      return jsonError(
+        'VALIDATION',
+        'Reservasi yang sudah selesai (completed) tidak bisa diubah lewat sini — urus pinjamannya lewat pengembalian.',
+        422
+      );
+    }
     const allowed =
       from === st ||
       st === 'cancelled' ||
@@ -139,13 +158,31 @@ async function updateById(req: Request, id: string) {
     }
   }
 
-  const { data, error } = await supabase
-    .from('reservations')
-    .update(payload)
-    .eq('id', id)
-    .select()
-    .single();
-  if (error) {
+  // #176: penulisan status WAJIB conditional (optimistic-lock), pola sama
+  // dengan legacyReturn (.in status aktif) dan fines-pay (.eq paid_amount +
+  // .in status). Baris yang masih `from` ditimpa; status sudah bergerak
+  // (mis. checkout menyelesaikannya di antara SELECT dan UPDATE) -> 0 baris
+  // -> 409, bukan menimpa absolut. Tanpa perubahan status (notes/expires_at
+  // saja) sengaja TIDAK dijaga guard ini supaya tak jadi konflik palsu.
+  let updateQuery = supabase.from('reservations').update(payload).eq('id', id);
+  if (payload.status !== undefined) updateQuery = updateQuery.eq('status', cur.status);
+  const { data, error } = await updateQuery.select().single();
+  if (error || !data) {
+    const msg = (error as { message?: string; code?: string } | null)?.message ?? '';
+    const code = (error as { code?: string } | null)?.code ?? '';
+    // 0-baris pada conditional write = pemenang konkuren (checkout/sweep lain)
+    // sudah memproses baris ini -> minta muat ulang, jangan 500.
+    if (
+      payload.status !== undefined &&
+      !data &&
+      (!error ||
+        /PGRST116|406|0 rows|multiple \(or no\) rows|concurrent winner/i.test(`${msg} ${code}`))
+    ) {
+      log.warn('reservations.id.status_conflict', { id, from: cur.status });
+      return jsonError('CONFLICT', 'Status reservasi sudah berubah, muat ulang dulu.', 409, {
+        requestId: log.requestId,
+      });
+    }
     log.error('reservations.id.save_failed', {
       detail: (error as { message?: unknown })?.message ?? String(error),
     });
