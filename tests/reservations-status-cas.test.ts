@@ -39,12 +39,16 @@ type Harness = {
   audit: Record<string, unknown>[];
   /** Dipanggil tepat saat update dimulai: menirukan checkout_reservation_tx yang mendarat lebih dulu. */
   landConcurrentCheckout: () => void;
+  /** Baris benar-benar hilang sebelum penulisan dievaluasi (DELETE konkuren). */
+  deleteRow: () => void;
+  /** Penulisan membalas 0-baris dalam bentuk `{ data: null, error: null }`. */
+  zeroRows: () => void;
   /** Gagal DB sungguhan pada penulisan (bukan 0-baris guard). */
   failUpdate: (err: { code: string; message: string }) => void;
 };
 
 function harness(initial: Partial<Row> = {}): Harness {
-  let row: Row = {
+  const initialRow: Row = {
     id: RES_ID,
     member_id: MID,
     status: 'ready',
@@ -56,6 +60,11 @@ function harness(initial: Partial<Row> = {}): Harness {
   const calls: string[] = [];
   const audit: Record<string, unknown>[] = [];
   let dbError: { code: string; message: string } | null = null;
+  /** Bentuk balasan 0-baris alternatif ({ data: null, error: null }) — beberapa klien/mock. */
+  let nullEmpty = false;
+  /** Baris hilang tepat saat penulisan dimulai (DELETE konkuren). */
+  let deleteOnUpdate = false;
+  let row: Row | undefined = initialRow;
 
   function reservationsChain() {
     let mode: 'select' | 'update' = 'select';
@@ -70,9 +79,15 @@ function harness(initial: Partial<Row> = {}): Harness {
       mode = 'update';
       payload = p;
       calls.push('update');
-      if (dbError) return chain;
+      if (dbError || nullEmpty) return chain;
+      // Jendela race: baris hilang SEBELUM penulisan kita dievaluasi.
+      if (deleteOnUpdate) {
+        deleteOnUpdate = false;
+        row = undefined;
+        calls.push('race:row_deleted');
+      }
       // Jendela race: RPC checkout mendarat SEBELUM penulisan kita dievaluasi.
-      if (row.status === 'ready') {
+      if (row?.status === 'ready') {
         row = { ...row, status: 'completed', loan_id: LOAN_ID };
         calls.push('race:checkout_landed');
       }
@@ -99,12 +114,18 @@ function harness(initial: Partial<Row> = {}): Harness {
           dbError = null;
           return { data: null, error: err };
         }
-        const matched = filters.every((f) =>
-          Array.isArray(f.val)
-            ? (f.val as unknown[]).includes(row[f.col as keyof Row])
-            : row[f.col as keyof Row] === f.val
-        );
-        // PostgREST: 0 baris cocok guard -> PGRST116, data null.
+        if (nullEmpty) {
+          nullEmpty = false;
+          return { data: null, error: null };
+        }
+        const matched =
+          row !== undefined &&
+          filters.every((f) =>
+            Array.isArray(f.val)
+              ? (f.val as unknown[]).includes(row![f.col as keyof Row])
+              : row![f.col as keyof Row] === f.val
+          );
+        // PostgREST: 0 baris cocok guard (atau baris hilang) -> PGRST116, data null.
         if (!matched)
           return {
             data: null,
@@ -113,10 +134,10 @@ function harness(initial: Partial<Row> = {}): Harness {
               message: 'JSON object requested, but multiple (or no) rows were returned',
             },
           };
-        row = { ...row, ...(payload as Partial<Row>) };
+        row = { ...row!, ...(payload as Partial<Row>) };
         return { data: { ...row }, error: null };
       }
-      return { data: { ...row }, error: null };
+      return { data: row ? { ...row } : null, error: null };
     };
     chain.maybeSingle = chain.single;
     chain.then = (res: (v: unknown) => unknown, rej: (e: unknown) => unknown): Promise<unknown> =>
@@ -155,11 +176,17 @@ function harness(initial: Partial<Row> = {}): Harness {
   (globalThis as unknown as { __mockSupabase: unknown }).__mockSupabase = client;
 
   return {
-    row: () => row,
+    row: () => row as Row,
     calls,
     audit,
     landConcurrentCheckout: () => {
-      row = { ...row, status: 'completed', loan_id: LOAN_ID };
+      if (row) row = { ...row, status: 'completed', loan_id: LOAN_ID };
+    },
+    deleteRow: () => {
+      deleteOnUpdate = true;
+    },
+    zeroRows: () => {
+      nullEmpty = true;
     },
     failUpdate: (err) => {
       dbError = err;
@@ -234,6 +261,38 @@ describe('issue #176 — PUT reservations/[id]: guard status + completed termina
     expect(res.status).toBe(500);
     const json = (await res.json()) as { error?: { code?: string } };
     expect(json.error?.code).toBe('SAVE_FAILED');
+    expect(h.audit.length).toBe(0);
+  });
+
+  it('error 22P02 yang memuat angka "406" di detail tetap 500 (bukan salah klasifikasi 409)', async () => {
+    // Detail Postgres bisa menyelipkan angka sembarang; substring "406" di dalam
+    // pesan bukan sinyal 0-baris.
+    const h = harness({ status: 'pending' });
+    h.failUpdate({ code: '22P02', message: 'invalid input syntax for type integer: "406"' });
+    const res = await put({ status: 'ready' });
+    expect(res.status).toBe(500);
+    expect(h.audit.length).toBe(0);
+  });
+
+  it('penulisan status yang melaporkan {data:null,error:null} tetap 409 (0-baris, bukan 500)', async () => {
+    // Beberapa klien/mock membalas { data: null, error: null } untuk 0 baris —
+    // kelonggaran yang sama seperti deteksi pemenang konkuren legacyReturn.ts:313.
+    const h = harness({ status: 'pending' });
+    h.zeroRows();
+    const res = await put({ status: 'ready' });
+    expect(res.status).toBe(409);
+    const json = (await res.json()) as { error?: { code?: string } };
+    expect(json.error?.code).toBe('CONFLICT');
+  });
+
+  it('write non-status pada baris yang hilang juga 409 (bukan 500 seperti sebelumnya)', async () => {
+    const h = harness({ status: 'ready' });
+    h.deleteRow();
+    const res = await put({ notes: 'catatan staf' });
+    expect(res.status).toBe(409);
+    const json = (await res.json()) as { error?: { message?: string } };
+    expect(json.error?.code).toBe('CONFLICT');
+    expect(json.error?.message).toContain('muat ulang');
     expect(h.audit.length).toBe(0);
   });
 });

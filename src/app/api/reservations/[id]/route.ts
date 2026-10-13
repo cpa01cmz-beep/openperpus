@@ -49,18 +49,27 @@ function revalidated(): string[] {
 }
 
 /**
- * 0-baris dari PostgREST (guard optimistic-lock tak cocok) — dipakai untuk
- * memisahkan konflik dari kegagalan DB sungguhan. Bentuk sama seperti
- * deteksi pemenang konkuren di legacyReturn.ts:308-318: PGRST116 / 406 /
- * "no rows", dan `{ data: null, error: null }` (beberapa klien/mock) juga
- * dihitung 0-baris. Kode lain (23505, 42501, …) BUKAN 0-baris -> 500.
+ * 0-baris dari PostgREST (guard optimistic-lock tak cocok, atau baris hilang) —
+ * dipakai untuk memisahkan KONFLIK dari kegagalan DB sungguhan.
+ *
+ * Hanya kode PERSIS yang dipercaya, bukan substring pesan: Postgres suka
+ * menyelipkan angka acak ke detail error (mis. `invalid input syntax … "406"`),
+ * dan substring `406` di pesan seperti itu salah klasifikasi jadi konflik
+ * padahal itu kegagalan server (harus 500).
+ *
+ * - kode eksak `PGRST116` / `406` (bentuk PostgREST untuk `.single()` 0-baris)
+ * - frasa kanonik PGRST116 di `message`
+ * - `{ data: null, error: null }` (beberapa klien/mock) juga dihitung 0-baris —
+ *   kelonggaran yang SAMA dengan deteksi pemenang konkuren
+ *   `legacyReturn.ts:313-316` (`!error ||` di depan regex)
+ *
+ * Kode lain (23505, 42501, 22P02, …) BUKAN 0-baris -> 500.
  */
 function isZeroRows(error: unknown): boolean {
   const e = error as { code?: string; message?: string } | null;
   if (!e) return true;
-  const code = e.code ?? '';
-  const msg = e.message ?? '';
-  return /PGRST116|406|0 rows|multiple \(or no\) rows/i.test(`${code} ${msg}`);
+  if (e.code === 'PGRST116' || e.code === '406') return true;
+  return /multiple \(or no\) rows|PGRST116/i.test(e.message ?? '');
 }
 
 async function scoped(id: string) {
@@ -187,21 +196,32 @@ async function updateById(req: Request, id: string) {
   // state-machine terakhir yang ditulis tanpa kondisi.
   // 0-baris = baris sudah berubah di bawah kita -> 409 CONFLICT (klien memuat
   // ulang), bukan sukses palsu dan bukan 500. Penulisan TANPA perubahan status
-  // (mis. hanya notes/expires_at) TIDAK dijaga supaya edit biasa tidak gagal
-  // karena status yang bergerak di belakangnya.
+  // (mis. hanya notes/expires_at) tidak dibawa guard `.eq('status', …)` supaya
+  // edit biasa tidak gagal karena status yang bergerak di belakangnya; baris yang
+  // benar-benar hilang tetap 409 lewat gate 0-baris di bawah.
   const changingStatus = payload.status !== undefined;
   let write = supabase.from('reservations').update(payload).eq('id', id);
   if (changingStatus) write = write.eq('status', cur.status);
 
   const { data, error } = await write.select().single();
   if (error || !data) {
-    if (changingStatus && !data && isZeroRows(error)) {
-      log.warn('reservations.id.status_conflict', {
-        detail: (error as { message?: unknown })?.message ?? '0 baris cocok guard status',
+    // 0-baris = baris tidak lagi cocok: guard status tak cocok (checkout/sweep
+    // konkuren menang) ATAU baris hilang. Dua-duanya konflik yang harus membuat
+    // klien memuat ulang — jadi status-write maupun write non-status (notes /
+    // expires_at) dipetakan ke 409 yang sama, bukan 500.
+    if (!data && isZeroRows(error)) {
+      log.warn('reservations.id.write_conflict', {
+        changing_status: changingStatus,
+        detail: (error as { message?: unknown })?.message ?? '0 baris ter-update',
       });
-      return jsonError('CONFLICT', 'Reservasi sudah berubah status, muat ulang dulu.', 409, {
-        requestId: log.requestId,
-      });
+      return jsonError(
+        'CONFLICT',
+        changingStatus
+          ? 'Reservasi sudah berubah status, muat ulang dulu.'
+          : 'Reservasi sudah berubah di sisi lain, muat ulang dulu.',
+        409,
+        { requestId: log.requestId }
+      );
     }
     log.error('reservations.id.save_failed', {
       detail: (error as { message?: unknown })?.message ?? String(error),
