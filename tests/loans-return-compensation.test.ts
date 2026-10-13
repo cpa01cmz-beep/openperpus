@@ -22,6 +22,12 @@ vi.mock('next/cache', () => ({
 // itu `reverted: true` bisa dilaporkan saat 0 baris terpulihkan, dan
 // `needsReconciliation` turun ke false padahal loan tidak pernah kembali
 // `borrowed` — sisa PR #167 yang hanya memasang gerbang di kompensasi stok.
+//
+// Issue #170 (sisa review #169): (1) kompensasi loan kini memakai guard
+// status/optimistic-lock `.in('status', ['returned','lost'])` — paritas penuh
+// dengan guard CAS stok; (2) mock kompensasi loan merekam payload + guard
+// `.eq`/`.in` (cerminan `BookWrite`) supaya regresi kompensasi tak lagi lolos;
+// (3) gerbang 0-baris loan juga diuji di cabang stok-gagal (CHAOS-11).
 
 import { returnLoan } from '@/lib/loans-return';
 
@@ -32,6 +38,20 @@ const BID = '22222222-2222-4222-8222-222222222222';
 type BookWrite = {
   payload: Record<string, unknown>;
   guards: Array<[string, unknown]>;
+  kind: 'forward' | 'revert';
+};
+
+/**
+ * Satu penulisan ke tabel `loans`: payload, guard `.eq` + filter `.in`, dan
+ * jenis (maju/balik). Cerminan `BookWrite` — supaya mock kompensasi loan punya
+ * kuat falsifikasi yang sama (review PR #169: tanpa merekam eq/payload,
+ * regresi seperti drop `.eq('id', id)` atau drop `returned_at`/`fine_amount`
+ * lolos semua chaos test).
+ */
+type LoanWrite = {
+  payload: Record<string, unknown>;
+  guards: Array<[string, unknown]>;
+  in: Array<[string, unknown[]]>;
   kind: 'forward' | 'revert';
 };
 
@@ -46,9 +66,10 @@ function makeLegacyMock(opts: {
   loanRevertNoRows?: boolean;
   log: string[];
   booksWrites: BookWrite[];
+  loanWrites: LoanWrite[];
   book?: { stock_available: number; stock_total: number };
 }) {
-  const { log, booksWrites } = opts;
+  const { log, booksWrites, loanWrites } = opts;
   const loan = {
     id: 'L-9',
     status: 'borrowed',
@@ -62,30 +83,50 @@ function makeLegacyMock(opts: {
     if (table === 'loans') {
       return {
         select: () => ({ eq: () => ({ single: async () => ({ data: loan, error: null }) }) }),
-        update: (payload: Record<string, unknown>) => ({
-          eq: () => {
-            if ((payload as Record<string, unknown>)?.status === 'borrowed') {
-              log.push('revert-loan');
-              // Bentuk sama seperti kompensasi stok: .eq('id', …).select('id')
-              // → { data, error }. 0 baris = kompensasi TIDAK terjadi (issue #168).
-              return {
-                select: async () =>
-                  opts.failRevert
-                    ? { data: null, error: { message: 'revert boom' } }
-                    : { data: opts.loanRevertNoRows ? [] : [{ id: 'L-9' }], error: null },
-              };
-            }
-            log.push('update-loan');
-            const r: Record<string, unknown> = {
-              error: null,
-              select: () => ({
-                single: async () => ({ data: { ...loan, ...payload }, error: null }),
-              }),
-            };
-            r.in = () => r;
-            return r;
-          },
-        }),
+        update: (payload: Record<string, unknown>) => {
+          // Kompensasi loan: satu-satunya penulis `loans` yang menulis `status`
+          // KEMBALI ke `borrowed` (dengan returned_at:null, fine_amount:0).
+          // Penulisan maju return menulis `returned`/`lost`, jadi `status:
+          // 'borrowed'` membedakan revert vs forward.
+          const isRevert = (payload as Record<string, unknown>)?.status === 'borrowed';
+          const entry: LoanWrite = {
+            payload,
+            guards: [],
+            in: [],
+            kind: isRevert ? 'revert' : 'forward',
+          };
+          loanWrites.push(entry);
+          // Node berantai untuk MAJU (.eq('id', …).in('status', …).select()
+          // .single()) dan BALIK (.eq('id', …).in('status', …).select('id')).
+          // Merekam tiap `.eq`/`.in` ke entry supaya guard kompensasi bisa
+          // di-assert, bukan dibuang diam-diam (review PR #169).
+          const node = {
+            error: null,
+            eq: (col: string, val: unknown) => {
+              entry.guards.push([col, val]);
+              return node;
+            },
+            in: (col: string, vals: unknown[]) => {
+              entry.in.push([col, vals]);
+              return node;
+            },
+            select: () => {
+              if (isRevert) {
+                log.push('revert-loan');
+                // Bentuk sama seperti kompensasi stok: .eq('id', …).in(…)
+                // .select('id') → { data, error }. 0 baris = kompensasi TIDAK
+                // terjadi (issue #168). nodes await langsung (bukan .single).
+                return {
+                  data: opts.failRevert ? null : opts.loanRevertNoRows ? [] : [{ id: 'L-9' }],
+                  error: opts.failRevert ? { message: 'revert boom' } : null,
+                };
+              }
+              log.push('update-loan');
+              return { single: async () => ({ data: { ...loan, ...payload }, error: null }) };
+            },
+          };
+          return node;
+        },
       };
     }
     if (table === 'books') {
@@ -160,11 +201,28 @@ async function chaosResponse(opts: Parameters<typeof makeLegacyMock>[0], kondisi
   return { res, j };
 }
 
+/**
+ * Bentuk kompensasi loan yang BENAR (review PR #169). Mock kini merekam payload
+ * + guard `.eq` + filter `.in` (cerminan `BookWrite`), sehingga regresi yang
+ * dulu lolos semua chaos test kini menggagalkannya:
+ *   - drop/typo-salah `.eq('id', id)`  → guards tak lagi `[['id','L-9']]`
+ *   - drop `returned_at`/`fine_amount` → payload berubah
+ *   - drop guard status (issue #170)   → `in` tak lagi berisi `['returned','lost']`
+ */
+function expectLoanRevertShape(loanWrites: LoanWrite[]) {
+  const revert = loanWrites.filter((w) => w.kind === 'revert');
+  expect(revert).toHaveLength(1);
+  expect(revert[0]?.payload).toEqual({ status: 'borrowed', returned_at: null, fine_amount: 0 });
+  expect(revert[0]?.guards).toEqual([['id', 'L-9']]);
+  expect(revert[0]?.in).toEqual([['status', ['returned', 'lost']]]);
+}
+
 describe('loans-return legacy compensation (chaos)', () => {
   it('CHAOS-01 stok gagal mid-sequence → 500 + revert loan dicoba + reverted:true', async () => {
     const log: string[] = [];
     const booksWrites: BookWrite[] = [];
-    const { res, j } = await chaosResponse({ log, booksWrites, failBooksUpdate: true });
+    const loanWrites: LoanWrite[] = [];
+    const { res, j } = await chaosResponse({ log, booksWrites, loanWrites, failBooksUpdate: true });
     expect(res.status).toBe(500);
     expect(j.error.code).toBe('SAVE_FAILED');
     expect(j.error.message).toContain('stok gagal diperbarui');
@@ -179,9 +237,11 @@ describe('loans-return legacy compensation (chaos)', () => {
   it('CHAOS-02 stok gagal + revert ikut gagal → needsReconciliation:true (tidak diam)', async () => {
     const log: string[] = [];
     const booksWrites: BookWrite[] = [];
+    const loanWrites: LoanWrite[] = [];
     const { j } = await chaosResponse({
       log,
       booksWrites,
+      loanWrites,
       failBooksUpdate: true,
       failRevert: true,
     });
@@ -192,7 +252,8 @@ describe('loans-return legacy compensation (chaos)', () => {
   it('CHAOS-03 denda gagal → loan DAN stok ikut dibalik ke nilai sebelum kembali (#164)', async () => {
     const log: string[] = [];
     const booksWrites: BookWrite[] = [];
-    const { res, j } = await chaosResponse({ log, booksWrites, failFinesInsert: true });
+    const loanWrites: LoanWrite[] = [];
+    const { res, j } = await chaosResponse({ log, booksWrites, loanWrites, failFinesInsert: true });
     expect(res.status).toBe(500);
     expect(j.error.message).toContain('denda gagal dicatat');
     expect(log).toContain('insert-fines');
@@ -218,14 +279,20 @@ describe('loans-return legacy compensation (chaos)', () => {
     const forward = booksWrites.filter((w) => w.kind === 'forward');
     expect(forward).toHaveLength(1);
     expect(forward[0]?.payload).toEqual({ stock_available: 2 });
+    // Kompensasi loan kini MEMBUKA bentuk revert-nya (review PR #169): payload +
+    // guard `.eq('id', id)` + filter status — bukan dibuang diam-diam seperti
+    // mock loans sebelumnya.
+    expectLoanRevertShape(loanWrites);
   });
 
   it('CHAOS-04 denda gagal + pembalikan stok gagal → needsReconciliation:true (tidak diam)', async () => {
     const log: string[] = [];
     const booksWrites: BookWrite[] = [];
+    const loanWrites: LoanWrite[] = [];
     const { j } = await chaosResponse({
       log,
       booksWrites,
+      loanWrites,
       failFinesInsert: true,
       failStockRevert: true,
     });
@@ -239,9 +306,11 @@ describe('loans-return legacy compensation (chaos)', () => {
   it('CHAOS-05 denda gagal + revert loan gagal, pembalikan stok tetap dicoba', async () => {
     const log: string[] = [];
     const booksWrites: BookWrite[] = [];
+    const loanWrites: LoanWrite[] = [];
     const { j } = await chaosResponse({
       log,
       booksWrites,
+      loanWrites,
       failFinesInsert: true,
       failRevert: true,
       failStockRevert: true,
@@ -256,7 +325,11 @@ describe('loans-return legacy compensation (chaos)', () => {
   it('CHAOS-06 kondisi rusak → stock_total DIPULIHKAN, bukan hanya stock_available', async () => {
     const log: string[] = [];
     const booksWrites: BookWrite[] = [];
-    const { j } = await chaosResponse({ log, booksWrites, failFinesInsert: true }, 'rusak');
+    const loanWrites: LoanWrite[] = [];
+    const { j } = await chaosResponse(
+      { log, booksWrites, loanWrites, failFinesInsert: true },
+      'rusak'
+    );
     expect(j.details.stockReverted).toBe(true);
     expect(j.details.needsReconciliation).toBe(false);
     const revert = booksWrites.filter((w) => w.kind === 'revert');
@@ -276,7 +349,8 @@ describe('loans-return legacy compensation (chaos)', () => {
   it('CHAOS-07 jalan lengkap tanpa kegagalan → 200 + TANPA penulisan pembalikan', async () => {
     const log: string[] = [];
     const booksWrites: BookWrite[] = [];
-    const { res, j } = await chaosResponse({ log, booksWrites });
+    const loanWrites: LoanWrite[] = [];
+    const { res, j } = await chaosResponse({ log, booksWrites, loanWrites });
     expect(res.status).toBe(200);
     expect(j.error).toBeUndefined();
     // Kompensasi hanya untuk jalur gagal — ekspor normal tak boleh menyentuh
@@ -290,9 +364,11 @@ describe('loans-return legacy compensation (chaos)', () => {
   it('CHAOS-08 guard CAS tidak cocok (0 baris, error null) → stockReverted:false, bukan sukses', async () => {
     const log: string[] = [];
     const booksWrites: BookWrite[] = [];
+    const loanWrites: LoanWrite[] = [];
     const { j } = await chaosResponse({
       log,
       booksWrites,
+      loanWrites,
       failFinesInsert: true,
       stockRevertNoRows: true,
     });
@@ -309,8 +385,9 @@ describe('loans-return legacy compensation (chaos)', () => {
   it('CHAOS-09 kondisi rusak + guard CAS tak cocok (0 baris) → cabang 2 kolom juga gagal terlihat', async () => {
     const log: string[] = [];
     const booksWrites: BookWrite[] = [];
+    const loanWrites: LoanWrite[] = [];
     const { j } = await chaosResponse(
-      { log, booksWrites, failFinesInsert: true, stockRevertNoRows: true },
+      { log, booksWrites, loanWrites, failFinesInsert: true, stockRevertNoRows: true },
       'rusak'
     );
     expect(j.details.stockReverted).toBe(false);
@@ -330,9 +407,11 @@ describe('loans-return legacy compensation (chaos)', () => {
   it('CHAOS-10 loan hilang di tengah sekuens (0 baris, error null) → reverted:false, bukan sukses', async () => {
     const log: string[] = [];
     const booksWrites: BookWrite[] = [];
+    const loanWrites: LoanWrite[] = [];
     const { j } = await chaosResponse({
       log,
       booksWrites,
+      loanWrites,
       failFinesInsert: true,
       loanRevertNoRows: true,
     });
@@ -350,5 +429,32 @@ describe('loans-return legacy compensation (chaos)', () => {
     // melaporkan "konsisten, tak perlu direkonsiliasi".
     expect(j.details.stockReverted).toBe(true);
     expect(j.details.needsReconciliation).toBe(true);
+    // Meski 0 baris cocok, penulisan kompensasi loan TETAP dicoba dengan guard
+    // lengkap — bentuknya dikunci oleh mock (review PR #169).
+    expectLoanRevertShape(loanWrites);
+  });
+
+  it('CHAOS-11 stok gagal + kompensasi loan 0 baris → reverted:false + needsReconciliation:true (cabang books)', async () => {
+    const log: string[] = [];
+    const booksWrites: BookWrite[] = [];
+    const loanWrites: LoanWrite[] = [];
+    const { j } = await chaosResponse({
+      log,
+      booksWrites,
+      loanWrites,
+      failBooksUpdate: true,
+      loanRevertNoRows: true,
+    });
+    expect(log).toContain('revert-loan');
+    // Gerbang 0-baris (issue #168) juga wajib terlihat di cabang STOK-gagal
+    // (legacyReturn.ts:297, needsReconciliation: !reverted) — bukan hanya
+    // cabang denda-gagal yang sudah dicakup CHAOS-10. CHAOS-01 menguji cabang
+    // ini dengan revert loan SUKSES; di sini revert loan 0-baris → gagal terlihat.
+    expect(j.details.reverted).toBe(false);
+    expect(j.details.needsReconciliation).toBe(true);
+    // Penulisan stok GAGAL → tak ada pembalikan books (seperti CHAOS-01), tapi
+    // kompensasi loan memang dicoba dengan guard lengkap.
+    expect(booksWrites.filter((w) => w.kind === 'revert')).toHaveLength(0);
+    expectLoanRevertShape(loanWrites);
   });
 });

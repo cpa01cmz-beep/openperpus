@@ -53,6 +53,22 @@ export async function getFineRate(supabase: SupabaseLike): Promise<number> {
  * bukan ketenangan palsu. Klien yang menjalankan jalur ini adalah klien staf
  * (`requireStaff`) dengan visibilitas `loans read own or staff`, yaitu group
  * paling longgar untuk baris ini.
+ *
+ * Guard optimistic-lock/status (paritas penuh dengan guard CAS stok di
+ * `tryRevertLoanStock`): penulisan absolut `status: 'borrowed'` hanya
+ * dilakukan pada baris yang MASIH berstatus yang baru KITA tulis
+ * (`returned`/`lost`) lewat `.in('status', ['returned', 'lost'])`. Tanpa
+ * guard ini gerbang jumlah baris hanya bisa mendeteksi kasus "baris hilang"
+ * (0 baris karena `DELETE`), bukan "baris masih ada tetapi statusnya sudah
+ * berubah konkuren sehingga TIDAK seharusnya dibalik" — penulisan absolutnya
+ * lalu menimpa perubahan itu diam-diam. Dengan guard, baris yang berubah di
+ * belakang kompensasi gagal PERSIS seperti jalur stok (0 baris →
+ * `reverted: false` → rekonsiliasi), bukan ditimpa. Ini setengah paritas yang
+ * belum tertutup PR #169/#168 (issue #170). Setiap penulis `loans` lain
+ * memang sudah diawali guard `borrowed`/`overdue`, dan penulis tak terjaga
+ * satu-satunya (`DELETE /api/loans/[id]`) menghapus baris (kasus itu tetap
+ * tertangani gerbang jumlah baris), jadi guard ini bertindak sebagai
+ * pertahanan-lapis yang gagal ke arah aman.
  */
 export async function tryRevertLoanReturn(supabase: SupabaseLike, id: string): Promise<boolean> {
   try {
@@ -60,6 +76,12 @@ export async function tryRevertLoanReturn(supabase: SupabaseLike, id: string): P
       .from('loans')
       .update({ status: 'borrowed', returned_at: null, fine_amount: 0 })
       .eq('id', id)
+      // Guard status/optimistic-lock (issue #170): hanya pulihkan baris yang
+      // MASIH `returned`/`lost` — status yang baru DITULIS penulisan maju.
+      // Bentuknya sama seperti guard `.in('status', ['borrowed','overdue'])`
+      // pada penulisan maju dan guard CAS stok, jadi baris yang berubah
+      // konkuren gagal (0 baris) alih-alih ditimpa absolut.
+      .in('status', ['returned', 'lost'])
       .select('id');
     return rowsRestored(error, data);
   } catch {
