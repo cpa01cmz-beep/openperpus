@@ -1367,6 +1367,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Status reservasi sudah berubah, muat ulang dulu (optimistic-lock; baris sudah diselesaikan checkout lain)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: 'Transisi status tidak diizinkan — termasuk keluar dari status sudah selesai (completed); completed hanya lewat checkout atomik.'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
     patch:
       summary: Alias of PUT (auth required)
       security:
@@ -1376,6 +1388,18 @@ paths:
           description: ok
         '401':
           description: Silakan login
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Status reservasi sudah berubah, muat ulang dulu (optimistic-lock; baris sudah diselesaikan checkout lain)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '422':
+          description: 'Transisi status tidak diizinkan — termasuk keluar dari status sudah selesai (completed); completed hanya lewat checkout atomik.'
           content:
             application/json:
               schema:
