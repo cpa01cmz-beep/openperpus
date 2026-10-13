@@ -49,45 +49,93 @@ export async function tryRevertLoanReturn(supabase: SupabaseLike, id: string): P
   }
 }
 
-/**
- * Kolom stok yang bisa tersentuh jalur fallback pengembalian. Untuk kondisi
- * "baik" `stock_total` diisi nilai yang SAMA (tidak ditulis): kolom itu hanya
- * ikut jadi guard CAS saat pembalikan, di mana jejak dua kolom membuat
- * penulisan absolut di atas aman terhadap perubahan konkuren.
- */
+/** Kolom stok yang bisa tersentuh jalur fallback pengembalian. */
 type StockCols = { stock_available: number; stock_total: number };
 
-/** Jejak penulisan stok: nilai SEBELUM (untuk pulih) + SESUDAH (untuk CAS). */
-type StockWrite = { prior: StockCols; wrote: StockCols };
+/**
+ * Jejak penulisan stok: nilai SEBELUM (untuk dipulihkan) + SESUDAH (guard
+ * CAS), plus penanda kolom mana yang BENAR-BENAR ditulis.
+ */
+type StockWrite = {
+  prior: StockCols;
+  wrote: StockCols;
+  /** Rusak/hilang menulis dua kolom; kondisi baik hanya `stock_available`. */
+  stockTotalWritten: boolean;
+};
+
+/** 0-baris dipulihkan = kompensasi TIDAK terjadi, bukan kebetulan nol. */
+function rowsRestored(error: unknown, data: unknown): boolean {
+  return !error && Array.isArray(data) && data.length > 0;
+}
 
 /**
- * KOMPENSASI stok (issue #164): kembalikan kolom yang sudah DITULIS ke nilai
- * SEBELUM pengembalian. Dipanggil bila langkah SETELAH penulisan stok
- * (catat denda) gagal — kalau loan saja yang dibatalkan, `stock_available`
- * tetap bertambah pada peminjaman yang sudah kembali `borrowed`, sehingga
- * eksemplar yang masih dipinjam terhitung tersedia.
+ * KOMPENSASI stok (issue #164): pulihkan kolom yang sudah DITULIS ke nilai
+ * SEBELUM penulisan. Dipanggil bila langkah SETELAH penulisan stok (catat
+ * denda) gagal — kalau hanya loan yang dibatalkan, `stock_available` tetap
+ * bertambah pada pinjaman yang sudah kembali `borrowed`, sehingga eksemplar
+ * yang masih dipinjam terhitung tersedia.
  *
- * Guard CAS `.eq(col, wrote[col])`: kembalikan nilai lama HANYA bila baris
- * masih memuat nilai yang kita tulis — pola yang sama dengan guard
- * `.in('status', ['borrowed','overdue'])` untuk loan di atas dan
- * `.eq('due_at', …)` optimistic-lock di `extendLoan.ts`. Tanpa guard,
- * penulisan absolut akan menimpa penambahan stok dari pengembalian lain.
- * 0-baris / error / throw = false → pemanggil set needsReconciliation.
+ * Dua hal wajib supaya kompensasi TIDAK berbohong:
+ *
+ * 1. **Guard CAS** `.eq(col, nilai-yang-sudah-ditulis)`: nilai lama dipulihkan
+ *    HANYA bila baris masih memuat nilai yang kita tulis, sehingga penulisan
+ *    absolut ini tidak menimpa penambahan stok dari pengembalian lain (pola
+ *    optimistic-lock sama seperti `.eq('due_at', l.due_at)` di
+ *    `extendLoan.ts`, dan `.in('status', ['borrowed','overdue'])` pada
+ *    penulisan loan di atasnya).
+ * 2. **`.select('id')` + cek baris terpulihkan**: PostgREST membalas
+ *    `{ data: [], error: null }` ketika 0 baris cocok guard CAS. Kalau
+ *    keberhasilan hanya diukur dari `error`, kondisi itu terbaca SUKSES —
+ *    `stockReverted: true` / `needsReconciliation: false` padahal
+ *    `stock_available` masih bertambah. Itu justru bentuk divergensi diam-diam
+ *    yang ditutup isu #164, jadi "tidak ada baris" harus berarti gagal.
+ *
+ *    Catatan trade-off (review PR #167): nol baris juga bisa berarti baris
+ *    TIDAK terlihat oleh SELECT klien walau penulisan berhasil. Itu gagal ke
+ *    arah AMAN — laporan gagal memicu rekonsiliasi manual, bukan ketenangan
+ *    palsu. Arah sebaliknya (menenangkan palsu) adalah bentuk bug #164, jadi
+ *    orientasi inilah yang dipilih.
+ *
+ *    Visibilitas di jalur ini justru PALING LONGGAR antara pembaca `books`:
+ *    klien yang menjalankan kompensasi adalah klien staf, dan kebijakan
+ *    `staff read books` / `staff update books` (migrasi 0002_rls.sql) tanpa
+ *    predikat `is_active` — jadi baris yang baru ditulis klien itu sendiri
+ *    tetap terlihat olehnya. Pembaca lain lebih sempit, BUKAN sama:
+ *    `GET /api/books` memakai klien anon dengan RLS `is_active = TRUE`, dan
+ *    `/api/reports/export` menambah filter `is_active` di query
+ *    (`report-export.ts`). Celah hanya muncul bila kebijakan staf kelak
+ *    dipisah per-status, dan gejalanya TERLIAT (kompensasi gagal) alih-alih
+ *    senyap.
+ *
+ * Hanya kolom yang benar-benar ditulis yang dipulihkan & dijaga: perubahan
+ * tak terkait di baris yang sama (mis. `stock_total` digerakkan pengembalian
+ * rusak lain) tidak boleh ikut menggagalkan pemulihan `stock_available`.
  */
 export async function tryRevertLoanStock(
   supabase: SupabaseLike,
   bookId: string,
-  prior: StockCols,
-  wrote: StockCols
+  write: StockWrite
 ): Promise<boolean> {
+  const { prior, wrote, stockTotalWritten } = write;
   try {
-    const { error } = await supabase
+    if (stockTotalWritten) {
+      // Rusak/hilang: dua kolom berubah — pulihkan keduanya.
+      const { data, error } = await supabase
+        .from('books')
+        .update({ stock_available: prior.stock_available, stock_total: prior.stock_total })
+        .eq('id', bookId)
+        .eq('stock_available', wrote.stock_available)
+        .eq('stock_total', wrote.stock_total)
+        .select('id');
+      return rowsRestored(error, data);
+    }
+    const { data, error } = await supabase
       .from('books')
-      .update({ stock_available: prior.stock_available, stock_total: prior.stock_total })
+      .update({ stock_available: prior.stock_available })
       .eq('id', bookId)
       .eq('stock_available', wrote.stock_available)
-      .eq('stock_total', wrote.stock_total);
-    return !error;
+      .select('id');
+    return rowsRestored(error, data);
   } catch {
     return false;
   }
@@ -231,7 +279,11 @@ export async function legacyReturnLoan(
         needsReconciliation: !reverted,
       });
     }
-    stockWrite = { prior, wrote };
+    stockWrite = {
+      prior,
+      wrote,
+      stockTotalWritten: damaged,
+    };
   }
 
   if (fine > 0) {
@@ -257,7 +309,7 @@ export async function legacyReturnLoan(
       // Math.min(stock_total, …)). `book` null = stok tak pernah dibaca/
       // ditulis, tak ada yang perlu dibalik.
       const stockReverted = stockWrite
-        ? await tryRevertLoanStock(supabase, l.book_id, stockWrite.prior, stockWrite.wrote)
+        ? await tryRevertLoanStock(supabase, l.book_id, stockWrite)
         : true;
       return retryableError('Pengembalian tersimpan, denda gagal dicatat. Silakan coba lagi.', {
         reason: fineErr.message,

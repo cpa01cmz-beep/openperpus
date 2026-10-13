@@ -35,6 +35,8 @@ function makeLegacyMock(opts: {
   failFinesInsert?: boolean;
   failRevert?: boolean;
   failStockRevert?: boolean;
+  /** Guard CAS tidak cocok: PostgREST membalas 0 baris, `error: null`. */
+  stockRevertNoRows?: boolean;
   log: string[];
   booksWrites: BookWrite[];
   book?: { stock_available: number; stock_total: number };
@@ -78,29 +80,27 @@ function makeLegacyMock(opts: {
         select: () => ({ eq: () => ({ single: async () => ({ data: book, error: null }) }) }),
         update: (payload: Record<string, unknown>) => {
           const entry: BookWrite = { payload, guards: [], kind: 'forward' };
-          return {
+          booksWrites.push(entry);
+          // Satu node berantai untuk KEDUA bentuk penulisan:
+          // - maju:   .update(p).eq('id', …) lalu langsung di-await  → { error }
+          // - balik:  .update(p).eq('id', …).eq(…)… .select('id')   → { data, error }
+          // Node sengaja BUKAN thenable, sama seperti respons PostgREST asli.
+          const node = {
+            error: opts.failBooksUpdate ? { message: 'stock boom' } : null,
             eq: (col: string, val: unknown) => {
               entry.guards.push([col, val]);
-              booksWrites.push(entry);
+              return node;
+            },
+            select: () => {
+              // Hanya penulisan pembalikan yang memakai .select('id').
+              entry.kind = 'revert';
               return {
-                // Tanpa failBooksUpdate, objek ini MURNI (bukan thenable) dan
-                // langsung di-await — persis seperti respons PostgREST.
-                error: opts.failBooksUpdate ? { message: 'stock boom' } : null,
-                eq: (c2: string, v2: unknown) => ({
-                  error: null,
-                  eq: (c3: string, v3: unknown) => {
-                    // Tiga .eq = penulisan pembalikan (guard CAS .eq(id) +
-                    // .eq(stock_available) + .eq(stock_total)).
-                    entry.kind = 'revert';
-                    entry.guards.push([c2, v2], [c3, v3]);
-                    return {
-                      error: opts.failStockRevert ? { message: 'revert stock boom' } : null,
-                    };
-                  },
-                }),
+                data: opts.stockRevertNoRows ? [] : [{ id: BID }],
+                error: opts.failStockRevert ? { message: 'revert stock boom' } : null,
               };
             },
           };
+          return node;
         },
       };
     }
@@ -191,14 +191,15 @@ describe('loans-return legacy compensation (chaos)', () => {
     // Inti perbaikan #164: stok sudah dinaikkan lalu WAJIB diturunkan lagi.
     const revert = booksWrites.filter((w) => w.kind === 'revert');
     expect(revert).toHaveLength(1);
-    // Nilai SEBELUM peminjaman dikembalikan utuh: 1 tersedia dari 5 total.
-    expect(revert[0]?.payload).toEqual({ stock_available: 1, stock_total: 5 });
+    // Kondisi baik hanya MENULIS stock_available, jadi hanya itu yang
+    // dipulihkan — perubahan tak terkait di baris yang sama tidak boleh ikut
+    // menggagalkan pemulihan.
+    expect(revert[0]?.payload).toEqual({ stock_available: 1 });
     // Dijaga CAS pada nilai yang SUDAH ditulis (2), supaya penambahan stok
     // dari pengembalian lain tidak tertimpa penulisan absolut ini.
     expect(revert[0]?.guards).toEqual([
       ['id', BID],
       ['stock_available', 2],
-      ['stock_total', 5],
     ]);
     // Tulisan maju memang menaikkan stock_available 1 → 2.
     const forward = booksWrites.filter((w) => w.kind === 'forward');
@@ -247,7 +248,8 @@ describe('loans-return legacy compensation (chaos)', () => {
     expect(j.details.needsReconciliation).toBe(false);
     const revert = booksWrites.filter((w) => w.kind === 'revert');
     expect(revert).toHaveLength(1);
-    // 5 total → 4 saat rusak; pembalikan mengembalikan 5 + 1 tersedia.
+    // Rusak menulis DUA kolom (stock_total 5→4, stock_available dijepit),
+    // jadi keduanya dipulihkan & dijaga — bukan hanya stock_available.
     expect(revert[0]?.payload).toEqual({ stock_available: 1, stock_total: 5 });
     expect(revert[0]?.guards).toEqual([
       ['id', BID],
@@ -270,5 +272,45 @@ describe('loans-return legacy compensation (chaos)', () => {
     expect(booksWrites[0]?.kind).toBe('forward');
     expect(booksWrites[0]?.payload).toEqual({ stock_available: 2 });
     expect(booksWrites[0]?.guards).toHaveLength(1);
+  });
+
+  it('CHAOS-08 guard CAS tidak cocok (0 baris, error null) → stockReverted:false, bukan sukses', async () => {
+    const log: string[] = [];
+    const booksWrites: BookWrite[] = [];
+    const { j } = await chaosResponse({
+      log,
+      booksWrites,
+      failFinesInsert: true,
+      stockRevertNoRows: true,
+    });
+    expect(j.details.reverted).toBe(true);
+    // PostgREST membalas { data: [], error: null } saat 0 baris cocok guard CAS.
+    // Kalau keberhasilan hanya diukur dari `error`, ini terbaca SUKSES —
+    // divergensi diam-diam yang sama dengan yang ditutup #164.
+    expect(j.details.stockReverted).toBe(false);
+    expect(j.details.needsReconciliation).toBe(true);
+    // Penulisan pembalikan memang dicoba, hanya tidak mengenai baris mana pun.
+    expect(booksWrites.filter((w) => w.kind === 'revert')).toHaveLength(1);
+  });
+
+  it('CHAOS-09 kondisi rusak + guard CAS tak cocok (0 baris) → cabang 2 kolom juga gagal terlihat', async () => {
+    const log: string[] = [];
+    const booksWrites: BookWrite[] = [];
+    const { j } = await chaosResponse(
+      { log, booksWrites, failFinesInsert: true, stockRevertNoRows: true },
+      'rusak'
+    );
+    expect(j.details.stockReverted).toBe(false);
+    expect(j.details.needsReconciliation).toBe(true);
+    const revert = booksWrites.filter((w) => w.kind === 'revert');
+    expect(revert).toHaveLength(1);
+    // Cabang rusak/hilang tetap menulis DUA kolom walau guard tidak kena —
+    // pembalikan parsial tidak boleh kelihatan "berhasil".
+    expect(revert[0]?.payload).toEqual({ stock_available: 1, stock_total: 5 });
+    expect(revert[0]?.guards).toEqual([
+      ['id', BID],
+      ['stock_available', 1],
+      ['stock_total', 4],
+    ]);
   });
 });
