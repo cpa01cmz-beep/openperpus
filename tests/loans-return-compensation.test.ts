@@ -17,6 +17,11 @@ vi.mock('next/cache', () => ({
 // jadi kompensasi wajib membalik KEDUANYA (loan + stok). Sebelumnya hanya loan
 // yang dibalik sehingga stock_available tetap bertambah pada pinjaman yang
 // sudah kembali `borrowed` — eksemplar yang masih dipinjam terhitung tersedia.
+//
+// Issue #168: kompensasi LOAN juga wajib memakai gerbang jumlah baris. Tanpa
+// itu `reverted: true` bisa dilaporkan saat 0 baris terpulihkan, dan
+// `needsReconciliation` turun ke false padahal loan tidak pernah kembali
+// `borrowed` — sisa PR #167 yang hanya memasang gerbang di kompensasi stok.
 
 import { returnLoan } from '@/lib/loans-return';
 
@@ -37,6 +42,8 @@ function makeLegacyMock(opts: {
   failStockRevert?: boolean;
   /** Guard CAS tidak cocok: PostgREST membalas 0 baris, `error: null`. */
   stockRevertNoRows?: boolean;
+  /** Loan hilang di tengah sekuens: reverts 0 baris, `error: null`. */
+  loanRevertNoRows?: boolean;
   log: string[];
   booksWrites: BookWrite[];
   book?: { stock_available: number; stock_total: number };
@@ -59,8 +66,14 @@ function makeLegacyMock(opts: {
           eq: () => {
             if ((payload as Record<string, unknown>)?.status === 'borrowed') {
               log.push('revert-loan');
-              if (opts.failRevert) return { error: { message: 'revert boom' } };
-              return { error: null };
+              // Bentuk sama seperti kompensasi stok: .eq('id', …).select('id')
+              // → { data, error }. 0 baris = kompensasi TIDAK terjadi (issue #168).
+              return {
+                select: async () =>
+                  opts.failRevert
+                    ? { data: null, error: { message: 'revert boom' } }
+                    : { data: opts.loanRevertNoRows ? [] : [{ id: 'L-9' }], error: null },
+              };
             }
             log.push('update-loan');
             const r: Record<string, unknown> = {
@@ -312,5 +325,30 @@ describe('loans-return legacy compensation (chaos)', () => {
       ['stock_available', 1],
       ['stock_total', 4],
     ]);
+  });
+
+  it('CHAOS-10 loan hilang di tengah sekuens (0 baris, error null) → reverted:false, bukan sukses', async () => {
+    const log: string[] = [];
+    const booksWrites: BookWrite[] = [];
+    const { j } = await chaosResponse({
+      log,
+      booksWrites,
+      failFinesInsert: true,
+      loanRevertNoRows: true,
+    });
+    expect(log).toContain('revert-loan');
+    // `DELETE /api/loans/[id]` hanya menolak peminjaman BERJALAN — loan yang
+    // baru ditulis `returned` justru lolos guard itu, jadi baris bisa lenyap
+    // tepat di jendela kompensasi. PostgREST lalu membalas
+    // `{ data: [], error: null }`. Kalau keberhasilan hanya diukur dari
+    // `error`, kondisi ini terbaca SUKSES dan `reverted: true` palsu membuat
+    // `needsReconciliation` bernilai false padahal loan tidak pernah kembali
+    // `borrowed` — bentuk divergensi diam-diam yang sama seperti #164/#166,
+    // hanya di sisi loan (issue #168).
+    expect(j.details.reverted).toBe(false);
+    // Kompensasi stok memang berhasil: justru KEDUA-true inilah yang dulu
+    // melaporkan "konsisten, tak perlu direkonsiliasi".
+    expect(j.details.stockReverted).toBe(true);
+    expect(j.details.needsReconciliation).toBe(true);
   });
 });

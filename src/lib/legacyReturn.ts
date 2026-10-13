@@ -36,14 +36,32 @@ export async function getFineRate(supabase: SupabaseLike): Promise<number> {
  * KOMPENSASI legacy: loan sudah terupdate tetapi langkah berikut (stok)
  * gagal — coba kembalikan loan ke borrowed agar tidak ada partial state
  * diam-diam. Best-effort: false berarti panggil details.needsReconciliation.
+ *
+ * 0-baris dipulihkan = kompensasi TIDAK terjadi, bukan kebetulan nol. Baris
+ * yang mencocoki `.eq('id', id)` bisa sudah tidak ada tepat di jendela ini:
+ * `DELETE /api/loans/[id]` hanya menolak peminjaman BERJALAN, dan loan yang
+ * baru saja ditulis statusnya `returned`/`lost` justru lolos guard itu. Kalau
+ * keberhasilan hanya diukur dari `error`, PostgREST `{ data: [], error: null }`
+ * terbaca SUKSES — `reverted: true` membuat `needsReconciliation` bernilai
+ * false padahal baris loan tidak pernah kembali `borrowed` (issue #168). Itu
+ * bentuk divergensi diam-diam yang sama seperti #164/#166, jadi gerbang
+ * jumlah barisnya harus sama dengan kompensasi stok (`rowsRestored` di bawah).
+ *
+ * Catatan trade-off (pola sama seperti `tryRevertLoanStock`): nol baris juga
+ * bisa berarti baris TIDAK terlihat SELECT oleh klien walau penulisan
+ * berhasil. Arah kegagalan itu aman — kompensasi gagal memicu rekonsiliasi,
+ * bukan ketenangan palsu. Klien yang menjalankan jalur ini adalah klien staf
+ * (`requireStaff`) dengan visibilitas `loans read own or staff`, yaitu group
+ * paling longgar untuk baris ini.
  */
 export async function tryRevertLoanReturn(supabase: SupabaseLike, id: string): Promise<boolean> {
   try {
-    const { error } = await supabase
+    const { data, error } = await supabase
       .from('loans')
       .update({ status: 'borrowed', returned_at: null, fine_amount: 0 })
-      .eq('id', id);
-    return !error;
+      .eq('id', id)
+      .select('id');
+    return rowsRestored(error, data);
   } catch {
     return false;
   }
@@ -63,7 +81,11 @@ type StockWrite = {
   stockTotalWritten: boolean;
 };
 
-/** 0-baris dipulihkan = kompensasi TIDAK terjadi, bukan kebetulan nol. */
+/**
+ * 0-baris dipulihkan = kompensasi TIDAK terjadi, bukan kebetulan nol.
+ * Dipakai KEDUA kompensasi (loan dan stok) supaya "tidak ada baris yang
+ * dibalik" selalu berarti GAGAL, bukan sukses.
+ */
 function rowsRestored(error: unknown, data: unknown): boolean {
   return !error && Array.isArray(data) && data.length > 0;
 }
