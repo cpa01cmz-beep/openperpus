@@ -135,7 +135,16 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
     'await',
   ]);
 
-  const scanSource = (src: string): Scan => {
+  /** `literalMode` (sisa review #213): default `'verbatim'` — isi string/
+   * template literal disalin APA ADANYA, jadi keluaran untuk SEMUA assertion
+   * lain di berkas ini tak berubah satu byte pun. Mode `'space'` mengganti
+   * ISI string/template literal dengan spasi (delimiter utuh, interpolasi
+   * `${...}` tetap KODE) dan HANYA dipakai cek domain non-JSX: `</x>` di
+   * dalam literal tak lagi terlihat guard, tanpa menyembunyikan `</x>` yang
+   * benar-benar di posisi KODE. Regex literal TIDAK dikosongkan — lihat
+   * `domainCode`: `/` pemicu regex fantom justru yang harus tetap terlihat
+   * guard. */
+  const scanSource = (src: string, literalMode: 'verbatim' | 'space' = 'verbatim'): Scan => {
     const code: string[] = [];
     const testArgs: string[] = [];
     const n = src.length;
@@ -179,12 +188,12 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
       i += 1;
       while (i < n) {
         if (src.charAt(i) === '\\') {
-          code.push(src.slice(i, i + 2));
+          code.push(literalMode === 'space' ? '  ' : src.slice(i, i + 2));
           i += 2;
           continue;
         }
         const ch = src.charAt(i);
-        code.push(ch);
+        code.push(literalMode === 'space' ? ' ' : ch);
         i += 1;
         if (ch === quote) break;
       }
@@ -199,7 +208,7 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
       i += 1;
       while (i < n) {
         if (src.charAt(i) === '\\') {
-          code.push(src.slice(i, i + 2));
+          code.push(literalMode === 'space' ? '  ' : src.slice(i, i + 2));
           i += 2;
           continue;
         }
@@ -210,17 +219,18 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
           break;
         }
         if (ch === '$' && src.charAt(i + 1) === '{') {
-          code.push('${');
+          code.push('${'); // interpolasi = KODE: tak dikosongkan di mode 'space'
           i += 2;
           // Konteks leksikal di-reset seperti argumen `.test(`: isi interpolasi
-          // adalah ekspresi baru, bukan lanjutan teks template (sisa review #194).
+          // adalah ekspresi baru, bukan lanjutan teks template (sisa review
+          // #194).
           prevWord = '';
           prevWordIsProperty = false;
           prevIsOperand = false;
           walk('}');
           continue;
         }
-        code.push(ch);
+        code.push(literalMode === 'space' ? ' ' : ch);
         i += 1;
       }
       prevWord = '';
@@ -463,6 +473,31 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
   const codeOnly = (src: string): string => scanSource(src).code;
   const testInputs = (src: string): string[] => scanSource(src).testArgs;
 
+  /** Pola domain NON-JSX (issue #212, diperlebar sisa review #213). Bentuk yang
+   * membuat '/' masuk `copyRegex()` sehingga SELURUH jaminan berkas ini gugur:
+   *   - `</tag>` (issue #212) dan `</>` (fragmen): '/' tepat sesudah '<'
+   *     (simbol → operand-selesai=false);
+   *   - `}` + `/>` (self-closing dengan atribut EKSPRESI): setiap atribut
+   *     ekspresi berakhir '}' (simbol), '/' sesudahnya pembuka regex fantom.
+   * Bentuk AMAN sengaja TIDAK ikut pola (kunci anti-over-correction di bawah):
+   * `<br/>` dan atribut STRING (`<img src="a" />`) — '/' sesudah kata/string =
+   * PEMBAGIAN, jaminan utuh. Pola `\/>/` polos akan memerah bentuk itu.
+   *
+   * Dijalankan atas keluaran mode `'space'` (`domainCode`): isi string/template
+   * literal dikosongkan supaya `</x>` di dalam literal — kelas "CI merah
+   * palsu" (sisa review #213) — tak lagi terlihat, sedangkan `</x>` di posisi
+   * KODE (termasuk di dalam interpolasi `${...}`) TETAP terlihat. Regex literal
+   * sengaja TIDAK dikosongkan: mengosongkannya akan menyembunyikan '/' pemicu
+   * regex fantom pada `}/>` — persis lubang senyap yang ditutup isu ini. */
+  const JSX_DOMAIN = /<\/[A-Za-z_$>]|\}\s*\/>/;
+
+  /** KODE untuk cek domain non-JSX: komentar dibuang (seperti biasa) DAN isi
+   * string/template literal dikosongkan. Regex literal dibiarkan verbatim —
+   * alasannya ada di `JSX_DOMAIN`. Mode `'space'` TIDAK mengubah keluaran
+   * untuk assertion lain: `scanSource(src)` (default 'verbatim') byte-identik
+   * dengan sebelum isu ini (dijaga assertion `mode verbatim byte-identik`). */
+  const domainCode = (src: string): string => scanSource(src, 'space').code;
+
   /** true bila argumen `.test()` dibangun DINAMIS — persis kelas bahaya #179
    * (input regex dari field error). Bentuk dinamis: konkatenasi `+` di luar
    * string, interpolasi `${` di template literal (escape `\${` dan backtick
@@ -589,9 +624,15 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
     // TERANG-terangan alih-alih membuat jaminan di atas palsu tanpa CI memerah.
     // Diperiksa atas `code` (bukan teks mentah) supaya menyebut `</div>` di dalam
     // komentar/dokumentasi — yang dibuang pemindai — tidak memerah palsu.
-    expect(code, `${file} wajib non-JSX (batas pemindai </tag>, issue #212)`).not.toMatch(
-      /<\/[A-Za-z_$]/
-    );
+    // Diperlebar sisa review #213: pola kini juga mengenali `</>` (fragmen) dan
+    // `}/>` (self-closing atribut-ekspresi) — bentuk yang MEMICU regex fantom
+    // yang sama tapi lolos guard lama tanpa jejak; dan isi string/template
+    // literal dikosongkan (`domainCode`) supaya `</x>` di dalam literal tak
+    // memerah palsu. Regex literal dibiarkan verbatim (lihat JSX_DOMAIN).
+    expect(
+      domainCode(src),
+      `${file} wajib non-JSX (batas pemindai </tag>, </>, }/>, issue #212/#214)`
+    ).not.toMatch(JSX_DOMAIN);
   });
 
   it('helper hanya menguji frasa kanonik di message tanpa membangun regex dinamis', () => {
@@ -1022,6 +1063,72 @@ const y = i++ / 2;
     expect(afterLtQuote.code).not.toContain('komentar');
     expect(afterLtQuote.code).toContain("count < /can'/.test(s)");
     expect(testInputs("const z2 = count < /can'/.test(s);")).toEqual(['s']);
+  });
+
+  it('scanSource: batas domain — fragmen/self-closing ekspresi void + string/template literal tak memerah palsu (issue #214)', () => {
+    // Temuan 1 (WARNING, sisa review #213): bentuk yang MEMICU regex fantom
+    // yang sama dengan `</tag>` TAPI lolos guard lama (`/<\/[A-Za-z_$]/`) tanpa
+    // jejak — jaminan berkas gugur SENYAP. Dua kelas:
+    //   a. `</>` (fragmen): '/' tepat sesudah '<' (simbol, operand belum
+    //      lengkap) → copyRegex() menelan sampai '/' berikutnya.
+    //   b. `}` + `/>` (self-closing dengan atribut EKSPRESI): setiap atribut
+    //      ekspresi berakhir '}' (simbol → operand-selesai=false), '/' sesudahnya
+    //      pembuka regex fantom. Termasuk atribut bertingkat `{{...}}` dan
+    //      berparentesis `{(x)}` — yang terakhir tetap berakhir '}'.
+    // Konsekuensi identik issue #212: argumen `.test()` DINAMIS (kelas bahaya
+    // #179) HILANG SENYAP → loop `for (const input of testArgs)` nol iterasi
+    // yang LULUS. Panjaga anti-vakum (pola #194): kontrol non-JSX WAJIB tetap
+    // menangkapnya — itu yang membuktikan kehilangan disebabkan JSX.
+    const fragmentSrc = 'const x = <>hi</>;\nre.test(msg + code);';
+    expect(testInputs(fragmentSrc)).toEqual([]);
+    expect(testInputs('const x = hi;\nre.test(msg + code);')).toEqual(['msg + code']);
+    // Guard HARUS mengenali kedua bentuk — fail-capable: guard dipersempit
+    // kembali ke `/<\/[A-Za-z_$]/` → assertion ini GAGAL (lubang senyap balik).
+    expect(domainCode(fragmentSrc)).toMatch(JSX_DOMAIN);
+    for (const src of [
+      'const x = <img src={u} />;',
+      'const x = <a b={{c:1}} />;',
+      'const x = <a b={(x)} />;',
+    ]) {
+      expect(testInputs(`${src}\nre.test(msg + code);`)).toEqual([]);
+      expect(domainCode(src), `guard wajib mengenali bentuk void: ${src}`).toMatch(JSX_DOMAIN);
+    }
+
+    // KUNCI ANTI-OVER-CORRECTION: bentuk AMAN yang '/' sesudahnya = PEMBAGIAN
+    // (kata/string → operand-lengkap) — jaminan UTUH, guard TIDAK boleh ikut
+    // memerah. Pola `\/>/` polos akan memerah keduanya → assertion ini GAGAL.
+    expect(testInputs('const x = <br/>;\nre.test(msg + code);')).toEqual(['msg + code']);
+    expect(domainCode('const x = <br/>;')).not.toMatch(JSX_DOMAIN);
+    expect(testInputs('const x = <img src="a" />;\nre.test(msg + code);')).toEqual(['msg + code']);
+    expect(domainCode('const x = <img src="a" />;')).not.toMatch(JSX_DOMAIN);
+
+    // Temuan 2 (SUGGESTION, sisa review #213): `</x>` di dalam string/template
+    // literal memerah PALU guard lama (isi literal disalin VERBATIM ke `code`).
+    // `domainCode` (mode 'space') mengosongkan ISI literal → tak ada merah
+    // palsu untuk berkas non-JSX yang sah. Fail-capable: mode 'space' dibuang
+    // dari cek domain → literal terlihat lagi → assertion ini MEMERAH.
+    expect(domainCode('const s = "</div>";')).not.toMatch(JSX_DOMAIN);
+    expect(domainCode("const s = '</x>';")).not.toMatch(JSX_DOMAIN);
+    expect(domainCode('const s = `a</div>b`;')).not.toMatch(JSX_DOMAIN);
+    // Batas yang DISENGAJA: interpolasi `${...}` tetap KODE — `</div>` di dalam
+    // interpolasi (JSX nyata di .tsx) TETAP terlanggar guard. Template string
+    // bersarang di dalam interpolasi tetap literal (dikosongkan).
+    expect(domainCode('const s = `${<div>hi</div>}`;')).toMatch(JSX_DOMAIN);
+    expect(domainCode('const s = `${`</b>`}`;')).not.toMatch(JSX_DOMAIN);
+    // Kontrol: `</div>` di posisi KODE (bukan literal) TETAP terlanggar.
+    expect(domainCode('const x = <h1>hi</h1>;')).toMatch(JSX_DOMAIN);
+    // Batas terdokumentasi lain: regex literal TIDAK dikosongkan (mengosongkannya
+    // akan menyembunyikan '/' pemicu fantom pada `}/>`), tapi regex TER-ESCAPE
+    // (`<\/div>`) secara alamiah aman — backslash memutus kedekatan `</`.
+    expect(domainCode('const re = /<\\/div>/;')).not.toMatch(JSX_DOMAIN);
+
+    // Mode 'verbatim' (default) WAJIB byte-identik dengan keluaran pra-isu:
+    // mode 'space' hanya MENAMBAH jalur untuk cek domain, tak mengubah apa pun
+    // yang diassert berkas lain di sini. Fail-capable: isi literal pada mode
+    // default ikut dikosongkan → assertion ini GAGAL.
+    expect(codeOnly('const s = "</div>";')).toBe('const s = "</div>";');
+    expect(codeOnly('const s = `a${b}c`;')).toBe('const s = `a${b}c`;');
+    expect(testInputs('re.test(/x/ / 2 + code);')).toEqual(['/x/ / 2 + code']);
   });
 });
 
