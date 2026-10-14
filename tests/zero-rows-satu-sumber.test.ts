@@ -76,20 +76,173 @@ describe('isZeroRows — kontrak satu sumber', () => {
 });
 
 describe('paritas statis — ketiga titik impor helper yang sama', () => {
-  /** Baris KODE saja (baris komentar dibuang) — larangan kosakata tak boleh
+  /** Baris KODE saja (komentar dibuang) — larangan kosakata tak boleh
    * mengganggu dokumentasi: menyebut `406` di komentar untuk menjelaskan
    * mengapa TIDAK dipakai justru perilaku yang benar (sisa review #184).
    *
-   * Blok komentar dibuang LEBIH DULU: memfilter per-baris saja masih salah
-   * hitung blok `/* ... *\/` yang barisnya tidak berawalan `*`/`//` (mis.
-   * menyorot potongan kode mati sebagai dokumentasi) — itu memunculkan
-   * kegagalan CI palsu dari dokumentasi, persis lubang #2 yang issue ini tutup. */
-  const codeLines = (src: string) =>
-    src
-      .replace(/\/\*[\s\S]*?\*\//g, '')
-      .split('\n')
-      .filter((l) => !/^\s*(\/\/|\*)/.test(l))
-      .join('\n');
+   * Scanner sadar string/template/regex literal (sisa review #186):
+   * membuang komentar dengan regex `/* ... *\/` mentah bisa MENELAN KODE NYATA
+   * — string apa pun yang memuat `/*` (mis. URL, contoh dokumentasi) membuka
+   * "blok komentar" palsu sampai penanda `*\/` berikutnya (mis. di string lain), dan
+   * assertion yang dihitung atas sisa teks itu LOLOS VAKUM: berkas site boleh
+   * membuka kembali dead-code `error.code === '406'` di wilayah yang tertelan
+   * tanpa satu assertion pun gagal. Kebalikannya juga wajib: komentar EKOR
+   * (mis. `const x = 1; // dulu: error.code === '406'`) dulu ikut terhitung
+   * sebagai KODE sehingga dokumentasi wajar memerahkan CI palsu. Scanner di
+   * bawah menyalin kode verbatim sambil melompati string, template literal,
+   * dan regex literal — hanya `//` dan blok komentar yang dibuang. */
+  const QUOTES = new Set(["'", '"', '`']);
+  const codeOnly = (src: string): string => {
+    let out = '';
+    let i = 0;
+    const n = src.length;
+    let prev = ''; // tanda non-spasi terakhir: membedakan '/' regex dari pembagi
+    while (i < n) {
+      const c = src.charAt(i);
+      const nx = src.charAt(i + 1);
+      if (c === '/' && nx === '*') {
+        const end = src.indexOf('*/', i + 2);
+        i = end === -1 ? n : end + 2;
+        out += ' ';
+        continue;
+      }
+      if (c === '/' && nx === '/') {
+        const end = src.indexOf('\n', i + 2);
+        if (end === -1) {
+          out += ' ';
+          i = n;
+        } else {
+          i = end; // newline ikut: jumlah baris tetap utuh
+        }
+        continue;
+      }
+      if (QUOTES.has(c)) {
+        out += c;
+        i += 1;
+        while (i < n) {
+          if (src.charAt(i) === '\\') {
+            out += src.slice(i, i + 2);
+            i += 2;
+            continue;
+          }
+          out += src.charAt(i);
+          const ch = src.charAt(i);
+          i += 1;
+          if (ch === c) break;
+        }
+        prev = c;
+        continue;
+      }
+      // Regex literal: '/' setelah konteks operasi/pemisah, bukan pembagi.
+      // Tanpa cabang ini, regex literal berisi kutip (mis. /don't/) membuka
+      // string fantom dan menelan kode sampai kutip berikutnya — lolos vakum.
+      if (c === '/' && /[=(,:;!&|?{}[\]<>]/.test(prev)) {
+        out += c;
+        i += 1;
+        let inClass = false;
+        while (i < n) {
+          const ch = src.charAt(i);
+          if (ch === '\\') {
+            out += src.slice(i, i + 2);
+            i += 2;
+            continue;
+          }
+          out += ch;
+          i += 1;
+          if (ch === '[') inClass = true;
+          else if (ch === ']') inClass = false;
+          else if (ch === '/' && !inClass) break;
+        }
+        while (i < n && /[a-z]/.test(src.charAt(i))) {
+          out += src.charAt(i);
+          i += 1;
+        }
+        prev = '/';
+        continue;
+      }
+      out += c;
+      if (!/\s/.test(c)) prev = c;
+      i += 1;
+    }
+    return out;
+  };
+
+  /** Argumen SETIAP pemanggilan `.test(...)` — ekstraksi berimbang sadar-string
+   * (sisa review #186). Guard berbentuk regex `\.test\([^)]*...` berhenti di
+   * tanda kurung tutup PERTAMA, sehingga bentuk dinamis yang tanda kurungnya
+   * muncul lebih dulu — `.test(String(msg).trim() + code)` — lolos: `[^)]*`
+   * hanya menjangkau `String(msg` sebelum `)`. Ekstraksi di bawah menghitung
+   * kedalaman kurung per pemanggilan dan melompati isi string, jadi bentuk
+   * bersarang sekalipun tetap terlihat argumennya utuh. */
+  const testInputs = (code: string): string[] => {
+    const inputs: string[] = [];
+    const re = /\.test\(/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(code))) {
+      let i = m.index + m[0].length;
+      let depth = 1;
+      let arg = '';
+      while (i < code.length && depth > 0) {
+        const c = code.charAt(i);
+        if (QUOTES.has(c)) {
+          arg += c;
+          i += 1;
+          while (i < code.length) {
+            if (code.charAt(i) === '\\') {
+              arg += code.slice(i, i + 2);
+              i += 2;
+              continue;
+            }
+            arg += code.charAt(i);
+            const ch = code.charAt(i);
+            i += 1;
+            if (ch === c) break;
+          }
+          continue;
+        }
+        if (c === '(') depth += 1;
+        else if (c === ')') {
+          depth -= 1;
+          if (depth === 0) break;
+        }
+        arg += c;
+        i += 1;
+      }
+      inputs.push(arg);
+    }
+    return inputs;
+  };
+
+  /** true bila argumen `.test()` dibangun DINAMIS: konkatenasi `+` di luar
+   * string, atau interpolasi `${` di template literal — persis kelas bahaya
+   * #179 (input regex dari field error). Template literal TANPA interpolasi
+   * (mis. `` .test(`multiple (or no) rows`) ``) sah: bentuknya statis (sisa
+   * review #186 — larangan backtick kategoris dulu melarang bentuk ini). */
+  const dynamicTestInput = (input: string): boolean => {
+    let i = 0;
+    const n = input.length;
+    while (i < n) {
+      const c = input.charAt(i);
+      if (c === "'" || c === '"') {
+        i += 1;
+        while (i < n && input.charAt(i) !== c) i += input.charAt(i) === '\\' ? 2 : 1;
+        i += 1;
+        continue;
+      }
+      if (c === '`') {
+        i += 1;
+        while (i < n && input.charAt(i) !== '`') {
+          if (input.charAt(i) === '$' && input.charAt(i + 1) === '{') return true;
+          i += 1;
+        }
+        i += 1;
+        continue;
+      }
+      if (c === '+') return true; // konkatenasi di luar string
+      i += 1;
+    }
+    return false;
+  };
 
   /** PERBANDINGAN kode error terhadap '406' — bentuk cabang dead-code yang
    * dibuang dari helper (#183/#184). Harus tahan bentuk: identifier bertitik
@@ -109,7 +262,7 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
     // alternatif) akan memuat salah satu kosakata di bawah — termasuk bentuk
     // dinamis `new RegExp(msg + ' ' + code)`, yang tidak terdeteksi oleh
     // larangan teks seperti `| 406` (issue #183).
-    const code = codeLines(src);
+    const code = codeOnly(src);
     for (const vocab of ['PGRST116', 'concurrent winner', 'multiple (or no) rows', '0 rows']) {
       expect(
         code,
@@ -120,7 +273,10 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
     // literal, jadi dilacak terpisah: larang konstruksi regex dinamis di
     // berkas site. (Regex literal yang sudah ada untuk deteksi RPC-hilang di
     // extendLoan.ts tetap sah — yang dilarang adalah regex dari field error.)
-    expect(src, `${file} tak boleh membangun regex dinamis dari field error`).not.toContain(
+    // Teks yang diperiksa sudah dibersihkan dari komentar: dokumentasi yang
+    // MENJELASKAN larangan ini tetap boleh menyebut bentuk terlarang (sisa
+    // review #186 — teks mentah dulu menghukum dokumentasi juga).
+    expect(code, `${file} tak boleh membangun regex dinamis dari field error`).not.toContain(
       'new RegExp('
     );
     // Sisa review #184: tanpa ini, berkas site boleh MEMBUKA LAGI cabang
@@ -137,22 +293,76 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
   });
 
   it('helper hanya menguji frasa kanonik di message tanpa membangun regex dinamis', () => {
-    const helper = read('src/lib/zero-rows.ts');
-    expect(helper).toContain("error.code === 'PGRST116'");
+    // Teks helper sudah dibersihkan komentar (sisa review #186): dokumentasi
+    // yang MENJELASKAN larangan boleh menyebut bentuk terlarang; cek berlaku
+    // pada KODE saja. JSDoc helper memuat kode contoh ber-kutip balik — tanpa
+    // pembersihan, assertion di bawah menghukum dokumentasi.
+    const code = codeOnly(read('src/lib/zero-rows.ts'));
+    expect(code).toContain("error.code === 'PGRST116'");
     // Invarian berbentuk, bukan per-identifier (sisa review #184): input regex
-    // WAJIB statis. Interpolasi/konkatenasi/template literal di dalam `.test()`
-    // berarti input regex dibangun dinamis — persis kelas bahaya #179 —
-    // apapun nama variabelnya.
-    expect(helper, 'input regex wajib statis (tak boleh dibangun dinamis)').not.toMatch(
-      /\.test\([^)]*(\$\{|`|\+)/
-    );
-    expect(helper, 'regex wajib menguji message').toMatch(/\.test\(error\.message\b/);
+    // WAJIB statis — tak boleh dibangun dinamis dari bagian-bagian. Yang
+    // dinamis: konkatenasi `+` di luar string dan interpolasi `${` di template
+    // literal, persis kelas bahaya #179, apapun nama variabelnya. Template
+    // literal TANPA interpolasi tetap sah (statis, sisa review #186).
+    for (const input of testInputs(code)) {
+      expect(
+        dynamicTestInput(input),
+        `input regex wajib statis, bukan dibangun dinamis: ${input.trim()}`
+      ).toBe(false);
+    }
+    expect(code, 'regex wajib menguji message').toMatch(/\.test\(error\.message\b/);
     // `new RegExp(\`${msg} ${code}\`)` duduk DI LUAR `.test(...)`, jadi guard di
     // atas tak pernah melihatnya: tanpa larangan eksplisit di sini, kelas
     // bahaya #179 kembali lewat konstruktor regex, bukan lewat `.test()`.
-    expect(helper, 'helper tak boleh membangun regex dinamis dari field error').not.toContain(
+    expect(code, 'helper tak boleh membangun regex dinamis dari field error').not.toContain(
       'new RegExp('
     );
+  });
+
+  // --- Self-check invariant pembersih (sisa review #186) ---
+  // Assertion di atas hanya berguna bila pembersih komentarnya sendiri benar:
+  // tidak boleh menelan kode (lolos vakum) dan tidak boleh menyisakan komentar
+  // (kegagalan palsu). Ketiga bentuk di bawah adalah bentuk yang DULU bocor.
+  it('codeOnly tidak menelan kode yang diapit string ber-/* ... */', () => {
+    // String yang memuat '/*' lalu string lain dengan '*/': regex blok-komentar
+    // versi #186 menelan tengahnya — termasuk baris dead-code di dalamnya.
+    const fenced = `const a = 'url: https://x.invalid/*docs';
+if (error.code === '406') return 409;
+const b = 'tutup */ dokumentasi';`;
+    expect(codeOnly(fenced)).toContain("if (error.code === '406') return 409;");
+    // Dan komentar blok sungguhan tetap dibuang.
+    expect(codeOnly('kode ok; /* komentar\nberbaris */ kode lanjut;')).not.toContain('komentar');
+  });
+
+  it('codeOnly membuang komentar baris PENUH dan komentar ekor', () => {
+    const trailing = `const c = 1; // dulu: error.code === '406' (issue #183, dead code)
+const d = 2; // PGRST116 disebut sebagai riwayat`;
+    const trailingCode = codeOnly(trailing);
+    expect(trailingCode).not.toMatch(CODE_COMPARE_406);
+    for (const vocab of ['PGRST116', '0 rows']) {
+      expect(trailingCode).not.toContain(vocab);
+    }
+    expect(trailingCode).toContain('const d = 2;');
+  });
+
+  it('testInputs/dynamicTestInput: statis dibolehkan, dinamis ditangkap', () => {
+    // Statis: template literal tanpa interpolasi — dulu dilarang backtick kategoris.
+    expect(testInputs(codeOnly('re.test(`multiple (or no) rows`);')).some(dynamicTestInput)).toBe(
+      false
+    );
+    // Statis: literal biasa.
+    expect(testInputs(codeOnly("re.test('x');")).some(dynamicTestInput)).toBe(false);
+    // Dinamis: konkatenasi — tanpa kurung di antara `+` dan penutup.
+    expect(testInputs(codeOnly('re.test(msg + code);')).some(dynamicTestInput)).toBe(true);
+    // Dinamis: konkatenasi DENGAN kurung sebelumnya — bentuk yang meloloskan
+    // `[^)]*` di guard lama.
+    expect(testInputs(codeOnly('re.test(String(msg).trim() + code);')).some(dynamicTestInput)).toBe(
+      true
+    );
+    // Dinamis: interpolasi template.
+    expect(testInputs(codeOnly('re.test(`${msg} ${code}`);')).some(dynamicTestInput)).toBe(true);
+    // `+` di dalam string literal statis BUKAN konkatenasi.
+    expect(testInputs(codeOnly("re.test('1 + 1 = 2');")).some(dynamicTestInput)).toBe(false);
   });
 });
 
