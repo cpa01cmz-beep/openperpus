@@ -145,7 +145,16 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
     // (operand-lengkap → '/' = pembagian; belum → '/' = pembuka regex).
     let prevWord = '';
     let prevWordIsProperty = false;
-    let prevWasNumber = false; // token terakhir literal angka → '.' = akses member
+    // Literal angka PERNAH terlihat sebelumnya: '.' sesudah angka adalah AKSES
+    // MEMBER (`1..toString()`), bukan akhir token angka — operand tetap lengkap
+    // sehingga '/' sesudahnya PEMBAGIAN (review #200/#203).  Sengaja TIDAK
+    // di-reset per konteks (versi lalu punya 6 reset `= false`):  mutasi
+    // menghapus SEMUANYA tidak mengubah satu pun keluaran — 27 bentuk di berkas
+    // ini + ketiga berkas site + helper, byte-identik.  Artinya lifecycle
+    // per-token tak bisa diamati oleh assertion mana pun, jadi klaimnya bukan
+    // "guard" (sisa review #203);  yang terverifikasi assertion hanyalah
+    // konteks '/' (lihat `angka: prevWasNumber` dan `akses member` di bawah).
+    let prevWasNumber = false; // literal angka pernah terlihat → '.' = akses member
     let prevIsOperand = false;
 
     /** '/' di posisi ini membuka regex literal? */
@@ -180,7 +189,6 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
         if (ch === quote) break;
       }
       prevWord = '';
-      prevWasNumber = false;
       prevIsOperand = true;
     };
 
@@ -208,7 +216,6 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
           // adalah ekspresi baru, bukan lanjutan teks template (sisa review #194).
           prevWord = '';
           prevWordIsProperty = false;
-          prevWasNumber = false;
           prevIsOperand = false;
           walk('}');
           continue;
@@ -217,7 +224,6 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
         i += 1;
       }
       prevWord = '';
-      prevWasNumber = false;
       prevIsOperand = true;
     };
 
@@ -243,7 +249,6 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
         i += 1;
       }
       prevWord = '';
-      prevWasNumber = false;
       prevIsOperand = true;
     };
 
@@ -258,7 +263,6 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
       code.push(src.slice(i, j));
       prevWordIsProperty = k >= 0 && src.charAt(k) === '.';
       prevWord = src.slice(i, j).toLowerCase();
-      prevWasNumber = false;
       prevIsOperand = true;
       i = j;
     };
@@ -407,7 +411,6 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
       i += 6;
       prevWord = '';
       prevWordIsProperty = false;
-      prevWasNumber = false;
       prevIsOperand = false; // awal argumen = posisi operand: '/' PEMBUKA regex
       const argStart = code.length;
       const closed = walk(')');
@@ -792,11 +795,33 @@ const y = i++ / 2;
     const trailingDotSemi = scanSource('const h = 1.;\n// komentar 0 rows wajib dibuang');
     expect(trailingDotSemi.code).toContain('1.;');
     expect(trailingDotSemi.code).not.toContain('komentar');
+  });
+
+  it('scanSource: akses member literal angka — guard bisa gagal (sisa review #203)', () => {
+    // Review #203 (WARNING @baris memberAccess): bentuk `1..toString() / 2`
+    // TIDAK bisa dipakai sebagai klaim — '/' di sana sesudah `)`, yang SUDAH
+    // menyelesaikan ekspresi walau cabang `prevWasNumber` dibuang, jadi kedua
+    // assertion-nya tetap hijau dan tak menjaga apa pun. Bentuk yang benar-benar
+    // bergantung pada cabang itu: '/' datang TETAP sesudah titik kedua, boleh
+    // lewat komentar blok. Diverifikasi dengan mutasi: cabang itu dibuang →
+    // '/' dibaca pembuka regex dan komentar `//` di bawah ikut tertelan.
     const memberAccess = scanSource(
-      'const i2 = 1..toString() / 2;\n// komentar 0 rows wajib dibuang'
+      'const i2 = 1.. /* blok */ / 2;\n// komentar 0 rows wajib dibuang'
     );
-    expect(memberAccess.code).toContain('1..toString() / 2');
     expect(memberAccess.code).not.toContain('komentar');
+    expect(memberAccess.code).not.toContain('blok');
+    // Kontrol positif: komentar blok dibuang jadi SATU spasi, kode tetap utuh.
+    expect(memberAccess.code).toBe('const i2 = 1..   / 2;\n ');
+
+    // Lifecycle `prevWasNumber` (SUGGESTION review #203): enam reset `= false`
+    // dibuang karena mutasi membuktikan tak satu pun keluaran berubah — 27
+    // bentuk berkas ini + ketiga berkas site + helper byte-identik. Yang SEKARANG
+    // dijaga adalah konsekuensinya: '.' sesudah operand NON-angka (string) juga
+    // tidak boleh menelan komentar; reset yang dulu ada justru membuat '/'
+    // sesudahnya dibaca pembuka regex (kelas CI merah palsu yang sama).
+    const afterString = scanSource('const j = 1 + "s" . / 2;\n// komentar 0 rows wajib dibuang');
+    expect(afterString.code).not.toContain('komentar');
+    expect(afterString.code).toContain('"s" . / 2');
   });
 });
 
