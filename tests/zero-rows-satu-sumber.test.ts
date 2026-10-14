@@ -252,6 +252,19 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
       i = j;
     };
 
+    /** Baca literal ANGKA sebagai satu token operand (sisa review #192): `10 / 2`
+     * dulu jatuh ke cabang simbol per-karakter sehingga '0' terakhir menjadi
+     * "simbol" dan '/' sesudahnya dibaca pembuka regex — komentar di span itu
+     * ikut tertelan (CI merah palsu). Bentuk: `10`, `1.5`, `.5`, `1e10`. */
+    const readNumber = (): void => {
+      let j = i + 1;
+      while (j < n && /[\w.]/.test(src.charAt(j))) j += 1;
+      code.push(src.slice(i, j));
+      prevWord = '';
+      prevIsOperand = true;
+      i = j;
+    };
+
     /** SATU lintasan: KODE bersih komentar, string/template/regex literal
      * disalin verbatim, argumen `.test()` ditangkap di posisi KODE.
      * `closer` '' = sampai EOF; ')'/`'}` = konteks ekspresi (argumen
@@ -290,6 +303,10 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
         }
         if (/[A-Za-z_$]/.test(ch)) {
           readWord();
+          continue;
+        }
+        if (/[0-9]/.test(ch) || (ch === '.' && /[0-9]/.test(src.charAt(i + 1)))) {
+          readNumber();
           continue;
         }
         if (closer !== '' && ch === closer) {
@@ -379,8 +396,12 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
         last = '`';
         continue;
       }
-      if (c === '/' && !/[A-Za-z0-9_$)\]`]/.test(last)) {
+      if (c === '/' && !/[A-Za-z0-9_$)\]`'"\/]/.test(last)) {
         // Konteks operand → regex literal: lewati badannya (escape & class aware).
+        // Kelas operand WAJIB memuat kutip, backtick, dan '/' — string/template/
+        // regex literal juga menyelesaikan ekspresi (sisa review #192): tanpa itu,
+        // '/' SESUDAH string/regex dibaca pembuka regex lagi dan badan-skip jalan
+        // sampai EOF, menelan '+'/`,` sesudahnya (false negative).
         i += 1;
         let inClass = false;
         while (i < n) {
@@ -609,6 +630,32 @@ const y = i++ / 2;
     expect(args.length).toBe(1);
     expect(args[0]).toBe('msg + code');
     expect(dynamicTestInput(args[0] ?? '')).toBe(true);
+  });
+
+  it('scanSource: literal angka adalah operand (sisa review #192)', () => {
+    // Regresi yang diperkenalkan PR #192: angka jatuh ke cabang simbol
+    // per-karakter, jadi '/' SESUDAH angka dibaca pembuka regex dan komentar
+    // di span itu ikut tertelan (CI merah palsu) — `10 / 2`, `100 / total`.
+    for (const [src, code] of [
+      ['const x = 10 / 2;', '10 / 2'],
+      ['const v = -1 / 2;', '-1 / 2'],
+      ['const r = 100 / total;', '100 / total'],
+      ['const f = 1e5 / 2;', '1e5 / 2'],
+      ['const g = .5 / 2;', '.5 / 2'],
+    ] as const) {
+      const out = scanSource(`${src}\n// komentar PGRST116 wajib dibuang`);
+      expect(out.code, `${src} wajib memuat teks utuh`).toContain(code);
+      expect(out.code, `${src}: komentar sesudahnya wajib dibuang`).not.toContain('komentar');
+    }
+  });
+
+  it('dynamicTestInput: string/regex literal juga menyelesaikan ekspresi (sisa review #192)', () => {
+    // '/' SESUDAH string/regex literal dulu dibaca pembuka regex lagi:
+    // badan-skip jalan sampai EOF dan menelan '+'/`,` sesudahnya (false negative).
+    expect(testInputs("re.test('ab' / 2 + code);").some(dynamicTestInput)).toBe(true);
+    expect(testInputs('re.test(/x/ / 2 + code);').some(dynamicTestInput)).toBe(true);
+    // Regex literal di argumen TETAP statis (badan '+' bukan operasi).
+    expect(testInputs('re.test(/\\d+/);').some(dynamicTestInput)).toBe(false);
   });
 });
 
