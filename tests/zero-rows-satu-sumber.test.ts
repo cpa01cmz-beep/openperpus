@@ -145,16 +145,16 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
     // (operand-lengkap → '/' = pembagian; belum → '/' = pembuka regex).
     let prevWord = '';
     let prevWordIsProperty = false;
-    // Literal angka PERNAH terlihat sebelumnya: '.' sesudah angka adalah AKSES
-    // MEMBER (`1..toString()`), bukan akhir token angka — operand tetap lengkap
-    // sehingga '/' sesudahnya PEMBAGIAN (review #200/#203).  Sengaja TIDAK
-    // di-reset per konteks (versi lalu punya 6 reset `= false`):  mutasi
-    // menghapus SEMUANYA tidak mengubah satu pun keluaran — 27 bentuk di berkas
-    // ini + ketiga berkas site + helper, byte-identik.  Artinya lifecycle
-    // per-token tak bisa diamati oleh assertion mana pun, jadi klaimnya bukan
-    // "guard" (sisa review #203);  yang terverifikasi assertion hanyalah
-    // konteks '/' (lihat `angka: prevWasNumber` dan `akses member` di bawah).
-    let prevWasNumber = false; // literal angka pernah terlihat → '.' = akses member
+    // TIDAK ADA lagi state "literal angka pernah terlihat" (sisa review #206).
+    // Versi lalu (`prevWasNumber`, di-set `readNumber`, tak pernah di-reset)
+    // membuat cabang `else if (ch === '.' && prevWasNumber)` menyala untuk `.`
+    // di statement LAIN — konteksnya ditentukan lokasi angka yang jauh, bukan
+    // properti lokal dari '.'-nya. Bentuk `1..` sekarang dikonsumsi `readNumber`
+    // sebagai SATU token operand (angka + titik akses member), jadi loop simbol
+    // tidak punya cabang '.' yang bisa bergantung pada kode jauh. Yang
+    // terverifikasi assertion hanyalah konteks '/' — lihat
+    // `scanSource: akses member literal angka — guard bisa gagal` dan
+    // `scanSource: token angka presisi` di bawah.
     let prevIsOperand = false;
 
     /** '/' di posisi ini membuka regex literal? */
@@ -277,12 +277,19 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
      * hanya bila '.' diikuti digit, eksponen hanya `[eE][+-]?digit`, dan '.'
      * TRAILLING yang sah (`1. / 2`, `1.;`) ikut token (sisa review #199) —
      * tanpa itu token jadi `1` + '.', '.' mengeset operand-selesai false, dan
-     * '/' sesudahnya menelan komentar `//` (CI merah palsu). */
+     * '/' sesudahnya menelan komentar `//` (CI merah palsu).
+     *
+     * `..` ikut token (sisa review #206): titik KEDUA akses member, bukan akhir
+     * token angka — `1..toString()` dibaca SATU operand sehingga '/' sesudahnya
+     * tetap PEMBAGIAN lewat sifat LOKAL token, tanpa flag lintas-statement. */
     const readNumber = (): void => {
       let j = i;
       if (src.charAt(j) === '.') j += 1; // bentuk .5
       while (j < n && /[\d_]/.test(src.charAt(j))) j += 1;
-      if (src.charAt(j) === '.' && /[0-9]/.test(src.charAt(j + 1))) {
+      if (src.charAt(j) === '.' && src.charAt(j + 1) === '.') {
+        // `1..toString()`: angka + titik akses member = satu token operand.
+        j += 2;
+      } else if (src.charAt(j) === '.' && /[0-9]/.test(src.charAt(j + 1))) {
         j += 1;
         while (j < n && /[\d_]/.test(src.charAt(j))) j += 1;
       } else if (
@@ -294,7 +301,7 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
         // token jadi `1` + `.` dan '.' mengeset operand-selesai=false sehingga
         // '/' sesudahnya dibaca pembuka regex yang menelan komentar `//` di span
         // itu (CI merah palsu, sisa review #199). Bentuk `1..` TIDAK masuk sini —
-        // titik keduanya akses member, ditangani `prevWasNumber` di cabang simbol.
+        // titik keduanya sudah dikonsumsi di cabang pertama di atas.
         j += 1;
       }
       if (/[eE]/.test(src.charAt(j))) {
@@ -307,7 +314,6 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
         if (!digitAt) {
           code.push(src.slice(i, j));
           prevWord = '';
-          prevWasNumber = true;
           prevIsOperand = true;
           i = j;
           return;
@@ -317,7 +323,6 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
       }
       code.push(src.slice(i, j));
       prevWord = '';
-      prevWasNumber = true;
       prevIsOperand = true;
       i = j;
     };
@@ -382,12 +387,12 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
           // Konteks '/' berikutnya: `)`, `]`, dan `++`/`--` (dua simbol sama
           // berurutan) MENYELESAIKAN ekspresi — '/' setelahnya pembagian;
           // operator/pemisah lain menuntut operand — '/' setelahnya regex.
-          // '.' setelah literal angka adalah AKSES MEMBER (`1..toString()` —
-          // sisa review #200): juga diselesaikan, agar `1.. / 2` tak salah
-          // dibaca pembuka regex yang menelan komentar.
+          // Sengaja TIDAK ada cabang khusus '.' (sisa review #206): bentuk
+          // `1..` sudah dikonsumsi `readNumber` sebagai satu token, jadi '.'
+          // di sini murni pemisah yang menuntut operand — tak ada lagi state
+          // lintas-token/statement yang bisa menyalanya dari kode jauh.
           if (ch === ')' || ch === ']') prevIsOperand = true;
           else if ((ch === '+' || ch === '-') && src.charAt(i - 2) === ch) prevIsOperand = true;
-          else if (ch === '.' && prevWasNumber) prevIsOperand = true;
           else prevIsOperand = false;
         }
       }
@@ -800,11 +805,15 @@ const y = i++ / 2;
   it('scanSource: akses member literal angka — guard bisa gagal (sisa review #203)', () => {
     // Review #203 (WARNING @baris memberAccess): bentuk `1..toString() / 2`
     // TIDAK bisa dipakai sebagai klaim — '/' di sana sesudah `)`, yang SUDAH
-    // menyelesaikan ekspresi walau cabang `prevWasNumber` dibuang, jadi kedua
-    // assertion-nya tetap hijau dan tak menjaga apa pun. Bentuk yang benar-benar
-    // bergantung pada cabang itu: '/' datang TETAP sesudah titik kedua, boleh
-    // lewat komentar blok. Diverifikasi dengan mutasi: cabang itu dibuang →
-    // '/' dibaca pembuka regex dan komentar `//` di bawah ikut tertelan.
+    // menyelesaikan ekspresi walau cabang `else if (ch === '.' && prevWasNumber)`
+    // dibuang, jadi kedua assertion-nya tetap hijau dan tak menjaga apa pun.
+    // Bentuk yang benar-benar bergantung pada cabang itu: '/' datang TETAP
+    // sesudah titik kedua, boleh lewat komentar blok. Sisa review #206: cabang
+    // itu sekarang DIBUANG sepenuhnya dan bentuk `1..` dikonsumsi `readNumber`
+    // sebagai satu token — diverifikasi dengan mutasi, cabang `..` itu dibuang
+    // → '/' dibaca pembuka regex dan komentar `//` + blok di bawah ikut tertelan
+    // (memberAccess GAGAL). Dengan cabang itu ADA, assertion di bawah tetap
+    // hijau DAN byte-identik dengan keluaran sebelum perbaikan.
     const memberAccess = scanSource(
       'const i2 = 1.. /* blok */ / 2;\n// komentar 0 rows wajib dibuang'
     );
@@ -813,15 +822,33 @@ const y = i++ / 2;
     // Kontrol positif: komentar blok dibuang jadi SATU spasi, kode tetap utuh.
     expect(memberAccess.code).toBe('const i2 = 1..   / 2;\n ');
 
-    // Lifecycle `prevWasNumber` (SUGGESTION review #203): enam reset `= false`
-    // dibuang karena mutasi membuktikan tak satu pun keluaran berubah — 27
-    // bentuk berkas ini + ketiga berkas site + helper byte-identik. Yang SEKARANG
-    // dijaga adalah konsekuensinya: '.' sesudah operand NON-angka (string) juga
-    // tidak boleh menelan komentar; reset yang dulu ada justru membuat '/'
-    // sesudahnya dibaca pembuka regex (kelas CI merah palsu yang sama).
-    const afterString = scanSource('const j = 1 + "s" . / 2;\n// komentar 0 rows wajib dibuang');
-    expect(afterString.code).not.toContain('komentar');
-    expect(afterString.code).toContain('"s" . / 2');
+    // Guard JUJUR tanpa angka-depan (sisa review #206): bentuk `1 + "s" . / 2`
+    // versi lalu hijau HANYA karena angka di DEPAN — buang `1 +` dan komentar
+    // langsung tertelan, jadi guard itu bocor (diverifikasi: `"s" . / 2` dan
+    // `"s". / 2` sudah tertelan sejak sebelum perbaikan). Sekarang '.' di loop
+    // simbol tidak punya cabang khusus lagi: '.' menuntut operand, '/' sesudahnya
+    // dibaca pembuka regex, dan komentarnya memang tertelan — perilaku LOKAL yang
+    // jujur, diassert apa adanya. Bentuk ini FAIL-CAPABLE: mutasi membuat '.'
+    // SELALU menyelesaikan ekspresi (`else if (ch === '.') prevIsOperand = true`)
+    // menghapus komentar yang benar dan assertion ini GAGAL.
+    const afterString = scanSource('const j = "s" . / 2;\n// komentar 0 rows wajib dibuang');
+    expect(afterString.code).toContain('komentar');
+    // Bentuk sama dengan angka JAUH di statement lain: dulu komentar DIBUANG
+    // hanya karena ada `1` di statement pertama — konteks lintas-statement, bukan
+    // properti '.'-nya (diverifikasi mutasi). Sekarang tertelan juga. Bentuk ini
+    // FAIL-CAPABLE terhadap regresi yang PERSIS dibenahi issue ini: menghidupkan
+    // kembali flag sticky (`else if (ch === '.' && prevWasNumber)`) membuat
+    // komentarnya DIBUANG dan assertion ini GAGAL.
+    const distantNumberThenString = scanSource(
+      'const a = 1;\nconst j = "x" . / 2;\n// komentar 0 rows wajib dibuang'
+    );
+    expect(distantNumberThenString.code).toContain('komentar');
+    // Kontrol positif: bentuk BERANGKA `1..` tetap dikonsumsi sebagai satu
+    // token dan '/' sesudahnya PEMBAGIAN — komentarnya dibuang (tanpa flag
+    // lintas-statement; cabang `..` di `readNumber` yang menahan).
+    const dottedNumber = scanSource('const f2 = 1.. / 2;\n// komentar 0 rows wajib dibuang');
+    expect(dottedNumber.code).not.toContain('komentar');
+    expect(dottedNumber.code).toContain('1.. / 2');
   });
 });
 
