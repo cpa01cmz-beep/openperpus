@@ -100,12 +100,24 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
    *
    * Pemindai di bawah menutup semuanya: komentar dibuang, string/template/
    * regex literal disalin verbatim, interpolasi `${...}` diperlakukan sebagai
-   * KODE (boleh memuat string/template/regex/`.test()` bersarang). */
+   * KODE (boleh memuat string/template/regex/`.test()` bersarang). Dispatch
+   * SATU lintasan (`walk`) menggantikan dua loop terpisah yang dulu bisa
+   * menyimpang tanpa terdeteksi (sisa review #190); konteks '/' berbasis
+   * operand-lengkap (bukan daftar simbol) menutup kelas salah-baca
+   * `obj.new / 2` dan `i++ / 2` (sisa review #190). */
   type Scan = { code: string; testArgs: string[] };
 
-  /** '/' MEMBUKA regex literal setelah kata kunci di bawah (konteks ekspresi)
-   * atau simbol pemisah. `]` sengaja TIDAK ada: yang mengikuti indexing adalah
-   * pembagian (`arr[i] / n`), bukan regex. */
+  /** '/' MEMBUKA regex literal ketika ekspresi SEBELUMNYA belum lengkap —
+   * setelah operator/pemisah/`(`/`{`/awal berkas, ATAU setelah kata kunci
+   * ekspresi (`return`, `typeof`, `case`, …). Dalam posisi itu tata bahasa JS
+   * menuntut OPERAND, dan operand boleh berbentuk regex literal. Sebaliknya
+   * setelah identifier/`)`/`]`/string/template/regex/`++`/`--`, ekspresi sudah
+   * lengkap: '/' berarti PEMBAGIAN.
+   *
+   * Kata kunci yang berupa nama PROPERTI (`obj.new`, `v.of`) tidak dihitung —
+   * di posisi itu ekspresi juga sudah lengkap (sisa review #190: daftar
+   * keyword + himpunan simbol versi lalu membuat `obj.new / 2` dan `i++ / 2`
+   * salah dibaca sebagai pembuka regex). */
   const REGEX_KEYWORDS = new Set([
     'return',
     'typeof',
@@ -122,40 +134,22 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
     'throw',
     'await',
   ]);
-  const REGEX_SYMBOLS = new Set([
-    '=',
-    '(',
-    '[',
-    ',',
-    ':',
-    ';',
-    '!',
-    '&',
-    '|',
-    '?',
-    '{',
-    '<',
-    '>',
-    '+',
-    '-',
-    '*',
-    '%',
-    '~',
-    '^',
-  ]);
-  /** Pasangan pembuka kurung per jenis penutup — hanya sejenis yang menutup. */
-  const BRACE_OPENERS: Record<string, string> = { ')': '(', '}': '{', ']': '[' };
 
   const scanSource = (src: string): Scan => {
     const code: string[] = [];
     const testArgs: string[] = [];
     const n = src.length;
     let i = 0;
+    // Konteks leksikal untuk '/': kata terakhir, apakah kata itu nama properti
+    // (setelah '.' — bukan keyword konteks), dan apakah ekspresi sudah lengkap
+    // (operand-lengkap → '/' = pembagian; belum → '/' = pembuka regex).
     let prevWord = '';
-    let prevSym = '';
+    let prevWordIsProperty = false;
+    let prevIsOperand = false;
 
+    /** '/' di posisi ini membuka regex literal? */
     const regexAhead = (): boolean =>
-      (prevWord !== '' && REGEX_KEYWORDS.has(prevWord)) || REGEX_SYMBOLS.has(prevSym);
+      (prevWord !== '' && !prevWordIsProperty && REGEX_KEYWORDS.has(prevWord)) || !prevIsOperand;
 
     const skipBlockComment = (): void => {
       const end = src.indexOf('*/', i + 2);
@@ -165,7 +159,7 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
 
     const skipLineComment = (): void => {
       const end = src.indexOf('\n', i + 2);
-      i = end === -1 ? n : end; // newline disalin loop induk: jumlah baris utuh
+      i = end === -1 ? n : end; // newline disalin walk: jumlah baris utuh
       code.push(' ');
     };
 
@@ -185,7 +179,7 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
         if (ch === quote) break;
       }
       prevWord = '';
-      prevSym = quote;
+      prevIsOperand = true;
     };
 
     /** Template literal SADAR interpolasi: `${` berpindah ke mode kode, jadi
@@ -208,14 +202,14 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
         if (ch === '$' && src.charAt(i + 1) === '{') {
           code.push('${');
           i += 2;
-          scanExpr('}');
+          walk('}');
           continue;
         }
         code.push(ch);
         i += 1;
       }
       prevWord = '';
-      prevSym = '`';
+      prevIsOperand = true;
     };
 
     const copyRegex = (): void => {
@@ -240,50 +234,50 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
         i += 1;
       }
       prevWord = '';
-      prevSym = '/';
+      prevIsOperand = true;
     };
 
-    /** Baca satu kata (identifier/keyword) sebagai satu token. */
+    /** Baca satu kata (identifier/keyword) sebagai satu token. Kata yang lahir
+     * tepat setelah '.' adalah nama PROPERTI — bukan keyword konteks walau
+     * ejaannya sama (`obj.new`, `v.of`; sisa review #190). */
     const readWord = (): void => {
       let j = i;
       while (j < n && /[\w$]/.test(src.charAt(j))) j += 1;
+      let k = i - 1;
+      while (k >= 0 && /\s/.test(src.charAt(k))) k -= 1;
       code.push(src.slice(i, j));
+      prevWordIsProperty = k >= 0 && src.charAt(k) === '.';
       prevWord = src.slice(i, j).toLowerCase();
-      prevSym = '';
+      prevIsOperand = true;
       i = j;
     };
 
-    /** Tangkap argumen `.test(` — hanya dari posisi KODE, ditarik sampai `)`
-     * yang berimbang (string/template/regex/komentar di dalamnya dikenali). */
-    const captureTestArg = (): void => {
-      code.push('.test(');
-      i += 6;
-      const argStart = code.length;
-      scanExpr(')');
-      testArgs.push(code.slice(argStart, code.length - 1).join(''));
-    };
-
-    /** Ekspresi sampai penutup `closer` — kedalaman hanya dihitung untuk kurung
-     * sejenis; kurung jenis lain tetap kode biasa. */
-    const scanExpr = (closer: string): void => {
-      const opener = BRACE_OPENERS[closer] ?? '';
+    /** SATU lintasan: KODE bersih komentar, string/template/regex literal
+     * disalin verbatim, argumen `.test()` ditangkap di posisi KODE.
+     * `closer` '' = sampai EOF; ')'/`'}` = konteks ekspresi (argumen
+     * `.test()` dan interpolasi `${}`). Kedalaman hanya menghitung kurung
+     * SEJENIS. Satu dispatch bersama menggantikan dua loop terpisah yang dulu
+     * bisa menyimpang tanpa terdeteksi (sisa review #190). Return true bila
+     * penutup `closer` benar-benar dikonsumsi. */
+    const walk = (closer: string): boolean => {
+      const opener = closer === ')' ? '(' : closer === '}' ? '{' : '';
       let depth = 1;
-      while (i < n && depth > 0) {
+      while (i < n) {
         const ch = src.charAt(i);
-        if (ch === "'" || ch === '"') {
-          copyPlainString();
-          continue;
-        }
-        if (ch === '`') {
-          copyTemplate();
-          continue;
-        }
         if (ch === '/' && src.charAt(i + 1) === '*') {
           skipBlockComment();
           continue;
         }
         if (ch === '/' && src.charAt(i + 1) === '/') {
           skipLineComment();
+          continue;
+        }
+        if (ch === "'" || ch === '"') {
+          copyPlainString();
+          continue;
+        }
+        if (ch === '`') {
+          copyTemplate();
           continue;
         }
         if (ch === '/' && regexAhead()) {
@@ -298,56 +292,45 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
           readWord();
           continue;
         }
-        if (ch === closer) {
+        if (closer !== '' && ch === closer) {
           depth -= 1;
-          if (depth === 0) {
-            code.push(closer);
-            i += 1;
-            return;
-          }
-        } else if (ch === opener) {
+          code.push(ch);
+          i += 1;
+          if (depth === 0) return true;
+          continue;
+        }
+        if (closer !== '' && ch === opener) {
           depth += 1;
         }
         code.push(ch);
         i += 1;
-        if (!/\s/.test(ch)) prevSym = ch;
+        if (!/\s/.test(ch)) {
+          // Konteks '/' berikutnya: `)`, `]`, dan `++`/`--` (dua simbol sama
+          // berurutan) MENYELESAIKAN ekspresi — '/' setelahnya pembagian;
+          // operator/pemisah lain menuntut operand — '/' setelahnya regex.
+          if (ch === ')' || ch === ']') prevIsOperand = true;
+          else if ((ch === '+' || ch === '-') && src.charAt(i - 2) === ch) prevIsOperand = true;
+          else prevIsOperand = false;
+        }
       }
+      return false; // EOF tanpa penutup (hanya relevan untuk konteks ekspresi)
     };
 
-    while (i < n) {
-      const ch = src.charAt(i);
-      if (ch === '/' && src.charAt(i + 1) === '*') {
-        skipBlockComment();
-        continue;
-      }
-      if (ch === '/' && src.charAt(i + 1) === '/') {
-        skipLineComment();
-        continue;
-      }
-      if (ch === "'" || ch === '"') {
-        copyPlainString();
-        continue;
-      }
-      if (ch === '`') {
-        copyTemplate();
-        continue;
-      }
-      if (ch === '/' && regexAhead()) {
-        copyRegex();
-        continue;
-      }
-      if (src.startsWith('.test(', i)) {
-        captureTestArg();
-        continue;
-      }
-      if (/[A-Za-z_$]/.test(ch)) {
-        readWord();
-        continue;
-      }
-      code.push(ch);
-      i += 1;
-      if (!/\s/.test(ch)) prevSym = ch;
-    }
+    /** Tangkap argumen `.test(` — hanya dari posisi KODE, ditarik sampai `)`
+     * yang berimbang (string/template/regex/komentar di dalamnya dikenali).
+     * Pemeriksaan `closed` mencegah MEMANGKAS karakter nyata saat pemanggilan
+     * tak tertutup — versi lalu selalu membuang elemen terakhir sehingga
+     * `re.test(msg + code` kehilangan 'e'-nya (sisa review #190). */
+    const captureTestArg = (): void => {
+      code.push('.test(');
+      i += 6;
+      const argStart = code.length;
+      const closed = walk(')');
+      const raw = code.slice(argStart).join('');
+      testArgs.push(closed ? raw.slice(0, -1) : raw);
+    };
+
+    walk('');
     return { code: code.join(''), testArgs };
   };
 
@@ -359,8 +342,11 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
    * string, interpolasi `${` di template literal (escape `\${` dan backtick
    * ter-escape `\`` dilewati), dan pemisah ARGUMEN `,` di luar string —
    * tanda tangan pencampuran beberapa sumber (`f(msg, code)`,
-   * `[msg, code].join(' ')`, sisa review #188). Template literal TANPA
-   * interpolasi statis dan sah (sisa review #186).
+   * `[msg, code].join(' ')`, sisa review #188). Isi REGEX literal dilewati:
+   * `+`/`,` di badan `/…/` bukan operasi argumen — versi lama menghukumnya
+   * (CI merah palsu) dan menyembunyikan operasi SETELAH regex (sisa review
+   * #190). Template literal TANPA interpolasi statis dan sah (sisa review
+   * #186).
    *
    * Batas yang DISENGAJA dan didokumentasikan: pembungkus SATU-sumber
    * (`buildPattern(msg)`) tak terbedakan oleh bentuk dari passthrough gaya
@@ -369,12 +355,14 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
   const dynamicTestInput = (input: string): boolean => {
     let i = 0;
     const n = input.length;
+    let last = ''; // karakter non-spasi terakhir: regex-literal vs pembagian
     while (i < n) {
       const c = input.charAt(i);
       if (c === "'" || c === '"') {
         i += 1;
         while (i < n && input.charAt(i) !== c) i += input.charAt(i) === '\\' ? 2 : 1;
         i += 1;
+        last = c;
         continue;
       }
       if (c === '`') {
@@ -388,10 +376,30 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
           i += 1;
         }
         i += 1;
+        last = '`';
+        continue;
+      }
+      if (c === '/' && !/[A-Za-z0-9_$)\]`]/.test(last)) {
+        // Konteks operand → regex literal: lewati badannya (escape & class aware).
+        i += 1;
+        let inClass = false;
+        while (i < n) {
+          if (input.charAt(i) === '\\') {
+            i += 2;
+            continue;
+          }
+          const r = input.charAt(i);
+          i += 1;
+          if (r === '[') inClass = true;
+          else if (r === ']') inClass = false;
+          else if (r === '/' && !inClass) break;
+        }
+        last = '/';
         continue;
       }
       if (c === '+' || c === ',') return true; // konkatenasi / pemisah argumen
       i += 1;
+      if (!/\s/.test(c)) last = c;
     }
     return false;
   };
@@ -452,6 +460,12 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
     // bukan argumen.
     const { code, testArgs } = scanSource(read('src/lib/zero-rows.ts'));
     expect(code).toContain("error.code === 'PGRST116'");
+    // Anti-vakum (sisa review #190): bila capture rusak, loop di bawah jadi
+    // nol iterasi dan LULUS tanpa memeriksa apa pun — wajib ada minimal satu.
+    expect(
+      testArgs.length,
+      'helper wajib memanggil .test(...) setidaknya sekali (loop dinamis di bawah anti-vakum)'
+    ).toBeGreaterThan(0);
     // Invarian berbentuk, bukan per-identifier (sisa review #184): input regex
     // WAJIB statis — tak boleh dibangun dinamis dari bagian-bagian. Yang
     // dinamis: konkatenasi `+` di luar string, interpolasi `${` di template,
@@ -542,8 +556,14 @@ const x = arr[0] / 2;
     expect(scanSource(nested).code).not.toContain('komentar');
     // Escape: backtick ter-escape tak menutup template — interpolasi SESUDAHnya
     // tetap terlihat (dulu lolos); `${` ter-escape bukan interpolasi.
-    expect(dynamicTestInput(testInputs('re.test(`a\\`b ${code}c`);')[0] ?? '')).toBe(true);
-    expect(dynamicTestInput(testInputs('re.test(`\\${literal}`);')[0] ?? '')).toBe(false);
+    // Panjaga anti-vakum (sisa review #190): `[0] ?? ''` dulu membuat
+    // `toBe(false)` lulus ketika capture gagal — panjang wajib dipastikan.
+    const escInterp = testInputs('re.test(`a\\`b ${code}c`);');
+    expect(escInterp.length).toBeGreaterThan(0);
+    expect(dynamicTestInput(escInterp[0] ?? '')).toBe(true);
+    const escDollar = testInputs('re.test(`\\${literal}`);');
+    expect(escDollar.length).toBeGreaterThan(0);
+    expect(dynamicTestInput(escDollar[0] ?? '')).toBe(false);
   });
 
   it('dynamicTestInput: bentuk pencampuran argumen (sisa review #188)', () => {
@@ -555,6 +575,40 @@ const x = arr[0] / 2;
     // Batas terdokumentasi: pembungkus satu-sumber tak dibedakan dari
     // passthrough oleh bentuk — gerbang terakhir = tes kontrak isZeroRows.
     expect(testInputs('re.test(buildPattern(msg));').some(dynamicTestInput)).toBe(false);
+    // Isi regex literal dilewati (sisa review #190): `+`/`,` di badan `/…/`
+    // bukan operasi argumen — dulu memerahkan CI palsu.
+    expect(dynamicTestInput('/\\d+/')).toBe(false);
+    expect(testInputs('re.test(/\\d+/);').some(dynamicTestInput)).toBe(false);
+    // Pembagian di argumen: '/' setelah operand TIDAK membuka regex —
+    // '+' sesudahnya tetap tertangkap.
+    expect(testInputs('re.test(msg.len / 2 + code);').some(dynamicTestInput)).toBe(true);
+  });
+
+  it('scanSource: keyword-property dan ++ tetap pembagian (sisa review #190)', () => {
+    // `obj.new / 2`: 'new' ejaan keyword tetapi NAMA PROPERTI — '/'
+    // pembagian; komentar sesudahnya wajib dibuang.
+    const prop = `const x = obj.new / 2;
+// komentar 0 rows wajib dibuang`;
+    expect(scanSource(prop).code).not.toContain('komentar');
+    expect(scanSource(prop).code).toContain('obj.new / 2');
+    // `i++ / 2` postfix: ekspresi lengkap → '/' pembagian.
+    const inc = `let i = 0;
+const y = i++ / 2;
+// komentar PGRST116 wajib dibuang`;
+    expect(scanSource(inc).code).not.toContain('komentar');
+    expect(scanSource(inc).code).toContain('i++ / 2');
+    // Tetap regex setelah keyword konteks (hari jangan over-correct).
+    const kw = 'const m = /x/.test(msg);\n// komentar 0 rows wajib dibuang';
+    expect(scanSource(kw).code).not.toContain('komentar');
+  });
+
+  it('captureTestArg: argumen tak tertutup tak lagi dipangkas (sisa review #190)', () => {
+    // Versi lama selalu membuang elemen kode terakhir — `re.test(msg + code`
+    // (EOF di tengah) kehilangan karakter nyata dari argumen.
+    const args = testInputs('re.test(msg + code');
+    expect(args.length).toBe(1);
+    expect(args[0]).toBe('msg + code');
+    expect(dynamicTestInput(args[0] ?? '')).toBe(true);
   });
 });
 
