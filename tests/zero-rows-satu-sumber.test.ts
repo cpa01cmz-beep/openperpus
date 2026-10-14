@@ -145,6 +145,7 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
     // (operand-lengkap → '/' = pembagian; belum → '/' = pembuka regex).
     let prevWord = '';
     let prevWordIsProperty = false;
+    let prevWasNumber = false; // token terakhir literal angka → '.' = akses member
     let prevIsOperand = false;
 
     /** '/' di posisi ini membuka regex literal? */
@@ -179,6 +180,7 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
         if (ch === quote) break;
       }
       prevWord = '';
+      prevWasNumber = false;
       prevIsOperand = true;
     };
 
@@ -206,6 +208,7 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
           // adalah ekspresi baru, bukan lanjutan teks template (sisa review #194).
           prevWord = '';
           prevWordIsProperty = false;
+          prevWasNumber = false;
           prevIsOperand = false;
           walk('}');
           continue;
@@ -214,6 +217,7 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
         i += 1;
       }
       prevWord = '';
+      prevWasNumber = false;
       prevIsOperand = true;
     };
 
@@ -239,6 +243,7 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
         i += 1;
       }
       prevWord = '';
+      prevWasNumber = false;
       prevIsOperand = true;
     };
 
@@ -253,6 +258,7 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
       code.push(src.slice(i, j));
       prevWordIsProperty = k >= 0 && src.charAt(k) === '.';
       prevWord = src.slice(i, j).toLowerCase();
+      prevWasNumber = false;
       prevIsOperand = true;
       i = j;
     };
@@ -263,11 +269,11 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
      * ikut tertelan (CI merah palsu). Bentuk: `10`, `1.5`, `.5`, `1e10`.
      *
      * Presisi (sisa review #194): `[\w.]` buta MENGGABUNGKAN `2.5.toFixed` dan
-     * `1..2` lalu MEMECAH `1e-5` — token angka dibatasi tepat: digit(+`_`),
-     * fraksional hanya bila '.' diikuti digit, eksponen hanya `[eE][+-]?digit`,
-     * dan '.' TRAILLING yang sah (`1. / 2`, `1.;`) ikut token (sisa review
-     * #199) — tanpa itu token jadi `1` + `.`, '.' mengeset operand-selesai
-     * false, dan '/' sesudahnya menelan komentar `//` (CI merah palsu). */
+     * memecah `1e-5` — token angka dibatasi tepat: digit(+`_`), fraksional
+     * hanya bila '.' diikuti digit, eksponen hanya `[eE][+-]?digit`, dan '.'
+     * TRAILLING yang sah (`1. / 2`, `1.;`) ikut token (sisa review #199) —
+     * tanpa itu token jadi `1` + '.', '.' mengeset operand-selesai false, dan
+     * '/' sesudahnya menelan komentar `//` (CI merah palsu). */
     const readNumber = (): void => {
       let j = i;
       if (src.charAt(j) === '.') j += 1; // bentuk .5
@@ -283,8 +289,8 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
         // Bentuk JS yang SAH: `.` trailling (`1. / 2`, `1.;`). Tanpa cabang ini
         // token jadi `1` + `.` dan '.' mengeset operand-selesai=false sehingga
         // '/' sesudahnya dibaca pembuka regex yang menelan komentar `//` di span
-        // itu (CI merah palsu, sisa review #199). `1..2` TIDAK masuk sini —
-        // '.' kedua adalah operator/akses, tetap terpecah benar.
+        // itu (CI merah palsu, sisa review #199). Bentuk `1..` TIDAK masuk sini —
+        // titik keduanya akses member, ditangani `prevWasNumber` di cabang simbol.
         j += 1;
       }
       if (/[eE]/.test(src.charAt(j))) {
@@ -297,6 +303,7 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
         if (!digitAt) {
           code.push(src.slice(i, j));
           prevWord = '';
+          prevWasNumber = true;
           prevIsOperand = true;
           i = j;
           return;
@@ -306,6 +313,7 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
       }
       code.push(src.slice(i, j));
       prevWord = '';
+      prevWasNumber = true;
       prevIsOperand = true;
       i = j;
     };
@@ -370,8 +378,12 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
           // Konteks '/' berikutnya: `)`, `]`, dan `++`/`--` (dua simbol sama
           // berurutan) MENYELESAIKAN ekspresi — '/' setelahnya pembagian;
           // operator/pemisah lain menuntut operand — '/' setelahnya regex.
+          // '.' setelah literal angka adalah AKSES MEMBER (`1..toString()` —
+          // sisa review #200): juga diselesaikan, agar `1.. / 2` tak salah
+          // dibaca pembuka regex yang menelan komentar.
           if (ch === ')' || ch === ']') prevIsOperand = true;
           else if ((ch === '+' || ch === '-') && src.charAt(i - 2) === ch) prevIsOperand = true;
+          else if (ch === '.' && prevWasNumber) prevIsOperand = true;
           else prevIsOperand = false;
         }
       }
@@ -395,6 +407,7 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
       i += 6;
       prevWord = '';
       prevWordIsProperty = false;
+      prevWasNumber = false;
       prevIsOperand = false; // awal argumen = posisi operand: '/' PEMBUKA regex
       const argStart = code.length;
       const closed = walk(')');
@@ -746,8 +759,8 @@ const y = i++ / 2;
   });
 
   it('scanSource: token angka presisi (sisa review #194)', () => {
-    // `[\w.]` buta dulu menggabungkan `2.5.toFixed`/`1..2` dan memecah `1e-5` —
-    // token angka dibatasi tepat: `2.5` terpisah dari `toFixed`, `1e-5` utuh.
+    // `[\w.]` buta dulu menggabungkan `2.5.toFixed` dan memecah `1e-5` — token
+    // angka dibatasi tepat: `2.5` terpisah dari `toFixed`, `1e-5` utuh.
     const out = scanSource(
       'const a = 2.5.toFixed(1);\nconst b = 1e-5 / 2;\n// komentar 0 rows wajib dibuang'
     );
@@ -766,11 +779,12 @@ const y = i++ / 2;
     const posExpBad = scanSource('const e = 1e+;\n// komentar 0 rows wajib dibuang');
     expect(posExpBad.code).toContain('1e+;');
     expect(posExpBad.code).not.toContain('komentar');
-    // Bentuk `1..2` tetap TIDAK menyatu (akses rantai angka), dan `1.` trailling
-    // yang SAH tidak lagi jadi titik falsu yang menelan komentar (sisa review
-    // #199).
-    const chain = scanSource('const f = 1..2;\n// komentar 0 rows wajib dibuang');
-    expect(chain.code).toContain('1..2');
+    // Klaim "tidak menyatu" untuk `1..2` TIDAK bisa diamati lewat keluaran
+    // `code` (verbatim, tanpa pemisah — sisa review #200): token gabung vs
+    // terpisah menghasilkan teks identik. Yang BENAR-BENAR teramati adalah
+    // konteks '/' setelah token, jadi itulah yang diuji di sini.
+    const chain = scanSource('const f = 1.. / 2;\n// komentar 0 rows wajib dibuang');
+    expect(chain.code).toContain('1.. / 2');
     expect(chain.code).not.toContain('komentar');
     const trailingDot = scanSource('const g = 1. / 2;\n// komentar PGRST116 wajib dibuang');
     expect(trailingDot.code).toContain('1. / 2');
@@ -778,6 +792,11 @@ const y = i++ / 2;
     const trailingDotSemi = scanSource('const h = 1.;\n// komentar 0 rows wajib dibuang');
     expect(trailingDotSemi.code).toContain('1.;');
     expect(trailingDotSemi.code).not.toContain('komentar');
+    const memberAccess = scanSource(
+      'const i2 = 1..toString() / 2;\n// komentar 0 rows wajib dibuang'
+    );
+    expect(memberAccess.code).toContain('1..toString() / 2');
+    expect(memberAccess.code).not.toContain('komentar');
   });
 });
 
