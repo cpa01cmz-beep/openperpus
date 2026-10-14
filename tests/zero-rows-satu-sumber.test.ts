@@ -264,7 +264,10 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
      *
      * Presisi (sisa review #194): `[\w.]` buta MENGGABUNGKAN `2.5.toFixed` dan
      * `1..2` lalu MEMECAH `1e-5` — token angka dibatasi tepat: digit(+`_`),
-     * fraksional hanya bila '.' diikuti digit, eksponen hanya `[eE][+-]?digit`. */
+     * fraksional hanya bila '.' diikuti digit, eksponen hanya `[eE][+-]?digit`,
+     * dan '.' TRAILLING yang sah (`1. / 2`, `1.;`) ikut token (sisa review
+     * #199) — tanpa itu token jadi `1` + `.`, '.' mengeset operand-selesai
+     * false, dan '/' sesudahnya menelan komentar `//` (CI merah palsu). */
     const readNumber = (): void => {
       let j = i;
       if (src.charAt(j) === '.') j += 1; // bentuk .5
@@ -272,6 +275,17 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
       if (src.charAt(j) === '.' && /[0-9]/.test(src.charAt(j + 1))) {
         j += 1;
         while (j < n && /[\d_]/.test(src.charAt(j))) j += 1;
+      } else if (
+        src.charAt(j) === '.' &&
+        src.charAt(j + 1) !== '.' &&
+        !/[A-Za-z_$]/.test(src.charAt(j + 1))
+      ) {
+        // Bentuk JS yang SAH: `.` trailling (`1. / 2`, `1.;`). Tanpa cabang ini
+        // token jadi `1` + `.` dan '.' mengeset operand-selesai=false sehingga
+        // '/' sesudahnya dibaca pembuka regex yang menelan komentar `//` di span
+        // itu (CI merah palsu, sisa review #199). `1..2` TIDAK masuk sini —
+        // '.' kedua adalah operator/akses, tetap terpecah benar.
+        j += 1;
       }
       if (/[eE]/.test(src.charAt(j))) {
         // Eksponen: tanda WAJIB diikuti digit — `j += 2` buta dulu menelan
@@ -725,7 +739,10 @@ const y = i++ / 2;
     expect(tplCode).toContain('const ok = m(`x ${/re/.test(msg)} y`);');
     // Interpolasi dengan string lalu '/' (pembagian) tetap aman.
     const tpl2 = "const v = `${'a'} / 2 + ${code}`;\n// komentar 0 rows wajib dibuang";
-    expect(scanSource(tpl2).code).not.toContain('komentar');
+    const tpl2Code = scanSource(tpl2).code;
+    expect(tpl2Code).not.toContain('komentar');
+    // Assertion POSITIF (sisa review #199): jaga vakum sama seperti tpl.
+    expect(tpl2Code).toContain("const v = `${'a'} / 2 + ${code}`;");
   });
 
   it('scanSource: token angka presisi (sisa review #194)', () => {
@@ -741,6 +758,26 @@ const y = i++ / 2;
     const malformed = scanSource('const c = 1e-;\n// komentar 0 rows wajib dibuang');
     expect(malformed.code).toContain('1e-;');
     expect(malformed.code).not.toContain('komentar');
+    // Eksponen positif tanda EKSPLISIT (sisa review #199): klaim dokumentasi
+    // tanpa assertion = jaga palsu.
+    const posExp = scanSource('const d = 1e+5 / 2;\n// komentar 0 rows wajib dibuang');
+    expect(posExp.code).toContain('1e+5 / 2');
+    expect(posExp.code).not.toContain('komentar');
+    const posExpBad = scanSource('const e = 1e+;\n// komentar 0 rows wajib dibuang');
+    expect(posExpBad.code).toContain('1e+;');
+    expect(posExpBad.code).not.toContain('komentar');
+    // Bentuk `1..2` tetap TIDAK menyatu (akses rantai angka), dan `1.` trailling
+    // yang SAH tidak lagi jadi titik falsu yang menelan komentar (sisa review
+    // #199).
+    const chain = scanSource('const f = 1..2;\n// komentar 0 rows wajib dibuang');
+    expect(chain.code).toContain('1..2');
+    expect(chain.code).not.toContain('komentar');
+    const trailingDot = scanSource('const g = 1. / 2;\n// komentar PGRST116 wajib dibuang');
+    expect(trailingDot.code).toContain('1. / 2');
+    expect(trailingDot.code).not.toContain('komentar');
+    const trailingDotSemi = scanSource('const h = 1.;\n// komentar 0 rows wajib dibuang');
+    expect(trailingDotSemi.code).toContain('1.;');
+    expect(trailingDotSemi.code).not.toContain('komentar');
   });
 });
 
