@@ -580,6 +580,18 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
       code,
       `${file} tak boleh membandingkan kode error dengan '406' (dead code, milik kontrak helper)`
     ).not.toMatch(CODE_COMPARE_406);
+    // DOMAIN wajib non-JSX (issue #212): `</tag>` dibaca PEMBUKA regex oleh
+    // pemindai (setelah `<` ekspresi belum lengkap → `regexAhead()` menyala),
+    // sehingga komentar di span itu TERTELAN dan argumen `.test()` DINAMIS
+    // HILANG SENYAP (keduanya terverifikasi, lihat `batas terdokumentasi` di
+    // bawah). Seluruh jaminan berkas ini hanya berlaku untuk kode NON-JSX —
+    // assertion ini yang menskopusnya: menambahkan berkas `.tsx` ke SITES gagal
+    // TERANG-terangan alih-alih membuat jaminan di atas palsu tanpa CI memerah.
+    // Diperiksa atas `code` (bukan teks mentah) supaya menyebut `</div>` di dalam
+    // komentar/dokumentasi — yang dibuang pemindai — tidak memerah palsu.
+    expect(code, `${file} wajib non-JSX (batas pemindai </tag>, issue #212)`).not.toMatch(
+      /<\/[A-Za-z_$]/
+    );
   });
 
   it('helper hanya menguji frasa kanonik di message tanpa membangun regex dinamis', () => {
@@ -950,6 +962,66 @@ const y = i++ / 2;
     const expNumReceiver = 'const r2 = 1e5..test(msg + code);';
     expect(testInputs(expNumReceiver)).toEqual(['msg + code']);
     expect(codeOnly(expNumReceiver)).toContain('1e5..test(msg + code)');
+  });
+
+  it('scanSource: batas terdokumentasi — JSX closing tag buka regex fantom (issue #212)', () => {
+    // Batas yang DISENGAJA dan kini TERDOKUMENTASI + TERASSERT, bukan lagi
+    // senyap: `</tag>` sesudah `<` (simbol, ekspresi belum lengkap) memicu
+    // `regexAhead()` sehingga '/' masuk `copyRegex()` dan menelan span sampai
+    // '/' berikutnya. Perilaku pemindai TIDAK diubah di issue #212 — alasannya
+    // assertion kunci anti-over-correction di baris terbawah: `</tag>` (JSX
+    // close) dan `< /re/` (regex sesudah operator relasional) AMBIGU untuk
+    // pemindai satu-lintasan tanpa grammar, jadi "memperbaikinya" berarti
+    // menukar lubang senyap dengan regresi NYATA (persis kelas over-correct
+    // yang dijaga `afterString` + `keyword-property` di berkas ini). Yang
+    // ditutup issue #212 adalah bagian "senyap"-nya: batas ini + skop domain
+    // di loop SITES.
+    //
+    // KONSEKUENSI 1 — komentar TERTELAN (kelas "CI merah palsu"): komentar
+    // sesudah `</h1>` TIDAK dibuang sehingga kosakata terlarang di dalamnya bisa
+    // memerahkan CI palsu. Terverifikasi pada berkas NYATA sebelum issue ini:
+    // `src/app/admin/logs/page.tsx:74-75` (komentar `// Isu #69: …`) BERTAHAN di
+    // keluaran `code`. Fail-capable: kedip bila pemindai berhenti menelan span.
+    const jsx = scanSource('const x = <h1>hi</h1>;\n// komentar 0 rows TERTELAN — JSX closing tag');
+    expect(jsx.code).toContain('komentar');
+    expect(jsx.code).toBe('const x = <h1>hi</h1>;\n// komentar 0 rows TERTELAN — JSX closing tag');
+
+    // KONSEKUENSI 2 — argumen `.test()` DINAMIS HILANG SENYAP: `copyRegex()` tak
+    // punya dispatch `.test(`, jadi `.test(msg + code)` — PERSIS kelas bahaya
+    // #179 — tak terlihat oleh guard input dinamis, dan loop
+    // `for (const input of testArgs)` jadi nol iterasi yang LULUS. Panjaga
+    // anti-vakum (pola #194): kontrol NON-JSX di bawah WAJIB tetap menangkapnya
+    // — itu yang membuktikan kehilangan itu disebabkan `</tag>`, bukan capture
+    // yang rusak. Fail-capable: kalau capture `.test(` dibuang SELURUHNYA,
+    // kontrol ikut `[]` dan assertion ini GAGAL.
+    const jsxDynamic = 'const x = <h1>hi</h1>;\nre.test(msg + code);';
+    expect(testInputs(jsxDynamic)).toEqual([]);
+    const controls = testInputs('const x = hi;\nre.test(msg + code);');
+    expect(controls).toEqual(['msg + code']);
+    expect(controls.some(dynamicTestInput)).toBe(true);
+
+    // KUNCI ANTI-OVER-CORRECTION: "perbaikan" naif yang menolak '/' sesudah '<'
+    // (abaikan spasi) MERUSAK bentuk ini — regex sesudah operator relasional.
+    // Diverifikasi dengan mutasi pada commit sebelum issue #212: hasil naif itu
+    // komentar TERTELAN kembali (CI merah palsu) DAN argumen `.test()` hilang:
+    //   code "…/can'/.test(s);\n// komentar 0 rows wajib dibuang", testArgs []
+    // versus BENAR: komentar dibuang + testArgs ['s']. Bentuk BUKAN `/ab/` polos
+    // — itu SELAMAT bahkan di bawah "perbaikan" naif (tanpa kutip, `can` terbaca
+    // kata lalu '/' jadi pembagian dan dispatch `.test(` tetap jalan), jadi klaim
+    // anti-over-correction HARUS memakai regex yang memuat kutip supaya bisa
+    // gagal. Inilah alasan perilaku pemindai TIDAK diubah di issue #212.
+    const afterLtPlain = scanSource(
+      'const z = count < /ab/.test(s);\n// komentar 0 rows wajib dibuang'
+    );
+    expect(afterLtPlain.code).not.toContain('komentar');
+    expect(afterLtPlain.code).toContain('count < /ab/.test(s)');
+    expect(testInputs('const z = count < /ab/.test(s);')).toEqual(['s']);
+    const afterLtQuote = scanSource(
+      "const z2 = count < /can'/.test(s);\n// komentar 0 rows wajib dibuang"
+    );
+    expect(afterLtQuote.code).not.toContain('komentar');
+    expect(afterLtQuote.code).toContain("count < /can'/.test(s)");
+    expect(testInputs("const z2 = count < /can'/.test(s);")).toEqual(['s']);
   });
 });
 
