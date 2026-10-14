@@ -202,6 +202,11 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
         if (ch === '$' && src.charAt(i + 1) === '{') {
           code.push('${');
           i += 2;
+          // Konteks leksikal di-reset seperti argumen `.test(`: isi interpolasi
+          // adalah ekspresi baru, bukan lanjutan teks template (sisa review #194).
+          prevWord = '';
+          prevWordIsProperty = false;
+          prevIsOperand = false;
           walk('}');
           continue;
         }
@@ -255,10 +260,36 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
     /** Baca literal ANGKA sebagai satu token operand (sisa review #192): `10 / 2`
      * dulu jatuh ke cabang simbol per-karakter sehingga '0' terakhir menjadi
      * "simbol" dan '/' sesudahnya dibaca pembuka regex — komentar di span itu
-     * ikut tertelan (CI merah palsu). Bentuk: `10`, `1.5`, `.5`, `1e10`. */
+     * ikut tertelan (CI merah palsu). Bentuk: `10`, `1.5`, `.5`, `1e10`.
+     *
+     * Presisi (sisa review #194): `[\w.]` buta MENGGABUNGKAN `2.5.toFixed` dan
+     * `1..2` lalu MEMECAH `1e-5` — token angka dibatasi tepat: digit(+`_`),
+     * fraksional hanya bila '.' diikuti digit, eksponen hanya `[eE][+-]?digit`. */
     const readNumber = (): void => {
-      let j = i + 1;
-      while (j < n && /[\w.]/.test(src.charAt(j))) j += 1;
+      let j = i;
+      if (src.charAt(j) === '.') j += 1; // bentuk .5
+      while (j < n && /[\d_]/.test(src.charAt(j))) j += 1;
+      if (src.charAt(j) === '.' && /[0-9]/.test(src.charAt(j + 1))) {
+        j += 1;
+        while (j < n && /[\d_]/.test(src.charAt(j))) j += 1;
+      }
+      if (/[eE]/.test(src.charAt(j))) {
+        // Eksponen: tanda WAJIB diikuti digit — `j += 2` buta dulu menelan
+        // tanda literal rusak (`1e-`, `1e+`) ke dalam token angka (sisa review
+        // #198).
+        const signAt = src.charAt(j + 1);
+        const hasSign = signAt === '+' || signAt === '-';
+        const digitAt = /[0-9]/.test(src.charAt(j + (hasSign ? 2 : 1)));
+        if (!digitAt) {
+          code.push(src.slice(i, j));
+          prevWord = '';
+          prevIsOperand = true;
+          i = j;
+          return;
+        }
+        j += hasSign ? 2 : 1;
+        while (j < n && /[\d_]/.test(src.charAt(j))) j += 1;
+      }
       code.push(src.slice(i, j));
       prevWord = '';
       prevIsOperand = true;
@@ -335,12 +366,22 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
 
     /** Tangkap argumen `.test(` — hanya dari posisi KODE, ditarik sampai `)`
      * yang berimbang (string/template/regex/komentar di dalamnya dikenali).
+     *
+     * Konteks leksikal WAJIB di-reset lebih dulu (sisa review #194): tanpa itu,
+     * argumen mewarisi konteks luar — `X.test(/x/ …)` menyisakan operand-lengkap
+     * dari kata `X`, sehingga '/' pembuka di AWAL argumen dibaca PEMBAGIAN dan
+     * '/' penutup regex dibaca pembuka regex BARU yang menelan sisa argumen
+     * sampai EOF (`re.test(/x/ / 2 + code)` → argumen jadi "/x/ / 2 + code);").
+     *
      * Pemeriksaan `closed` mencegah MEMANGKAS karakter nyata saat pemanggilan
      * tak tertutup — versi lalu selalu membuang elemen terakhir sehingga
      * `re.test(msg + code` kehilangan 'e'-nya (sisa review #190). */
     const captureTestArg = (): void => {
       code.push('.test(');
       i += 6;
+      prevWord = '';
+      prevWordIsProperty = false;
+      prevIsOperand = false; // awal argumen = posisi operand: '/' PEMBUKA regex
       const argStart = code.length;
       const closed = walk(')');
       const raw = code.slice(argStart).join('');
@@ -599,7 +640,9 @@ const x = arr[0] / 2;
     // Isi regex literal dilewati (sisa review #190): `+`/`,` di badan `/…/`
     // bukan operasi argumen — dulu memerahkan CI palsu.
     expect(dynamicTestInput('/\\d+/')).toBe(false);
-    expect(testInputs('re.test(/\\d+/);').some(dynamicTestInput)).toBe(false);
+    // (Cek berbasis argumen untuk regex literal polos ada di self-check
+    // #192 dengan panjaga anti-vakum — jangan diduplikasi di sini, sisa
+    // review #194.)
     // Pembagian di argumen: '/' setelah operand TIDAK membuka regex —
     // '+' sesudahnya tetap tertangkap.
     expect(testInputs('re.test(msg.len / 2 + code);').some(dynamicTestInput)).toBe(true);
@@ -653,9 +696,51 @@ const y = i++ / 2;
     // '/' SESUDAH string/regex literal dulu dibaca pembuka regex lagi:
     // badan-skip jalan sampai EOF dan menelan '+'/`,` sesudahnya (false negative).
     expect(testInputs("re.test('ab' / 2 + code);").some(dynamicTestInput)).toBe(true);
-    expect(testInputs('re.test(/x/ / 2 + code);').some(dynamicTestInput)).toBe(true);
-    // Regex literal di argumen TETAP statis (badan '+' bukan operasi).
-    expect(testInputs('re.test(/\\d+/);').some(dynamicTestInput)).toBe(false);
+    // Argumen yang MULAI dengan regex literal (sisa review #194): konteks
+    // argumen dulu mewarisi konteks luar (`X.test(` menyisakan operand-lengkap
+    // dari kata `X`) sehingga '/' pembuka di awal argumen dibaca PEMBAGIAN dan
+    // '/' penutup dibaca pembuka regex BARU yang menelan sisa argumen sampai
+    // EOF. Dengan reset konteks, argumen utuh dan '+' sesudah pembagian tetap
+    // tertangkap LEWAT jalur yang dimaksud (bukan karena salah-parse).
+    const withRegex = testInputs('re.test(/x/ / 2 + code);');
+    expect(withRegex).toEqual(['/x/ / 2 + code']);
+    expect(dynamicTestInput(withRegex[0] ?? '')).toBe(true);
+    // Regex literal polos tetap statis — argumen WAJIB tertangkap (anti-vakum;
+    // dulu assertion berbentuk `.some(...)` bisa lulus hijau hanya karena
+    // capture gagal, sisa review #194).
+    const pure = testInputs('re.test(/\\d+/);');
+    expect(pure.length).toBe(1);
+    expect(pure[0]).toBe('/\\d+/');
+    expect(dynamicTestInput(pure[0] ?? '')).toBe(false);
+  });
+
+  it('scanSource: interpolasi template adalah ekspresi baru (sisa review #194)', () => {
+    // Isi `${...}` mewarisi konteks teks template dulu — '/' pembuka regex di
+    // awal interpolasi salah konteks. Dengan reset, '/' di awal `${` = regex.
+    const tpl = 'const ok = m(`x ${/re/.test(msg)} y`);\n// komentar PGRST116 wajib dibuang';
+    const tplCode = scanSource(tpl).code;
+    expect(tplCode).not.toContain('komentar');
+    // Assertion POSITIF (sisa review #198): assertion negatif saja lulus vakum
+    // bila copyTemplate rusak lalu menelan isi interpolasi — kode wajib utuh.
+    expect(tplCode).toContain('const ok = m(`x ${/re/.test(msg)} y`);');
+    // Interpolasi dengan string lalu '/' (pembagian) tetap aman.
+    const tpl2 = "const v = `${'a'} / 2 + ${code}`;\n// komentar 0 rows wajib dibuang";
+    expect(scanSource(tpl2).code).not.toContain('komentar');
+  });
+
+  it('scanSource: token angka presisi (sisa review #194)', () => {
+    // `[\w.]` buta dulu menggabungkan `2.5.toFixed`/`1..2` dan memecah `1e-5` —
+    // token angka dibatasi tepat: `2.5` terpisah dari `toFixed`, `1e-5` utuh.
+    const out = scanSource(
+      'const a = 2.5.toFixed(1);\nconst b = 1e-5 / 2;\n// komentar 0 rows wajib dibuang'
+    );
+    expect(out.code).not.toContain('komentar');
+    expect(out.code).toContain('2.5.toFixed(1)');
+    expect(out.code).toContain('1e-5 / 2');
+    // Eksponen rusak (`1e-`): tanda TIDAK ikut token angka (sisa review #198).
+    const malformed = scanSource('const c = 1e-;\n// komentar 0 rows wajib dibuang');
+    expect(malformed.code).toContain('1e-;');
+    expect(malformed.code).not.toContain('komentar');
   });
 });
 
