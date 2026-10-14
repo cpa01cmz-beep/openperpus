@@ -273,52 +273,60 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
      * ikut tertelan (CI merah palsu). Bentuk: `10`, `1.5`, `.5`, `1e10`.
      *
      * Presisi (sisa review #194): `[\w.]` buta MENGGABUNGKAN `2.5.toFixed` dan
-     * memecah `1e-5` — token angka dibatasi tepat: digit(+`_`), fraksional
-     * hanya bila '.' diikuti digit, eksponen hanya `[eE][+-]?digit`, dan '.'
-     * TRAILLING yang sah (`1. / 2`, `1.;`) ikut token (sisa review #199) —
-     * tanpa itu token jadi `1` + '.', '.' mengeset operand-selesai false, dan
-     * '/' sesudahnya menelan komentar `//` (CI merah palsu).
+     * memecah `1e-5` — token angka dibatasi tepat: digit(+`_`), eksponen hanya
+     * `[eE][+-]?digit`, dan aturan titik (fraksional/trailing/akses-member
+     * `..`) di DELEGASIKAN ke `readDotSuffix` di bawah — SATU salinan untuk
+     * posisi pra- DAN sesudah-eksponen (sisa review #209), dulu dua salinan
+     * yang bisa menyimpang tanpa terdeteksi.
      *
      * `..` ikut token (sisa review #206): titik KEDUA akses member, bukan akhir
      * token angka — `1..toString()` dibaca SATU operand sehingga '/' sesudahnya
      * tetap PEMBAGIAN lewat sifat LOKAL token, tanpa flag lintas-statement.
-     *
-     * Titik trailing SESUDAH eksponen (sisa review #208): ketiga cabang di atas
-     * menguji posisi `j` SELAGI masih menunjuk `e`/`E`; setelah digit eksponen
-     * habis tak ada yang menengok ke belakang mencari '.', sehingga `1e5. / 2`
-     * jadi token `1e5` + '.' dan '/' sesudahnya menelan komentar `//` (CI merah
-     * palsu) — kelas sunyi sejak review #199 karena loop `literal angka adalah
-     * operand` hanya menguji `1e5 / 2` TANPA titik trailing.
-     *
      * Pengecualian `.test(` (sisa review #208): saat `..` diikuti tepat `test(`
      * titik KEDUA sengaja ditinggalkan — kalau tidak, `i` mendarat di `test`
      * (bukan di `.test(`) sehingga dispatch `walk` tak pernah cocok dan
      * argumennya hilang TANPA JEJAK (`testInputs('1..test(a + b)')` → `[]`).
      * `code` tetap verbatim: `1.` + `.test(` = `1..test(`. */
+    /** SATU aturan titik untuk posisi PRA- dan SESUDAH-eksponen (sisa review
+     * #209): aturan fraksional/trailing-dot dulu ditulis DUA kali — salinan
+     * sesudah-eksponen bisa menyimpang tanpa terdeteksi, dan justru itu yang
+     * membuat lubang `1e5. / 2` (#208) lahir sunyi sejak #199. Mengembalikan
+     * posisi `j` baru; tidak mengubah `i`/keluaran. Tiga bentuk:
+     *   - `..` (akses member): `1..toString()` = angka + titik-akses sebagai
+     *     SATU token operand. KECUALI `..test(`: titik kedua dilepas supaya
+     *     dispatch `.test(` di walk cocok (kalau `..` utuh ikut token, `i`
+     *     mendarat di `test` dan argumennya hilang TANPA JEJAK). Ambang
+     *     `j += 1` vs `j += 2` adalah SBU. Berlaku SAMA di kedua posisi:
+     *     `1e5.. / 2` dulu TIDAK dikonsumsi token, kedua titik jatuh ke loop
+     *     simbol yang mengeset operand-selesai=false, '/' sesudahnya dibaca
+     *     pembuka regex yang menelan slash pertama `//` — teks komentar
+     *     BERTAHAN di `code` (keluaran byte-identik dengan input). Kelas "CI
+     *     merah palsu" yang dijaga berkas ini, padahal pra-eksponen
+     *     `1.. / 2` sudah benar membuangnya.
+     *   - `.5` fraksional lanjutan: ikut token (`2.5`, `1e5.5`) — bukan
+     *     `2.` + `5` yang terpisah.
+     *   - `.` trailing yang SAH (`1. / 2`, `1.;`, `1e5.;`): ikut token — tanpa
+     *     itu token berhenti sebelum '.' dan '/' sesudahnya menelan komentar
+     *     `//` (CI merah palsu, sisa review #199/#208). */
+    const readDotSuffix = (j: number): number => {
+      if (src.charAt(j) !== '.') return j;
+      if (src.charAt(j + 1) === '.') {
+        return j + (src.startsWith('test(', j + 2) ? 1 : 2);
+      }
+      if (/[0-9]/.test(src.charAt(j + 1))) {
+        j += 1;
+        while (j < n && /[\d_]/.test(src.charAt(j))) j += 1;
+        return j;
+      }
+      if (!/[A-Za-z_$]/.test(src.charAt(j + 1))) return j + 1;
+      return j;
+    };
+
     const readNumber = (): void => {
       let j = i;
       if (src.charAt(j) === '.') j += 1; // bentuk .5
       while (j < n && /[\d_]/.test(src.charAt(j))) j += 1;
-      if (src.charAt(j) === '.' && src.charAt(j + 1) === '.') {
-        // `1..toString()`: angka + titik akses member = satu token operand —
-        // KECUALI `..test(`: titik kedua dilepas untuk dispatch `.test(` di walk
-        // (lihat catatan di atas). Ambang `j += 1` vs `j += 2` adalah SBU.
-        j += src.startsWith('test(', j + 2) ? 1 : 2;
-      } else if (src.charAt(j) === '.' && /[0-9]/.test(src.charAt(j + 1))) {
-        j += 1;
-        while (j < n && /[\d_]/.test(src.charAt(j))) j += 1;
-      } else if (
-        src.charAt(j) === '.' &&
-        src.charAt(j + 1) !== '.' &&
-        !/[A-Za-z_$]/.test(src.charAt(j + 1))
-      ) {
-        // Bentuk JS yang SAH: `.` trailling (`1. / 2`, `1.;`). Tanpa cabang ini
-        // token jadi `1` + `.` dan '.' mengeset operand-selesai=false sehingga
-        // '/' sesudahnya dibaca pembuka regex yang menelan komentar `//` di span
-        // itu (CI merah palsu, sisa review #199). Bentuk `1..` TIDAK masuk sini —
-        // titik keduanya sudah dikonsumsi di cabang pertama di atas.
-        j += 1;
-      }
+      j = readDotSuffix(j);
       if (/[eE]/.test(src.charAt(j))) {
         // Eksponen: tanda WAJIB diikuti digit — `j += 2` buta dulu menelan
         // tanda literal rusak (`1e-`, `1e+`) ke dalam token angka (sisa review
@@ -336,22 +344,16 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
         j += hasSign ? 2 : 1;
         while (j < n && /[\d_]/.test(src.charAt(j))) j += 1;
       }
-      // Titik trailing SESUDAH eksponen (`1e5. / 2`, `1e5.;`) — syarat SAMA
-      // seperti cabang pra-eksponen di atas (sisa review #208). Tanpa cabang ini
-      // token berhenti di `.` sehingga '.' jatuh ke loop simbol: operand-selesai
-      // jadi false, '/' sesudahnya memenuhi `regexAhead()`, dan komentar `//` di
-      // span itu terbaca sebagai KODE (CI merah palsu). Bentuk `1e5..toString()`
-      // TIDAK masuk sini (titik keduanya = akses member, ditangani loop simbol
-      // seperti sebelum review ini) dan fraksional lanjutan `1e5.5` tetap satu
-      // token — bukan `1e5.` + `5` yang terpisah.
-      if (src.charAt(j) === '.' && src.charAt(j + 1) !== '.') {
-        if (/[0-9]/.test(src.charAt(j + 1))) {
-          j += 1;
-          while (j < n && /[\d_]/.test(src.charAt(j))) j += 1;
-        } else if (!/[A-Za-z_$]/.test(src.charAt(j + 1))) {
-          j += 1;
-        }
-      }
+      // Titik SESUDAH eksponen — aturan SAMA dengan pra-eksponen lewat helper
+      // bersama `readDotSuffix` (sisa review #209): `1e5. / 2` dan `1e5.;`
+      // trailing-dot, `1e5.5` fraksional, dan `1e5..toString()`/`1e5.. / 2`
+      // akses member — satu salinan aturan, tak bisa menyimpang. Tanpa
+      // konsumsi titik di sini token berhenti sebelum '.', '.' jatuh ke loop
+      // simbol: operand-selesai jadi false, '/' sesudahnya memenuhi
+      // `regexAhead()`, dan komentar `//` di span itu terbaca sebagai KODE
+      // (CI merah palsu) — kelas sunyi sejak review #199 karena loop
+      // `literal angka adalah operand` hanya menguji `1e5 / 2` TANPA titik.
+      j = readDotSuffix(j);
       code.push(src.slice(i, j));
       prevWord = '';
       prevIsOperand = true;
@@ -749,6 +751,9 @@ const y = i++ / 2;
     // tak pernah dikonsumsi token (cabang pra-eksponen menguji posisi `j` yang
     // masih menunjuk `e`), jadi `1e5` + '.' + '/' → regex → komentar tertelan.
     // Bentuk ini lolos vakum selama loop hanya berisi `1e5 / 2` tanpa titik.
+    // Entri `1e5.. / 2` (sisa review #209): `..` sesudah eksponen juga ikut
+    // token terkonsolidasi (helper bersama) — tanpa itu kedua titik jatuh ke
+    // loop simbol dan komentar ekornya BERTAHAN di `code`.
     for (const [src, code] of [
       ['const x = 10 / 2;', '10 / 2'],
       ['const v = -1 / 2;', '-1 / 2'],
@@ -756,6 +761,7 @@ const y = i++ / 2;
       ['const f = 1e5 / 2;', '1e5 / 2'],
       ['const g = .5 / 2;', '.5 / 2'],
       ['const w = 1e5. / 2;', '1e5. / 2'],
+      ['const x2 = 1e5.. / 2;', '1e5.. / 2'],
     ] as const) {
       const out = scanSource(`${src}\n// komentar PGRST116 wajib dibuang`);
       expect(out.code, `${src} wajib memuat teks utuh`).toContain(code);
@@ -836,6 +842,23 @@ const y = i++ / 2;
     const trailingDotSemi = scanSource('const h = 1.;\n// komentar 0 rows wajib dibuang');
     expect(trailingDotSemi.code).toContain('1.;');
     expect(trailingDotSemi.code).not.toContain('komentar');
+    // Bentuk SESUDAH eksponen yang dulu hanya DIDOKUMENTASIKAN di komentar
+    // `readNumber` tanpa assertion — klaim dokumentasi tanpa assertion = jaga
+    // palsu (pelajaran sisa review #199). Ketiganya kini TERAMATI (sisa review
+    // #209): `1e5.;` trailing-dot, `1e5.5` fraksional lanjutan SATU token (bukan
+    // `1e5.` + `5` yang terpisah — kalau terpecah, '.' jatuh ke loop simbol dan
+    // '/' sesudahnya menelan komentar), `1e5..toString()` akses member.
+    const expTrailingSemi = scanSource('const i3 = 1e5.;\n// komentar 0 rows wajib dibuang');
+    expect(expTrailingSemi.code).toContain('1e5.;');
+    expect(expTrailingSemi.code).not.toContain('komentar');
+    const expFraction = scanSource('const j3 = 1e5.5 / 2;\n// komentar PGRST116 wajib dibuang');
+    expect(expFraction.code).toContain('1e5.5 / 2');
+    expect(expFraction.code).not.toContain('komentar');
+    const expMember = scanSource(
+      'const k3 = 1e5..toString() / 2;\n// komentar 0 rows wajib dibuang'
+    );
+    expect(expMember.code).toContain('1e5..toString() / 2');
+    expect(expMember.code).not.toContain('komentar');
   });
 
   it('scanSource: akses member literal angka — guard bisa gagal (sisa review #203)', () => {
@@ -902,6 +925,31 @@ const y = i++ / 2;
     // Kontrol anti-vakum: `code` tetap VERBATIM (`1.` + `.test(` = `1..test(`),
     // jadi capture argumen tidak menimpa teks kode.
     expect(codeOnly(numReceiver)).toContain('1..test(msg + code)');
+
+    // `..` SESUDAH eksponen (sisa review #209). Review #209 mengklaim
+    // `1e5..test(msg + code)` → `[]` karena pengecualian `test(` "hanya
+    // mencakup posisi pra-eksponen" — KLAIM ITU SALAH: helper bersama kini
+    // memberi perilaku SAMA di kedua posisi, dan bahkan SEBELUM helper, bentuk
+    // itu sudah tertangkap (titik pertama jatuh ke loop simbol, titik KEDUA
+    // mendarat tepat di dispatch `.test(`). Yang NYATA dan sebelumnya TAK
+    // teramati assertion mana pun: `..` sesudah eksponen dulu TIDAK dikonsumsi
+    // token, jadi `1e5.. / 2` + komentar ekor → kedua titik jatuh ke loop
+    // simbol (operand-selesai=false), '/' dibaca pembuka regex yang menelan
+    // slash pertama `//` — teks komentar BERTAHAN di `code` (keluaran
+    // byte-identik dengan input). Padahal pra-eksponen `1.. /* blok */ / 2` di
+    // atas sudah benar membuang komentarnya: asimetri kelas "CI merah palsu"
+    // yang dijaga berkas ini. Dengan helper bersama, `1e5..` SATU token → '/'
+    // PEMBAGIAN → komentar dibuang.
+    const expMemberDiv = scanSource('const m2 = 1e5.. / 2;\n// komentar 0 rows wajib dibuang');
+    expect(expMemberDiv.code).toContain('1e5.. / 2');
+    expect(expMemberDiv.code).not.toContain('komentar');
+    // Bentuk `.test(` sesudah eksponen terkunci eksplisit (jawaban atas klaim
+    // review #209): argumen WAJIB tertangkap, `code` verbatim. FAIL-CAPABLE:
+    // pengecualian `test(` dijadikan konsumsi penuh (`j += 2`) → `i` mendarat
+    // di `test`, dispatch `.test(` tak pernah cocok, argumen hilang TANPA JEJAK.
+    const expNumReceiver = 'const r2 = 1e5..test(msg + code);';
+    expect(testInputs(expNumReceiver)).toEqual(['msg + code']);
+    expect(codeOnly(expNumReceiver)).toContain('1e5..test(msg + code)');
   });
 });
 
