@@ -104,7 +104,15 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
    * SATU lintasan (`walk`) menggantikan dua loop terpisah yang dulu bisa
    * menyimpang tanpa terdeteksi (sisa review #190); konteks '/' berbasis
    * operand-lengkap (bukan daftar simbol) menutup kelas salah-baca
-   * `obj.new / 2` dan `i++ / 2` (sisa review #190). */
+   * `obj.new / 2` dan `i++ / 2` (sisa review #190).
+   *
+   * Generasi #192 (sisa review #192): literal NUMERIK juga operand-lengkap di
+   * `walk` (tanpa itu `100 / total` membuat `copyRegex()` menelan sisa berkas:
+   * komentar tak dibuang + argumen `.test()` sesudahnya hilang), dan
+   * `dynamicTestInput` memakai penanda operand-lengkap terpisah
+   * (`lastIsOperand`) supaya string/template/regex literal ikut menyelesaikan
+   * ekspresi — dulu `last` = karakter kutip/`/` di luar himpunan operand,
+   * sehingga '/' sesudahnya jadi pembuka regex palsu yang menelan '+'/','. */
   type Scan = { code: string; testArgs: string[] };
 
   /** '/' MEMBUKA regex literal ketika ekspresi SEBELUMNYA belum lengkap —
@@ -305,12 +313,20 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
         code.push(ch);
         i += 1;
         if (!/\s/.test(ch)) {
-          // Konteks '/' berikutnya: `)`, `]`, dan `++`/`--` (dua simbol sama
-          // berurutan) MENYELESAIKAN ekspresi — '/' setelahnya pembagian;
-          // operator/pemisah lain menuntut operand — '/' setelahnya regex.
+          // Konteks '/' berikutnya: `)`, `]`, ANGKA (literal numerik), dan
+          // `++`/`--` (dua simbol sama berurutan) MENYELESAIKAN ekspresi —
+          // '/' setelahnya pembagian; operator/pemisah lain menuntut operand —
+          // '/' setelahnya regex. Angka juga mereset konteks keyword supaya
+          // `return 10 / 2` tetap pembagian, bukan pembuka regex (sisa review
+          // #192: tanpa cabang angka, `100 / total` membuat copyRegex()
+          // menelan sisa berkas — komentar tak dibuang + argumen .test()
+          // sesudahnya hilang).
           if (ch === ')' || ch === ']') prevIsOperand = true;
           else if ((ch === '+' || ch === '-') && src.charAt(i - 2) === ch) prevIsOperand = true;
-          else prevIsOperand = false;
+          else if (/[0-9]/.test(ch)) {
+            prevIsOperand = true;
+            prevWord = '';
+          } else prevIsOperand = false;
         }
       }
       return false; // EOF tanpa penutup (hanya relevan untuk konteks ekspresi)
@@ -355,14 +371,22 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
   const dynamicTestInput = (input: string): boolean => {
     let i = 0;
     const n = input.length;
-    let last = ''; // karakter non-spasi terakhir: regex-literal vs pembagian
+    // Ekspresi terakhir sudah LENGKAP (operand: identifier/angka/`)`/`]`/
+    // string/template/regex literal) → '/' = PEMBAGIAN; belum lengkap →
+    // '/' = pembuka regex. String & regex literal WAJIB termasuk operand-
+    // lengkap: pemindai #190/#192 memakai karakter terakhir (`last`) yang
+    // untuk string jadi karakter kutip dan untuk regex jadi '/' — keduanya di
+    // luar himpunan operand, sehingga '/' sesudahnya dibaca pembuka regex
+    // palsu yang badannya jalan sampai EOF menelan '+'/',' sesudahnya:
+    // konkatenasi dinamis LOLOS deteksi (sisa review #192).
+    let lastIsOperand = false;
     while (i < n) {
       const c = input.charAt(i);
       if (c === "'" || c === '"') {
         i += 1;
         while (i < n && input.charAt(i) !== c) i += input.charAt(i) === '\\' ? 2 : 1;
         i += 1;
-        last = c;
+        lastIsOperand = true; // string literal menyelesaikan ekspresi
         continue;
       }
       if (c === '`') {
@@ -376,10 +400,10 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
           i += 1;
         }
         i += 1;
-        last = '`';
+        lastIsOperand = true; // template literal menyelesaikan ekspresi
         continue;
       }
-      if (c === '/' && !/[A-Za-z0-9_$)\]`]/.test(last)) {
+      if (c === '/' && !lastIsOperand) {
         // Konteks operand → regex literal: lewati badannya (escape & class aware).
         i += 1;
         let inClass = false;
@@ -394,12 +418,12 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
           else if (r === ']') inClass = false;
           else if (r === '/' && !inClass) break;
         }
-        last = '/';
+        lastIsOperand = true; // regex literal menyelesaikan ekspresi
         continue;
       }
       if (c === '+' || c === ',') return true; // konkatenasi / pemisah argumen
       i += 1;
-      if (!/\s/.test(c)) last = c;
+      if (!/\s/.test(c)) lastIsOperand = /[A-Za-z0-9_$)\]`]/.test(c);
     }
     return false;
   };
@@ -609,6 +633,49 @@ const y = i++ / 2;
     expect(args.length).toBe(1);
     expect(args[0]).toBe('msg + code');
     expect(dynamicTestInput(args[0] ?? '')).toBe(true);
+  });
+
+  it('scanSource: literal numerik operand-lengkap — pembagian tak tertelan jadi regex (sisa review #192)', () => {
+    // `100 / total`: versi #192 tak menganggap angka operand → '/' dibaca
+    // pembuka regex, copyRegex() menelan sisa berkas — komentar sesudahnya
+    // TIDAK dibuang (CI merah palsu).
+    const div = `const rata = 100 / total;
+// komentar PGRST116 wajib dibuang`;
+    const outDiv = scanSource(div);
+    expect(outDiv.code).not.toContain('komentar');
+    expect(outDiv.code).toContain('100 / total');
+    // Argumen `.test()` sesudah baris pembagian numerik tak boleh tertelan:
+    // versi #192 menelannya habis (testArgs kosong) → guard dinamis di loop
+    // SITES jadi vakum, regex dinamis dari field error bisa lolos.
+    const swallowed = `const x = 10 / 2;
+re.test(msg + code);`;
+    const outArgs = testInputs(swallowed);
+    expect(outArgs.length).toBe(1);
+    expect(outArgs[0]).toBe('msg + code');
+    // Keyword sebelum angka TIDAK lagi membuka regex setelah angka: angka
+    // mereset konteks keyword sehingga `return 10 / 2` tetap pembagian.
+    const ret = `function f() {
+  return 10 / 2;
+  // komentar 0 rows wajib dibuang
+}`;
+    const outRet = scanSource(ret);
+    expect(outRet.code).not.toContain('komentar');
+    expect(outRet.code).toContain('return 10 / 2');
+  });
+
+  it('dynamicTestInput: string & regex literal operand-lengkap (sisa review #192)', () => {
+    // '/' setelah string literal = PEMBAGIAN: '+' sesudahnya wajib tertangkap.
+    // Versi #192: last jadi karakter kutip (di luar himpunan operand) → '/'
+    // dibaca pembuka regex, badan regex palsu jalan sampai EOF menelan '+'
+    // — konkatenasi dinamis lolos deteksi.
+    expect(dynamicTestInput("'406' / 2 + code")).toBe(true);
+    // '/' langsung setelah regex literal bukan pembuka regex baru — '+' sesudah-
+    // nya wajib terlihat (last = '/' juga di luar himpunan operand versi #192).
+    expect(dynamicTestInput('/a//+code')).toBe(true);
+    // Tetap benar: pembagian sesudah string/regex BUKAN konstruksi dinamis.
+    expect(dynamicTestInput("'konstanta' / 2")).toBe(false);
+    expect(dynamicTestInput('x / 2')).toBe(false);
+    expect(dynamicTestInput('/\\d+/ / 2')).toBe(false);
   });
 });
 
