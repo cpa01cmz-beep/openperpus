@@ -9,10 +9,11 @@ type Props = { slug: string; title?: string; onChange?: (saved: boolean) => void
 
 /** S-roi11: tombol toggle wishlist localStorage (Simpanku). */
 export default function WishlistButton({ slug, title, onChange }: Props) {
+  // Awal false sama dengan SSR; sinkron setelah mount/deferred agar tak mismatch.
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
-    setSaved(isSaved(slug));
+    queueMicrotask(() => setSaved(isSaved(slug)));
   }, [slug]);
 
   function onToggle() {

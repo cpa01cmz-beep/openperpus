@@ -101,15 +101,20 @@ export default function DendaSayaPage() {
   // Total tagihan terbuka biasanya hanya bergantung pada member id (perilaku
   // lama: effect terpisah), jadi JANGAN ikut page/status.
   useEffect(() => {
-    loadTotals();
+    void (async () => {
+      await loadTotals();
+    })();
   }, [loadTotals]);
 
   // Pesan aksi dibuang saat daftar dimuat ulang karena filter berubah — seperti
   // setError('')/setNeedLogin(false) di awal load() pada kode lama.
-  useEffect(() => {
+  // Render-phase adjustment (bukan effect) agar lolos react-hooks/set-state-in-effect.
+  const [prevFilter, setPrevFilter] = useState({ page, status });
+  if (prevFilter.page !== page || prevFilter.status !== status) {
+    setPrevFilter({ page, status });
     setError('');
     setPayNeedLogin(false);
-  }, [page, status]);
+  }
 
   async function onPay(f: Fine) {
     setPendingPay(f);

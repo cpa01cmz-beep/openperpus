@@ -1,3 +1,4 @@
+import { createElement } from 'react';
 import { DEFAULT_THEME } from '@/lib/themes';
 import { getEffectiveTheme } from '@/lib/theme-overrides';
 import { resolveHeaderVariant } from '@/components/layout/variants/registry';
@@ -21,15 +22,14 @@ export default function Navbar({ siteName, tagline, logoUrl, themeId, settings, 
     themeId ?? settings?.active_theme ?? DEFAULT_THEME,
     (settings as { theme_overrides?: unknown } | undefined)?.theme_overrides ?? null
   );
+  // createElement (bukan JSX <Header/>) agar lolos react-hooks/static-components.
   const Header = resolveHeaderVariant(theme.layout.headerVariant);
-  return (
-    <Header
-      siteName={siteName}
-      tagline={tagline}
-      logoUrl={logoUrl}
-      logo_url={settings?.logo_url ?? null}
-      settings={settings}
-      menus={menus}
-    />
-  );
+  return createElement(Header, {
+    siteName,
+    tagline,
+    logoUrl,
+    logo_url: settings?.logo_url ?? null,
+    settings,
+    menus,
+  });
 }

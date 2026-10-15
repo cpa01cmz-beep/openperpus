@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import Button from '@/components/ui/Button';
 import Pagination from '@/components/ui/Pagination';
 import { useAdminList } from '@/hooks/useAdminList';
@@ -84,21 +84,28 @@ export default function KontenPage() {
   ].filter((x) => x.msg !== '');
   const totalPages = Math.max(pagesList.totalPages, faqsList.totalPages, testisList.totalPages);
 
+  const { reload: reloadPages } = pagesList;
+  const { reload: reloadFaqs } = faqsList;
+  const { reload: reloadTestis } = testisList;
+
   // Muat ulang ketiga tab sekaligus (dipakai setelah aksi tambah/ubah/hapus).
   const load = useCallback(() => {
-    pagesList.reload();
-    faqsList.reload();
-    testisList.reload();
+    reloadPages();
+    reloadFaqs();
+    reloadTestis();
     // Muat ulang yang sukses membuat banner 404 per-tab bisa hilang lagi —
     // meniru setMissing({...}) yang dulu dihitung ulang tiap load().
     setTabMissing({});
     setActionError('');
-  }, [pagesList.reload, faqsList.reload, testisList.reload]);
+  }, [reloadPages, reloadFaqs, reloadTestis]);
 
   // Berganti halaman juga memuat ulang daftar: buang pesan aksi lama.
-  useEffect(() => {
+  // Render-phase adjustment (bukan effect) agar lolos react-hooks/set-state-in-effect.
+  const [prevPage, setPrevPage] = useState(page);
+  if (prevPage !== page) {
+    setPrevPage(page);
     setActionError('');
-  }, [page]);
+  }
 
   const handleAdd = useCallback(
     (kind: Tab, body: Record<string, unknown>) =>

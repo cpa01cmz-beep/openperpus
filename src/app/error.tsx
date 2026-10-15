@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { House, RotateCcw, TriangleAlert, WifiOff, Loader2 } from 'lucide-react';
 import { captureException } from '@/lib/observability';
+import { useIsOnline } from '@/hooks/useIsOnline';
 
 const BASE_RETRY_DELAY = 1000;
 const MAX_RETRIES = 3;
@@ -15,22 +16,12 @@ export interface ErrorPageProps {
 
 /** Error boundary elegan: pesan generik + tombol coba lagi + retry backoff + offline awareness. */
 export default function ErrorPage({ error, reset }: ErrorPageProps) {
-  const [isOnline, setIsOnline] = useState(true);
+  // Jaringan dibaca dari navigator.onLine lewat useIsOnline(): satu sumber,
+  // snapshot server true (aman hidrasi), tanpa setState/queueMicrotask di effect.
+  const isOnline = useIsOnline();
   const [retryCount, setRetryCount] = useState(0);
   const [isRetrying, setIsRetrying] = useState(false);
   const [nextRetryIn, setNextRetryIn] = useState(0);
-
-  useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-    setIsOnline(typeof navigator !== 'undefined' ? navigator.onLine : true);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
 
   useEffect(() => {
     const requestId = error.digest ?? error.requestId ?? 'unknown';

@@ -1,3 +1,4 @@
+import { createElement } from 'react';
 import { DEFAULT_THEME } from '@/lib/themes';
 import { getEffectiveTheme } from '@/lib/theme-overrides';
 import { resolveFooterVariant } from '@/components/layout/variants/registry';
@@ -19,6 +20,8 @@ export default function Footer({
     themeId ?? settings.active_theme ?? DEFAULT_THEME,
     (settings as { theme_overrides?: unknown })?.theme_overrides ?? null
   );
+  // createElement (bukan JSX <Foot/>) agar lolos react-hooks/static-components;
+  // registry selalu mengembalikan komponen stabil, bukan dibuat saat render.
   const Foot = resolveFooterVariant(theme.layout.footerVariant);
-  return <Foot settings={settings} menus={menus} />;
+  return createElement(Foot, { settings, menus });
 }

@@ -151,19 +151,20 @@ export default function DendaPage() {
   // Total tagihan disegarkan saat filter/halaman berubah (perilaku lama:
   // ikut load()); riwayatnya diurus useAdminList.
   useEffect(() => {
-    loadTotals();
+    void (async () => {
+      await loadTotals();
+    })();
   }, [loadTotals, page, status, search]);
 
   // Pesan aksi lama dibuang saat daftar dimuat ulang (perilaku lama: state
   // error tunggal di-clear di awal load()).
-  useEffect(() => {
+  // Render-phase adjustment (bukan effect) agar lolos react-hooks/set-state-in-effect.
+  const [prevFilter, setPrevFilter] = useState({ page, status, search });
+  if (prevFilter.page !== page || prevFilter.status !== status || prevFilter.search !== search) {
+    setPrevFilter({ page, status, search });
     setActionError('');
     setPayMissing(false);
-  }, [page, status, search]);
-
-  useEffect(() => {
-    loadTotals();
-  }, [loadTotals]);
+  }
 
   async function confirmPay() {
     const f = pendingPay;

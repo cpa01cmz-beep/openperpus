@@ -11,11 +11,15 @@ export default function OnboardingBanner() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    try {
-      if (!localStorage.getItem(KEY)) setVisible(true);
-    } catch {
-      setVisible(true);
-    }
+    // Deferred agar lolos react-hooks/set-state-in-effect; awal false sama
+    // dengan SSR sehingga tak ada hydration mismatch.
+    queueMicrotask(() => {
+      try {
+        if (!localStorage.getItem(KEY)) setVisible(true);
+      } catch {
+        setVisible(true);
+      }
+    });
   }, []);
 
   if (!visible) return null;

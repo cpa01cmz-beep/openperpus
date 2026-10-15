@@ -18,10 +18,13 @@ export default function SearchBar({ value, onChange, placeholder, id = 'cari-buk
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const deferredValue = useDeferredValue(localValue);
 
-  // Sync local value with prop value (when controlled externally)
-  useEffect(() => {
+  // Sync local value with prop value (when controlled externally) via
+  // render-phase adjustment agar lolos react-hooks/set-state-in-effect.
+  const [prevValue, setPrevValue] = useState(value);
+  if (prevValue !== value) {
+    setPrevValue(value);
     setLocalValue(value);
-  }, [value]);
+  }
 
   // Debounced onChange callback
   const handleChange = useCallback(

@@ -300,9 +300,8 @@ describe('#59 review fixes (UploadInput crash + peminjaman PUT/options)', () => 
   });
 
   it('review#2: loadOptions gagal -> optionsError tampil, tak dianggap loaded', async () => {
-    fetchMock.mockImplementation(async (input: unknown, init?: RequestInit) => {
+    fetchMock.mockImplementation(async (input: unknown) => {
       const url = String(input);
-      const method = (init?.method ?? 'GET').toUpperCase();
       if (url.includes('/api/settings')) return jsonResponse(200, { data: { fine_per_day: 1000 } });
       if (url.includes('/api/members'))
         return jsonResponse(500, { error: { message: 'Members down.' } });

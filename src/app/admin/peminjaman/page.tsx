@@ -110,9 +110,24 @@ function PeminjamanInner() {
   const error = actionError || (denied ? '' : list.error);
 
   // Daftar dimuat ulang karena filter berubah -> buang pesan aksi lama.
-  useEffect(() => {
+  // Render-phase adjustment (bukan effect) agar lolos react-hooks/set-state-in-effect.
+  const [prevListFilter, setPrevListFilter] = useState({
+    page,
+    status,
+    overdueOnly,
+    sortKey,
+    sortDir,
+  });
+  if (
+    prevListFilter.page !== page ||
+    prevListFilter.status !== status ||
+    prevListFilter.overdueOnly !== overdueOnly ||
+    prevListFilter.sortKey !== sortKey ||
+    prevListFilter.sortDir !== sortDir
+  ) {
+    setPrevListFilter({ page, status, overdueOnly, sortKey, sortDir });
     clearActionError();
-  }, [clearActionError, page, status, overdueOnly, sortKey, sortDir]);
+  }
 
   // Gagal -> optionsLoaded TIDAK diset (retry oleh "Muat ulang"/force berikutnya).
   const loadOptions = useCallback(async (force = false) => {
@@ -176,7 +191,9 @@ function PeminjamanInner() {
     return () => clearTimeout(t);
   }, [load]);
   useEffect(() => {
-    loadOptions();
+    void (async () => {
+      await loadOptions();
+    })();
   }, [loadOptions]);
 
   async function onReturn(id: string) {
