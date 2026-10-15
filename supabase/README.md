@@ -84,7 +84,7 @@ supabase migration list
 > ini tetap valid sebagai SQL biasa; bila `db push` menolak prefix numerik,
 > rename sekali saja, mis.:
 > `0001_core.sql → 20260917000001_core.sql` (dst. `...02` s/d `...09`,
-> `...11` s/d `...36` — lewati 0010, tidak dipakai)
+> `...11` s/d `...37` — lewati 0010, tidak dipakai)
 > tanpa mengubah isi.
 
 ### Opsi B — psql langsung (tanpa CLI)
