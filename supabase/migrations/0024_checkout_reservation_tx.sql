@@ -192,8 +192,7 @@ BEGIN
 
   UPDATE public.books
      SET stock_available = stock_available - 1
-   WHERE id = v_res.book_id AND stock_available > 0;
-  IF NOT FOUND THEN RAISE EXCEPTION 'Stok buku habis.' USING ERRCODE = '25000'; END IF;
+   WHERE id = v_res.book_id;
 
   UPDATE public.reservations
      SET status = 'completed', loan_id = v_loan.id

@@ -235,6 +235,61 @@ describe('migrasi 0024_checkout_reservation_tx.sql — kontrak SQL', () => {
   });
 });
 
+// Review #236: 0024 SUDAH pernah dijalankan di lingkungan ter-deploy, jadi
+// edit pada file itu tidak akan dieksekusi ulang oleh `supabase db push`.
+// Fix stok kondisional karena itu WAJIB hidup di migrasi baru lewat
+// CREATE OR REPLACE (pola 0033 untuk 0032) — kontraknya dikunci di sini
+// terhadap file yang benar-benar mengantarnya, bukan 0024.
+describe('migrasi 0037_reapply_checkout_stock_guard.sql — kontrak anti-race', () => {
+  const sql = readFileSync(
+    join(process.cwd(), 'supabase/migrations/0037_reapply_checkout_stock_guard.sql'),
+    'utf8'
+  );
+  const low = sql.toLowerCase();
+
+  it('memakai CREATE OR REPLACE (bukan edit 0024) agar DB lama ikut menerima', () => {
+    expect(low).toContain('create or replace function public.checkout_reservation_tx');
+    // 0024 tetap utuh sebagai riwayat — guard tidak boleh ditambahkan di sana,
+    // karena file itu sudah terapply dan tak akan dieksekusi ulang.
+    const applied = readFileSync(
+      join(process.cwd(), 'supabase/migrations/0024_checkout_reservation_tx.sql'),
+      'utf8'
+    );
+    expect(applied).not.toContain('stock_available > 0');
+    expect(applied).not.toContain("IF NOT FOUND THEN RAISE EXCEPTION 'Stok buku habis.'");
+  });
+
+  it('decrement stok kondisional + gagal 25000 saat habis (anti race)', () => {
+    expect(low).toContain('where id = v_res.book_id and stock_available > 0');
+    expect(low).toContain(
+      "if not found then raise exception 'stok buku habis.' using errcode = '25000'"
+    );
+  });
+
+  it('signature + grant tidak berubah (aman menggantikan 0024)', () => {
+    expect(low).toContain(
+      'revoke all on function public.checkout_reservation_tx(uuid, timestamptz, timestamptz, text) from anon, public'
+    );
+    expect(low).toContain(
+      'grant execute on function public.checkout_reservation_tx(uuid, timestamptz, timestamptz, text) to authenticated'
+    );
+    expect(low).toContain('security definer');
+    expect(low).toContain('set search_path = public');
+  });
+
+  it('invariant lain 0024 dipertahankan (tidak ada regresi saat replace)', () => {
+    for (const s of [
+      "v_res.status <> 'ready'",
+      "'25006'",
+      "v_res.status = 'completed' and v_res.loan_id is not null",
+      "'idempotent', true",
+      'for update',
+    ]) {
+      expect(low, `0037 harus mempertahankan invariant: ${s}`).toContain(s);
+    }
+  });
+});
+
 describe('UI admin — tombol Selesaikan tanpa loan dihapus', () => {
   it('halaman reservasi tak lagi menawarkan aksi completed langsung', () => {
     const src = readFileSync(join(process.cwd(), 'src/app/admin/reservasi/page.tsx'), 'utf8');

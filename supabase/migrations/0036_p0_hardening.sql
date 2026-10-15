@@ -1,9 +1,15 @@
 -- ============================================================================
 -- 0036_p0_hardening.sql — P0 DB hardening (non-destruktif, aditif)
--- Isi: STABLE helper + indeks FK + atomic decrement docs (non-concurrent
---   agar aman dalam transaksi migrasi).
+-- Isi: STABLE helper + indeks FK + penanda docstring decrement stok
+--   (non-concurrent agar aman dalam transaksi migrasi).
+-- CATATAN: perbaikan decrement stok kondisional checkout_reservation_tx
+--   TIDAK diterapkan di sini. 0024 sudah pernah jalan di lingkungan
+--   ter-deploy, jadi editnya tak akan dieksekusi ulang. Implementasinya
+--   ada di 0037_reapply_checkout_stock_guard.sql (CREATE OR REPLACE —
+-- pola sama dengan 0033 untuk 0032).
 -- Rollback: DROP INDEX IF EXISTS <nama_idx>; ALTER FUNCTION ... VOLATILE
---   (kembalikan default); COMMENT ON FUNCTION ... IS NULL.
+--   (kembalikan default); COMMENT ON FUNCTION ... IS NULL;
+--   DROP INDEX/undo 0037 lihat komentar rollback di 0037.
 -- ============================================================================
 
 -- 1. Helper RLS: tandai STABLE agar planner bisa inline/cache per-statement
@@ -18,11 +24,8 @@ CREATE INDEX IF NOT EXISTS idx_fine_waivers_requested_by ON public.fine_waivers 
 CREATE INDEX IF NOT EXISTS idx_fine_waivers_fine_status ON public.fine_waivers (fine_id, status);
 CREATE INDEX IF NOT EXISTS idx_loans_member_status ON public.loans (member_id, status);
 
--- 3. Perbaiki race checkout_reservation_tx: decrement kondisional.
---    File ini SENGAJA tidak me-rewrite fungsi (review kecil); pola benar
---    didokumentasikan sebagai COMMENT + diterapkan di 0024 baris 193-195:
---      UPDATE public.books SET stock_available = stock_available - 1
---        WHERE id = v_res.book_id AND stock_available > 0;
---      IF NOT FOUND THEN RAISE EXCEPTION 'Stok buku habis.'
---        USING ERRCODE = '25000'; END IF;
-COMMENT ON FUNCTION public.checkout_reservation_tx(uuid, timestamptz, timestamptz, text) IS 'P0: decrement stok WAJIB kondisional WHERE stock_available>0 + IF NOT FOUND RAISE 25000; lihat 0005_checkout.sql pola benar.';
+-- 3. Docstring penanda untuk race decrement stok checkout_reservation_tx.
+--    Perbaikan NYATA ada di 0037_reapply_checkout_stock_guard.sql (file
+--    terApply CREATE OR REPLACE, agar DB yang sudah menjalankan 0024 ikut
+--    menerima). COMMENT ini hanya jejak dokumentasi di katalog DB.
+COMMENT ON FUNCTION public.checkout_reservation_tx(uuid, timestamptz, timestamptz, text) IS 'P0: decrement stok WAJIB kondisional WHERE stock_available>0 + IF NOT FOUND RAISE 25000; lihat 0005_checkout.sql pola benar & 0037_reapply_checkout_stock_guard.sql implementasinya.';
