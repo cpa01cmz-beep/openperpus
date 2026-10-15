@@ -13,14 +13,14 @@ export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElemen
 
 const variantClass: Record<Variant, string> = {
   primary:
-    'bg-brand text-white shadow-sm hover:bg-brand active:bg-brand-strong disabled:bg-slate-200',
+    'bg-brand text-surface shadow-[var(--shadow-sm)] hover:bg-brand active:bg-brand-strong disabled:bg-[var(--ink)]/10',
   amber:
-    'bg-accent text-brand-strong shadow-sm hover:bg-accent active:bg-accent disabled:bg-slate-200',
+    'bg-accent text-brand-strong shadow-[var(--shadow-sm)] hover:bg-accent active:bg-accent disabled:bg-[var(--ink)]/10',
   outline:
-    'border border-brand/30 bg-white text-brand hover:border-brand hover:bg-brand-soft disabled:border-slate-200',
-  ghost: 'bg-transparent text-brand hover:bg-brand-soft disabled:text-slate-400',
+    'border border-brand/30 bg-surface text-brand hover:border-brand hover:bg-brand-soft disabled:border-[var(--ink)]/10',
+  ghost: 'bg-transparent text-brand hover:bg-brand-soft disabled:text-ink/50',
   danger:
-    'bg-rose-600 text-white shadow-sm hover:bg-rose-700 active:bg-rose-800 disabled:bg-slate-200',
+    'bg-rose-600 text-surface shadow-[var(--shadow-sm)] hover:bg-rose-700 active:bg-rose-800 disabled:bg-[var(--ink)]/10',
 };
 
 const sizeClass: Record<Size, string> = {
@@ -47,7 +47,7 @@ export default function Button({
       type={type}
       disabled={isDisabled}
       aria-busy={loading || undefined}
-      className={`inline-flex items-center justify-center rounded-md font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:text-slate-400 ${variantClass[variant]} ${sizeClass[size]} ${fullWidth ? 'w-full' : ''} ${className}`}
+      className={`inline-flex items-center justify-center rounded-md font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:text-ink/50 ${variantClass[variant]} ${sizeClass[size]} ${fullWidth ? 'w-full' : ''} ${className}`}
       {...rest}
     >
       {loading && <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />}

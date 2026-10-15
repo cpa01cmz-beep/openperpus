@@ -22,26 +22,26 @@ export default function SplitHero({ banners, siteName, tagline }: HeroProps) {
       aria-label="Sorotan perpustakaan"
       aria-roledescription="carousel"
       aria-busy={transitioning}
-      className="grid overflow-hidden rounded-[var(--radius-lg)] bg-brand-strong text-white shadow-[var(--shadow-md)] lg:grid-cols-2"
+      className="grid overflow-hidden rounded-[var(--radius-lg)] bg-brand-strong text-surface shadow-[var(--shadow-md)] lg:grid-cols-2"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
     >
       <div className="flex flex-col justify-center p-8 sm:p-12 lg:p-14">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-accent">
+        <p className="text-xs font-semibold uppercase tracking-widest text-accent">
           {siteName} · {idx + 1}/{total}
         </p>
-        <h1 className="mt-3 font-heading text-3xl font-semibold leading-[1.05] tracking-tight text-white sm:text-4xl lg:text-5xl">
+        <h1 className="mt-3 font-heading text-3xl font-semibold leading-none tracking-tight text-surface sm:text-4xl lg:text-5xl">
           {active.title}
         </h1>
         {active.subtitle ? (
-          <p className="mt-3 max-w-[52ch] text-sm leading-relaxed text-brand-soft/90 sm:text-base">
+          <p className="mt-3 max-w-md text-sm leading-relaxed text-brand-soft/90 sm:text-base">
             {active.subtitle}
           </p>
         ) : null}
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <Link
             href={active.link ?? '/katalog'}
-            className="inline-flex items-center gap-2 rounded-[var(--radius-lg)] bg-accent px-6 py-3 text-sm font-bold text-white shadow-[var(--shadow-md)] transition hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            className="inline-flex items-center gap-2 rounded-[var(--radius-lg)] bg-accent px-6 py-3 text-sm font-bold text-surface shadow-[var(--shadow-md)] transition hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-surface"
           >
             {active.link ? 'Selengkapnya' : 'Jelajahi Katalog'}{' '}
             <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -53,7 +53,7 @@ export default function SplitHero({ banners, siteName, tagline }: HeroProps) {
               type="button"
               onClick={() => go(-1)}
               aria-label="Banner sebelumnya"
-              className="grid min-h-[44px] min-w-[44px] place-items-center rounded-full bg-white/10 text-white backdrop-blur transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className="grid min-h-[44px] min-w-[44px] place-items-center rounded-full bg-surface/10 text-surface backdrop-blur transition hover:bg-surface/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               <ChevronLeft className="h-5 w-5" />
             </button>
@@ -61,7 +61,7 @@ export default function SplitHero({ banners, siteName, tagline }: HeroProps) {
               type="button"
               onClick={() => go(1)}
               aria-label="Banner berikutnya"
-              className="grid min-h-[44px] min-w-[44px] place-items-center rounded-full bg-white/10 text-white backdrop-blur transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+              className="grid min-h-[44px] min-w-[44px] place-items-center rounded-full bg-surface/10 text-surface backdrop-blur transition hover:bg-surface/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               <ChevronRight className="h-5 w-5" />
             </button>
@@ -82,7 +82,7 @@ export default function SplitHero({ banners, siteName, tagline }: HeroProps) {
                   <span
                     aria-hidden="true"
                     className={`h-1.5 rounded-full transition-all ${
-                      i === idx ? 'w-8 bg-accent' : 'w-3 bg-white/50'
+                      i === idx ? 'w-8 bg-accent' : 'w-3 bg-surface/50'
                     }`}
                   />
                 </button>

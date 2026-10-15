@@ -16,10 +16,10 @@ function fmtDate(iso: string | null | undefined): string {
 function StatusBadge({ status }: { status: string }) {
   const tone =
     status === 'cancelled' || status === 'expired' || status === 'overdue'
-      ? 'bg-rose-100 text-rose-800'
+      ? 'bg-accent-soft text-accent'
       : status === 'ready' || status === 'borrowed'
-        ? 'bg-emerald-100 text-emerald-800'
-        : 'bg-slate-100 text-slate-700';
+        ? 'bg-brand-soft text-brand-strong'
+        : 'bg-surface text-ink/70 border border-[var(--ink)]/10';
   return (
     <span
       data-testid="reservation-status"
@@ -43,13 +43,16 @@ export function ReservationCard({ row, cancelling, onCancel }: ReservationCardPr
   const cancellable = row.status === 'pending';
 
   return (
-    <li data-testid="reservation-row" className="rounded-xl border bg-white p-4 shadow-sm">
+    <li
+      data-testid="reservation-row"
+      className="rounded-[var(--radius-lg)] border bg-surface p-card shadow-[var(--shadow-sm)]"
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <p data-testid="reservation-title" className="font-semibold">
             {title}
           </p>
-          <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-600">
+          <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-ink/70">
             <StatusBadge status={row.status} />
             <span className="inline-flex items-center gap-1">
               <CalendarClock className="h-3.5 w-3.5" aria-hidden="true" />
@@ -67,7 +70,7 @@ export function ReservationCard({ row, cancelling, onCancel }: ReservationCardPr
                   setConfirming(false);
                   onCancel(row.id);
                 }}
-                className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-rose-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-rose-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-600 disabled:opacity-60"
+                className="inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-md)] bg-accent px-4 py-2 text-sm font-bold text-surface shadow-[var(--shadow-sm)] transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent disabled:opacity-60"
               >
                 {cancelling ? (
                   <>
@@ -81,7 +84,7 @@ export function ReservationCard({ row, cancelling, onCancel }: ReservationCardPr
                 type="button"
                 disabled={cancelling}
                 onClick={() => setConfirming(false)}
-                className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 disabled:opacity-60"
+                className="inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-md)] border px-4 py-2 text-sm font-semibold text-ink/70 disabled:opacity-60"
               >
                 Urungkan
               </button>
@@ -90,7 +93,7 @@ export function ReservationCard({ row, cancelling, onCancel }: ReservationCardPr
             <button
               type="button"
               onClick={() => setConfirming(true)}
-              className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-lg border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-bold text-rose-700 transition hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-600"
+              className="inline-flex min-h-[44px] items-center justify-center gap-1.5 rounded-[var(--radius-md)] border bg-accent-soft px-4 py-2 text-sm font-bold text-accent transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
             >
               <BookmarkX className="h-4 w-4" aria-hidden="true" /> Batal
             </button>
@@ -106,11 +109,14 @@ type LoanCardProps = { row: MyLoan };
 export function LoanCard({ row }: LoanCardProps) {
   const title = row.books?.title ?? 'Judul tidak tersedia';
   return (
-    <li data-testid="loan-row" className="rounded-xl border bg-white p-4 shadow-sm">
+    <li
+      data-testid="loan-row"
+      className="rounded-[var(--radius-lg)] border bg-surface p-card shadow-[var(--shadow-sm)]"
+    >
       <p data-testid="loan-title" className="font-semibold">
         {title}
       </p>
-      <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-slate-600">
+      <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-ink/70">
         <StatusBadge status={row.status} />
         <span className="inline-flex items-center gap-1">
           <CalendarClock className="h-3.5 w-3.5" aria-hidden="true" />

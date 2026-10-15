@@ -108,7 +108,7 @@ export default function SketchFooter({ settings, menus }: FooterVariantProps) {
               <li>
                 <a
                   href={`tel:${settings.phone}`}
-                  className="flex items-center gap-2 rounded transition hover:text-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  className="flex items-center gap-2 rounded-[var(--radius-sm)] transition hover:text-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   <Phone className="h-4 w-4 text-accent" aria-hidden="true" /> {settings.phone}
                 </a>
@@ -118,7 +118,7 @@ export default function SketchFooter({ settings, menus }: FooterVariantProps) {
               <li>
                 <a
                   href={`mailto:${settings.email}`}
-                  className="flex items-center gap-2 rounded transition hover:text-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  className="flex items-center gap-2 rounded-[var(--radius-sm)] transition hover:text-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   <Mail className="h-4 w-4 text-accent" aria-hidden="true" /> {settings.email}
                 </a>
@@ -158,7 +158,7 @@ export default function SketchFooter({ settings, menus }: FooterVariantProps) {
                   href={l.href}
                   target={l.target === '_blank' ? '_blank' : undefined}
                   rel={l.target === '_blank' ? 'noreferrer noopener' : undefined}
-                  className="rounded underline decoration-dotted underline-offset-4 transition hover:text-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  className="rounded-[var(--radius-sm)] underline decoration-dotted underline-offset-4 transition hover:text-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   {l.label}
                 </Link>

@@ -98,7 +98,7 @@ export default function FaqAccordion({ faqs }: { faqs: FaqItem[] }) {
             aria-pressed={cat === null}
             className={`shrink-0 min-h-[44px] rounded-full border px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
               cat === null
-                ? 'border-brand bg-brand text-white shadow'
+                ? 'border-brand bg-brand text-surface shadow-[var(--shadow-sm)]'
                 : 'border-[var(--ink)]/10 bg-[var(--surface)] text-[var(--ink)]/70 hover:border-brand hover:text-brand'
             }`}
           >
@@ -114,7 +114,7 @@ export default function FaqAccordion({ faqs }: { faqs: FaqItem[] }) {
                 aria-pressed={active}
                 className={`shrink-0 min-h-[44px] rounded-full border px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
                   active
-                    ? 'border-brand bg-brand text-white shadow'
+                    ? 'border-brand bg-brand text-surface shadow-[var(--shadow-sm)]'
                     : 'border-[var(--ink)]/10 bg-[var(--surface)] text-[var(--ink)]/70 hover:border-brand hover:text-brand'
                 }`}
               >
@@ -174,7 +174,7 @@ export default function FaqAccordion({ faqs }: { faqs: FaqItem[] }) {
                 >
                   <span>
                     {f.category && (
-                      <span className="mb-1 block font-sans text-[11px] font-semibold uppercase tracking-wide text-brand">
+                      <span className="mb-1 block font-sans text-xs font-semibold uppercase tracking-wide text-brand">
                         {f.category}
                       </span>
                     )}

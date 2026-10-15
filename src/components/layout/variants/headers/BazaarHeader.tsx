@@ -39,7 +39,7 @@ export default function BazaarHeader({
               {name}
             </span>
             {tag ? (
-              <span className="block truncate text-[11px] font-semibold uppercase tracking-[0.14em] text-brand">
+              <span className="block truncate text-xs font-semibold uppercase tracking-widest text-brand">
                 {tag}
               </span>
             ) : null}
@@ -62,7 +62,7 @@ export default function BazaarHeader({
           <li className="ml-2">
             <Link
               href="/katalog"
-              className="rounded-[var(--radius-md)] border-2 border-[var(--ink)] bg-accent px-4 py-2 text-sm font-bold uppercase tracking-wide text-white shadow-[var(--shadow-md)] transition hover:translate-y-[2px] hover:shadow-[var(--shadow-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              className="rounded-[var(--radius-md)] border-2 border-[var(--ink)] bg-accent px-4 py-2 text-sm font-bold uppercase tracking-wide text-surface shadow-[var(--shadow-md)] transition hover:translate-y-[2px] hover:shadow-[var(--shadow-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             >
               Cari Buku
             </Link>
@@ -96,7 +96,7 @@ export default function BazaarHeader({
           <li className="pt-1">
             <Link
               href="/katalog"
-              className="block rounded-[var(--radius-md)] border-2 border-[var(--ink)] bg-accent px-4 py-2.5 text-center text-sm font-bold uppercase tracking-wide text-white shadow-[var(--shadow-md)]"
+              className="block rounded-[var(--radius-md)] border-2 border-[var(--ink)] bg-accent px-4 py-2.5 text-center text-sm font-bold uppercase tracking-wide text-surface shadow-[var(--shadow-md)]"
             >
               Cari Buku
             </Link>

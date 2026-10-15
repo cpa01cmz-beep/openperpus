@@ -85,7 +85,7 @@ export default function ArtikelPage() {
   }
 
   const rawInput =
-    'h-11 min-h-[44px] w-full rounded-md border border-slate-200 bg-white px-4 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1';
+    'h-11 min-h-[44px] w-full rounded-md border border-[var(--ink)]/10 bg-surface px-4 text-sm text-ink transition hover:border-[var(--ink)]/20 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1';
   return (
     <div className="grid gap-4">
       <h1 className="text-2xl font-bold">Artikel</h1>
@@ -97,7 +97,7 @@ export default function ArtikelPage() {
       {notice && (
         <div
           role="status"
-          className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+          className="rounded-[var(--radius-lg)] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
         >
           {notice}
         </div>
@@ -112,7 +112,10 @@ export default function ArtikelPage() {
           {actionError}
         </p>
       )}
-      <form onSubmit={onAdd} className="grid max-w-2xl gap-2 rounded-2xl border bg-white p-4">
+      <form
+        onSubmit={onAdd}
+        className="grid max-w-2xl gap-2 rounded-[var(--radius-lg)] border bg-surface p-4"
+      >
         <Input
           id="artikel-title"
           label="Judul"
@@ -151,7 +154,7 @@ export default function ArtikelPage() {
         <div className="grid gap-1 text-sm">
           <label
             htmlFor="artikel-content"
-            className="mb-1.5 block text-sm font-semibold text-slate-700"
+            className="mb-1.5 block text-sm font-semibold text-ink/80"
           >
             Konten markdown
           </label>
@@ -169,7 +172,7 @@ export default function ArtikelPage() {
           <div className="grid gap-1">
             <label
               htmlFor="artikel-status"
-              className="mb-1.5 block text-sm font-semibold text-slate-700"
+              className="mb-1.5 block text-sm font-semibold text-ink/80"
             >
               Status
             </label>

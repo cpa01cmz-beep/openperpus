@@ -2,14 +2,14 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { THEMES, getTheme, themes } from '@/lib/themes';
+import { THEMES, getTheme, themes, DEFAULT_THEME } from '@/lib/themes';
 import { errMsg } from '@/lib/admin-errors';
 // Isu #69: PUT tema dibatasi waktu; kegagalan tetap tampil di blok error.
 import { clientFetch } from '@/lib/api-client';
 
 export default function ThemeSwitcher({ current }: { current: string }) {
   const router = useRouter();
-  const [active, setActive] = useState(current || 'emerald');
+  const [active, setActive] = useState(current || DEFAULT_THEME);
   const [savingId, setSavingId] = useState<string | null>(null);
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
@@ -42,10 +42,10 @@ export default function ThemeSwitcher({ current }: { current: string }) {
   }
 
   return (
-    <section className="grid max-w-4xl gap-4 rounded-2xl border bg-surface p-6 text-ink">
+    <section className="grid max-w-4xl gap-4 rounded-[var(--radius-lg)] border bg-surface p-6 text-ink">
       <div>
         <h2 className="font-semibold">Tema Tampilan</h2>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-ink/60">
           Pilih salah satu dari 7 tema. Perubahan tersimpan otomatis.
         </p>
       </div>
@@ -62,19 +62,19 @@ export default function ThemeSwitcher({ current }: { current: string }) {
               disabled={savingId !== null}
               aria-pressed={isActive}
               onClick={() => onSelect(t.id)}
-              className={`grid gap-2 rounded-xl border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 disabled:opacity-50 ${
-                isActive ? 'border-brand ring-2 ring-brand' : 'hover:border-slate-400'
+              className={`grid gap-2 rounded-[var(--radius-lg)] border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 disabled:opacity-50 ${
+                isActive ? 'border-brand ring-2 ring-brand' : 'hover:border-[var(--ink)]/30'
               }`}
             >
               <span className="flex items-center justify-between gap-2">
                 <span className="font-semibold text-sm">{t.name}</span>
                 {isActive && (
-                  <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-medium text-white">
+                  <span className="rounded-full bg-brand px-2 py-0.5 text-xs font-medium text-surface">
                     Aktif
                   </span>
                 )}
               </span>
-              <span className="text-xs text-slate-500">{t.description}</span>
+              <span className="text-xs text-ink/60">{t.description}</span>
               <span className="mt-1 flex gap-1.5">
                 <span
                   role="img"
@@ -111,7 +111,7 @@ export default function ThemeSwitcher({ current }: { current: string }) {
                 </span>
                 <span
                   title={`radius ${t.radius.lg}`}
-                  className="h-5 w-5 border border-slate-400"
+                  className="h-5 w-5 border border-[var(--ink)]/30"
                   style={{ borderRadius: t.radius.lg, backgroundColor: t.tokens.surface }}
                 />
                 <span className="flex items-center gap-1">
@@ -125,7 +125,7 @@ export default function ThemeSwitcher({ current }: { current: string }) {
                   ))}
                 </span>
               </span>
-              <span className="text-xs font-medium text-slate-600">
+              <span className="text-xs font-medium text-ink/70">
                 {isSaving ? 'Menyimpan…' : isActive ? 'Tema saat ini' : 'Aktifkan tema ini'}
               </span>
             </button>

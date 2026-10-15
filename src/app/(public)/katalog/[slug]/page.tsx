@@ -166,7 +166,7 @@ export default async function BookDetailPage({ params }: Props) {
       />
       <Link
         href="/katalog"
-        className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--ink)]/60 transition hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded"
+        className="inline-flex items-center gap-1.5 text-sm font-medium text-[var(--ink)]/60 transition hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand rounded-[var(--radius-sm)]"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Kembali ke katalog
       </Link>
@@ -193,7 +193,7 @@ export default async function BookDetailPage({ params }: Props) {
               >
                 <div>
                   <BookOpen className="mx-auto h-10 w-10 text-accent" />
-                  <p className="mt-2 font-heading text-lg font-bold text-white">{book.title}</p>
+                  <p className="mt-2 font-heading text-lg font-bold text-surface">{book.title}</p>
                 </div>
               </div>
             )}
@@ -215,7 +215,7 @@ export default async function BookDetailPage({ params }: Props) {
         {/* info */}
         <div>
           {book.categories?.name && (
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-brand">
+            <p className="text-xs font-bold uppercase tracking-widest text-brand">
               {book.categories.name}
             </p>
           )}
@@ -231,7 +231,7 @@ export default async function BookDetailPage({ params }: Props) {
               >
                 <m.icon className="mt-0.5 h-4 w-4 shrink-0 text-brand" aria-hidden="true" />
                 <div className="min-w-0">
-                  <dt className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ink)]/50">
+                  <dt className="text-xs font-semibold uppercase tracking-wide text-[var(--ink)]/50">
                     {m.label}
                   </dt>
                   <dd className="truncate text-sm font-medium text-[var(--ink)]" title={m.value}>
@@ -243,7 +243,7 @@ export default async function BookDetailPage({ params }: Props) {
             <div className="flex items-start gap-2.5 rounded-[var(--radius-md)] bg-[var(--brand-soft)]/60 px-3 py-2.5">
               <BookOpen className="mt-0.5 h-4 w-4 shrink-0 text-brand" aria-hidden="true" />
               <div>
-                <dt className="text-[11px] font-semibold uppercase tracking-wide text-[var(--ink)]/50">
+                <dt className="text-xs font-semibold uppercase tracking-wide text-[var(--ink)]/50">
                   Stok
                 </dt>
                 <dd className="text-sm font-medium text-[var(--ink)]">
@@ -278,7 +278,7 @@ export default async function BookDetailPage({ params }: Props) {
                 <WishlistButton slug={book.slug} title={book.title} />
                 <Link
                   href={`/kontak?buku=${book.slug}`}
-                  className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--radius-md)] border border-brand/40 bg-[var(--surface)] px-6 py-3 text-sm font-semibold text-brand-strong shadow-sm transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--radius-md)] border border-brand/40 bg-[var(--surface)] px-6 py-3 text-sm font-semibold text-brand-strong shadow-[var(--shadow-sm)] transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
                   Pinjam Buku <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </Link>
@@ -298,7 +298,7 @@ export default async function BookDetailPage({ params }: Props) {
                 </button>
                 <Link
                   href={`/kontak?buku=${book.slug}`}
-                  className="inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-md)] border border-brand/40 bg-[var(--surface)] px-6 py-3 text-sm font-semibold text-brand-strong shadow-sm transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  className="inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-md)] border border-brand/40 bg-[var(--surface)] px-6 py-3 text-sm font-semibold text-brand-strong shadow-[var(--shadow-sm)] transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
                   Tanya Stok <ArrowRight className="h-4 w-4" aria-hidden="true" />
                 </Link>
@@ -309,7 +309,7 @@ export default async function BookDetailPage({ params }: Props) {
                 href={waHref}
                 target="_blank"
                 rel="noreferrer"
-                className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--radius-md)] border border-brand/40 bg-[var(--surface)] px-5 py-3 text-sm font-semibold text-brand-strong shadow-sm transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--radius-md)] border border-brand/40 bg-[var(--surface)] px-5 py-3 text-sm font-semibold text-brand-strong shadow-[var(--shadow-sm)] transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
                 Tanya via WA
               </a>
@@ -358,7 +358,7 @@ export default async function BookDetailPage({ params }: Props) {
           </p>
           <Link
             href="/katalog"
-            className="mt-4 inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--radius-lg)] bg-brand px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            className="mt-4 inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--radius-lg)] bg-brand px-5 py-2.5 text-sm font-semibold text-surface shadow-[var(--shadow-sm)] transition hover:bg-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
             Jelajahi katalog <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>

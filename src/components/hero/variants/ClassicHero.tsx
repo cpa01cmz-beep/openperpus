@@ -103,16 +103,14 @@ export default function ClassicHero({ banners, siteName, tagline }: HeroProps) {
         )}
 
         <div className="absolute inset-x-0 bottom-0 p-5 sm:p-8">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-accent [font-family:var(--font-cormorant)]">
+          <p className="text-xs font-semibold uppercase tracking-widest text-accent font-heading">
             {siteName} · {idx + 1}/{total}
           </p>
           <h1 className="mt-1 max-w-2xl font-cormorant text-2xl font-bold leading-tight text-[var(--ink)] sm:text-4xl">
             {active.title}
           </h1>
           {active.subtitle ? (
-            <p className="mt-2 max-w-xl text-sm text-[var(--ink)]/80 sm:text-base">
-              {active.subtitle}
-            </p>
+            <p className="mt-2 max-w-xl text-sm text-ink/80 sm:text-base">{active.subtitle}</p>
           ) : null}
           <div className="mt-4 flex flex-wrap items-center gap-3">
             {active.link ? (

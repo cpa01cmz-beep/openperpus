@@ -53,7 +53,7 @@ export default function MinimalFooter({ settings, menus }: FooterVariantProps) {
                   href={l.href}
                   target={l.target === '_blank' ? '_blank' : undefined}
                   rel={l.target === '_blank' ? 'noreferrer noopener' : undefined}
-                  className="rounded text-[var(--ink)] opacity-70 transition hover:opacity-100 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  className="rounded-[var(--radius-sm)] text-[var(--ink)] opacity-70 transition hover:opacity-100 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
                   {l.label}
                 </Link>

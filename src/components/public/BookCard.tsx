@@ -60,7 +60,7 @@ export default function BookCard({ book }: { book: Book }) {
 
         <div className="flex flex-1 flex-col gap-1 p-3 sm:p-4">
           {book.categories?.name && (
-            <p className="text-[11px] font-semibold uppercase tracking-wide text-brand">
+            <p className="text-xs font-semibold uppercase tracking-wide text-brand">
               {book.categories.name}
             </p>
           )}
@@ -94,9 +94,9 @@ export function BookCardSkeleton() {
     >
       <div className="aspect-[3/4] w-full animate-pulse bg-[var(--ink)]/10" />
       <div className="space-y-2 p-4">
-        <div className="h-3 w-1/3 animate-pulse rounded bg-[var(--ink)]/10" />
-        <div className="h-4 w-full animate-pulse rounded bg-[var(--ink)]/10" />
-        <div className="h-3 w-2/3 animate-pulse rounded bg-[var(--ink)]/10" />
+        <div className="h-3 w-1/3 animate-pulse rounded-[var(--radius-sm)] bg-[var(--ink)]/10" />
+        <div className="h-4 w-full animate-pulse rounded-[var(--radius-sm)] bg-[var(--ink)]/10" />
+        <div className="h-3 w-2/3 animate-pulse rounded-[var(--radius-sm)] bg-[var(--ink)]/10" />
       </div>
     </div>
   );

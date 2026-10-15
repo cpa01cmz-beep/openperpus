@@ -68,16 +68,16 @@ export default async function TentangPage() {
       />
       <Breadcrumb items={[{ label: 'Beranda', href: '/' }, { label: 'Tentang' }]} />
       <header>
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Profil</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-accent">Profil</p>
         <h1 className="mt-1 font-heading text-3xl font-bold text-heading sm:text-4xl">
           Tentang {siteName}
         </h1>
-        {settings.tagline && <p className="mt-2 text-slate-500">{settings.tagline}</p>}
+        {settings.tagline && <p className="mt-2 text-ink/60">{settings.tagline}</p>}
       </header>
 
       <section
         aria-labelledby="profil"
-        className="rounded-lg border border-slate-100 bg-white p-6 shadow-sm sm:p-8"
+        className="rounded-lg border border-[var(--ink)]/10 bg-surface p-6 shadow-[var(--shadow-sm)] sm:p-8"
       >
         <h2
           id="profil"
@@ -86,21 +86,21 @@ export default async function TentangPage() {
           <BookOpenText className="h-5 w-5 text-brand" aria-hidden="true" /> Profil Singkat
         </h2>
         {page?.content_md ? (
-          <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-slate-600 sm:text-base">
+          <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-ink/70 sm:text-base">
             {page.content_md}
           </p>
         ) : settings.about ? (
-          <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-slate-600 sm:text-base">
+          <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-ink/70 sm:text-base">
             {settings.about}
           </p>
         ) : (
-          <p className="mt-3 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-500">
+          <p className="mt-3 rounded-[var(--radius-lg)] bg-[var(--ink)]/5 px-4 py-3 text-sm text-ink/60">
             Profil {siteName} belum diisi admin. Halaman ini akan terisi otomatis setelah tabel{' '}
             <code>pages</code> (slug <code>tentang</code>) atau kolom <code>about</code> dilengkapi.
           </p>
         )}
         {settings.address && (
-          <p className="mt-4 flex items-start gap-2 text-sm text-slate-600">
+          <p className="mt-4 flex items-start gap-2 text-sm text-ink/70">
             <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-brand" aria-hidden="true" />
             {settings.address}
           </p>
@@ -110,7 +110,7 @@ export default async function TentangPage() {
       <div className="grid gap-4 sm:grid-cols-2">
         <section
           aria-labelledby="visi"
-          className="rounded-lg bg-brand-strong p-6 text-white shadow sm:p-8"
+          className="rounded-lg bg-brand-strong p-6 text-surface shadow-[var(--shadow-sm)] sm:p-8"
         >
           <h2 id="visi" className="flex items-center gap-2 font-heading text-xl font-bold">
             <Eye className="h-5 w-5 text-accent" aria-hidden="true" /> Visi
@@ -121,7 +121,7 @@ export default async function TentangPage() {
         </section>
         <section
           aria-labelledby="misi"
-          className="rounded-lg border border-accent-soft bg-accent-soft p-6 shadow-sm sm:p-8"
+          className="rounded-lg border border-accent-soft bg-accent-soft p-6 shadow-[var(--shadow-sm)] sm:p-8"
         >
           <h2
             id="misi"
@@ -130,17 +130,17 @@ export default async function TentangPage() {
             <ListChecks className="h-5 w-5 text-brand" aria-hidden="true" /> Misi
           </h2>
           {missionItems.length > 0 ? (
-            <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-slate-700 sm:text-base">
+            <ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-relaxed text-ink/80 sm:text-base">
               {missionItems.map((m, i) => (
                 <li key={i}>{m}</li>
               ))}
             </ol>
           ) : settings.mission ? (
-            <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-slate-700">
+            <p className="mt-3 whitespace-pre-line text-sm leading-relaxed text-ink/80">
               {settings.mission}
             </p>
           ) : (
-            <p className="mt-3 text-sm text-slate-500">
+            <p className="mt-3 text-sm text-ink/60">
               Misi akan ditampilkan di sini setelah diisi admin.
             </p>
           )}

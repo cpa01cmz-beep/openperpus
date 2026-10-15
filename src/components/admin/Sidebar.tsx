@@ -49,7 +49,7 @@ export default function Sidebar({ libraryName = 'Perpustakaan' }: { libraryName?
             onClick={() => setOpen(false)}
             aria-current={active ? 'page' : undefined}
             className={`flex min-h-[44px] items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
-              active ? 'bg-brand text-white' : 'text-ink hover:bg-slate-100'
+              active ? 'bg-brand text-surface' : 'text-ink hover:bg-[var(--ink)]/5'
             }`}
           >
             {m.label}
@@ -58,7 +58,7 @@ export default function Sidebar({ libraryName = 'Perpustakaan' }: { libraryName?
       })}
       <Link
         href="/"
-        className="mt-4 flex min-h-[44px] items-center rounded-lg px-3 py-2 text-sm text-ink hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+        className="mt-4 flex min-h-[44px] items-center rounded-lg px-3 py-2 text-sm text-ink hover:bg-[var(--ink)]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
       >
         ← Lihat Situs
       </Link>
@@ -81,14 +81,16 @@ export default function Sidebar({ libraryName = 'Perpustakaan' }: { libraryName?
         </button>
       </div>
       {/* Desktop */}
-      <aside className="hidden min-h-screen w-60 shrink-0 border-r bg-surface lg:block">{nav}</aside>
+      <aside className="hidden min-h-screen w-60 shrink-0 border-r bg-surface lg:block">
+        {nav}
+      </aside>
       {/* Mobile drawer */}
       {open && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <button
             type="button"
             aria-label="Tutup menu navigasi"
-            className="absolute inset-0 bg-black/40"
+            className="absolute inset-0 bg-ink/40"
             onClick={() => setOpen(false)}
           />
           <aside

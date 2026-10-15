@@ -145,14 +145,14 @@ export default function MenuPage() {
     <div className="grid gap-4">
       <div>
         <h1 className="text-2xl font-bold">Menu</h1>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-ink/60">
           Kelola menu navigasi situs (label, URL, posisi, target, urutan, status aktif). Menu aktif
           langsung tampil di navigasi publik.
         </p>
       </div>
       <form
         onSubmit={onSubmit}
-        className="flex flex-wrap items-end gap-2 rounded-2xl border bg-white p-4"
+        className="flex flex-wrap items-end gap-2 rounded-[var(--radius-lg)] border bg-surface p-4"
       >
         <div className="min-w-[180px] flex-1">
           <Input
@@ -173,17 +173,14 @@ export default function MenuPage() {
           />
         </div>
         <div className="grid gap-1">
-          <label
-            htmlFor="menu-position"
-            className="mb-1.5 block text-sm font-semibold text-slate-700"
-          >
+          <label htmlFor="menu-position" className="mb-1.5 block text-sm font-semibold text-ink/80">
             Posisi
           </label>
           <select
             id="menu-position"
             value={form.position}
             onChange={(e) => setForm({ ...form, position: e.target.value })}
-            className="h-11 min-h-[44px] rounded-md border border-slate-200 bg-white px-4 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
+            className="h-11 min-h-[44px] rounded-md border border-[var(--ink)]/10 bg-surface px-4 text-sm text-ink transition hover:border-[var(--ink)]/20 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
           >
             <option value="header">header</option>
             <option value="footer">footer</option>
@@ -191,17 +188,14 @@ export default function MenuPage() {
           </select>
         </div>
         <div className="grid gap-1">
-          <label
-            htmlFor="menu-target"
-            className="mb-1.5 block text-sm font-semibold text-slate-700"
-          >
+          <label htmlFor="menu-target" className="mb-1.5 block text-sm font-semibold text-ink/80">
             Target
           </label>
           <select
             id="menu-target"
             value={form.target}
             onChange={(e) => setForm({ ...form, target: e.target.value })}
-            className="h-11 min-h-[44px] rounded-md border border-slate-200 bg-white px-4 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
+            className="h-11 min-h-[44px] rounded-md border border-[var(--ink)]/10 bg-surface px-4 text-sm text-ink transition hover:border-[var(--ink)]/20 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
           >
             <option value="_self">_self (tab sama)</option>
             <option value="_blank">_blank (tab baru)</option>
@@ -282,7 +276,7 @@ export default function MenuPage() {
                 onClick={() => onToggle(r)}
                 aria-label={`Ubah status menu ${r.label}`}
                 aria-pressed={r.is_active}
-                className="inline-flex min-h-[44px] items-center rounded-full border px-3 text-xs hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                className="inline-flex min-h-[44px] items-center rounded-full border px-3 text-xs hover:bg-[var(--ink)]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
                 <Badge tone={r.is_active ? 'emerald' : 'slate'}>
                   {r.is_active ? 'Aktif' : 'Nonaktif'}
@@ -299,7 +293,7 @@ export default function MenuPage() {
                   type="button"
                   onClick={() => onEdit(r)}
                   aria-label={`Ubah menu ${r.label}`}
-                  className="inline-flex min-h-[44px] items-center text-slate-700 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  className="inline-flex min-h-[44px] items-center text-ink/80 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
                   Ubah
                 </button>

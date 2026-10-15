@@ -56,43 +56,41 @@ export default function LayoutPreview({ draft }: { draft: LayoutDraft }) {
   return (
     <section
       aria-label="Pratinjau draf layout"
-      className="grid max-w-4xl gap-4 rounded-2xl border bg-white p-6"
+      className="grid max-w-4xl gap-4 rounded-[var(--radius-lg)] border bg-surface p-6"
     >
       <div>
         <h2 className="font-semibold">Pratinjau Draf</h2>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-ink/60">
           Ringkasan draf yang sedang diubah — belum tersimpan sampai tombol Simpan ditekan.
         </p>
       </div>
 
       <dl className="grid gap-2 text-sm">
-        <div className="flex items-baseline justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2">
-          <dt className="font-medium text-slate-600">Header</dt>
-          <dd className="text-right text-slate-900">
+        <div className="flex items-baseline justify-between gap-3 rounded-lg bg-[var(--ink)]/5 px-3 py-2">
+          <dt className="font-medium text-ink/70">Header</dt>
+          <dd className="text-right text-ink">
             {variantLabel(live.headerVariant)}{' '}
-            <code className="text-xs text-slate-500">{live.headerVariant}</code>
+            <code className="text-xs text-ink/60">{live.headerVariant}</code>
           </dd>
         </div>
-        <div className="flex items-baseline justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2">
-          <dt className="font-medium text-slate-600">Hero</dt>
-          <dd className="text-right text-slate-900">
+        <div className="flex items-baseline justify-between gap-3 rounded-lg bg-[var(--ink)]/5 px-3 py-2">
+          <dt className="font-medium text-ink/70">Hero</dt>
+          <dd className="text-right text-ink">
             {variantLabel(live.heroVariant)}{' '}
-            <code className="text-xs text-slate-500">{live.heroVariant}</code>
+            <code className="text-xs text-ink/60">{live.heroVariant}</code>
           </dd>
         </div>
-        <div className="flex items-baseline justify-between gap-3 rounded-lg bg-slate-50 px-3 py-2">
-          <dt className="font-medium text-slate-600">Footer</dt>
-          <dd className="text-right text-slate-900">
+        <div className="flex items-baseline justify-between gap-3 rounded-lg bg-[var(--ink)]/5 px-3 py-2">
+          <dt className="font-medium text-ink/70">Footer</dt>
+          <dd className="text-right text-ink">
             {variantLabel(live.footerVariant)}{' '}
-            <code className="text-xs text-slate-500">{live.footerVariant}</code>
+            <code className="text-xs text-ink/60">{live.footerVariant}</code>
           </dd>
         </div>
       </dl>
 
       <div className="grid gap-2">
-        <h3 className="text-sm font-medium text-slate-700">
-          Urutan section aktif ({enabled.length})
-        </h3>
+        <h3 className="text-sm font-medium text-ink/80">Urutan section aktif ({enabled.length})</h3>
         {enabled.length === 0 ? (
           <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
             Tidak ada section aktif. Minimal 1 section harus aktif.
@@ -106,18 +104,18 @@ export default function LayoutPreview({ draft }: { draft: LayoutDraft }) {
               >
                 <span
                   aria-hidden="true"
-                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-900 text-xs font-semibold text-white"
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-ink text-xs font-semibold text-surface"
                 >
                   {i + 1}
                 </span>
-                <span className="font-medium text-slate-800">{sectionLabel(s.id)}</span>
-                <code className="text-xs text-slate-500">{s.id}</code>
+                <span className="font-medium text-ink">{sectionLabel(s.id)}</span>
+                <code className="text-xs text-ink/60">{s.id}</code>
               </li>
             ))}
           </ol>
         )}
         {disabledCount > 0 && (
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-ink/60">
             {disabledCount} section nonaktif:{' '}
             {ordered
               .filter((s) => !s.enabled)
@@ -133,7 +131,7 @@ export default function LayoutPreview({ draft }: { draft: LayoutDraft }) {
           href="/"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-medium text-slate-800 transition hover:border-slate-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2"
+          className="inline-flex items-center gap-2 rounded-[var(--radius-lg)] border px-4 py-2 text-sm font-medium text-ink transition hover:border-[var(--ink)]/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2"
         >
           Buka beranda di tab baru
           <span aria-hidden="true">↗</span>

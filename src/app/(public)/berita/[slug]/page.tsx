@@ -106,12 +106,12 @@ export default async function BeritaDetailPage({ params }: Props) {
       />
       <Link
         href="/berita"
-        className="inline-flex items-center gap-1.5 rounded text-sm font-medium text-slate-500 transition hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+        className="inline-flex items-center gap-1.5 rounded-[var(--radius-sm)] text-sm font-medium text-ink/60 transition hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
       >
         <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Semua berita
       </Link>
 
-      <article className="overflow-hidden rounded-lg border border-slate-100 bg-white shadow-sm">
+      <article className="overflow-hidden rounded-lg border border-[var(--ink)]/10 bg-surface shadow-[var(--shadow-sm)]">
         {cover && (
           <Image
             src={cover}
@@ -128,14 +128,14 @@ export default async function BeritaDetailPage({ params }: Props) {
           <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold uppercase tracking-wide text-brand">
             <span>{article.category ?? 'Berita'}</span>
             {article.published_at && (
-              <span className="inline-flex items-center gap-1 font-normal normal-case tracking-normal text-slate-400">
+              <span className="inline-flex items-center gap-1 font-normal normal-case tracking-normal text-ink/50">
                 <Calendar className="h-3.5 w-3.5" aria-hidden="true" />
                 <time dateTime={article.published_at}>
                   {formatTanggalPanjang(article.published_at)}
                 </time>
               </span>
             )}
-            <span className="inline-flex items-center gap-1 font-normal normal-case tracking-normal text-slate-400">
+            <span className="inline-flex items-center gap-1 font-normal normal-case tracking-normal text-ink/50">
               <Eye className="h-3.5 w-3.5" aria-hidden="true" /> {article.views} dibaca
             </span>
           </p>
@@ -143,11 +143,11 @@ export default async function BeritaDetailPage({ params }: Props) {
             {article.title}
           </h1>
           {article.excerpt && (
-            <p className="mt-3 border-l-4 border-accent bg-accent-soft px-4 py-3 text-sm italic leading-relaxed text-slate-600 sm:text-base">
+            <p className="mt-3 border-l-4 border-accent bg-accent-soft px-4 py-3 text-sm italic leading-relaxed text-ink/70 sm:text-base">
               {article.excerpt}
             </p>
           )}
-          <div className="prose-sm mt-5 max-w-none whitespace-pre-line text-sm leading-relaxed text-slate-700 sm:prose sm:text-base">
+          <div className="prose-sm mt-5 max-w-none whitespace-pre-line text-sm leading-relaxed text-ink/80 sm:prose sm:text-base">
             {article.content_md ?? 'Konten menyusul.'}
           </div>
         </div>
@@ -156,7 +156,7 @@ export default async function BeritaDetailPage({ params }: Props) {
       {latest.length > 0 && (
         <section
           aria-labelledby="lainnya"
-          className="rounded-lg border border-slate-100 bg-white p-5 shadow-sm sm:p-6"
+          className="rounded-lg border border-[var(--ink)]/10 bg-surface p-5 shadow-[var(--shadow-sm)] sm:p-6"
         >
           <h2 id="lainnya" className="font-heading text-lg font-bold text-heading">
             Berita lainnya
@@ -166,13 +166,11 @@ export default async function BeritaDetailPage({ params }: Props) {
               <li key={a.id}>
                 <Link
                   href={`/berita/${a.slug}`}
-                  className="block rounded-xl px-3 py-2.5 transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  className="block rounded-[var(--radius-lg)] px-3 py-2.5 transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
-                  <span className="block truncate text-sm font-semibold text-slate-800">
-                    {a.title}
-                  </span>
+                  <span className="block truncate text-sm font-semibold text-ink">{a.title}</span>
                   {a.published_at && (
-                    <time dateTime={a.published_at} className="text-xs text-slate-400">
+                    <time dateTime={a.published_at} className="text-xs text-ink/50">
                       {formatTanggalRingkas(a.published_at)}
                     </time>
                   )}

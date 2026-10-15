@@ -21,7 +21,7 @@ export default function Breadcrumb({ items }: { items: Crumb[] }) {
               ) : (
                 <Link
                   href={c.href}
-                  className="rounded transition hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  className="rounded-[var(--radius-sm)] transition hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
                   {c.label}
                 </Link>

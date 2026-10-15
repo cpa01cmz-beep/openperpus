@@ -90,6 +90,7 @@ supabase/migrations/0031_issue68_search_books_page.sql
 supabase/migrations/0032_issue75_stock_opname.sql
 supabase/migrations/0033_harden_stock_opname_tx.sql  # jalankan juga bila 0032 sudah pernah jalan
 supabase/migrations/0034_bazaar_theme.sql              # theme ke-7 bazaar di CHECK active_theme
+supabase/migrations/0035_theme_overrides_layout_only.sql  # theme_overrides CHECK layout-only (DB = API)
 ```
 
 Alternatif CLI: `supabase db push` (butuh `supabase login` + `supabase link`) —
@@ -169,7 +170,7 @@ src/app/admin/     halaman admin (lihat runbook §3.1)
 src/app/api/       route handler REST (42 file route.ts, parity dengan openapi.yaml)
 src/lib/           logika: loans-return, finecalc, reservation-*, settings, themes…
 src/middleware.ts  CSP nonce + proteksi rute
-supabase/          migrations 0001→0034 + seed.sql + README operasional
+supabase/          migrations 0001→0035 + seed.sql + README operasional
 openapi.yaml       kontrak OpenAPI (dilayani di /api/docs)
 tests/             vitest (unit/components) + tests/e2e (playwright)
 docs/              dokumen ini + ADR + api-contract + db-design + architecture

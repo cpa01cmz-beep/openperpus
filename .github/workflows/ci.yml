@@ -52,6 +52,28 @@ jobs:
       # agar blocking tapi hijau. Turunkan ke moderate bila sharp bersih.
       - run: npm audit --omit=dev --audit-level=critical
 
+  no-hardcoded:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Gate no-hardcoded theme (single-source tokens)
+        run: |
+          # Nilai hex token hanya boleh hidup di src/lib/themes.ts (registry)
+          # dan src/app/globals.css (blok [data-theme]). Sisanya = bleed.
+          if rg -n '#[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]' src -g '!src/lib/themes.ts' -g '!src/app/globals.css'; then
+            echo "::error::hex hardcoded di luar themes.ts/globals.css (lihat baris di atas) — pakai token (bg-brand/text-ink/...)"
+            exit 1
+          fi
+          if rg -n 'bg-\[#|text-\[#|border-\[#|from-\[#|via-\[#|to-\[#' src; then
+            echo "::error::hex arbitrary utility (bg-[#...] dsb.) — pakai token (bg-brand/text-ink/...)"
+            exit 1
+          fi
+          if rg -n 'rgb\(|rgba\(|hsl\(' src -g '!src/app/globals.css' -g '!src/lib/themes.ts'; then
+            echo "::error::rgb()/hsl() di luar globals.css — pakai var(--*) + color-mix"
+            exit 1
+          fi
+
   test:
     runs-on: ubuntu-latest
     timeout-minutes: 20
@@ -197,4 +219,3 @@ jobs:
           path: test-results/
           retention-days: 14
           if-no-files-found: warn
-

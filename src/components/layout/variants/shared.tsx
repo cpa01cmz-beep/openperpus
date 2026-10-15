@@ -62,14 +62,14 @@ export function LogoMark({
         width={64}
         height={64}
         sizes="64px"
-        className={`${box} object-cover shadow`}
+        className={`${box} object-cover shadow-[var(--shadow-sm)]`}
         loading="eager"
       />
     );
   }
   return (
     <span
-      className={`grid ${box} place-items-center bg-brand text-accent shadow`}
+      className={`grid ${box} place-items-center bg-brand text-accent shadow-[var(--shadow-sm)]`}
       aria-hidden="true"
     >
       <BookOpenText className="h-5 w-5" />

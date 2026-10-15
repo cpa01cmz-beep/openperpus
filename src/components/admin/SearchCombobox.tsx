@@ -123,13 +123,13 @@ export default function SearchCombobox({
   }
 
   const inputCls =
-    'h-11 min-h-[44px] w-full rounded-md border border-slate-200 bg-white px-4 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1';
+    'h-11 min-h-[44px] w-full rounded-md border border-[var(--ink)]/10 bg-surface px-4 text-sm text-ink transition hover:border-[var(--ink)]/20 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1';
   return (
     <div className="grid gap-1">
       <span className="font-medium">{label}</span>
       {picked && !open && value ? (
         <div className="flex items-center gap-2">
-          <span className="min-w-0 flex-1 truncate rounded-lg border bg-slate-50 px-3 py-2 text-sm">
+          <span className="min-w-0 flex-1 truncate rounded-lg border bg-[var(--ink)]/5 px-3 py-2 text-sm">
             {picked.label}
             {picked.sub ? ` (${picked.sub})` : ''}
             {picked.stock !== undefined ? ` — stok: ${picked.stock}` : ''}
@@ -137,7 +137,7 @@ export default function SearchCombobox({
           <button
             type="button"
             aria-label={`Ganti ${label}`}
-            className="inline-flex min-h-[44px] items-center rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:border-brand hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            className="inline-flex min-h-[44px] items-center rounded-lg border border-[var(--ink)]/10 bg-surface px-3 text-xs font-semibold text-ink/80 transition hover:border-brand hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             onClick={() => {
               setText('');
               setOpen(true);
@@ -171,10 +171,10 @@ export default function SearchCombobox({
             <ul
               role="listbox"
               id={listId}
-              className="grid max-h-56 gap-1 overflow-auto rounded-lg border bg-white p-1"
+              className="grid max-h-56 gap-1 overflow-auto rounded-lg border bg-surface p-1"
             >
               {options.length === 0 && searched ? (
-                <li className="px-3 py-2 text-sm text-slate-500">{EMPTY_TEXT}</li>
+                <li className="px-3 py-2 text-sm text-ink/60">{EMPTY_TEXT}</li>
               ) : (
                 options.map((o) => (
                   <li
@@ -182,7 +182,7 @@ export default function SearchCombobox({
                     role="option"
                     aria-selected={o.id === value}
                     aria-disabled={disabledOption?.(o) ?? false}
-                    className="cursor-pointer rounded px-3 py-2 text-sm hover:bg-slate-100"
+                    className="cursor-pointer rounded-[var(--radius-sm)] px-3 py-2 text-sm hover:bg-[var(--ink)]/5"
                     onMouseDown={(e) => {
                       e.preventDefault();
                       if (disabledOption?.(o)) return;

@@ -91,7 +91,7 @@ src/
 │   ├── validation/ + validation.ts # validasi per-entitas (bukan Zod per route)
 │   └── ... (per-domain: books/, articles, banners, konten-api, stats, themes, dll)
 ├── middleware.ts                   # auth refresh + proteksi /admin
-├── supabase/migrations/            # 0001..0034 (SQL lineal, RPC + RLS + index)
+├── supabase/migrations/            # 0001..0035 (SQL lineal, RPC + RLS + index)
 ├── tests/                          # vitest (unit/components) + e2e playwright + integration
 └── docs/                           # arsitektur, db-design, api-contract, adr, runbook, onboarding
 ```

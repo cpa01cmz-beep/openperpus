@@ -152,7 +152,7 @@ export default function ReservasiSayaPage() {
       <Breadcrumb items={[{ label: 'Beranda', href: '/' }, { label: 'Reservasi Saya' }]} />
       <div>
         <h1 className="text-2xl font-bold">Reservasi &amp; Pinjaman Saya</h1>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-ink/60">
           Pantau status reservasi dan pinjaman aktif Anda tanpa chat WA. Batalkan reservasi menunggu
           dalam 1-klik.
         </p>
@@ -161,7 +161,7 @@ export default function ReservasiSayaPage() {
       {needLogin && (
         <div
           role="alert"
-          className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+          className="rounded-[var(--radius-lg)] border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800"
         >
           Silakan{' '}
           <a className="font-semibold underline" href="/login?next=/reservasi-saya">
@@ -174,7 +174,7 @@ export default function ReservasiSayaPage() {
       {offline && (
         <div
           role="alert"
-          className="rounded-xl border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-700"
+          className="rounded-[var(--radius-lg)] border border-[var(--ink)]/20 bg-[var(--ink)]/5 px-4 py-3 text-sm text-ink/80"
         >
           {usedCache
             ? 'Anda offline — menampilkan data terakhir yang tersimpan.'
@@ -192,7 +192,7 @@ export default function ReservasiSayaPage() {
       {error && (
         <div
           role="alert"
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          className="rounded-[var(--radius-lg)] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
         >
           {error}
         </div>
@@ -217,7 +217,7 @@ export default function ReservasiSayaPage() {
       )}
 
       {loading ? (
-        <p className="text-sm text-slate-500" aria-live="polite">
+        <p className="text-sm text-ink/60" aria-live="polite">
           Memuat…
         </p>
       ) : needLogin ? null : (
@@ -228,7 +228,7 @@ export default function ReservasiSayaPage() {
             </h2>
             {reservations.length === 0 ? (
               <div className="grid gap-2">
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-ink/60">
                   Belum ada reservasi. Temukan buku favorit Anda di katalog lalu reservasi dalam
                   1-klik.
                 </p>
@@ -261,7 +261,7 @@ export default function ReservasiSayaPage() {
             </h2>
             {loans.length === 0 ? (
               <div className="grid gap-2">
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-ink/60">
                   Tidak ada pinjaman aktif. Lihat koleksi yang tersedia dan pinjam lewat petugas
                   sirkulasi.
                 </p>
@@ -288,7 +288,7 @@ export default function ReservasiSayaPage() {
               Wishlist Simpanku ({wishlist.length})
             </h2>
             {wishlist.length === 0 ? (
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-ink/60">
                 Belum ada buku tersimpan. Tandai buku favorit dengan tombol Simpanku di katalog.
               </p>
             ) : (
@@ -296,7 +296,7 @@ export default function ReservasiSayaPage() {
                 {wishlist.map((slug) => (
                   <li
                     key={slug}
-                    className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-slate-200 bg-white px-4 py-2.5"
+                    className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-lg)] border border-[var(--ink)]/10 bg-surface px-4 py-2.5"
                   >
                     <Link
                       href={`/katalog/${slug}`}

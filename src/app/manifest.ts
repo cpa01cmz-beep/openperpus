@@ -1,6 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { fetchSettings, getSiteName } from '@/lib/settings';
 import { getEffectiveThemeFromSettings } from '@/lib/theme-overrides';
+import { DEFAULT_THEME } from '@/lib/themes';
 
 /** PWA manifest dinamis — nama/deskripsi/warna dari library_settings + active_theme. */
 export default async function manifest(): Promise<MetadataRoute.Manifest> {
@@ -10,10 +11,12 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     settings?.seo_desc?.trim() ||
     settings?.tagline?.trim() ||
     'Katalog, berita, dan layanan perpustakaan.';
-  const themeColor = getEffectiveThemeFromSettings({
-    active_theme: settings?.active_theme ?? 'emerald',
+  const effective = getEffectiveThemeFromSettings({
+    active_theme: settings?.active_theme ?? DEFAULT_THEME,
     theme_overrides: (settings as { theme_overrides?: unknown } | null)?.theme_overrides ?? null,
-  }).tokens.brand;
+  });
+  const themeColor = effective.tokens.brand;
+  const backgroundColor = effective.tokens.surface;
   const favicon = settings?.favicon_url?.trim() || '/favicon.ico';
   return {
     name,
@@ -21,7 +24,7 @@ export default async function manifest(): Promise<MetadataRoute.Manifest> {
     description,
     start_url: '/',
     display: 'standalone',
-    background_color: '#ffffff',
+    background_color: backgroundColor,
     theme_color: themeColor,
     lang: 'id',
     icons: [

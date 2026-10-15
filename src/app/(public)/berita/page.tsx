@@ -61,13 +61,13 @@ export default async function BeritaPage() {
       />
       <Breadcrumb items={[{ label: 'Beranda', href: '/' }, { label: 'Berita' }]} />
       <header>
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">
+        <p className="text-xs font-bold uppercase tracking-widest text-accent">
           Kabar perpustakaan
         </p>
         <h1 className="mt-1 font-heading text-3xl font-bold text-heading sm:text-4xl">
           Berita & Artikel
         </h1>
-        <p className="mt-2 max-w-2xl text-sm text-slate-500 sm:text-base">
+        <p className="mt-2 max-w-2xl text-sm text-ink/60 sm:text-base">
           Kegiatan, pengumuman, dan bacaan literasi terbaru.
         </p>
       </header>
@@ -78,7 +78,7 @@ export default async function BeritaPage() {
             <Link
               key={a.id}
               href={`/berita/${a.slug}`}
-              className="group overflow-hidden rounded-lg border border-slate-100 bg-white shadow-sm transition hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              className="group overflow-hidden rounded-lg border border-[var(--ink)]/10 bg-surface shadow-[var(--shadow-sm)] transition hover:shadow-[var(--shadow-lg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             >
               <div className="aspect-[16/9] w-full overflow-hidden bg-brand-soft">
                 {a.cover_url ? (
@@ -101,12 +101,12 @@ export default async function BeritaPage() {
                 )}
               </div>
               <div className="p-4 sm:p-5">
-                <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-wide text-brand">
+                <p className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-brand">
                   {a.category ?? 'Berita'}
                   {a.published_at && (
                     <time
                       dateTime={a.published_at}
-                      className="font-normal normal-case tracking-normal text-slate-400"
+                      className="font-normal normal-case tracking-normal text-ink/50"
                     >
                       {formatTanggalPanjang(a.published_at)}
                     </time>
@@ -116,7 +116,7 @@ export default async function BeritaPage() {
                   {a.title}
                 </h2>
                 {a.excerpt && (
-                  <p className="mt-1.5 line-clamp-2 text-sm text-slate-500">{a.excerpt}</p>
+                  <p className="mt-1.5 line-clamp-2 text-sm text-ink/60">{a.excerpt}</p>
                 )}
                 <span className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-brand">
                   Baca selengkapnya{' '}
@@ -130,10 +130,10 @@ export default async function BeritaPage() {
           ))}
         </div>
       ) : (
-        <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-6 py-14 text-center">
-          <Newspaper className="mx-auto h-10 w-10 text-slate-300" aria-hidden="true" />
-          <h2 className="mt-3 font-heading text-lg font-bold text-slate-800">Belum ada berita</h2>
-          <p className="mx-auto mt-1 max-w-sm text-sm text-slate-500">
+        <div className="rounded-lg border border-dashed border-[var(--ink)]/10 bg-[var(--ink)]/5 px-6 py-14 text-center">
+          <Newspaper className="mx-auto h-10 w-10 text-ink/30" aria-hidden="true" />
+          <h2 className="mt-3 font-heading text-lg font-bold text-ink">Belum ada berita</h2>
+          <p className="mx-auto mt-1 max-w-sm text-sm text-ink/60">
             Berita yang dipublikasikan pustakawan akan muncul di sini.
           </p>
         </div>

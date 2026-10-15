@@ -40,8 +40,8 @@ export default function Pagination({
   const baseBtn =
     'inline-flex min-h-[44px] min-w-[44px] items-center justify-center rounded-md px-3 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand';
   const idle =
-    'border border-slate-200 bg-white text-slate-700 hover:border-brand hover:text-brand';
-  const active = 'bg-brand text-white shadow-sm';
+    'border border-[var(--ink)]/10 bg-surface text-ink/80 hover:border-brand hover:text-brand';
+  const active = 'bg-brand text-surface shadow-[var(--shadow-sm)]';
   const disabled = 'cursor-not-allowed opacity-40';
 
   const renderControl = (
@@ -92,7 +92,7 @@ export default function Pagination({
       )}
       {items.map((it, i) =>
         it === '…' ? (
-          <span key={`gap-${i}`} aria-hidden="true" className="px-1 text-sm text-slate-400">
+          <span key={`gap-${i}`} aria-hidden="true" className="px-1 text-sm text-ink/50">
             …
           </span>
         ) : hrefForPage ? (

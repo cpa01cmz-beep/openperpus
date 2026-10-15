@@ -59,7 +59,7 @@ export default function CatalogControls({
           id="sort"
           value={sort}
           onChange={(e) => onSortChange(e.target.value as CatalogSortKey)}
-          className="min-h-[44px] rounded-[var(--radius-md)] border border-[var(--ink)]/10 bg-[var(--surface)] px-3 py-2 text-sm text-[var(--ink)] shadow-sm focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
+          className="min-h-[44px] rounded-[var(--radius-md)] border border-[var(--ink)]/10 bg-[var(--surface)] px-3 py-2 text-sm text-[var(--ink)] shadow-[var(--shadow-sm)] focus:border-brand focus:outline-none focus:ring-2 focus:ring-brand/20"
         >
           {CATALOG_SORTS.map((s) => (
             <option key={s.key} value={s.key}>
@@ -73,7 +73,7 @@ export default function CatalogControls({
             type="checkbox"
             checked={onlyAvailable}
             onChange={(e) => onAvailableChange(e.target.checked)}
-            className="h-5 w-5 shrink-0 rounded accent-brand"
+            className="h-5 w-5 shrink-0 rounded-[var(--radius-sm)] accent-brand"
           />
           Hanya yang tersedia
         </label>

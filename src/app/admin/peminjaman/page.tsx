@@ -22,7 +22,7 @@ import { effectiveLoanStatus } from '@/lib/loans-overdue';
 
 const LoanForm = nextDynamic(() => import('@/components/admin/LoanForm'), {
   ssr: false,
-  loading: () => <p className="text-sm text-slate-500">Memuat formulir…</p>,
+  loading: () => <p className="text-sm text-ink/60">Memuat formulir…</p>,
 });
 
 type Loan = {
@@ -295,7 +295,7 @@ function PeminjamanInner() {
             (perilaku lama), rusak/hilang mengurangi stok buku dan menagih
             biaya ganti rugi dari pengaturan. */}
         <fieldset className="grid gap-1">
-          <legend className="text-sm font-semibold text-slate-700">Kondisi buku</legend>
+          <legend className="text-sm font-semibold text-ink/80">Kondisi buku</legend>
           {[
             { value: 'baik', label: 'Baik — stok kembali tersedia' },
             {
@@ -315,7 +315,7 @@ function PeminjamanInner() {
               }`,
             },
           ].map((opt) => (
-            <label key={opt.value} className="flex items-center gap-2 text-sm text-slate-700">
+            <label key={opt.value} className="flex items-center gap-2 text-sm text-ink/80">
               <input
                 type="radio"
                 name="return-kondisi"
@@ -357,12 +357,12 @@ function PeminjamanInner() {
         }
       >
         <div className="grid gap-1">
-          <label htmlFor="extend-days" className="text-sm font-semibold text-slate-700">
+          <label htmlFor="extend-days" className="text-sm font-semibold text-ink/80">
             Lama perpanjangan (hari)
           </label>
           <select
             id="extend-days"
-            className="h-11 min-h-[44px] rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900"
+            className="h-11 min-h-[44px] rounded-md border border-[var(--ink)]/10 bg-surface px-3 text-sm text-ink"
             value={extendDays}
             onChange={(e) => setExtendDays(e.target.value)}
           >
@@ -377,7 +377,7 @@ function PeminjamanInner() {
       {notice && (
         <div
           role="status"
-          className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+          className="rounded-[var(--radius-lg)] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
         >
           {notice}
         </div>
@@ -386,7 +386,7 @@ function PeminjamanInner() {
       {denied && (
         <div
           role="alert"
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
+          className="rounded-[var(--radius-lg)] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-800"
         >
           Akses ditolak (401/403). Silakan login sebagai petugas untuk menagih dan memproses
           pengembalian.
@@ -395,7 +395,7 @@ function PeminjamanInner() {
       {error && (
         <div
           role="alert"
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          className="rounded-[var(--radius-lg)] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
         >
           {error}
         </div>
@@ -444,12 +444,12 @@ function PeminjamanInner() {
         }
       >
         <div className="grid gap-1">
-          <label htmlFor="peminjaman-status" className="text-sm font-semibold text-slate-700">
+          <label htmlFor="peminjaman-status" className="text-sm font-semibold text-ink/80">
             Filter status
           </label>
           <select
             id="peminjaman-status"
-            className="h-11 min-h-[44px] rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50"
+            className="h-11 min-h-[44px] rounded-md border border-[var(--ink)]/10 bg-surface px-3 text-sm text-ink transition hover:border-[var(--ink)]/20 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1 disabled:cursor-not-allowed disabled:opacity-50"
             value={status}
             onChange={(e) => {
               setStatus(e.target.value);
@@ -470,7 +470,7 @@ function PeminjamanInner() {
           aria-pressed={overdueOnly}
           onClick={() => setOverdueOnly((v) => !v)}
           title="Terlambat = pinjaman berjalan yang melewati jatuh tempo (definisi tunggal, sama dengan status overdue di API)"
-          className={`inline-flex min-h-[44px] items-center justify-center rounded-md border px-3 font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${overdueOnly ? 'border-red-300 bg-red-50 text-red-700' : 'border-slate-200 bg-white text-slate-700 hover:border-brand hover:text-brand'}`}
+          className={`inline-flex min-h-[44px] items-center justify-center rounded-md border px-3 font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${overdueOnly ? 'border-red-300 bg-red-50 text-red-700' : 'border-[var(--ink)]/10 bg-surface text-ink/80 hover:border-brand hover:text-brand'}`}
         >
           Terlambat saja
         </button>
@@ -491,7 +491,7 @@ function PeminjamanInner() {
               <span>
                 <strong>{r.members?.member_code}</strong>
                 <br />
-                <span className="text-slate-500">{r.books?.title}</span>
+                <span className="text-ink/60">{r.books?.title}</span>
               </span>
             ),
           },
@@ -504,7 +504,9 @@ function PeminjamanInner() {
                 {formatTanggal(r.borrowed_at)}
                 <br />→ {formatTanggal(r.due_at)}
                 {statusOf(r) === 'overdue' && (
-                  <span className="ml-1 rounded bg-red-100 px-1 text-xs text-red-700">telat</span>
+                  <span className="ml-1 rounded-[var(--radius-sm)] bg-red-100 px-1 text-xs text-red-700">
+                    telat
+                  </span>
                 )}
               </span>
             ),
@@ -528,7 +530,7 @@ function PeminjamanInner() {
                     onClick={() => onReturn(r.id)}
                     disabled={denied}
                     aria-label={`Kembalikan pinjaman ${r.members?.member_code ?? r.id}`}
-                    className="inline-flex min-h-[44px] items-center rounded bg-brand px-3 text-xs font-semibold text-white transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex min-h-[44px] items-center rounded-[var(--radius-sm)] bg-brand px-3 text-xs font-semibold text-surface transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Kembalikan
                   </button>
@@ -537,7 +539,7 @@ function PeminjamanInner() {
                     onClick={() => onExtend(r.id)}
                     disabled={denied}
                     aria-label={`Perpanjang pinjaman ${r.members?.member_code ?? r.id}`}
-                    className="inline-flex min-h-[44px] items-center rounded border border-brand px-3 text-xs font-semibold text-brand transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
+                    className="inline-flex min-h-[44px] items-center rounded-[var(--radius-sm)] border border-brand px-3 text-xs font-semibold text-brand transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Perpanjang
                   </button>
@@ -553,7 +555,7 @@ function PeminjamanInner() {
                   )}
                 </span>
               ) : (
-                <span className="text-xs text-slate-400">-</span>
+                <span className="text-xs text-ink/50">-</span>
               );
             },
           },

@@ -141,7 +141,10 @@ export default function BookForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="grid max-w-3xl gap-4 rounded-2xl border bg-white p-6">
+    <form
+      onSubmit={onSubmit}
+      className="grid max-w-3xl gap-4 rounded-[var(--radius-lg)] border bg-surface p-6"
+    >
       {err && (
         <p
           id="book-form-error"
@@ -200,10 +203,7 @@ export default function BookForm({
           placeholder="id"
         />
         <div className="grid gap-1 text-sm">
-          <label
-            htmlFor="book-category"
-            className="mb-1.5 block text-sm font-semibold text-slate-700"
-          >
+          <label htmlFor="book-category" className="mb-1.5 block text-sm font-semibold text-ink/80">
             Kategori
           </label>
           {categories.length > 0 ? (
@@ -212,7 +212,7 @@ export default function BookForm({
                 id="book-category"
                 aria-invalid={err ? true : undefined}
                 aria-describedby="book-category-hint"
-                className="h-11 min-h-[44px] w-full rounded-md border border-slate-200 bg-white px-4 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
+                className="h-11 min-h-[44px] w-full rounded-md border border-[var(--ink)]/10 bg-surface px-4 text-sm text-ink transition hover:border-[var(--ink)]/20 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
                 value={form.category_id ?? ''}
                 onChange={(e) => set('category_id', e.target.value)}
               >
@@ -223,7 +223,7 @@ export default function BookForm({
                   </option>
                 ))}
               </select>
-              <p id="book-category-hint" className="mt-1.5 text-xs text-slate-500">
+              <p id="book-category-hint" className="mt-1.5 text-xs text-ink/60">
                 Pilih kategori buku (opsional).
               </p>
             </>
@@ -238,7 +238,7 @@ export default function BookForm({
           )}
         </div>
         <div className="grid gap-1 text-sm">
-          <label htmlFor="book-rack" className="mb-1.5 block text-sm font-semibold text-slate-700">
+          <label htmlFor="book-rack" className="mb-1.5 block text-sm font-semibold text-ink/80">
             Rak
           </label>
           {racks.length > 0 ? (
@@ -247,7 +247,7 @@ export default function BookForm({
                 id="book-rack"
                 aria-invalid={err ? true : undefined}
                 aria-describedby="book-rack-hint"
-                className="h-11 min-h-[44px] w-full rounded-md border border-slate-200 bg-white px-4 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
+                className="h-11 min-h-[44px] w-full rounded-md border border-[var(--ink)]/10 bg-surface px-4 text-sm text-ink transition hover:border-[var(--ink)]/20 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
                 value={form.rack_id ?? ''}
                 onChange={(e) => set('rack_id', e.target.value)}
               >
@@ -258,7 +258,7 @@ export default function BookForm({
                   </option>
                 ))}
               </select>
-              <p id="book-rack-hint" className="mt-1.5 text-xs text-slate-500">
+              <p id="book-rack-hint" className="mt-1.5 text-xs text-ink/60">
                 Pilih rak penyimpanan (opsional).
               </p>
             </>
@@ -303,7 +303,7 @@ export default function BookForm({
           onChange={(e) => set('pages', e.target.value ? Number(e.target.value) : null)}
         />
         <div className="grid gap-1 text-sm">
-          <span id="book-pdf-label" className="mb-1.5 block text-sm font-semibold text-slate-700">
+          <span id="book-pdf-label" className="mb-1.5 block text-sm font-semibold text-ink/80">
             E-book (PDF)
           </span>
           <UploadInput
@@ -316,7 +316,7 @@ export default function BookForm({
         </div>
       </div>
       <div className="grid gap-1 text-sm">
-        <span className="mb-1.5 block text-sm font-semibold text-slate-700">Sampul (cover)</span>
+        <span className="mb-1.5 block text-sm font-semibold text-ink/80">Sampul (cover)</span>
         <UploadInput
           value={form.cover_url ?? ''}
           onUploaded={(url) => set('cover_url', url)}
@@ -328,7 +328,7 @@ export default function BookForm({
       <div className="grid gap-1 text-sm">
         <label
           htmlFor="book-description"
-          className="mb-1.5 block text-sm font-semibold text-slate-700"
+          className="mb-1.5 block text-sm font-semibold text-ink/80"
         >
           Deskripsi
         </label>
@@ -336,12 +336,12 @@ export default function BookForm({
           id="book-description"
           aria-invalid={err ? true : undefined}
           aria-describedby={err ? 'book-form-error' : 'book-description-hint'}
-          className="min-h-[44px] w-full rounded-md border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
+          className="min-h-[44px] w-full rounded-md border border-[var(--ink)]/10 bg-surface px-4 py-2 text-sm text-ink transition hover:border-[var(--ink)]/20 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
           rows={4}
           value={form.description}
           onChange={(e) => set('description', e.target.value)}
         />
-        <p id="book-description-hint" className="mt-1.5 text-xs text-slate-500">
+        <p id="book-description-hint" className="mt-1.5 text-xs text-ink/60">
           Ringkasan isi buku untuk katalog (opsional).
         </p>
       </div>

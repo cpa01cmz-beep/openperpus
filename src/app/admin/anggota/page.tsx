@@ -284,7 +284,7 @@ export default function AnggotaPage() {
     <div className="grid gap-4">
       <div>
         <h1 className="text-2xl font-bold">Anggota</h1>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-ink/60">
           members.user_id wajib merujuk profiles.id (auth user). Nama tampil dari
           profiles.full_name.
         </p>
@@ -292,7 +292,7 @@ export default function AnggotaPage() {
       {notice && (
         <div
           role="status"
-          className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+          className="rounded-[var(--radius-lg)] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
         >
           {notice}
         </div>
@@ -305,16 +305,19 @@ export default function AnggotaPage() {
       {actionError && (
         <div
           role="alert"
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          className="rounded-[var(--radius-lg)] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
         >
           {actionError}
         </div>
       )}
-      <form onSubmit={onAdd} className="grid gap-2 rounded-2xl border bg-white p-4">
+      <form
+        onSubmit={onAdd}
+        className="grid gap-2 rounded-[var(--radius-lg)] border bg-surface p-4"
+      >
         <div className="grid gap-1">
           <label
             htmlFor="anggota-profile-search"
-            className="mb-1.5 block text-sm font-semibold text-slate-700"
+            className="mb-1.5 block text-sm font-semibold text-ink/80"
           >
             Cari profil anggota
           </label>
@@ -324,7 +327,7 @@ export default function AnggotaPage() {
             aria-expanded={pickOpen}
             aria-controls={pickerListId}
             aria-autocomplete="list"
-            className="h-11 min-h-[44px] w-full rounded-md border border-slate-200 bg-white px-4 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
+            className="h-11 min-h-[44px] w-full rounded-md border border-[var(--ink)]/10 bg-surface px-4 text-sm text-ink transition hover:border-[var(--ink)]/20 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
             placeholder="Ketik nama / kode anggota…"
             value={pickText}
             onChange={(e) => {
@@ -338,14 +341,14 @@ export default function AnggotaPage() {
               role="listbox"
               id={pickerListId}
               aria-label="Hasil pencarian profil"
-              className="grid max-h-56 gap-1 overflow-auto rounded-lg border bg-white p-1"
+              className="grid max-h-56 gap-1 overflow-auto rounded-lg border bg-surface p-1"
             >
               {pickOptions.map((o) => (
                 <li
                   key={o.user_id}
                   role="option"
                   aria-selected={form.user_id === o.user_id}
-                  className="cursor-pointer rounded px-3 py-2 text-sm hover:bg-slate-100"
+                  className="cursor-pointer rounded-[var(--radius-sm)] px-3 py-2 text-sm hover:bg-[var(--ink)]/5"
                   onMouseDown={(e) => {
                     e.preventDefault();
                     setForm({ ...form, user_id: o.user_id });
@@ -471,7 +474,7 @@ export default function AnggotaPage() {
             header: 'Tagihan',
             render: (r) => {
               const v = Number(r.fines_total ?? 0);
-              if (v <= 0) return <span className="text-slate-400">-</span>;
+              if (v <= 0) return <span className="text-ink/50">-</span>;
               return (
                 <span
                   aria-label={`Tagihan ${fmtRp(v)}`}
@@ -492,7 +495,7 @@ export default function AnggotaPage() {
             header: 'Telat',
             render: (r) => {
               const v = Number(r.overdue_loans ?? 0);
-              if (v <= 0) return <span className="text-slate-400">-</span>;
+              if (v <= 0) return <span className="text-ink/50">-</span>;
               return (
                 <span
                   aria-label={`${v} peminjaman terlambat`}

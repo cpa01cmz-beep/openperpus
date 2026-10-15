@@ -1,3 +1,4 @@
+import { DEFAULT_THEME } from '@/lib/themes';
 import { getEffectiveTheme } from '@/lib/theme-overrides';
 import { resolveFooterVariant } from '@/components/layout/variants/registry';
 import type { LibrarySettings, NavItem } from '@/lib/types';
@@ -15,7 +16,7 @@ export default function Footer({
   menus?: NavItem[];
 }) {
   const theme = getEffectiveTheme(
-    themeId ?? settings.active_theme ?? 'emerald',
+    themeId ?? settings.active_theme ?? DEFAULT_THEME,
     (settings as { theme_overrides?: unknown })?.theme_overrides ?? null
   );
   const Foot = resolveFooterVariant(theme.layout.footerVariant);

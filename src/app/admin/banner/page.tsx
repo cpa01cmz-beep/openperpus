@@ -120,7 +120,7 @@ export default function BannerPage() {
       {notice && (
         <div
           role="status"
-          className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+          className="rounded-[var(--radius-lg)] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
         >
           {notice}
         </div>
@@ -135,7 +135,10 @@ export default function BannerPage() {
           {actionError}
         </p>
       )}
-      <form onSubmit={onAdd} className="grid max-w-2xl gap-2 rounded-2xl border bg-white p-4">
+      <form
+        onSubmit={onAdd}
+        className="grid max-w-2xl gap-2 rounded-[var(--radius-lg)] border bg-surface p-4"
+      >
         <Input
           id="banner-title"
           label="Judul"
@@ -187,7 +190,7 @@ export default function BannerPage() {
         role="group"
         aria-label="Urutkan banner"
       >
-        <span className="text-slate-500" id="banner-sort-label">
+        <span className="text-ink/60" id="banner-sort-label">
           Urut:
         </span>
         <Button

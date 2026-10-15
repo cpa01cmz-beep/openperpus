@@ -42,7 +42,7 @@ type SectionRow = {
 type Status = 'idle' | 'saving' | 'saved' | 'error';
 
 const FOCUS_RING =
-  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 focus-visible:ring-offset-2';
+  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink focus-visible:ring-offset-2';
 
 function VariantSelect({
   id,
@@ -64,11 +64,11 @@ function VariantSelect({
     <div className="grid gap-1.5">
       <label
         htmlFor={id}
-        className="flex flex-wrap items-center gap-2 text-sm font-medium text-slate-700"
+        className="flex flex-wrap items-center gap-2 text-sm font-medium text-ink/80"
       >
         {label}
         {isDefault && (
-          <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+          <span className="rounded-full bg-[var(--ink)]/5 px-2 py-0.5 text-xs font-medium text-ink/70">
             Bawaan preset
           </span>
         )}
@@ -77,7 +77,7 @@ function VariantSelect({
         id={id}
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className={`rounded-xl border px-3 py-2 text-sm text-slate-900 transition hover:border-slate-400 ${FOCUS_RING}`}
+        className={`rounded-[var(--radius-lg)] border px-3 py-2 text-sm text-ink transition hover:border-[var(--ink)]/30 ${FOCUS_RING}`}
       >
         {options.map((key) => (
           <option key={key} value={key}>
@@ -85,7 +85,7 @@ function VariantSelect({
           </option>
         ))}
       </select>
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-ink/60">
         Blok: <code>{value}</code>
       </p>
     </div>
@@ -212,11 +212,11 @@ export default function LayoutPicker({ currentBase, initialOverrides, onDraftCha
   return (
     <section
       aria-label="Pemilih komposisi layout"
-      className="grid max-w-4xl gap-5 rounded-2xl border bg-white p-6"
+      className="grid max-w-4xl gap-5 rounded-[var(--radius-lg)] border bg-surface p-6"
     >
       <div>
         <h2 className="font-semibold">Komposisi Layout</h2>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-ink/60">
           Tema dikunci pada preset <strong>{getTheme(currentBase).name}</strong> — hanya susunan
           blok yang dapat diubah. Hanya admin yang dapat menyimpan (librarian 403).
         </p>
@@ -258,13 +258,13 @@ export default function LayoutPicker({ currentBase, initialOverrides, onDraftCha
         />
       </div>
       {sketchLocked && (
-        <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
+        <p className="rounded-lg bg-[var(--ink)]/5 px-3 py-2 text-xs text-ink/60">
           Navigasi sketch terkunci untuk tema sketch — opsi sketch tidak tersedia pada preset ini.
         </p>
       )}
 
       <div className="grid gap-2">
-        <h3 className="text-sm font-medium text-slate-700">Urutan section beranda</h3>
+        <h3 className="text-sm font-medium text-ink/80">Urutan section beranda</h3>
         {enabledCount < 1 && (
           <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
             Minimal 1 section harus aktif.
@@ -276,17 +276,17 @@ export default function LayoutPicker({ currentBase, initialOverrides, onDraftCha
             return (
               <li
                 key={row.id}
-                className="flex flex-wrap items-center gap-2 rounded-xl border px-3 py-2"
+                className="flex flex-wrap items-center gap-2 rounded-[var(--radius-lg)] border px-3 py-2"
               >
                 <span
                   aria-hidden="true"
-                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-slate-100 text-xs font-semibold text-slate-700"
+                  className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[var(--ink)]/5 text-xs font-semibold text-ink/80"
                 >
                   {i + 1}
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium text-slate-800">{label}</span>
-                  <code className="block text-xs text-slate-500">{row.id}</code>
+                  <span className="block truncate text-sm font-medium text-ink">{label}</span>
+                  <code className="block text-xs text-ink/60">{row.id}</code>
                 </span>
                 <button
                   type="button"
@@ -296,8 +296,8 @@ export default function LayoutPicker({ currentBase, initialOverrides, onDraftCha
                   onClick={() => toggle(row.id)}
                   className={`rounded-full px-3 py-1 text-xs font-medium transition ${FOCUS_RING} ${
                     row.enabled
-                      ? 'bg-slate-900 text-white'
-                      : 'border border-slate-300 text-slate-600 hover:border-slate-400'
+                      ? 'bg-ink text-surface'
+                      : 'border border-[var(--ink)]/20 text-ink/70 hover:border-[var(--ink)]/30'
                   }`}
                 >
                   {row.enabled ? 'Aktif' : 'Mati'}
@@ -308,7 +308,7 @@ export default function LayoutPicker({ currentBase, initialOverrides, onDraftCha
                     aria-label={`Naikkan ${label}`}
                     disabled={i === 0}
                     onClick={() => move(row.id, -1)}
-                    className={`rounded-lg border px-2.5 py-1 text-xs font-medium transition disabled:opacity-40 ${FOCUS_RING} hover:border-slate-400`}
+                    className={`rounded-lg border px-2.5 py-1 text-xs font-medium transition disabled:opacity-40 ${FOCUS_RING} hover:border-[var(--ink)]/30`}
                   >
                     Naik
                   </button>
@@ -317,7 +317,7 @@ export default function LayoutPicker({ currentBase, initialOverrides, onDraftCha
                     aria-label={`Turunkan ${label}`}
                     disabled={i === rows.length - 1}
                     onClick={() => move(row.id, 1)}
-                    className={`rounded-lg border px-2.5 py-1 text-xs font-medium transition disabled:opacity-40 ${FOCUS_RING} hover:border-slate-400`}
+                    className={`rounded-lg border px-2.5 py-1 text-xs font-medium transition disabled:opacity-40 ${FOCUS_RING} hover:border-[var(--ink)]/30`}
                   >
                     Turun
                   </button>
@@ -344,7 +344,7 @@ export default function LayoutPicker({ currentBase, initialOverrides, onDraftCha
             type="button"
             disabled={!canSave}
             onClick={onSave}
-            className={`rounded-xl bg-slate-900 px-4 py-2 text-sm font-medium text-white transition disabled:opacity-50 ${FOCUS_RING} hover:bg-slate-700`}
+            className={`rounded-[var(--radius-lg)] bg-ink px-4 py-2 text-sm font-medium text-surface transition disabled:opacity-50 ${FOCUS_RING} hover:bg-ink/80`}
           >
             {status === 'saving' ? 'Menyimpan…' : 'Simpan'}
           </button>
@@ -352,7 +352,7 @@ export default function LayoutPicker({ currentBase, initialOverrides, onDraftCha
             type="button"
             disabled={status === 'saving'}
             onClick={() => setResetOpen(true)}
-            className={`rounded-xl border px-4 py-2 text-sm font-medium text-slate-700 transition disabled:opacity-50 ${FOCUS_RING} hover:border-slate-400`}
+            className={`rounded-[var(--radius-lg)] border px-4 py-2 text-sm font-medium text-ink/80 transition disabled:opacity-50 ${FOCUS_RING} hover:border-[var(--ink)]/30`}
           >
             Reset ke preset
           </button>

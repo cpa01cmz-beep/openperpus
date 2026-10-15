@@ -159,11 +159,11 @@ export default function UploadInput({
         />
       )}
       {value && isAllowedImageUrl(value) && !isImageUrl(value) && (
-        <p className="text-xs text-slate-600">
+        <p className="text-xs text-ink/70">
           File terpilih: {safeDecode(value.split('/').pop() ?? value)}
         </p>
       )}
-      {uploading && <p className="text-xs text-slate-500">Mengunggah…</p>}
+      {uploading && <p className="text-xs text-ink/60">Mengunggah…</p>}
       {err && (
         <p role="alert" className="text-xs text-red-600">
           {err}

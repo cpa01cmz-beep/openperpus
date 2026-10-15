@@ -22,8 +22,8 @@ export default function CategoryChips({ categories, activeId, onChange }: Props)
         aria-pressed={activeId === null}
         className={`shrink-0 min-h-[44px] rounded-full border px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
           activeId === null
-            ? 'border-brand bg-brand text-white shadow'
-            : 'border-slate-200 bg-white text-slate-600 hover:border-brand hover:text-brand'
+            ? 'border-brand bg-brand text-surface shadow-[var(--shadow-sm)]'
+            : 'bg-surface text-ink/70 hover:border-brand hover:text-brand'
         }`}
       >
         Semua
@@ -38,8 +38,8 @@ export default function CategoryChips({ categories, activeId, onChange }: Props)
             aria-pressed={active}
             className={`shrink-0 min-h-[44px] rounded-full border px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand ${
               active
-                ? 'border-brand bg-brand text-white shadow'
-                : 'border-slate-200 bg-white text-slate-600 hover:border-brand hover:text-brand'
+                ? 'border-brand bg-brand text-surface shadow-[var(--shadow-sm)]'
+                : 'bg-surface text-ink/70 hover:border-brand hover:text-brand'
             }`}
           >
             {c.name}

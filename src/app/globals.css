@@ -9,13 +9,14 @@
    Lihat: https://tailwindcss.com/docs/detecting-classes-in-source-files */
 @source not "../../tests";
 
-/* ponytail: v4 preflight drops v3's default border color (#e5e7eb) → uncolored
-   .border jatuh ke currentColor. Upgrade path: ganti token jadi --border per theme. */
+/* ponytail: v4 preflight drops v3's default border color → uncolored
+   .border jatuh ke currentColor. Token border diturunkan dari --ink agar
+   theme-aware (no hardcoded hex). */
 @layer base {
   *,
   ::before,
   ::after {
-    border-color: #e5e7eb;
+    border-color: color-mix(in srgb, var(--ink) 12%, transparent);
   }
 }
 
@@ -86,7 +87,7 @@
   --brand-soft: #e8ece5;
   --brand-strong: #4a5548;
   --accent: #a98a6b;
-  --accent-soft: #f1e8dc;
+  --accent-soft: #e5dbcc;
   --surface: #faf7f2;
   --ink: #2b2622;
   --heading: #4a5548;
@@ -104,10 +105,10 @@
 }
 
 [data-theme='brutalist'] {
-  --brand: #ff4d00;
+  --brand: #d93600;
   --brand-soft: #ffd9c2;
   --brand-strong: #8f2a00;
-  --accent: #ffc400;
+  --accent: #e6ac00;
   --accent-soft: #fff0b3;
   --surface: #f2eee3;
   --ink: #111110;
@@ -130,7 +131,7 @@
   --brand-soft: #d2e9e6;
   --brand-strong: #084443;
   --accent: #ff6b4a;
-  --accent-soft: #ffe0d3;
+  --accent-soft: #ffd8cc;
   --surface: #f4f7f6;
   --ink: #102e2e;
   --heading: #084443;
@@ -229,7 +230,7 @@
   background-image: repeating-linear-gradient(
     0deg,
     transparent 0 31px,
-    rgb(38 33 27 / 0.06) 31px 32px
+    color-mix(in srgb, var(--ink) 6%, transparent) 31px 32px
   );
 }
 
@@ -252,8 +253,8 @@
     to bottom,
     transparent 0,
     transparent 27px,
-    rgb(42 38 32 / 0.055) 27px,
-    rgb(42 38 32 / 0.055) 28px
+    color-mix(in srgb, var(--ink) 5.5%, transparent) 27px,
+    color-mix(in srgb, var(--ink) 5.5%, transparent) 28px
   );
 }
 .ornament-ruled-paper ::selection {

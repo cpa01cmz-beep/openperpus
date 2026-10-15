@@ -38,7 +38,7 @@ export default function FilterBar({
     <div className="flex flex-wrap items-end gap-2 text-sm">
       {search && (
         <div className="grid gap-1">
-          <label htmlFor={search.id} className="text-sm font-semibold text-slate-700">
+          <label htmlFor={search.id} className="text-sm font-semibold text-ink/80">
             {search.label}
           </label>
           <input
@@ -47,7 +47,7 @@ export default function FilterBar({
             value={search.value}
             onChange={(e) => search.onChange(e.target.value)}
             placeholder={search.placeholder}
-            className="h-11 min-h-[44px] w-full max-w-sm rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
+            className="h-11 min-h-[44px] w-full max-w-sm rounded-md border border-[var(--ink)]/10 bg-surface px-3 text-sm text-ink transition hover:border-[var(--ink)]/20 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
           />
         </div>
       )}
@@ -57,7 +57,7 @@ export default function FilterBar({
         <button
           type="button"
           onClick={onReload}
-          className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-slate-200 bg-white px-3 font-semibold text-slate-700 transition hover:border-brand hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md border border-[var(--ink)]/10 bg-surface px-3 font-semibold text-ink/80 transition hover:border-brand hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
         >
           <RotateCw className="h-4 w-4" aria-hidden="true" />
           {reloadLabel}

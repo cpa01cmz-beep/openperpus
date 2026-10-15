@@ -16,7 +16,7 @@ type Faq = {
 };
 
 const rawInput =
-  'h-11 min-h-[44px] w-full rounded-md border border-slate-200 bg-white px-4 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1';
+  'h-11 min-h-[44px] w-full rounded-md border border-[var(--ink)]/10 bg-surface px-4 text-sm text-ink transition hover:border-[var(--ink)]/20 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1';
 
 export function FaqsTab({
   faqs,
@@ -54,7 +54,10 @@ export function FaqsTab({
 
   return (
     <section className="grid gap-4" aria-label="FAQ">
-      <form onSubmit={handleAdd} className="grid max-w-2xl gap-2 rounded-2xl border bg-white p-4">
+      <form
+        onSubmit={handleAdd}
+        className="grid max-w-2xl gap-2 rounded-[var(--radius-lg)] border bg-surface p-4"
+      >
         <Input
           id="konten-faq-question"
           label="Pertanyaan"
@@ -66,7 +69,7 @@ export function FaqsTab({
         <div className="grid gap-1 text-sm">
           <label
             htmlFor="konten-faq-answer"
-            className="mb-1.5 block text-sm font-semibold text-slate-700"
+            className="mb-1.5 block text-sm font-semibold text-ink/80"
           >
             Jawaban
           </label>
