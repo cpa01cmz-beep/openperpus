@@ -83,11 +83,15 @@ export default function SearchCombobox({
   const [open, setOpen] = useState(false);
   const [options, setOptions] = useState<SearchOption[]>(initialOptions);
   const [searched, setSearched] = useState(false);
+  const [active, setActive] = useState(-1);
   const seq = useRef(0);
   const abort = useRef<AbortController | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const root = useRef<HTMLDivElement>(null);
+  const optionRefs = useRef<Array<HTMLLIElement | null>>([]);
   const listId = useId();
   const picked = [...initialOptions, ...options].find((o) => o.id === value);
+  const optionId = (i: number) => `${listId}-opt-${i}`;
 
   useEffect(() => {
     return () => {
@@ -95,6 +99,36 @@ export default function SearchCombobox({
       abort.current?.abort();
     };
   }, []);
+
+  // Opsi aktif terlihat & ikut ter-scroll saat navigasi keyboard (pengguna
+  // sighted perlu tahu opsi mana yang akan dipilih Enter). scrollIntoView
+  // dipanggil opsional — jsdom tidak mengimplementasikannya.
+  useEffect(() => {
+    if (!open || active < 0) return;
+    optionRefs.current[active]?.scrollIntoView?.({ block: 'nearest' });
+  }, [open, active, options]);
+
+  function closeList() {
+    setOpen(false);
+    setActive(-1);
+  }
+
+  function pickOption(o: SearchOption) {
+    onPick(o.id, o);
+    closeList();
+    setText('');
+  }
+
+  function moveActive(dir: 1 | -1) {
+    if (options.length === 0) return;
+    setOpen(true);
+    setActive((i) => {
+      const next = i + dir;
+      if (next < 0) return options.length - 1;
+      if (next >= options.length) return 0;
+      return next;
+    });
+  }
 
   function runSearch(q: string) {
     if (timer.current) clearTimeout(timer.current);
@@ -104,6 +138,7 @@ export default function SearchCombobox({
       setOptions([]);
       setSearched(false);
       setOpen(false);
+      setActive(-1);
       return;
     }
     const my = ++seq.current;
@@ -116,6 +151,7 @@ export default function SearchCombobox({
         setOptions(rows);
         setSearched(true);
         setOpen(true);
+        setActive(-1);
       } catch {
         // Abort / network: abaikan, pertahankan opsi terakhir
       }
@@ -125,7 +161,7 @@ export default function SearchCombobox({
   const inputCls =
     'h-11 min-h-[44px] w-full rounded-md border border-[var(--ink)]/10 bg-surface px-4 text-sm text-ink transition hover:border-[var(--ink)]/20 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1';
   return (
-    <div className="grid gap-1">
+    <div className="grid gap-1" ref={root}>
       <span className="font-medium">{label}</span>
       {picked && !open && value ? (
         <div className="flex items-center gap-2">
@@ -154,6 +190,7 @@ export default function SearchCombobox({
             aria-expanded={open}
             aria-controls={listId}
             aria-autocomplete="list"
+            aria-activedescendant={open && active >= 0 ? optionId(active) : undefined}
             aria-label={label}
             className={inputCls}
             placeholder={placeholder}
@@ -165,7 +202,34 @@ export default function SearchCombobox({
             onFocus={() => {
               if (searched && options.length > 0) setOpen(true);
             }}
-            onBlur={() => setTimeout(() => setOpen(false), 120)}
+            onBlur={(e) => {
+              // Tutup hanya saat focus benar-benar keluar dari combobox —
+              // listbox tetap hidup kalau focus pindah ke dalam (mis. klik ul).
+              const next = e.relatedTarget as Node | null;
+              if (!next || !root.current?.contains(next)) closeList();
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                moveActive(e.key === 'ArrowDown' ? 1 : -1);
+              } else if (e.key === 'Home' || e.key === 'End') {
+                if (options.length === 0) return;
+                e.preventDefault();
+                setOpen(true);
+                setActive(e.key === 'Home' ? 0 : options.length - 1);
+              } else if (e.key === 'Enter') {
+                if (!open || active < 0) return;
+                const o = options[active];
+                if (!o) return;
+                e.preventDefault();
+                if (disabledOption?.(o)) return;
+                pickOption(o);
+              } else if (e.key === 'Escape') {
+                if (!open) return;
+                e.preventDefault();
+                closeList();
+              }
+            }}
           />
           {open && (
             <ul
@@ -176,19 +240,23 @@ export default function SearchCombobox({
               {options.length === 0 && searched ? (
                 <li className="px-3 py-2 text-sm text-ink/60">{EMPTY_TEXT}</li>
               ) : (
-                options.map((o) => (
+                options.map((o, i) => (
                   <li
                     key={o.id}
+                    id={optionId(i)}
+                    ref={(el) => {
+                      optionRefs.current[i] = el;
+                    }}
                     role="option"
                     aria-selected={o.id === value}
                     aria-disabled={disabledOption?.(o) ?? false}
-                    className="cursor-pointer rounded-[var(--radius-sm)] px-3 py-2 text-sm hover:bg-[var(--ink)]/5"
+                    className={`cursor-pointer rounded-[var(--radius-sm)] px-3 py-2 text-sm hover:bg-[var(--ink)]/5${
+                      i === active ? ' bg-[var(--ink)]/10 font-medium' : ''
+                    }`}
                     onMouseDown={(e) => {
                       e.preventDefault();
                       if (disabledOption?.(o)) return;
-                      onPick(o.id, o);
-                      setOpen(false);
-                      setText('');
+                      pickOption(o);
                     }}
                   >
                     {o.label}
