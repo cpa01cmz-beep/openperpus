@@ -12,7 +12,7 @@ import {
 } from '@/lib/types';
 
 export const SETTINGS_TAG = 'settings';
-export const SETTINGS_REVALIDATE = 3600;
+export const SETTINGS_REVALIDATE = 300;
 
 export async function fetchSettings(): Promise<LibrarySettings> {
   return cachedFetch(() => fetchSettingsUncached(), ['library-settings'], SETTINGS_TAG);
@@ -40,7 +40,7 @@ async function fetchSettingsUncached(): Promise<LibrarySettings> {
   }
 }
 
-/** Identitas perpus (single-row id=1), di-cache 1 jam, tag 'settings'. */
+/** Identitas perpus (single-row id=1), di-cache 5 menit, tag 'settings'. */
 export const getLibrarySettings = unstable_cache(
   async (): Promise<LibrarySettings> => fetchSettings(),
   ['library-settings'],
