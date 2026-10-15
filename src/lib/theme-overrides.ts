@@ -17,8 +17,16 @@ import {
   type SectionId,
 } from './theme-compat';
 
-/** Enam id tema yang dikenal (mirror CHECK 0020_sketch_theme.sql). */
-export const THEME_IDS = ['emerald', 'midnight', 'paper', 'brutalist', 'ocean', 'sketch'] as const;
+/** Tujuh id tema yang dikenal (mirror CHECK 0034_bazaar_theme.sql). */
+export const THEME_IDS = [
+  'emerald',
+  'midnight',
+  'paper',
+  'brutalist',
+  'ocean',
+  'sketch',
+  'bazaar',
+] as const;
 
 export type ThemeOverrideId = (typeof THEME_IDS)[number];
 

@@ -1559,7 +1559,7 @@ paths:
               properties:
                 active_theme:
                   type: string
-                  enum: [emerald, midnight, paper, brutalist, ocean, sketch]
+                  enum: [emerald, midnight, paper, brutalist, ocean, sketch, bazaar]
                   description: Base theme id (admin-only)
                 theme_overrides:
                   type: object

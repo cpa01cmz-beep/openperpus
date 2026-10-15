@@ -33,7 +33,7 @@ describe('T-TAILWIND tailwind var wiring', () => {
         `tailwind.config.ts must wire token "${token}" via var(${cssVar}, ...)`
       ).toBe(true);
     }
-    // Cross-check registry really has 8 tokens x 6 themes.
+    // Cross-check registry really has 8 tokens x 7 themes.
     for (const t of Object.values(THEMES)) {
       expect(Object.keys(t.tokens).length).toBe(8);
     }

@@ -17,10 +17,11 @@ describe('Perf fixes: home + books API + catalog', () => {
       'StackedHero',
       'SplitHero',
       'SketchHero',
+      'BazaarHero',
     ]) {
       expect(
         src,
-        `RED: HeroSwitch statically imports ${v} — all 6 variants land in home chunk`
+        `RED: HeroSwitch statically imports ${v} — all 7 variants land in home chunk`
       ).not.toMatch(new RegExp(`import\\s+${v}\\s+from`));
     }
   });

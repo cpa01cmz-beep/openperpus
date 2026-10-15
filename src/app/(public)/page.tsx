@@ -9,6 +9,7 @@ import StatsBar from '@/components/public/StatsBar';
 import BookCard from '@/components/public/BookCard';
 import TestimonialCard from '@/components/public/TestimonialCard';
 import { getEffectiveThemeFromSettings } from '@/lib/theme-overrides';
+import { resolveSectionComponent } from '@/components/home/sections/registry';
 import { getOgImage, getSiteName } from '@/lib/settings';
 import {
   fetchArticles,
@@ -70,6 +71,9 @@ export default async function PublicHomePage() {
   const lcpImage = banners[0]?.image_url ?? null;
 
   const effective = getEffectiveThemeFromSettings(settings);
+  // Override section per-theme (registry): bazaar merender katalog gaya
+  // kartu produk; theme lain (null) memakai markup default di bawah.
+  const FeaturedOverride = resolveSectionComponent(effective.id, 'featured');
   const orderedSections =
     effective.layout.homepageSections.length > 0
       ? effective.layout.homepageSections
@@ -125,7 +129,9 @@ export default async function PublicHomePage() {
         </p>
       </section>
     ) : null,
-    featured: (
+    featured: FeaturedOverride ? (
+      <FeaturedOverride books={fallbackFeatured} />
+    ) : (
       <section aria-labelledby="unggulan">
         <div className="mb-4 flex items-end justify-between gap-3">
           <div>

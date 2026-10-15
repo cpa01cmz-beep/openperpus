@@ -6,10 +6,12 @@ import MinimalHeader from './headers/MinimalHeader';
 import TopBarHeader from './headers/TopBarHeader';
 import SplitHeader from './headers/SplitHeader';
 import SketchHeader from './headers/SketchHeader';
+import BazaarHeader from './headers/BazaarHeader';
 import ClassicFooter from './footers/ClassicFooter';
 import MinimalFooter from './footers/MinimalFooter';
 import StackedFooter from './footers/StackedFooter';
 import SketchFooter from './footers/SketchFooter';
+import BazaarFooter from './footers/BazaarFooter';
 
 export type HeaderVariantComponent = ComponentType<HeaderVariantProps>;
 export type FooterVariantComponent = ComponentType<FooterVariantProps>;
@@ -29,6 +31,7 @@ export const HEADER_VARIANTS: Record<string, HeaderVariantComponent> = {
   'brutalist-bar': SplitHeader,
   'ocean-wave': TopBarHeader,
   'sketch-notebook': SketchHeader,
+  'bazaar-commerce': BazaarHeader,
   // generic structural aliases (no if-hell for future themes)
   classic: ClassicHeader,
   centered: CenteredHeader,
@@ -48,6 +51,7 @@ export const FOOTER_VARIANTS: Record<string, FooterVariantComponent> = {
   'brutalist-index': StackedFooter,
   'ocean-harbor': StackedFooter,
   'sketch-margin': SketchFooter,
+  'bazaar-market': BazaarFooter,
   // generic structural aliases
   classic: ClassicFooter,
   standard: ClassicFooter,
@@ -89,21 +93,21 @@ export const HEADER_BLOCK_META: Record<string, BlockMeta> = {
     id: 'emerald-classic',
     kind: 'header',
     family: 'formal',
-    supports: ['emerald', 'ocean', 'midnight', 'paper'],
+    supports: ['emerald', 'ocean', 'midnight', 'paper', 'bazaar'],
     version: 1,
   },
   'midnight-slim': {
     id: 'midnight-slim',
     kind: 'header',
     family: 'formal',
-    supports: ['emerald', 'ocean', 'midnight', 'paper'],
+    supports: ['emerald', 'ocean', 'midnight', 'paper', 'bazaar'],
     version: 1,
   },
   'paper-minimal': {
     id: 'paper-minimal',
     kind: 'header',
     family: 'formal',
-    supports: ['emerald', 'ocean', 'midnight', 'paper'],
+    supports: ['emerald', 'ocean', 'midnight', 'paper', 'bazaar'],
     version: 1,
   },
   'brutalist-bar': {
@@ -117,7 +121,7 @@ export const HEADER_BLOCK_META: Record<string, BlockMeta> = {
     id: 'ocean-wave',
     kind: 'header',
     family: 'formal',
-    supports: ['emerald', 'ocean', 'midnight', 'paper'],
+    supports: ['emerald', 'ocean', 'midnight', 'paper', 'bazaar'],
     version: 1,
   },
   'sketch-notebook': {
@@ -127,46 +131,53 @@ export const HEADER_BLOCK_META: Record<string, BlockMeta> = {
     supports: ['sketch'],
     version: 1,
   },
+  'bazaar-commerce': {
+    id: 'bazaar-commerce',
+    kind: 'header',
+    family: 'formal',
+    supports: ['bazaar', 'emerald', 'ocean', 'midnight', 'paper'],
+    version: 1,
+  },
   classic: {
     id: 'classic',
     kind: 'header',
     family: 'universal',
-    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch'],
+    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch', 'bazaar'],
     version: 1,
   },
   centered: {
     id: 'centered',
     kind: 'header',
     family: 'universal',
-    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch'],
+    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch', 'bazaar'],
     version: 1,
   },
   minimal: {
     id: 'minimal',
     kind: 'header',
     family: 'universal',
-    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch'],
+    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch', 'bazaar'],
     version: 1,
   },
   'top-bar': {
     id: 'top-bar',
     kind: 'header',
     family: 'universal',
-    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch'],
+    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch', 'bazaar'],
     version: 1,
   },
   topbar: {
     id: 'topbar',
     kind: 'header',
     family: 'universal',
-    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch'],
+    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch', 'bazaar'],
     version: 1,
   },
   split: {
     id: 'split',
     kind: 'header',
     family: 'universal',
-    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch'],
+    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch', 'bazaar'],
     version: 1,
   },
 };
@@ -177,21 +188,21 @@ export const FOOTER_BLOCK_META: Record<string, BlockMeta> = {
     id: 'emerald-standard',
     kind: 'footer',
     family: 'formal',
-    supports: ['emerald', 'ocean', 'midnight', 'paper'],
+    supports: ['emerald', 'ocean', 'midnight', 'paper', 'bazaar'],
     version: 1,
   },
   'midnight-extended': {
     id: 'midnight-extended',
     kind: 'footer',
     family: 'formal',
-    supports: ['emerald', 'ocean', 'midnight', 'paper'],
+    supports: ['emerald', 'ocean', 'midnight', 'paper', 'bazaar'],
     version: 1,
   },
   'paper-colophon': {
     id: 'paper-colophon',
     kind: 'footer',
     family: 'formal',
-    supports: ['emerald', 'ocean', 'midnight', 'paper'],
+    supports: ['emerald', 'ocean', 'midnight', 'paper', 'bazaar'],
     version: 1,
   },
   'brutalist-index': {
@@ -205,7 +216,7 @@ export const FOOTER_BLOCK_META: Record<string, BlockMeta> = {
     id: 'ocean-harbor',
     kind: 'footer',
     family: 'formal',
-    supports: ['emerald', 'ocean', 'midnight', 'paper'],
+    supports: ['emerald', 'ocean', 'midnight', 'paper', 'bazaar'],
     version: 1,
   },
   'sketch-margin': {
@@ -215,60 +226,67 @@ export const FOOTER_BLOCK_META: Record<string, BlockMeta> = {
     supports: ['sketch'],
     version: 1,
   },
+  'bazaar-market': {
+    id: 'bazaar-market',
+    kind: 'footer',
+    family: 'formal',
+    supports: ['bazaar', 'emerald', 'ocean', 'midnight', 'paper'],
+    version: 1,
+  },
   classic: {
     id: 'classic',
     kind: 'footer',
     family: 'universal',
-    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch'],
+    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch', 'bazaar'],
     version: 1,
   },
   standard: {
     id: 'standard',
     kind: 'footer',
     family: 'universal',
-    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch'],
+    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch', 'bazaar'],
     version: 1,
   },
   minimal: {
     id: 'minimal',
     kind: 'footer',
     family: 'universal',
-    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch'],
+    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch', 'bazaar'],
     version: 1,
   },
   colophon: {
     id: 'colophon',
     kind: 'footer',
     family: 'universal',
-    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch'],
+    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch', 'bazaar'],
     version: 1,
   },
   stacked: {
     id: 'stacked',
     kind: 'footer',
     family: 'universal',
-    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch'],
+    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch', 'bazaar'],
     version: 1,
   },
   extended: {
     id: 'extended',
     kind: 'footer',
     family: 'universal',
-    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch'],
+    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch', 'bazaar'],
     version: 1,
   },
   index: {
     id: 'index',
     kind: 'footer',
     family: 'universal',
-    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch'],
+    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch', 'bazaar'],
     version: 1,
   },
   harbor: {
     id: 'harbor',
     kind: 'footer',
     family: 'universal',
-    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch'],
+    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch', 'bazaar'],
     version: 1,
   },
 };

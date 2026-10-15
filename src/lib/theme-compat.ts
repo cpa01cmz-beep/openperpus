@@ -10,12 +10,13 @@ import { getTheme } from './themes';
 
 export type ThemeFamily = 'formal' | 'hard' | 'hand';
 
-/** Famili tiap theme id (6 tema). Tak dikenal -> 'formal' (fail-open aman). */
+/** Famili tiap theme id (7 tema). Tak dikenal -> 'formal' (fail-open aman). */
 export const THEME_FAMILIES: Record<string, ThemeFamily> = {
   emerald: 'formal',
   midnight: 'formal',
   paper: 'formal',
   ocean: 'formal',
+  bazaar: 'formal',
   brutalist: 'hard',
   sketch: 'hand',
 };
@@ -37,6 +38,7 @@ export const HEADER_VARIANT_KEYS: readonly string[] = [
   'brutalist-bar',
   'ocean-wave',
   'sketch-notebook',
+  'bazaar-commerce',
   'classic',
   'centered',
   'minimal',
@@ -52,6 +54,7 @@ export const FOOTER_VARIANT_KEYS: readonly string[] = [
   'brutalist-index',
   'ocean-harbor',
   'sketch-margin',
+  'bazaar-market',
   'classic',
   'standard',
   'minimal',
@@ -69,6 +72,7 @@ export const HERO_VARIANT_KEYS: readonly string[] = [
   'brutalist-manifesto',
   'ocean-tide',
   'sketch-doodle',
+  'bazaar-promo',
   'centered',
   'editorial',
   'stacked',
@@ -98,6 +102,7 @@ export const ALLOWED_LAYOUT: Record<
       'paper-minimal',
       'brutalist-bar',
       'ocean-wave',
+      'bazaar-commerce',
       'classic',
       'centered',
       'minimal',
@@ -111,6 +116,7 @@ export const ALLOWED_LAYOUT: Record<
       'paper-colophon',
       'brutalist-index',
       'ocean-harbor',
+      'bazaar-market',
       'classic',
       'standard',
       'minimal',
@@ -126,6 +132,7 @@ export const ALLOWED_LAYOUT: Record<
       'paper-editorial',
       'brutalist-manifesto',
       'ocean-tide',
+      'bazaar-promo',
       'centered',
       'editorial',
       'stacked',

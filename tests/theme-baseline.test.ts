@@ -9,7 +9,15 @@ import {
   resolveHeaderVariant,
 } from '@/components/layout/variants/registry';
 
-const THEME_IDS = ['emerald', 'midnight', 'paper', 'brutalist', 'ocean', 'sketch'] as const;
+const THEME_IDS = [
+  'emerald',
+  'midnight',
+  'paper',
+  'brutalist',
+  'ocean',
+  'sketch',
+  'bazaar',
+] as const;
 
 const TOKEN_KEYS = [
   'brand',
@@ -42,11 +50,11 @@ const heroSwitchSrc = fs.readFileSync(
   'utf8'
 );
 
-/** Baseline anti-regresi: 6 preset + token + layoutfondasi SEBELUM fondasi baru dipakai. */
+/** Baseline anti-regresi: 7 preset + token + layoutfondasi SEBELUM fondasi baru dipakai. */
 describe('theme baseline: presets, tokens, layout', () => {
-  it('6 preset ada (emerald, midnight, paper, brutalist, ocean, sketch)', () => {
+  it('7 preset ada (emerald, midnight, paper, brutalist, ocean, sketch, bazaar)', () => {
     expect(themes.map((t) => t.id).sort()).toEqual([...THEME_IDS].sort());
-    expect(themes).toHaveLength(6);
+    expect(themes).toHaveLength(7);
   });
 
   it('getTheme unknown → emerald (fallback stabil)', () => {
