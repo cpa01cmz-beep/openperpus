@@ -20,16 +20,12 @@ vi.mock('next/cache', () => ({
 // agar impor route /api/settings/theme dapat dimuat tanpa Next.js runtime.
 vi.mock('server-only', () => ({}));
 
-import { GET as articlesGET, POST as articlesPOST } from '@/app/api/articles/route';
+import { POST as articlesPOST } from '@/app/api/articles/route';
 import { PUT as articleByIdPUT, DELETE as articleByIdDELETE } from '@/app/api/articles/[id]/route';
 import { GET as bannersGET, POST as bannersPOST } from '@/app/api/banners/route';
 import { PUT as bannerByIdPUT, DELETE as bannerByIdDELETE } from '@/app/api/banners/[id]/route';
 import { POST as booksPOST, PUT as booksPUT, DELETE as booksDELETE } from '@/app/api/books/route';
-import {
-  GET as bookByIdGET,
-  PUT as bookByIdPUT,
-  DELETE as bookByIdDELETE,
-} from '@/app/api/books/[id]/route';
+import { PUT as bookByIdPUT, DELETE as bookByIdDELETE } from '@/app/api/books/[id]/route';
 import { GET as categoriesGET, POST as categoriesPOST } from '@/app/api/categories/route';
 import {
   PUT as categoryByIdPUT,

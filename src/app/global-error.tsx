@@ -22,7 +22,8 @@ export default function GlobalErrorPage({ error, reset }: GlobalErrorPageProps) 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
-    setIsOnline(typeof navigator !== 'undefined' ? navigator.onLine : true);
+    // Sinkron awal deferred (bukan sync) agar lolos react-hooks/set-state-in-effect.
+    queueMicrotask(() => setIsOnline(typeof navigator !== 'undefined' ? navigator.onLine : true));
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     return () => {

@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { createElement } from 'react';
 import dynamic from 'next/dynamic';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -130,7 +131,7 @@ export default async function PublicHomePage() {
       </section>
     ) : null,
     featured: FeaturedOverride ? (
-      <FeaturedOverride books={fallbackFeatured} />
+      createElement(FeaturedOverride, { books: fallbackFeatured })
     ) : (
       <section aria-labelledby="unggulan">
         <div className="mb-4 flex items-end justify-between gap-3">

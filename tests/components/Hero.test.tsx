@@ -7,7 +7,8 @@ import type { Banner } from '@/lib/types';
 // Mock next/dynamic for HeroSwitch variants
 vi.mock('next/dynamic', () => ({
   default: () => {
-    const Component = ({ banners, siteName, tagline }: any) => {
+    type MockProps = { banners: Banner[]; siteName: string; tagline?: string | null };
+    const Component = ({ banners, siteName, tagline }: MockProps) => {
       if (banners.length === 0) {
         return (
           <div data-testid="hero-fallback" className="hero-fallback">
@@ -58,7 +59,15 @@ vi.mock('next/dynamic', () => ({
 
 // Mock the hero variants
 vi.mock('@/components/hero/variants/CenteredHero', () => ({
-  default: ({ banners, siteName, tagline }: any) => {
+  default: ({
+    banners,
+    siteName,
+    tagline,
+  }: {
+    banners: Banner[];
+    siteName: string;
+    tagline?: string | null;
+  }) => {
     if (banners.length === 0) {
       return (
         <div data-testid="hero-fallback">

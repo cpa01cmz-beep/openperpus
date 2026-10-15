@@ -38,18 +38,26 @@ export default function CatalogExplorerFilters({
   const [sort, setSort] = useState<CatalogSortKey>(initialSort);
   const [onlyAvailable, setOnlyAvailable] = useState(initialAvailableOnly);
 
-  useEffect(() => {
+  // Sinkron props URL -> state via render-phase adjustment (bukan effect)
+  // agar lolos react-hooks/set-state-in-effect.
+  const [prevInitial, setPrevInitial] = useState({
+    initialQ,
+    initialCategoryId,
+    initialSort,
+    initialAvailableOnly,
+  });
+  if (
+    prevInitial.initialQ !== initialQ ||
+    prevInitial.initialCategoryId !== initialCategoryId ||
+    prevInitial.initialSort !== initialSort ||
+    prevInitial.initialAvailableOnly !== initialAvailableOnly
+  ) {
+    setPrevInitial({ initialQ, initialCategoryId, initialSort, initialAvailableOnly });
     setQ(initialQ);
-  }, [initialQ]);
-  useEffect(() => {
     setCatId(initialCategoryId);
-  }, [initialCategoryId]);
-  useEffect(() => {
     setSort(initialSort);
-  }, [initialSort]);
-  useEffect(() => {
     setOnlyAvailable(initialAvailableOnly);
-  }, [initialAvailableOnly]);
+  }
 
   const pushUrl = useCallback(
     (next: {

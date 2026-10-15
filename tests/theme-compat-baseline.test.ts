@@ -133,9 +133,9 @@ describe.skipIf(!overridesExists)('theme-overrides baseline (sanitize / effectiv
     const getEffectiveTheme = requireFn(ctx as SkipCtx, mod, 'getEffectiveTheme');
     const call = (baseId: string, raw: unknown) =>
       (getEffectiveTheme as unknown as (b: string, r: unknown) => unknown)(baseId, raw);
-    const base = getTheme('emerald');
+    type BaseLayout = ReturnType<typeof getTheme>['layout'];
     const out = call('emerald', { layout: { headerVariant: 'sketch-notebook' } }) as {
-      layout: typeof base.layout;
+      layout: BaseLayout;
     };
     expect(
       out.layout.headerVariant,

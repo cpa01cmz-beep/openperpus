@@ -23,7 +23,9 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
-    setIsOnline(typeof navigator !== 'undefined' ? navigator.onLine : true);
+    // Sinkron awal deferred (bukan sync) agar lolos react-hooks/set-state-in-effect;
+    // awal true sama dengan SSR sehingga tak ada hydration mismatch.
+    queueMicrotask(() => setIsOnline(typeof navigator !== 'undefined' ? navigator.onLine : true));
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
     return () => {

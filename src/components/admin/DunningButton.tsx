@@ -15,7 +15,9 @@ type Props = {
 export default function DunningButton({ loanId, memberCode, title, dueAt, fine, disabled }: Props) {
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState<string | null>(null);
-  const lateDays = Math.max(0, Math.ceil((Date.now() - new Date(dueAt).getTime()) / 86400000));
+  // Date.now() impure — baca sekali via initializer (bukan tiap render) agar lolos react-hooks/purity.
+  const [now] = useState(() => Date.now());
+  const lateDays = Math.max(0, Math.ceil((now - new Date(dueAt).getTime()) / 86400000));
   const message = buildDunningMessage({ title, dueAt, fine, memberCode, loanId, lateDays });
   const href = 'https://wa.me/?text=' + encodeURIComponent(message);
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import DataTable from '@/components/admin/DataTable';
 import StatCard from '@/components/admin/StatCard';
 import ConfirmModal from '@/components/admin/ConfirmModal';
@@ -68,10 +68,13 @@ export default function ReservasiPage() {
   const error = (apiMissing ? '' : listError) || actionError;
 
   // Pesan aksi lama dibuang saat daftar dimuat ulang (filter berubah).
-  useEffect(() => {
+  // Render-phase adjustment (bukan effect) agar lolos react-hooks/set-state-in-effect.
+  const [prevFilter, setPrevFilter] = useState({ page, status, search });
+  if (prevFilter.page !== page || prevFilter.status !== status || prevFilter.search !== search) {
+    setPrevFilter({ page, status, search });
     setActionError('');
     setPayMissing(false);
-  }, [page, status, search]);
+  }
 
   function onCheckout(r: Reservation) {
     setPendingCheckout(r);

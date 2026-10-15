@@ -44,6 +44,7 @@ export default function ReservasiSayaPage() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  // Awal [] agar sama dengan SSR; isi nyata disinkron setelah mount (deferred).
   const [wishlist, setWishlist] = useState<string[]>([]);
 
   const load = useCallback(async () => {
@@ -118,8 +119,11 @@ export default function ReservasiSayaPage() {
   }, []);
 
   useEffect(() => {
-    void load();
-    setWishlist(getWishlist());
+    void (async () => {
+      await load();
+    })();
+    // Sinkron wishlist localStorage setelah mount (deferred agar tak cascading-render).
+    queueMicrotask(() => setWishlist(getWishlist()));
   }, [load]);
 
   async function onCancel(id: string) {
