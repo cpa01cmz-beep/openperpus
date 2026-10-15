@@ -8,7 +8,7 @@
  */
 import 'server-only';
 
-import { getTheme, type ThemeDef } from './themes';
+import { DEFAULT_THEME, getTheme, THEME_IDS as REGISTRY_THEME_IDS, type ThemeDef } from './themes';
 import {
   SECTION_IDS,
   fallbackVariant,
@@ -17,23 +17,15 @@ import {
   type SectionId,
 } from './theme-compat';
 
-/** Tujuh id tema yang dikenal (mirror CHECK 0034_bazaar_theme.sql). */
-export const THEME_IDS = [
-  'emerald',
-  'midnight',
-  'paper',
-  'brutalist',
-  'ocean',
-  'sketch',
-  'bazaar',
-] as const;
+/** Theme ids — single-source dari registry THEMES, mirror CHECK 0034_bazaar_theme.sql. */
+export const THEME_IDS = REGISTRY_THEME_IDS;
 
 export type ThemeOverrideId = (typeof THEME_IDS)[number];
 
 /** Pesan kunci-tema (Indonesia) untuk penolakan tokens/*. */
 export const LOCKED_THEME_MESSAGE = 'Tema dikunci, hanya layout yang dapat diubah.';
 
-const LOCKED_KEYS = ['tokens', 'fonts', 'radius', 'shadow', 'spacing'] as const;
+export const LOCKED_KEYS = ['tokens', 'fonts', 'radius', 'shadow', 'spacing'] as const;
 const LAYOUT_KEYS = ['headerVariant', 'heroVariant', 'footerVariant', 'homepageSections'] as const;
 const SECTION_KEYS = ['id', 'enabled', 'order'] as const;
 
@@ -278,7 +270,7 @@ export function getEffectiveThemeFromSettings(settings: {
   const baseId =
     typeof settings?.active_theme === 'string' && settings.active_theme.length > 0
       ? (settings.active_theme as string)
-      : 'emerald';
+      : DEFAULT_THEME;
   const raw = (settings as { theme_overrides?: unknown })?.theme_overrides ?? null;
   return getEffectiveTheme(baseId, raw);
 }

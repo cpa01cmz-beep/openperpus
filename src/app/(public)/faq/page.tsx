@@ -29,8 +29,8 @@ function FaqSkeleton() {
           key={i}
           className="rounded-[var(--radius-lg)] border border-[var(--ink)]/10 bg-[var(--surface)] p-4"
         >
-          <div className="h-4 w-3/4 rounded bg-[var(--ink)]/10" />
-          <div className="mt-2 h-3 w-1/2 rounded bg-[var(--ink)]/5" />
+          <div className="h-4 w-3/4 rounded-[var(--radius-sm)] bg-[var(--ink)]/10" />
+          <div className="mt-2 h-3 w-1/2 rounded-[var(--radius-sm)] bg-[var(--ink)]/5" />
         </div>
       ))}
     </div>
@@ -123,11 +123,11 @@ export default async function FaqPage() {
       />
       <Breadcrumb items={[{ label: 'Beranda', href: '/' }, { label: 'FAQ' }]} />
       <header>
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Bantuan</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-accent">Bantuan</p>
         <h1 className="mt-1 font-heading text-3xl font-bold text-heading sm:text-4xl">
           Pertanyaan Umum
         </h1>
-        <p className="mt-2 max-w-2xl text-sm text-slate-500 sm:text-base">
+        <p className="mt-2 max-w-2xl text-sm text-ink/60 sm:text-base">
           Jawaban cepat seputar keanggotaan, peminjaman, dan layanan {siteName}.
         </p>
       </header>
@@ -136,7 +136,7 @@ export default async function FaqPage() {
 
       <section
         aria-labelledby="butuh-bantuan"
-        className="rounded-lg bg-brand-strong p-6 text-white shadow sm:p-8"
+        className="rounded-lg bg-brand-strong p-6 text-surface shadow-[var(--shadow-sm)] sm:p-8"
       >
         <h2 id="butuh-bantuan" className="font-heading text-xl font-bold">
           Masih butuh bantuan?
@@ -148,7 +148,7 @@ export default async function FaqPage() {
           {settings.phone && (
             <a
               href={`tel:${settings.phone}`}
-              className="inline-flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2.5 font-semibold transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              className="inline-flex items-center gap-2 rounded-lg bg-surface/10 px-4 py-2.5 font-semibold transition hover:bg-surface/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-surface"
             >
               <Phone className="h-4 w-4 text-accent" aria-hidden="true" />
               {settings.phone}
@@ -157,7 +157,7 @@ export default async function FaqPage() {
           {settings.email && (
             <a
               href={`mailto:${settings.email}`}
-              className="inline-flex items-center gap-2 rounded-lg bg-white/10 px-4 py-2.5 font-semibold transition hover:bg-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+              className="inline-flex items-center gap-2 rounded-lg bg-surface/10 px-4 py-2.5 font-semibold transition hover:bg-surface/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-surface"
             >
               <Mail className="h-4 w-4 text-accent" aria-hidden="true" />
               {settings.email}
@@ -165,7 +165,7 @@ export default async function FaqPage() {
           )}
           <Link
             href="/kontak"
-            className="inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 font-bold text-brand-strong shadow transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            className="inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 font-bold text-brand-strong shadow-[var(--shadow-sm)] transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-surface"
           >
             Halaman kontak <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>

@@ -45,7 +45,7 @@ export default function TopBarHeader({
               {phone ? (
                 <a
                   href={`tel:${phone}`}
-                  className="flex items-center gap-1 rounded hover:text-white"
+                  className="flex items-center gap-1 rounded-[var(--radius-md)] hover:text-surface"
                 >
                   <Phone className="h-3.5 w-3.5 text-accent" aria-hidden="true" /> {phone}
                 </a>
@@ -53,7 +53,7 @@ export default function TopBarHeader({
               {email ? (
                 <a
                   href={`mailto:${email}`}
-                  className="flex items-center gap-1 rounded hover:text-white"
+                  className="flex items-center gap-1 rounded-[var(--radius-md)] hover:text-surface"
                 >
                   <Mail className="h-3.5 w-3.5 text-accent" aria-hidden="true" /> {email}
                 </a>
@@ -77,7 +77,7 @@ export default function TopBarHeader({
                 {name}
               </span>
               {tag ? (
-                <span className="block truncate text-[11px] uppercase tracking-[0.18em] text-[var(--ink)] opacity-70">
+                <span className="block truncate text-xs uppercase tracking-widest text-[var(--ink)] opacity-70">
                   {tag}
                 </span>
               ) : null}
@@ -99,7 +99,7 @@ export default function TopBarHeader({
             <li className="ml-2">
               <Link
                 href="/katalog"
-                className="rounded-[var(--radius-lg)] bg-accent px-4 py-2 text-sm font-semibold text-white shadow-[var(--shadow-md)] transition hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                className="rounded-[var(--radius-lg)] bg-accent px-4 py-2 text-sm font-semibold text-surface shadow-[var(--shadow-md)] transition hover:brightness-105 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
                 Cari Buku
               </Link>
@@ -131,7 +131,7 @@ export default function TopBarHeader({
             <li className="pt-1">
               <Link
                 href="/katalog"
-                className="block rounded-[var(--radius-lg)] bg-accent px-4 py-2.5 text-center text-sm font-semibold text-white shadow-[var(--shadow-md)] transition hover:brightness-105"
+                className="block rounded-[var(--radius-lg)] bg-accent px-4 py-2.5 text-center text-sm font-semibold text-surface shadow-[var(--shadow-md)] transition hover:brightness-105"
               >
                 Cari Buku
               </Link>

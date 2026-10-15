@@ -63,10 +63,10 @@ export default function CenteredHero({ banners, siteName, tagline }: HeroProps) 
         )}
 
         <div className="absolute inset-0 flex flex-col items-center justify-center p-5 text-center sm:p-8">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-accent">
+          <p className="text-xs font-semibold uppercase tracking-widest text-accent">
             {siteName} · {idx + 1}/{total}
           </p>
-          <h1 className="mx-auto mt-2 max-w-2xl font-heading text-3xl font-bold leading-[1.1] tracking-tight drop-shadow-md sm:text-5xl">
+          <h1 className="mx-auto mt-2 max-w-2xl font-heading text-3xl font-bold leading-tight tracking-tight drop-shadow-md sm:text-5xl">
             {active.title}
           </h1>
           {active.subtitle ? (

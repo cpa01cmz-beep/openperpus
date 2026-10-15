@@ -72,12 +72,15 @@ export default function EditBannerPage({ params }: { params: { id: string } }) {
     }
   }
 
-  if (loading) return <p className="text-sm text-slate-500">Memuat banner…</p>;
+  if (loading) return <p className="text-sm text-ink/60">Memuat banner…</p>;
 
   return (
     <div className="grid gap-4">
       <h1 className="text-2xl font-bold">Edit Banner</h1>
-      <form onSubmit={onSubmit} className="grid max-w-2xl gap-2 rounded-2xl border bg-white p-4">
+      <form
+        onSubmit={onSubmit}
+        className="grid max-w-2xl gap-2 rounded-[var(--radius-lg)] border bg-surface p-4"
+      >
         {err && <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{err}</p>}
         <Input
           id="banner-title"

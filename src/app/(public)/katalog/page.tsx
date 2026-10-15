@@ -116,7 +116,7 @@ export default async function KatalogPage({
       />
       <Breadcrumb items={[{ label: 'Beranda', href: '/' }, { label: 'Katalog' }]} />
       <header>
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-amber-600">OPAC</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-amber-600">OPAC</p>
         <h1 className="mt-1 font-serif text-3xl font-bold text-emerald-950 sm:text-4xl">
           Katalog Buku
         </h1>

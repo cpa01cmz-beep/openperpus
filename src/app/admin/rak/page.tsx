@@ -103,13 +103,13 @@ export default function RakPage() {
     <div className="grid gap-4">
       <div>
         <h1 className="text-2xl font-bold">Rak</h1>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-ink/60">
           Kelola rak penyimpanan buku (kode, nama, lokasi, status aktif).
         </p>
       </div>
       <form
         onSubmit={onAdd}
-        className="flex flex-wrap items-end gap-2 rounded-2xl border bg-white p-4"
+        className="flex flex-wrap items-end gap-2 rounded-[var(--radius-lg)] border bg-surface p-4"
       >
         <div className="min-w-[140px] flex-1">
           <Input
@@ -189,7 +189,7 @@ export default function RakPage() {
                 onClick={() => onToggle(r)}
                 aria-label={`Ubah status rak ${r.code}`}
                 aria-pressed={r.is_active}
-                className="inline-flex min-h-[44px] items-center rounded-full border px-3 text-xs hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                className="inline-flex min-h-[44px] items-center rounded-full border px-3 text-xs hover:bg-[var(--ink)]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
                 <Badge tone={r.is_active ? 'emerald' : 'slate'}>
                   {r.is_active ? 'Aktif' : 'Nonaktif'}

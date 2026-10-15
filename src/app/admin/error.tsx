@@ -18,18 +18,18 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
       role="alert"
       className="mx-auto flex w-full max-w-xl flex-col items-center gap-4 py-16 text-center sm:py-24"
     >
-      <span className="grid h-16 w-16 place-items-center rounded-3xl bg-accent text-ink shadow-lg">
+      <span className="grid h-16 w-16 place-items-center rounded-[var(--radius-lg)] bg-accent text-ink shadow-[var(--shadow-lg)]">
         <TriangleAlert className="h-8 w-8" aria-hidden="true" />
       </span>
       <Badge tone="rose">Terjadi kendala</Badge>
       <h1 id="err-title" className="font-serif text-3xl font-bold text-ink sm:text-4xl">
         Maaf, halaman admin mengalami gangguan.
       </h1>
-      <p className="max-w-md text-sm leading-relaxed text-slate-500 sm:text-base">
+      <p className="max-w-md text-sm leading-relaxed text-ink/60 sm:text-base">
         Silakan coba muat ulang halaman. Jika masih bermasalah, kembali lagi beberapa saat.
       </p>
       {error.digest && (
-        <p className="rounded-lg bg-slate-100 px-3 py-1.5 font-mono text-[11px] text-slate-500">
+        <p className="rounded-lg bg-[var(--ink)]/5 px-3 py-1.5 font-mono text-xs text-ink/60">
           Kode: {error.digest}
         </p>
       )}
@@ -40,7 +40,7 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
         </Button>
         <Link
           href="/admin"
-          className="inline-flex min-h-[48px] items-center gap-2 rounded-md border border-brand/30 bg-white px-6 py-3 text-base font-semibold text-brand transition hover:border-brand hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+          className="inline-flex min-h-[48px] items-center gap-2 rounded-md border border-brand/30 bg-surface px-6 py-3 text-base font-semibold text-brand transition hover:border-brand hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
         >
           <House className="h-4 w-4" aria-hidden="true" />
           Kembali ke Dashboard

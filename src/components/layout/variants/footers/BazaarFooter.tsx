@@ -39,7 +39,7 @@ export default function BazaarFooter({ settings, menus }: FooterVariantProps) {
               />
             ) : (
               <span
-                className="grid h-9 w-9 place-items-center rounded-[var(--radius-md)] bg-accent text-white"
+                className="grid h-9 w-9 place-items-center rounded-[var(--radius-md)] bg-accent text-surface"
                 aria-hidden="true"
               >
                 <BookOpenText className="h-5 w-5" />
@@ -65,7 +65,7 @@ export default function BazaarFooter({ settings, menus }: FooterVariantProps) {
                       target="_blank"
                       rel="noreferrer"
                       aria-label={`${name} di ${key}`}
-                      className="grid min-h-[44px] min-w-[44px] place-items-center rounded-[var(--radius-md)] bg-[var(--surface)]/10 transition hover:bg-accent hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                      className="grid min-h-[44px] min-w-[44px] place-items-center rounded-[var(--radius-md)] bg-[var(--surface)]/10 transition hover:bg-accent hover:text-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                     >
                       <Icon className="h-4 w-4" aria-hidden="true" />
                     </a>
@@ -94,7 +94,7 @@ export default function BazaarFooter({ settings, menus }: FooterVariantProps) {
               <li>
                 <a
                   href={`tel:${settings.phone}`}
-                  className="flex items-center gap-2 rounded transition hover:text-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  className="flex items-center gap-2 rounded-[var(--radius-sm)] transition hover:text-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   <Phone className="h-4 w-4 text-accent" aria-hidden="true" /> {settings.phone}
                 </a>
@@ -104,7 +104,7 @@ export default function BazaarFooter({ settings, menus }: FooterVariantProps) {
               <li>
                 <a
                   href={`mailto:${settings.email}`}
-                  className="flex items-center gap-2 rounded transition hover:text-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  className="flex items-center gap-2 rounded-[var(--radius-sm)] transition hover:text-[var(--surface)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   <Mail className="h-4 w-4 text-accent" aria-hidden="true" /> {settings.email}
                 </a>
@@ -144,7 +144,7 @@ export default function BazaarFooter({ settings, menus }: FooterVariantProps) {
                   href={l.href}
                   target={l.target === '_blank' ? '_blank' : undefined}
                   rel={l.target === '_blank' ? 'noreferrer noopener' : undefined}
-                  className="rounded transition hover:text-[var(--surface)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+                  className="rounded-[var(--radius-sm)] transition hover:text-[var(--surface)] hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
                 >
                   {l.label}
                 </Link>

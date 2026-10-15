@@ -35,14 +35,14 @@ function BazaarBookCard({ book }: { book: Book }) {
             {book.title}
           </div>
         )}
-        <span className="absolute left-3 top-3 inline-flex -rotate-2 items-center rounded-full border-2 border-[var(--ink)] bg-[var(--surface)] px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-brand shadow-[var(--shadow-sm)]">
+        <span className="absolute left-3 top-3 inline-flex -rotate-2 items-center rounded-full border-2 border-[var(--ink)] bg-[var(--surface)] px-2.5 py-1 text-xs font-bold uppercase tracking-wide text-brand shadow-[var(--shadow-sm)]">
           {stock.label}
         </span>
       </div>
       <h3 className="px-5 pt-4 font-heading text-base font-bold uppercase leading-tight text-heading">
         <Link
           href={`/katalog/${book.slug}`}
-          className="rounded transition hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          className="rounded-[var(--radius-sm)] transition hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
         >
           {book.title}
         </Link>
@@ -54,7 +54,7 @@ function BazaarBookCard({ book }: { book: Book }) {
       <Link
         href={`/katalog/${book.slug}`}
         aria-label={`Pinjam ${book.title}`}
-        className="m-5 mt-3 inline-flex min-h-[44px] items-center justify-center rounded-[8px] border-2 border-[var(--ink)] bg-accent px-4 py-2.5 text-sm font-bold uppercase tracking-wide text-white shadow-[0_3px_0_0_var(--ink)] transition hover:translate-y-[1px] hover:shadow-[0_2px_0_0_var(--ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+        className="m-5 mt-3 inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-md)] border-2 border-[var(--ink)] bg-accent px-4 py-2.5 text-sm font-bold uppercase tracking-wide text-surface shadow-[var(--shadow-md)] transition hover:translate-y-[1px] hover:shadow-[var(--shadow-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
       >
         Pinjam Sekarang
       </Link>
@@ -77,7 +77,7 @@ export default function BazaarCatalog({ books }: { books: Book[] }) {
     <section aria-labelledby="bazaar-katalog">
       <h2
         id="bazaar-katalog"
-        className="font-heading text-[clamp(1.75rem,_1.2rem_+_2.5vw,_2.75rem)] font-bold uppercase leading-[1.05] tracking-[-0.01em] text-heading"
+        className="font-heading text-3xl font-bold uppercase leading-tight tracking-tight text-heading sm:text-4xl"
       >
         Katalog
       </h2>
@@ -88,9 +88,9 @@ export default function BazaarCatalog({ books }: { books: Book[] }) {
         <div className="mt-6 grid gap-8">
           {[...groups.entries()].map(([name, list]) => (
             <div key={name}>
-              <h3 className="flex flex-wrap items-baseline gap-3 border-b-[3px] border-[var(--ink)] pb-2 font-heading text-[clamp(1.5rem,_1.2rem_+_1.5vw,_2rem)] font-bold uppercase text-heading">
+              <h3 className="flex flex-wrap items-baseline gap-3 border-b-[3px] border-[var(--ink)] pb-2 font-heading text-2xl font-bold uppercase text-heading sm:text-3xl">
                 {name}
-                <span className="rounded-full bg-brand px-2.5 py-1 font-body text-[11px] font-bold uppercase tracking-wide text-white">
+                <span className="rounded-full bg-brand px-2.5 py-1 font-body text-xs font-bold uppercase tracking-wide text-surface">
                   {list.length} buku
                 </span>
               </h3>
@@ -114,7 +114,7 @@ export default function BazaarCatalog({ books }: { books: Book[] }) {
       <div className="mt-6 text-center">
         <Link
           href="/katalog"
-          className="inline-flex min-h-[48px] items-center gap-2 rounded-[10px] border-2 border-[var(--ink)] bg-accent px-6 py-3 text-sm font-bold uppercase tracking-wide text-white shadow-[0_4px_0_0_var(--ink)] transition hover:translate-y-[2px] hover:shadow-[0_2px_0_0_var(--ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+          className="inline-flex min-h-[48px] items-center gap-2 rounded-[var(--radius-md)] border-2 border-[var(--ink)] bg-accent px-6 py-3 text-sm font-bold uppercase tracking-wide text-surface shadow-[var(--shadow-md)] transition hover:translate-y-[2px] hover:shadow-[var(--shadow-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
         >
           Lihat Semua Buku <ArrowRight className="h-4 w-4" aria-hidden="true" />
         </Link>

@@ -35,14 +35,14 @@ export default function SplitHeader({
               {name}
             </span>
             {tag ? (
-              <span className="block truncate text-[11px] text-[var(--ink)]/70">{tag}</span>
+              <span className="block truncate text-xs text-[var(--ink)]/70">{tag}</span>
             ) : null}
           </span>
         </Link>
         <div className="flex items-center gap-2">
           <Link
             href="/katalog"
-            className="rounded-[var(--radius-md)] bg-brand px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
+            className="rounded-[var(--radius-md)] bg-brand px-4 py-2 text-sm font-semibold text-surface shadow-[var(--shadow-sm)] transition hover:bg-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent"
           >
             Cari Buku
           </Link>

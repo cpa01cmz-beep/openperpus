@@ -1,7 +1,7 @@
 import { unstable_cache } from 'next/cache';
 import { createPublicClient as createClient } from '@/lib/supabase/public';
 import { cachedFetch } from '@/lib/fetch-cache';
-import { DEFAULT_THEME } from '@/lib/themes';
+import { DEFAULT_THEME, THEMES } from '@/lib/themes';
 // Issue #68: helper URL pure dari leaf (barrel content menarik sanitize-html).
 import { isAllowedLinkUrl } from '@/lib/validation/url';
 import {
@@ -76,7 +76,8 @@ export function getThemeId(
   override?: string | null
 ): string {
   const id = (override ?? settings?.active_theme ?? '').trim();
-  return id || DEFAULT_THEME;
+  if (!id) return DEFAULT_THEME;
+  return id in THEMES ? id : DEFAULT_THEME;
 }
 
 export function formatOperationalHour(h: OperationalHour): string {

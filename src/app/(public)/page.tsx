@@ -99,7 +99,7 @@ export default async function PublicHomePage() {
     announcement: settings.announcement ? (
       <p
         role="status"
-        className="flex items-start gap-2 rounded-lg border border-accent-soft bg-accent-soft px-4 py-3 text-sm text-heading shadow-sm"
+        className="flex items-start gap-2 rounded-lg border border-accent-soft bg-accent-soft px-4 py-3 text-sm text-heading shadow-[var(--shadow-sm)]"
       >
         <Megaphone className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
         <span>{settings.announcement}</span>
@@ -116,15 +116,15 @@ export default async function PublicHomePage() {
     welcome: settings.welcome_text ? (
       <section
         aria-labelledby="sambutan"
-        className="overflow-hidden rounded-lg border border-brand-strong/10 bg-gradient-to-br from-brand-soft to-white p-6 shadow-sm sm:p-8"
+        className="overflow-hidden rounded-lg border border-brand-strong/10 bg-gradient-to-br from-brand-soft to-white p-6 shadow-[var(--shadow-sm)] sm:p-8"
       >
-        <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-[0.2em] text-brand">
+        <p className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-brand">
           <Quote className="h-4 w-4" aria-hidden="true" /> Sambutan
         </p>
         <h2 id="sambutan" className="mt-2 font-heading text-2xl font-bold text-heading sm:text-3xl">
           Selamat datang di {siteName}
         </h2>
-        <p className="mt-3 max-w-3xl whitespace-pre-line text-sm leading-relaxed text-slate-600 sm:text-base">
+        <p className="mt-3 max-w-3xl whitespace-pre-line text-sm leading-relaxed text-ink/70 sm:text-base">
           {settings.welcome_text}
         </p>
       </section>
@@ -135,7 +135,7 @@ export default async function PublicHomePage() {
       <section aria-labelledby="unggulan">
         <div className="mb-4 flex items-end justify-between gap-3">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">
+            <p className="text-xs font-bold uppercase tracking-widest text-accent">
               Pilihan pustakawan
             </p>
             <h2
@@ -147,7 +147,7 @@ export default async function PublicHomePage() {
           </div>
           <Link
             href="/katalog"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-brand-soft bg-white px-4 py-2 text-sm font-semibold text-brand shadow-sm transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-brand-soft bg-surface px-4 py-2 text-sm font-semibold text-brand shadow-[var(--shadow-sm)] transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
             Lihat semua <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
@@ -159,7 +159,7 @@ export default async function PublicHomePage() {
             ))}
           </div>
         ) : (
-          <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-6 py-12 text-center text-sm text-slate-500">
+          <div className="rounded-lg border border-dashed border-[var(--ink)]/10 bg-[var(--ink)]/5 px-6 py-12 text-center text-sm text-ink/60">
             Koleksi unggulan belum tersedia. Silakan jelajahi{' '}
             <Link href="/katalog" className="font-semibold text-brand underline">
               katalog
@@ -173,9 +173,7 @@ export default async function PublicHomePage() {
       <section aria-labelledby="berita">
         <div className="mb-4 flex items-end justify-between gap-3">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">
-              Kabar terbaru
-            </p>
+            <p className="text-xs font-bold uppercase tracking-widest text-accent">Kabar terbaru</p>
             <h2
               id="berita"
               className="mt-1 font-heading text-2xl font-bold text-heading sm:text-3xl"
@@ -185,7 +183,7 @@ export default async function PublicHomePage() {
           </div>
           <Link
             href="/berita"
-            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-brand-soft bg-white px-4 py-2 text-sm font-semibold text-brand shadow-sm transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-brand-soft bg-surface px-4 py-2 text-sm font-semibold text-brand shadow-[var(--shadow-sm)] transition hover:bg-brand-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
             Semua berita <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
@@ -196,7 +194,7 @@ export default async function PublicHomePage() {
               <Link
                 key={a.id}
                 href={`/berita/${a.slug}`}
-                className="group overflow-hidden rounded-lg border border-slate-100 bg-white shadow-sm transition hover:shadow-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                className="group overflow-hidden rounded-lg border border-[var(--ink)]/10 bg-surface shadow-[var(--shadow-sm)] transition hover:shadow-[var(--shadow-lg)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
                 <div className="aspect-[16/9] w-full overflow-hidden bg-brand-soft">
                   {a.cover_url ? (
@@ -211,7 +209,7 @@ export default async function PublicHomePage() {
                     />
                   ) : (
                     <div
-                      className="grid h-full w-full place-items-center bg-gradient-to-br from-brand-strong to-brand p-4 text-center font-heading text-sm font-bold text-white"
+                      className="grid h-full w-full place-items-center bg-gradient-to-br from-brand-strong to-brand p-4 text-center font-heading text-sm font-bold text-surface"
                       aria-hidden="true"
                     >
                       {a.title}
@@ -220,22 +218,22 @@ export default async function PublicHomePage() {
                 </div>
                 <div className="p-4">
                   {a.category && (
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-brand">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-brand">
                       {a.category}
                     </p>
                   )}
-                  <h3 className="mt-1 line-clamp-2 font-heading text-base font-bold text-slate-900 group-hover:text-brand">
+                  <h3 className="mt-1 line-clamp-2 font-heading text-base font-bold text-ink group-hover:text-brand">
                     {a.title}
                   </h3>
                   {a.excerpt && (
-                    <p className="mt-1 line-clamp-2 text-sm text-slate-500">{a.excerpt}</p>
+                    <p className="mt-1 line-clamp-2 text-sm text-ink/60">{a.excerpt}</p>
                   )}
                 </div>
               </Link>
             ))}
           </div>
         ) : (
-          <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 px-6 py-12 text-center text-sm text-slate-500">
+          <div className="rounded-lg border border-dashed border-[var(--ink)]/10 bg-[var(--ink)]/5 px-6 py-12 text-center text-sm text-ink/60">
             Belum ada berita yang dipublikasikan.
           </div>
         )}
@@ -244,7 +242,7 @@ export default async function PublicHomePage() {
     testimonials:
       testimonials.length > 0 ? (
         <section aria-labelledby="testimoni">
-          <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">Kata pembaca</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-accent">Kata pembaca</p>
           <h2
             id="testimoni"
             className="mt-1 font-heading text-2xl font-bold text-heading sm:text-3xl"

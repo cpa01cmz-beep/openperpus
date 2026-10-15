@@ -59,7 +59,7 @@ export default function EditorialHero({ banners, siteName, tagline }: HeroProps)
         className="flex flex-col justify-center border-t border-[var(--ink)]/10 p-6 sm:p-8 lg:border-l lg:border-t-0"
         style={{ padding: 'var(--spacing-card)' }}
       >
-        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[var(--ink)] opacity-70">
+        <p className="text-xs font-semibold uppercase tracking-widest text-ink/70">
           {siteName} · {idx + 1}/{total}
         </p>
         <h1 className="mt-1 font-heading text-2xl font-bold leading-tight text-[var(--ink)] sm:text-3xl">

@@ -161,9 +161,9 @@ export default function SettingsForm({ initial }: { initial: SettingsRow }) {
   }
 
   const input =
-    'h-11 min-h-[44px] w-full rounded-md border border-slate-200 bg-white px-4 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1';
+    'h-11 min-h-[44px] w-full rounded-md border border-[var(--ink)]/10 bg-surface px-4 text-sm text-ink transition hover:border-[var(--ink)]/20 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1';
   const area =
-    'min-h-[44px] w-full rounded-md border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1';
+    'min-h-[44px] w-full rounded-md border border-[var(--ink)]/10 bg-surface px-4 py-2 text-sm text-ink transition hover:border-[var(--ink)]/20 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1';
   const label = 'grid gap-1 text-sm font-medium';
   return (
     <form onSubmit={onSubmit} className="grid max-w-4xl gap-5">
@@ -182,7 +182,7 @@ export default function SettingsForm({ initial }: { initial: SettingsRow }) {
         </p>
       )}
 
-      <section className="grid gap-4 rounded-2xl border bg-white p-6">
+      <section className="grid gap-4 rounded-[var(--radius-lg)] border bg-surface p-6">
         <h2 className="font-semibold">Identitas</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <label className={label} htmlFor="settings-name">
@@ -240,7 +240,7 @@ export default function SettingsForm({ initial }: { initial: SettingsRow }) {
             width={64}
             height={64}
             sizes="64px"
-            className="h-16 w-auto rounded border bg-slate-50 p-1"
+            className="h-16 w-auto rounded-[var(--radius-sm)] border bg-[var(--ink)]/5 p-1"
           />
         )}
         <div className="grid gap-4 sm:grid-cols-3">
@@ -305,7 +305,7 @@ export default function SettingsForm({ initial }: { initial: SettingsRow }) {
         </label>
       </section>
 
-      <section className="grid gap-4 rounded-2xl border bg-white p-6">
+      <section className="grid gap-4 rounded-[var(--radius-lg)] border bg-surface p-6">
         <h2 className="font-semibold">Konten & SEO</h2>
         <label className={label} htmlFor="settings-welcome-text">
           Sambutan (welcome_text)
@@ -384,7 +384,7 @@ export default function SettingsForm({ initial }: { initial: SettingsRow }) {
         </div>
       </section>
 
-      <section className="grid gap-4 rounded-2xl border bg-white p-6">
+      <section className="grid gap-4 rounded-[var(--radius-lg)] border bg-surface p-6">
         <h2 className="font-semibold">Pengumuman</h2>
         <label className={label} htmlFor="settings-announcement">
           Pengumuman (announcement)
@@ -399,9 +399,9 @@ export default function SettingsForm({ initial }: { initial: SettingsRow }) {
           />
         </label>
       </section>
-      <section className="grid gap-4 rounded-2xl border bg-white p-6">
+      <section className="grid gap-4 rounded-[var(--radius-lg)] border bg-surface p-6">
         <h2 className="font-semibold">Sirkulasi (kebijakan pinjam)</h2>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-ink/60">
           Dipakai checkout, perpanjangan, dan pengembalian — mengubah nilai di sini langsung berlaku
           tanpa deploy.
         </p>
@@ -480,7 +480,7 @@ export default function SettingsForm({ initial }: { initial: SettingsRow }) {
         <button
           type="submit"
           disabled={loading}
-          className="inline-flex min-h-[44px] w-fit items-center justify-center rounded-md bg-brand px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          className="inline-flex min-h-[44px] w-fit items-center justify-center rounded-md bg-brand px-5 py-2.5 text-sm font-semibold text-surface shadow-[var(--shadow-sm)] transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
         >
           {loading ? 'Menyimpan…' : 'Simpan Pengaturan'}
         </button>

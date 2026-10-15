@@ -146,7 +146,7 @@ export default function KontenPage() {
     <div className="grid gap-4">
       <div>
         <h1 className="text-2xl font-bold">Konten</h1>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-ink/60">
           Kelola halaman dinamis, FAQ, dan testimoni. Untuk artikel & banner gunakan menu Artikel /
           Banner.
         </p>
@@ -155,7 +155,7 @@ export default function KontenPage() {
       {missingPaths.length > 0 && (
         <div
           role="alert"
-          className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+          className="rounded-[var(--radius-lg)] border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800"
         >
           API{' '}
           {missingPaths.map((p, i) => (
@@ -170,7 +170,7 @@ export default function KontenPage() {
       {actionError && (
         <div
           role="alert"
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          className="rounded-[var(--radius-lg)] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
         >
           {actionError}
         </div>
@@ -179,7 +179,7 @@ export default function KontenPage() {
         <div
           key={key}
           role="alert"
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          className="rounded-[var(--radius-lg)] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
         >
           {label}: {msg}
         </div>
@@ -204,7 +204,7 @@ export default function KontenPage() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-slate-500" aria-live="polite">
+        <p className="text-sm text-ink/60" aria-live="polite">
           Memuat…
         </p>
       ) : (

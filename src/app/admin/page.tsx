@@ -126,7 +126,7 @@ export default async function AdminDashboard() {
         />
       </div>
 
-      <section className="rounded-2xl border bg-surface p-6">
+      <section className="rounded-[var(--radius-lg)] border bg-surface p-6">
         <div className="mb-4 flex items-center justify-between gap-2">
           <h2 className="font-semibold">Perlu dikembalikan (terlambat)</h2>
           <Link
@@ -137,7 +137,7 @@ export default async function AdminDashboard() {
           </Link>
         </div>
         <ul className="grid gap-2 text-sm">
-          {overdue.length === 0 && <li className="text-slate-500">Belum ada keterlambatan.</li>}
+          {overdue.length === 0 && <li className="text-ink/60">Belum ada keterlambatan.</li>}
           {overdue.map((o) => {
             const due = new Date(o.due_at);
             const lateDays = Math.max(
@@ -155,7 +155,9 @@ export default async function AdminDashboard() {
                     ? o.members[0]?.member_code
                     : o.members?.member_code) ?? '?'}{' '}
                   → {(Array.isArray(o.books) ? o.books[0]?.title : o.books?.title) ?? '?'}
-                  <Badge tone="rose" className="ml-2">telat {lateDays} hari</Badge>
+                  <Badge tone="rose" className="ml-2">
+                    telat {lateDays} hari
+                  </Badge>
                 </span>
                 <span className="shrink-0 text-xs font-semibold tabular-nums">
                   {formatRp(preview)}
@@ -167,7 +169,7 @@ export default async function AdminDashboard() {
       </section>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <section className="rounded-2xl border bg-surface p-6">
+        <section className="rounded-[var(--radius-lg)] border bg-surface p-6">
           <h2 className="mb-4 font-semibold">Peminjaman 7 hari terakhir</h2>
           <div
             className="flex h-32 items-end gap-2"
@@ -181,19 +183,17 @@ export default async function AdminDashboard() {
                   style={{ height: `${Math.max(4, (d.count / max) * 100)}px` }}
                   title={`${d.count} pinjam`}
                 />
-                <span className="text-xs text-slate-500">{d.label}</span>
+                <span className="text-xs text-ink/60">{d.label}</span>
                 <span className="text-xs font-semibold tabular-nums">{d.count}</span>
               </div>
             ))}
           </div>
         </section>
 
-        <section className="rounded-2xl border bg-surface p-6">
+        <section className="rounded-[var(--radius-lg)] border bg-surface p-6">
           <h2 className="mb-4 font-semibold">Aktivitas terbaru</h2>
           <ul className="grid gap-2 text-sm">
-            {(recent ?? []).length === 0 && (
-              <li className="text-slate-500">Belum ada aktivitas.</li>
-            )}
+            {(recent ?? []).length === 0 && <li className="text-ink/60">Belum ada aktivitas.</li>}
             {(recent ?? []).map(
               (r: {
                 id: string;
@@ -207,7 +207,7 @@ export default async function AdminDashboard() {
                 return (
                   <li
                     key={r.id}
-                    className="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-2"
+                    className="flex items-center justify-between gap-2 rounded-lg bg-[var(--ink)]/5 px-3 py-2"
                   >
                     <span className="truncate">
                       {(Array.isArray(r.members)

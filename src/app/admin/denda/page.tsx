@@ -267,7 +267,7 @@ export default function DendaPage() {
     <div className="grid gap-4">
       <div>
         <h1 className="text-2xl font-bold">Denda</h1>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-ink/60">
           Denda terbentuk otomatis saat pengembalian terlambat ({formatRp(finePerDay)}
           /hari, tarif denda_per_hari; dipatok plafon denda_maks bila diatur). Pembayaran mencetak
           nomor struk; pembebasan butuh alasan + approval admin lain.
@@ -277,7 +277,7 @@ export default function DendaPage() {
       {(apiMissing || payMissing) && (
         <div
           role="alert"
-          className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+          className="rounded-[var(--radius-lg)] border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800"
         >
           API <code className="font-mono">/api/fines</code> belum tersedia di backend (404). Daftar
           &amp; tombol bayar menunggu worker backend. Sudah dilaporkan ke mandor.
@@ -286,7 +286,7 @@ export default function DendaPage() {
       {error && (
         <div
           role="alert"
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          className="rounded-[var(--radius-lg)] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
         >
           {error}
         </div>
@@ -294,7 +294,7 @@ export default function DendaPage() {
       {notice && (
         <div
           role="status"
-          className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+          className="rounded-[var(--radius-lg)] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
         >
           {notice}
         </div>
@@ -344,12 +344,12 @@ export default function DendaPage() {
         }
       >
         <div className="grid gap-1">
-          <label htmlFor="filter-status" className="text-sm font-semibold text-slate-700">
+          <label htmlFor="filter-status" className="text-sm font-semibold text-ink/80">
             Filter status
           </label>
           <select
             id="filter-status"
-            className="h-11 min-h-[44px] rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
+            className="h-11 min-h-[44px] rounded-md border border-[var(--ink)]/10 bg-surface px-3 text-sm text-ink transition hover:border-[var(--ink)]/20 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
             value={status}
             onChange={(e) => {
               setPage(1);
@@ -365,12 +365,12 @@ export default function DendaPage() {
           </select>
         </div>
         <div className="grid gap-1">
-          <label htmlFor="pay-method" className="text-sm font-semibold text-slate-700">
+          <label htmlFor="pay-method" className="text-sm font-semibold text-ink/80">
             Metode bayar
           </label>
           <select
             id="pay-method"
-            className="h-11 min-h-[44px] rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
+            className="h-11 min-h-[44px] rounded-md border border-[var(--ink)]/10 bg-surface px-3 text-sm text-ink transition hover:border-[var(--ink)]/20 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
             value={method}
             onChange={(e) => setMethod(e.target.value)}
           >
@@ -384,7 +384,7 @@ export default function DendaPage() {
       </FilterBar>
 
       {loading ? (
-        <p className="text-sm text-slate-500" aria-live="polite">
+        <p className="text-sm text-ink/60" aria-live="polite">
           Memuat…
         </p>
       ) : (
@@ -402,7 +402,7 @@ export default function DendaPage() {
                 <span>
                   {fmtRp(r.amount)}
                   <br />
-                  <span className="text-xs text-slate-500">dibayar {fmtRp(r.paid_amount)}</span>
+                  <span className="text-xs text-ink/60">dibayar {fmtRp(r.paid_amount)}</span>
                 </span>
               ),
             },
@@ -413,9 +413,9 @@ export default function DendaPage() {
               render: (r) => {
                 const no = receiptNoOf(r);
                 return no ? (
-                  <span className="font-mono text-xs text-slate-600">{no}</span>
+                  <span className="font-mono text-xs text-ink/70">{no}</span>
                 ) : (
-                  <span className="text-xs text-slate-400">-</span>
+                  <span className="text-xs text-ink/50">-</span>
                 );
               },
             },
@@ -429,7 +429,7 @@ export default function DendaPage() {
               header: 'Aksi',
               render: (r) => {
                 const open = r.status === 'unpaid' || r.status === 'partial';
-                if (!open) return <span className="text-xs text-slate-400">-</span>;
+                if (!open) return <span className="text-xs text-ink/50">-</span>;
                 const pending = pendingWaiverOf(r);
                 if (pending) {
                   const canDecide = isAdmin && pending.requested_by !== myUserId;
@@ -448,7 +448,7 @@ export default function DendaPage() {
                               setDecision({ waiver: pending, fine: r, approve: true });
                             }}
                             aria-label={`Setujui pembebasan denda anggota ${r.members?.member_code ?? r.id}`}
-                            className="inline-flex min-h-[44px] items-center rounded bg-brand px-3 text-xs font-semibold text-white transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
+                            className="inline-flex min-h-[44px] items-center rounded-[var(--radius-sm)] bg-brand px-3 text-xs font-semibold text-surface transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             Setujui
                           </button>
@@ -460,13 +460,13 @@ export default function DendaPage() {
                               setDecision({ waiver: pending, fine: r, approve: false });
                             }}
                             aria-label={`Tolak pembebasan denda anggota ${r.members?.member_code ?? r.id}`}
-                            className="inline-flex min-h-[44px] items-center rounded border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:border-brand hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
+                            className="inline-flex min-h-[44px] items-center rounded-[var(--radius-sm)] border border-[var(--ink)]/10 bg-surface px-3 text-xs font-semibold text-ink/80 transition hover:border-brand hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
                           >
                             Tolak
                           </button>
                         </span>
                       ) : (
-                        <span className="text-xs text-slate-400">butuh admin lain</span>
+                        <span className="text-xs text-ink/50">butuh admin lain</span>
                       )}
                     </span>
                   );
@@ -482,7 +482,7 @@ export default function DendaPage() {
                         setPendingPay(r);
                       }}
                       aria-label={`Bayar denda anggota ${r.members?.member_code ?? r.id}`}
-                      className="inline-flex min-h-[44px] items-center rounded bg-brand px-3 text-xs font-semibold text-white transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
+                      className="inline-flex min-h-[44px] items-center rounded-[var(--radius-sm)] bg-brand px-3 text-xs font-semibold text-surface transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand disabled:cursor-not-allowed disabled:opacity-50"
                     >
                       {payingId === r.id ? '…' : 'Bayar'}
                     </button>
@@ -495,7 +495,7 @@ export default function DendaPage() {
                         setWaiveTarget(r);
                       }}
                       aria-label={`Ajukan pembebasan denda anggota ${r.members?.member_code ?? r.id}`}
-                      className="inline-flex min-h-[44px] items-center rounded border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 transition hover:border-brand hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                      className="inline-flex min-h-[44px] items-center rounded-[var(--radius-sm)] border border-[var(--ink)]/10 bg-surface px-3 text-xs font-semibold text-ink/80 transition hover:border-brand hover:text-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                     >
                       Bebaskan
                     </button>
@@ -535,12 +535,12 @@ export default function DendaPage() {
             ({pendingPay?.members?.member_code ?? '?'})?
           </p>
           <div className="grid gap-1">
-            <label htmlFor="pay-method-modal" className="text-sm font-semibold text-slate-700">
+            <label htmlFor="pay-method-modal" className="text-sm font-semibold text-ink/80">
               Metode bayar
             </label>
             <select
               id="pay-method-modal"
-              className="h-11 min-h-[44px] rounded-md border border-slate-200 bg-white px-3 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
+              className="h-11 min-h-[44px] rounded-md border border-[var(--ink)]/10 bg-surface px-3 text-sm text-ink transition hover:border-[var(--ink)]/20 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
               value={method}
               onChange={(e) => setMethod(e.target.value)}
             >
@@ -564,7 +564,7 @@ export default function DendaPage() {
             <button
               type="button"
               onClick={() => setWaiveTarget(null)}
-              className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-[var(--ink)]/20 px-4 py-2 text-sm font-semibold text-ink/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
             >
               Batal
             </button>
@@ -572,7 +572,7 @@ export default function DendaPage() {
               type="button"
               disabled={waiveBusy || waiveReason.trim().length < REASON_MIN}
               onClick={() => void submitWaive()}
-              className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 disabled:opacity-50"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink disabled:opacity-50"
             >
               {waiveBusy ? 'Mengirim…' : 'Ajukan pembebasan'}
             </button>
@@ -585,7 +585,7 @@ export default function DendaPage() {
               Ajukan pembebasan denda {fmtRp(waiveTarget.amount)} untuk anggota{' '}
               {waiveTarget.members?.member_code ?? '?'}.
             </p>
-            <label htmlFor="waive-reason" className="text-sm font-semibold text-slate-700">
+            <label htmlFor="waive-reason" className="text-sm font-semibold text-ink/80">
               Alasan pembebasan (minimal {REASON_MIN} karakter)
             </label>
             <textarea
@@ -593,10 +593,10 @@ export default function DendaPage() {
               value={waiveReason}
               onChange={(e) => setWaiveReason(e.target.value)}
               rows={3}
-              className="min-h-[44px] rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              className="min-h-[44px] rounded-md border border-[var(--ink)]/10 bg-surface px-3 py-2 text-sm text-ink focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               placeholder="mis. salah input tarif saat pengembalian…"
             />
-            <p className="text-xs text-slate-500">
+            <p className="text-xs text-ink/60">
               Pengajuan tercatat dengan nama Anda; keputusan diambil admin yang berbeda.
             </p>
           </div>
@@ -613,7 +613,7 @@ export default function DendaPage() {
             <button
               type="button"
               onClick={() => setDecision(null)}
-              className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-[var(--ink)]/20 px-4 py-2 text-sm font-semibold text-ink/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
             >
               Batal
             </button>
@@ -621,7 +621,7 @@ export default function DendaPage() {
               type="button"
               disabled={decisionBusy}
               onClick={() => void submitDecision()}
-              className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900 disabled:opacity-50"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink disabled:opacity-50"
             >
               {decisionBusy ? 'Memproses…' : decision?.approve ? 'Setujui' : 'Tolak'}
             </button>
@@ -633,7 +633,7 @@ export default function DendaPage() {
             <p>
               Alasan pengajuan: <span className="font-semibold">{decision.waiver.reason}</span>
             </p>
-            <label htmlFor="decision-note" className="text-sm font-semibold text-slate-700">
+            <label htmlFor="decision-note" className="text-sm font-semibold text-ink/80">
               Catatan keputusan (opsional)
             </label>
             <textarea
@@ -641,7 +641,7 @@ export default function DendaPage() {
               value={decisionNote}
               onChange={(e) => setDecisionNote(e.target.value)}
               rows={2}
-              className="min-h-[44px] rounded-md border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              className="min-h-[44px] rounded-md border border-[var(--ink)]/10 bg-surface px-3 py-2 text-sm text-ink focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             />
           </div>
         )}

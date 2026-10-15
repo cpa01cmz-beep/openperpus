@@ -84,7 +84,7 @@ export default function CatalogExplorer({
           </p>
           <a
             href={resetHref}
-            className="mt-4 inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-lg)] bg-brand px-5 py-2.5 text-sm font-semibold text-white shadow transition hover:bg-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            className="mt-4 inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-lg)] bg-brand px-5 py-2.5 text-sm font-semibold text-surface shadow-[var(--shadow-sm)] transition hover:bg-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
             Atur ulang filter
           </a>

@@ -59,7 +59,7 @@ export default function ReserveButton({ bookId, slug, title, waHref }: Props) {
   }
 
   const btn =
-    'border border-brand-soft bg-[var(--surface)] text-brand shadow-sm hover:bg-brand-soft focus-visible:ring-brand';
+    'border border-brand-soft bg-[var(--surface)] text-brand shadow-[var(--shadow-sm)] hover:bg-brand-soft focus-visible:ring-brand';
 
   return (
     <span className="inline-flex flex-wrap items-center gap-3">
@@ -68,7 +68,7 @@ export default function ReserveButton({ bookId, slug, title, waHref }: Props) {
         onClick={reserve}
         disabled={state === 'loading'}
         aria-live="polite"
-        className={`inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--radius-md)] px-6 py-3 text-sm font-semibold shadow-sm transition focus-visible:outline-none focus-visible:ring-2 disabled:cursor-wait disabled:opacity-70 ${btn}`}
+        className={`inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[var(--radius-md)] px-6 py-3 text-sm font-semibold shadow-[var(--shadow-sm)] transition focus-visible:outline-none focus-visible:ring-2 disabled:cursor-wait disabled:opacity-70 ${btn}`}
       >
         {state === 'loading' ? (
           <>
@@ -83,13 +83,13 @@ export default function ReserveButton({ bookId, slug, title, waHref }: Props) {
       </button>
       {state === 'error' && (
         <span role="alert" className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="font-medium text-rose-700">{msg}</span>
+          <span className="font-medium text-accent">{msg}</span>
           {waHref ? (
             <a
               href={waHref}
               target="_blank"
               rel="noreferrer"
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-md)] bg-brand px-4 py-2 text-sm font-bold text-white shadow transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-[var(--radius-md)] bg-brand px-4 py-2 text-sm font-bold text-surface shadow-[var(--shadow-sm)] transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             >
               <MessageCircle className="h-4 w-4" aria-hidden="true" /> Reservasi via WA
             </a>

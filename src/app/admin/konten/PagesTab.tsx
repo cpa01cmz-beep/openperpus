@@ -15,7 +15,7 @@ type PageItem = {
 };
 
 const rawInput =
-  'h-11 min-h-[44px] w-full rounded-md border border-slate-200 bg-white px-4 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1';
+  'h-11 min-h-[44px] w-full rounded-md border border-[var(--ink)]/10 bg-surface px-4 text-sm text-ink transition hover:border-[var(--ink)]/20 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1';
 
 export function PagesTab({
   pages,
@@ -65,7 +65,10 @@ export function PagesTab({
 
   return (
     <section className="grid gap-4" aria-label="Halaman dinamis">
-      <form onSubmit={handleAdd} className="grid max-w-2xl gap-2 rounded-2xl border bg-white p-4">
+      <form
+        onSubmit={handleAdd}
+        className="grid max-w-2xl gap-2 rounded-[var(--radius-lg)] border bg-surface p-4"
+      >
         <Input
           id="konten-page-title"
           label="Judul halaman"
@@ -91,7 +94,7 @@ export function PagesTab({
         <div className="grid gap-1 text-sm">
           <label
             htmlFor="konten-page-content"
-            className="mb-1.5 block text-sm font-semibold text-slate-700"
+            className="mb-1.5 block text-sm font-semibold text-ink/80"
           >
             Konten markdown
           </label>
@@ -107,14 +110,14 @@ export function PagesTab({
         </div>
         <label
           htmlFor="konten-page-show-in-menu"
-          className="inline-flex min-h-[44px] cursor-pointer items-center gap-2 text-sm text-slate-700"
+          className="inline-flex min-h-[44px] cursor-pointer items-center gap-2 text-sm text-ink/80"
         >
           <input
             id="konten-page-show-in-menu"
             type="checkbox"
             checked={pageForm.show_in_menu}
             onChange={(e) => setPageForm({ ...pageForm, show_in_menu: e.target.checked })}
-            className="h-4 w-4 rounded border-slate-300 accent-slate-900"
+            className="h-4 w-4 rounded-[var(--radius-sm)] border-[var(--ink)]/20 accent-slate-900"
           />
           tampilkan di menu
         </label>

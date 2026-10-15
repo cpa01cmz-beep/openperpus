@@ -79,15 +79,15 @@ export default function Modal({ open, onClose, title, description, children, foo
         aria-modal="true"
         aria-labelledby={titleId}
         aria-describedby={description ? descId : undefined}
-        className="w-full max-w-lg overflow-hidden rounded-lg bg-white shadow-xl"
+        className="w-full max-w-lg overflow-hidden rounded-lg bg-surface shadow-xl"
       >
-        <div className="flex items-start justify-between gap-4 border-b border-slate-100 p-5">
+        <div className="flex items-start justify-between gap-4 border-b border-[var(--ink)]/10 p-5">
           <div>
-            <h2 id={titleId} className="font-heading text-lg font-bold text-slate-900">
+            <h2 id={titleId} className="font-heading text-lg font-bold text-ink">
               {title}
             </h2>
             {description && (
-              <p id={descId} className="mt-1 text-sm text-slate-500">
+              <p id={descId} className="mt-1 text-sm text-ink/60">
                 {description}
               </p>
             )}
@@ -97,14 +97,14 @@ export default function Modal({ open, onClose, title, description, children, foo
             type="button"
             onClick={onClose}
             aria-label="Tutup dialog"
-            className="grid min-h-[44px] min-w-[44px] place-items-center rounded-sm p-2 text-slate-500 transition hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+            className="grid min-h-[44px] min-w-[44px] place-items-center rounded-sm p-2 text-ink/60 transition hover:bg-[var(--ink)]/5 hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
           >
             <X className="h-5 w-5" aria-hidden="true" />
           </button>
         </div>
-        <div className="max-h-[60dvh] overflow-y-auto p-5 text-sm text-slate-700">{children}</div>
+        <div className="max-h-[60dvh] overflow-y-auto p-5 text-sm text-ink/80">{children}</div>
         {footer && (
-          <div className="flex flex-col-reverse gap-2 border-t border-slate-100 bg-slate-50 p-4 sm:flex-row sm:justify-end">
+          <div className="flex flex-col-reverse gap-2 border-t border-[var(--ink)]/10 bg-[var(--ink)]/5 p-4 sm:flex-row sm:justify-end">
             {footer}
           </div>
         )}

@@ -17,9 +17,9 @@ import { getSiteUrl } from '@/lib/site';
 import { getLibrarySettings } from '@/lib/settings';
 import { getEffectiveThemeFromSettings } from '@/lib/theme-overrides';
 
-/* A11Y-CONTRAST-AUDIT (note only — design tokens untouched):
- * midnight (ink #E9EEF6 on surface #0B1220 ≈ 15.2:1) and ocean
- * (ink #102E2E on surface #F4F7F6 ≈ 13.9:1) body pairs clear WCAG AA
+/* A11Y-CONTRAST-AUDIT (note only — design tokens untouched, values live in
+ * src/lib/themes.ts): midnight (ink on surface ≈ 15.2:1) and ocean
+ * (ink on surface ≈ 13.9:1) body pairs clear WCAG AA
  * (4.5:1) by inspection; brand-on-surface pairs must be re-checked with a
  * color-contrast tool before use for small text. */
 
@@ -213,7 +213,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             Default aman di globals.css agar first paint tetap rapi. */}
         <a
           href="#main-content"
-          className="skip-link sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded focus:bg-white focus:px-4 focus:py-2 focus:text-black"
+          className="skip-link sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-[var(--radius-md)] focus:bg-surface focus:px-4 focus:py-2 focus:text-ink"
         >
           Skip to main content
         </a>

@@ -38,7 +38,7 @@ export default function MinimalHeader({
               {name}
             </span>
             {tag ? (
-              <span className="hidden truncate text-[11px] text-[var(--ink)] opacity-70 sm:block">
+              <span className="hidden truncate text-xs text-[var(--ink)] opacity-70 sm:block">
                 {tag}
               </span>
             ) : null}

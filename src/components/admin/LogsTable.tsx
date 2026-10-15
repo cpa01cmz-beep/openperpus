@@ -31,7 +31,7 @@ export default function LogsTable({ rows, caption }: { rows: LogRow[]; caption?:
             <span className="whitespace-nowrap">
               {formatTanggal(r.created_at)}
               <br />
-              <span className="text-xs text-slate-500">{formatWaktu(r.created_at)}</span>
+              <span className="text-xs text-ink/60">{formatWaktu(r.created_at)}</span>
             </span>
           ),
         },
@@ -48,13 +48,13 @@ export default function LogsTable({ rows, caption }: { rows: LogRow[]; caption?:
           render: (r) => {
             const rid = r.metadata?.['requestId'];
             if (typeof rid !== 'string' || !rid) {
-              return <span className="text-xs text-slate-400">-</span>;
+              return <span className="text-xs text-ink/50">-</span>;
             }
             return (
               <a
                 href={`/admin/logs?rid=${encodeURIComponent(rid)}`}
                 title={`Telusuri request ${rid}`}
-                className="font-mono text-[11px] text-brand underline-offset-2 hover:underline"
+                className="font-mono text-xs text-brand underline-offset-2 hover:underline"
               >
                 {rid.slice(0, 8)}…
               </a>
@@ -68,7 +68,7 @@ export default function LogsTable({ rows, caption }: { rows: LogRow[]; caption?:
             <span className="text-xs">
               {r.entity_type ?? '-'}
               {r.entity_id ? (
-                <span className="text-slate-400"> · {r.entity_id.slice(0, 8)}…</span>
+                <span className="text-ink/50"> · {r.entity_id.slice(0, 8)}…</span>
               ) : (
                 ''
               )}
@@ -90,13 +90,13 @@ export default function LogsTable({ rows, caption }: { rows: LogRow[]; caption?:
           render: (r) =>
             r.metadata ? (
               <details className="text-xs">
-                <summary className="cursor-pointer text-slate-500 underline">metadata</summary>
-                <pre className="mt-1 max-w-[280px] overflow-auto rounded bg-slate-50 p-2 font-mono text-[11px] text-slate-700">
+                <summary className="cursor-pointer text-ink/60 underline">metadata</summary>
+                <pre className="mt-1 max-w-[280px] overflow-auto rounded-[var(--radius-sm)] bg-[var(--ink)]/5 p-2 font-mono text-xs text-ink/80">
                   {JSON.stringify(r.metadata, null, 2)}
                 </pre>
               </details>
             ) : (
-              <span className="text-xs text-slate-400">-</span>
+              <span className="text-xs text-ink/50">-</span>
             ),
         },
       ]}

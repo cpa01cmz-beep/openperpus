@@ -75,8 +75,11 @@ describe('T-BRUTALIST StackedHero rigid treatment', () => {
 
   it('zero soft shadows + blur in brutalist tree', () => {
     const s = src();
-    expect(s.includes('shadow-sm'), 'must have zero shadow-sm').toBe(false);
-    expect(s.includes('shadow-md'), 'must have zero shadow-md').toBe(false);
+    // Soft Tailwind utilities shadow-sm/shadow-md/shadow-lg/shadow (standalone
+    // classes) are forbidden; theme tokens shadow-[var(--shadow-*)] and hard
+    // offset shadow-[*px_*px_0_0_*] are the tokenized replacements.
+    expect(/["'\s]shadow-sm(?=["'\s])/.test(s), 'must have zero soft shadow-sm').toBe(false);
+    expect(/["'\s]shadow-md(?=["'\s])/.test(s), 'must have zero soft shadow-md').toBe(false);
     expect(s.includes('backdrop-blur'), 'must have zero backdrop-blur').toBe(false);
     // Soft tailwind `shadow` / `shadow-lg` without hard offset is forbidden;
     // hard shadows must be explicit offset utilities.

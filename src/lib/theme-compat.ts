@@ -6,20 +6,12 @@
  * Dipakai oleh src/lib/theme-overrides.ts (server) untuk menyaring override
  * sebelum diterapkan ke ThemeDef.
  */
-import { getTheme } from './themes';
+import { getTheme, THEME_FAMILIES as REGISTRY_FAMILIES, SECTION_IDS } from './themes';
 
 export type ThemeFamily = 'formal' | 'hard' | 'hand';
 
-/** Famili tiap theme id (7 tema). Tak dikenal -> 'formal' (fail-open aman). */
-export const THEME_FAMILIES: Record<string, ThemeFamily> = {
-  emerald: 'formal',
-  midnight: 'formal',
-  paper: 'formal',
-  ocean: 'formal',
-  bazaar: 'formal',
-  brutalist: 'hard',
-  sketch: 'hand',
-};
+/** Single-source: re-export registry family map, no hardcoded duplicate. */
+export const THEME_FAMILIES: Record<string, ThemeFamily> = REGISTRY_FAMILIES;
 
 export type LayoutKind = 'header' | 'footer' | 'hero';
 
@@ -152,18 +144,9 @@ export const ALLOWED_LAYOUT: Record<
   },
 };
 
-/** Section homepage yang dikenal (subset dari theme.layout.homepageSections). */
-export const SECTION_IDS = [
-  'hero',
-  'announcement',
-  'stats',
-  'welcome',
-  'featured',
-  'news',
-  'testimonials',
-] as const;
-
-export type SectionId = (typeof SECTION_IDS)[number];
+/** Section homepage yang dikenal — single-source re-export dari themes.ts. */
+export { SECTION_IDS };
+export type { SectionId } from './themes';
 
 /** Famili untuk sebuah base theme id (tak dikenal -> 'formal'). */
 export function familyOf(baseId: string): ThemeFamily {

@@ -102,7 +102,10 @@ export default function LoanForm({
   }
 
   return (
-    <form onSubmit={onSubmit} className="grid max-w-xl gap-4 rounded-2xl border bg-white p-6">
+    <form
+      onSubmit={onSubmit}
+      className="grid max-w-xl gap-4 rounded-[var(--radius-lg)] border bg-surface p-6"
+    >
       {err && (
         <p role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
           {err}
@@ -153,17 +156,17 @@ export default function LoanForm({
           }}
         />
       </label>
-      <p className="text-xs text-slate-500">
+      <p className="text-xs text-ink/60">
         Jatuh tempo otomatis: <strong>{duePreview}</strong> (+{days} hari dari hari ini, sesuai
         pengaturan lama pinjam).
       </p>
       <div className="grid gap-1 text-sm">
-        <label htmlFor="loan-notes" className="text-sm font-semibold text-slate-700">
+        <label htmlFor="loan-notes" className="text-sm font-semibold text-ink/80">
           Catatan
         </label>
         <textarea
           id="loan-notes"
-          className="min-h-[44px] w-full rounded-md border border-slate-200 bg-white px-4 py-2 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
+          className="min-h-[44px] w-full rounded-md border border-[var(--ink)]/10 bg-surface px-4 py-2 text-sm text-ink transition hover:border-[var(--ink)]/20 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
           rows={2}
           value={notes}
           onChange={(e) => setNotes(e.target.value)}

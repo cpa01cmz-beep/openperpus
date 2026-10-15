@@ -36,13 +36,13 @@ export default function CenteredHeader({
             <LogoMark siteName={name} logoSrc={logoSrc} />
             <span className="leading-tight">
               <span className="block font-heading text-lg font-bold text-heading">{name}</span>
-              {tag ? <span className="block text-[11px] text-[var(--ink)]/70">{tag}</span> : null}
+              {tag ? <span className="block text-xs text-[var(--ink)]/70">{tag}</span> : null}
             </span>
           </Link>
           <div className="flex items-center gap-2">
             <Link
               href="/katalog"
-              className="hidden rounded-[var(--radius-md)] bg-brand px-4 py-2 text-sm font-semibold text-white shadow transition hover:bg-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent md:block"
+              className="hidden rounded-[var(--radius-md)] bg-brand px-4 py-2 text-sm font-semibold text-surface shadow-[var(--shadow-sm)] transition hover:bg-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent md:block"
             >
               Cari Buku
             </Link>
@@ -92,7 +92,7 @@ export default function CenteredHeader({
           <li className="pt-1">
             <Link
               href="/katalog"
-              className="block rounded-[var(--radius-md)] bg-brand px-4 py-2.5 text-center text-sm font-semibold text-white shadow"
+              className="block rounded-[var(--radius-md)] bg-brand px-4 py-2.5 text-center text-sm font-semibold text-surface shadow-[var(--shadow-sm)]"
             >
               Cari Buku
             </Link>

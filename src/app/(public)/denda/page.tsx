@@ -214,7 +214,7 @@ export default function DendaSayaPage() {
             <button
               type="button"
               onClick={() => setPendingPay(null)}
-              className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-[var(--ink)]/20 px-4 py-2 text-sm font-semibold text-ink/80"
             >
               Batal
             </button>
@@ -222,7 +222,7 @@ export default function DendaSayaPage() {
               type="button"
               disabled={payingId !== null}
               onClick={() => void confirmPay()}
-              className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-surface disabled:opacity-50"
             >
               {payingId ? 'Memproses…' : 'Ya, bayar'}
             </button>
@@ -253,28 +253,28 @@ export default function DendaSayaPage() {
                 setCopied(false);
                 setDownloadError('');
               }}
-              className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-[var(--ink)]/20 px-4 py-2 text-sm font-semibold text-ink/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
             >
               Tutup
             </button>
             <button
               type="button"
               onClick={() => printReceipt()}
-              className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-[var(--ink)]/20 px-4 py-2 text-sm font-semibold text-ink/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
             >
               Cetak
             </button>
             <button
               type="button"
               onClick={() => downloadReceipt()}
-              className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-lg border border-[var(--ink)]/20 px-4 py-2 text-sm font-semibold text-ink/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
             >
               Unduh
             </button>
             <button
               type="button"
               onClick={() => void copyReceipt()}
-              className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-900"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-lg bg-ink px-4 py-2 text-sm font-semibold text-surface focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink"
             >
               {copied ? 'Tersalin!' : 'Salin bukti'}
             </button>
@@ -337,7 +337,7 @@ export default function DendaSayaPage() {
       <div>
         <Breadcrumb items={[{ label: 'Beranda', href: '/' }, { label: 'Denda Saya' }]} />
         <h1 className="mt-3 text-2xl font-bold">Denda Saya</h1>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-ink/60">
           Denda terbentuk otomatis saat pengembalian terlambat ({formatRp(finePerDay)}/hari, tarif
           denda_per_hari). Bayar langsung tanpa payment gateway.
         </p>
@@ -346,7 +346,7 @@ export default function DendaSayaPage() {
       {(needLogin || payNeedLogin) && (
         <div
           role="alert"
-          className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800"
+          className="rounded-[var(--radius-lg)] border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-800"
         >
           Silakan{' '}
           <a className="font-semibold underline" href="/login?next=/denda">
@@ -358,21 +358,21 @@ export default function DendaSayaPage() {
       {(listErrorShown || error) && (
         <div
           role="alert"
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          className="rounded-[var(--radius-lg)] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
         >
           {listErrorShown || error}
         </div>
       )}
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="rounded-xl border bg-white p-4">
-          <p className="text-sm text-slate-500">Total terbuka</p>
+        <div className="rounded-[var(--radius-lg)] border bg-surface p-4">
+          <p className="text-sm text-ink/60">Total terbuka</p>
           <p className="text-xl font-bold">{fmtRp(openTotal)}</p>
         </div>
-        <div className="rounded-xl border bg-white p-4">
-          <p className="text-sm text-slate-500">Baris</p>
+        <div className="rounded-[var(--radius-lg)] border bg-surface p-4">
+          <p className="text-sm text-ink/60">Baris</p>
           <p className="text-xl font-bold">{rows.length}</p>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-ink/60">
             Halaman {page} / {totalPages}
           </p>
         </div>
@@ -415,12 +415,12 @@ export default function DendaSayaPage() {
       </div>
 
       {loading ? (
-        <p className="text-sm text-slate-500" aria-live="polite">
+        <p className="text-sm text-ink/60" aria-live="polite">
           Memuat…
         </p>
       ) : rows.length === 0 ? (
         <div className="grid gap-2">
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-ink/60">
             Belum ada denda. Kabar baik — jaga riwayat pinjaman agar tetap bersih.
           </p>
           <p>
@@ -438,13 +438,13 @@ export default function DendaSayaPage() {
             const sisa = num(r.amount) - num(r.paid_amount);
             const open = r.status === 'unpaid' || r.status === 'partial';
             return (
-              <li key={r.id} className="rounded-xl border bg-white p-4">
+              <li key={r.id} className="rounded-[var(--radius-lg)] border bg-surface p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
-                    <p className="text-sm text-slate-500">Tagihan / Dibayar</p>
+                    <p className="text-sm text-ink/60">Tagihan / Dibayar</p>
                     <p className="font-semibold">
                       {fmtRp(r.amount)}{' '}
-                      <span className="text-xs font-normal text-slate-500">
+                      <span className="text-xs font-normal text-ink/60">
                         dibayar {fmtRp(r.paid_amount)}
                       </span>
                     </p>
@@ -468,12 +468,12 @@ export default function DendaSayaPage() {
                     <button
                       disabled={payingId === r.id}
                       onClick={() => onPay(r)}
-                      className="inline-flex min-h-[44px] items-center justify-center rounded bg-slate-900 px-4 py-1.5 text-sm text-white disabled:opacity-50"
+                      className="inline-flex min-h-[44px] items-center justify-center rounded-[var(--radius-sm)] bg-ink px-4 py-1.5 text-sm text-surface disabled:opacity-50"
                     >
                       {payingId === r.id ? '…' : 'Bayar'}
                     </button>
                   ) : (
-                    <span className="text-xs text-slate-400">Lunas/dibebaskan</span>
+                    <span className="text-xs text-ink/50">Lunas/dibebaskan</span>
                   )}
                 </div>
               </li>
@@ -486,7 +486,7 @@ export default function DendaSayaPage() {
         <button
           disabled={page <= 1}
           onClick={() => setPage((p) => p - 1)}
-          className="rounded border px-3 py-1 disabled:opacity-50"
+          className="rounded-[var(--radius-sm)] border px-3 py-1 disabled:opacity-50"
         >
           ‹ Prev
         </button>
@@ -496,7 +496,7 @@ export default function DendaSayaPage() {
         <button
           disabled={page >= totalPages}
           onClick={() => setPage((p) => p + 1)}
-          className="rounded border px-3 py-1 disabled:opacity-50"
+          className="rounded-[var(--radius-sm)] border px-3 py-1 disabled:opacity-50"
         >
           Next ›
         </button>

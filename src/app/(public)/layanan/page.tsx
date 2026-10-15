@@ -77,13 +77,13 @@ export default async function LayananPage() {
       />
       <Breadcrumb items={[{ label: 'Beranda', href: '/' }, { label: 'Layanan' }]} />
       <header>
-        <p className="text-xs font-bold uppercase tracking-[0.2em] text-accent">
+        <p className="text-xs font-bold uppercase tracking-widest text-accent">
           Apa yang kami bantu
         </p>
         <h1 className="mt-1 font-heading text-3xl font-bold text-heading sm:text-4xl">
           Layanan {siteName}
         </h1>
-        <p className="mt-2 max-w-2xl text-sm text-slate-500 sm:text-base">
+        <p className="mt-2 max-w-2xl text-sm text-ink/60 sm:text-base">
           {page?.excerpt ??
             'Seluruh layanan sirkulasi dan informasi — dirender dinamis dari sistem.'}
         </p>
@@ -92,9 +92,9 @@ export default async function LayananPage() {
       {page?.content_md ? (
         <section
           aria-label="Deskripsi layanan"
-          className="rounded-lg border border-slate-100 bg-white p-6 shadow-sm sm:p-8"
+          className="rounded-lg border border-[var(--ink)]/10 bg-surface p-6 shadow-[var(--shadow-sm)] sm:p-8"
         >
-          <p className="whitespace-pre-line text-sm leading-relaxed text-slate-600 sm:text-base">
+          <p className="whitespace-pre-line text-sm leading-relaxed text-ink/70 sm:text-base">
             {page.content_md}
           </p>
         </section>
@@ -105,7 +105,7 @@ export default async function LayananPage() {
           Daftar layanan
         </h2>
         {services.length === 0 ? (
-          <div className="rounded-lg border border-slate-100 bg-white p-6 text-sm text-slate-500 shadow-sm sm:col-span-2 sm:p-8">
+          <div className="rounded-lg border border-[var(--ink)]/10 bg-surface p-6 text-sm text-ink/60 shadow-[var(--shadow-sm)] sm:col-span-2 sm:p-8">
             <p>Belum ada layanan yang tersedia saat ini.</p>
           </div>
         ) : (
@@ -114,7 +114,7 @@ export default async function LayananPage() {
             return (
               <div
                 key={s.id}
-                className="rounded-lg border border-slate-100 bg-white p-5 shadow-sm transition hover:shadow-md sm:p-6"
+                className="rounded-lg border border-[var(--ink)]/10 bg-surface p-5 shadow-[var(--shadow-sm)] transition hover:shadow-[var(--shadow-md)] sm:p-6"
               >
                 <span
                   className="grid h-11 w-11 place-items-center rounded-lg bg-brand/10 text-brand"
@@ -123,7 +123,7 @@ export default async function LayananPage() {
                   <Icon className="h-5 w-5" />
                 </span>
                 <h3 className="mt-3 font-heading text-lg font-bold text-brand-strong">{s.title}</h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-slate-500">{s.description}</p>
+                <p className="mt-1.5 text-sm leading-relaxed text-ink/60">{s.description}</p>
               </div>
             );
           })
@@ -132,7 +132,7 @@ export default async function LayananPage() {
 
       <section
         aria-labelledby="alur"
-        className="rounded-lg bg-brand-strong p-6 text-white shadow sm:p-8"
+        className="rounded-lg bg-brand-strong p-6 text-surface shadow-[var(--shadow-sm)] sm:p-8"
       >
         <h2 id="alur" className="flex items-center gap-2 font-heading text-xl font-bold">
           <BadgeCheck className="h-5 w-5 text-accent" aria-hidden="true" /> Cara meminjam
@@ -143,7 +143,7 @@ export default async function LayananPage() {
             'Datang dengan kartu anggota pada jam operasional.',
             'Serahkan ke petugas sirkulasi untuk diproses.',
           ].map((step, i) => (
-            <li key={i} className="rounded-lg bg-white/10 p-4">
+            <li key={i} className="rounded-lg bg-surface/10 p-4">
               <span
                 className="grid h-8 w-8 place-items-center rounded-full bg-accent font-heading text-sm font-bold text-brand-strong"
                 aria-hidden="true"
@@ -157,13 +157,13 @@ export default async function LayananPage() {
         <div className="mt-5 flex flex-wrap gap-3">
           <Link
             href="/katalog"
-            className="inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-bold text-brand-strong shadow transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            className="inline-flex items-center gap-2 rounded-lg bg-accent px-5 py-2.5 text-sm font-bold text-brand-strong shadow-[var(--shadow-sm)] transition hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-surface"
           >
             Mulai dari katalog <ArrowRight className="h-4 w-4" aria-hidden="true" />
           </Link>
           <Link
             href="/tentang"
-            className="inline-flex items-center rounded-lg border border-white/30 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
+            className="inline-flex items-center rounded-lg border border-surface/30 px-5 py-2.5 text-sm font-semibold text-surface transition hover:bg-surface/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-surface"
           >
             Tentang kami
           </Link>

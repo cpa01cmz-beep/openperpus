@@ -387,6 +387,9 @@ export type ActiveThemeId = string;
 /** Default theme id used for fallback. */
 export const DEFAULT_THEME: ActiveThemeId = 'emerald';
 
+/** Single-source theme id list — derived from registry, no hardcoded mirror. */
+export const THEME_IDS = Object.keys(THEMES);
+
 /** Resolve a theme by id; unknown or empty ids fall back to emerald. */
 export function getTheme(id: string): ThemeDef {
   if (!id) return THEMES[DEFAULT_THEME] as ThemeDef;

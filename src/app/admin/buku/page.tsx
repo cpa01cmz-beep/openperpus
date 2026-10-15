@@ -163,7 +163,7 @@ export default function BukuPage() {
         <h1 className="text-2xl font-bold">Buku</h1>
         <Link
           href="/admin/buku/tambah"
-          className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md bg-brand px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
+          className="inline-flex min-h-[44px] items-center justify-center gap-2 rounded-md bg-brand px-5 py-2.5 text-sm font-semibold text-surface shadow-[var(--shadow-sm)] transition hover:bg-brand-strong focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-2"
         >
           + Tambah Buku
         </Link>
@@ -171,7 +171,7 @@ export default function BukuPage() {
       {notice && (
         <div
           role="status"
-          className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+          className="rounded-[var(--radius-lg)] border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
         >
           {notice}
         </div>
@@ -179,7 +179,7 @@ export default function BukuPage() {
       {actionError && (
         <div
           role="alert"
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          className="rounded-[var(--radius-lg)] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
         >
           {actionError}
         </div>
@@ -232,13 +232,13 @@ export default function BukuPage() {
       {error && (
         <p
           role="alert"
-          className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
+          className="rounded-[var(--radius-lg)] border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700"
         >
           {error}
         </p>
       )}
       {loading ? (
-        <p className="text-sm text-slate-500">Memuat…</p>
+        <p className="text-sm text-ink/60">Memuat…</p>
       ) : (
         <DataTable<BukuRow>
           columns={[

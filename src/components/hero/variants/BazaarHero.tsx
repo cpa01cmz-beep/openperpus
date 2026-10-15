@@ -41,21 +41,19 @@ export default function BazaarHero({ banners, siteName, tagline }: HeroProps) {
     >
       <div className="mx-auto grid w-full max-w-6xl gap-10 px-4 pt-14 sm:px-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-center lg:px-8 lg:pt-[4.5rem]">
         <div className="w-full min-w-0 lg:max-w-[35rem] lg:justify-self-end">
-          <h1 className="max-w-[12ch] font-heading text-[clamp(2.5rem,1.4rem+4.5vw,4.5rem)] font-bold uppercase leading-[0.98] tracking-[-0.02em] text-heading">
+          <h1 className="max-w-md font-heading text-4xl font-bold uppercase leading-none tracking-tight text-heading sm:text-5xl lg:text-6xl">
             {head ? `${head} ` : null}
             <strong className="bazaar-marker">{tail}</strong>
           </h1>
           {active.subtitle ? (
-            <p className="mt-4 max-w-[34rem] text-[1.125rem] text-[var(--ink)]/75">
-              {active.subtitle}
-            </p>
+            <p className="mt-4 max-w-xl text-lg text-ink/75">{active.subtitle}</p>
           ) : tagline ? (
-            <p className="mt-4 max-w-[34rem] text-[1.125rem] text-[var(--ink)]/75">{tagline}</p>
+            <p className="mt-4 max-w-xl text-lg text-ink/75">{tagline}</p>
           ) : null}
           <div className="mt-6 flex flex-wrap gap-3">
             <Link
               href={bannerHref}
-              className="inline-flex min-h-[48px] items-center gap-2 rounded-[var(--radius-sm)] border-2 border-[var(--ink)] bg-accent px-6 py-3.5 text-[1.1875rem] font-bold uppercase tracking-wide text-white shadow-[var(--shadow-md)] transition hover:translate-y-[2px] hover:shadow-[var(--shadow-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+              className="inline-flex min-h-[48px] items-center gap-2 rounded-[var(--radius-sm)] border-2 border-[var(--ink)] bg-accent px-6 py-3.5 text-lg font-bold uppercase tracking-wide text-surface shadow-[var(--shadow-md)] transition hover:translate-y-[2px] hover:shadow-[var(--shadow-sm)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
             >
               {active.link ? 'Lihat Selengkapnya' : 'Jelajahi Katalog'}{' '}
               <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -67,7 +65,7 @@ export default function BazaarHero({ banners, siteName, tagline }: HeroProps) {
               Lihat Katalog
             </Link>
           </div>
-          <p className="mt-4 text-[0.9375rem] text-[var(--ink)]/65">
+          <p className="mt-4 text-sm text-ink/65">
             {siteName} · gratis dipinjam · dibantu pustakawan sampai dapat
           </p>
           <ul aria-label="Keunggulan layanan" className="mt-7 grid grid-cols-3 gap-3">
@@ -81,21 +79,21 @@ export default function BazaarHero({ banners, siteName, tagline }: HeroProps) {
                 className="grid gap-1 rounded-[var(--radius-sm)] border-2 border-[var(--ink)] bg-[var(--surface)] px-3 py-3"
               >
                 <strong className="font-heading text-xl uppercase text-heading">{m.strong}</strong>
-                <span className="text-[0.8125rem] leading-snug text-[var(--ink)]/65">{m.span}</span>
+                <span className="text-xs leading-snug text-ink/65">{m.span}</span>
               </li>
             ))}
           </ul>
         </div>
 
         <div className="w-full min-w-0 pb-14 lg:max-w-[35rem] lg:justify-self-start">
-          <div className="grid rotate-[1.25deg] gap-1.5 rounded-[4px] border-2 border-[var(--ink)] bg-[var(--surface)] p-6 shadow-[var(--shadow-lg)]">
-            <p className="grid gap-0.5 border-b-2 border-dashed border-[var(--ink)]/25 pb-3 font-heading text-base font-bold uppercase tracking-[0.05em] text-heading">
+          <div className="grid rotate-[1.25deg] gap-1.5 rounded-[var(--radius-sm)] border-2 border-[var(--ink)] bg-[var(--surface)] p-6 shadow-[var(--shadow-lg)]">
+            <p className="grid gap-0.5 border-b-2 border-dashed border-[var(--ink)]/25 pb-3 font-heading text-base font-bold uppercase tracking-wider text-heading">
               {siteName}
-              <span className="font-body text-xs font-normal normal-case tracking-normal text-[var(--ink)]/60">
+              <span className="font-body text-xs font-normal normal-case tracking-normal text-ink/60">
                 Kartu katalog · bukan bukti pinjam
               </span>
             </p>
-            <div className="relative aspect-[16/9] w-full overflow-hidden rounded-[4px] border-2 border-[var(--ink)]">
+            <div className="relative aspect-[16/9] w-full overflow-hidden rounded-[var(--radius-sm)] border-2 border-[var(--ink)]">
               {banners.map((b, i) =>
                 i > 1 && i !== idx ? null : (
                   <div
@@ -123,22 +121,22 @@ export default function BazaarHero({ banners, siteName, tagline }: HeroProps) {
                 )
               )}
             </div>
-            <div className="flex items-center justify-between gap-4 text-[0.9375rem] text-[var(--ink)]/70">
+            <div className="flex items-center justify-between gap-4 text-sm text-ink/70">
               <span className="truncate">{active.title}</span>
               <span className="shrink-0 font-bold text-heading">GRATIS</span>
             </div>
-            <div className="flex items-center justify-between gap-4 text-[0.9375rem] text-[var(--ink)]/70">
+            <div className="flex items-center justify-between gap-4 text-sm text-ink/70">
               <span>Masa pinjam</span>
               <span className="shrink-0 font-bold text-heading">7–14 HARI</span>
             </div>
-            <p className="border-y-2 border-dashed border-[var(--ink)]/25 py-2.5 text-center font-heading text-base font-bold uppercase tracking-[0.06em] text-heading">
+            <p className="border-y-2 border-dashed border-[var(--ink)]/25 py-2.5 text-center font-heading text-base font-bold uppercase tracking-wider text-heading">
               {siteName} · {idx + 1}/{total}
             </p>
-            <p className="text-[0.8125rem] text-[var(--ink)]/60">
+            <p className="text-xs text-ink/60">
               telat kembali = denda harian, bisa perpanjang online
             </p>
             <div className="bazaar-barcode mt-1.5 h-11" aria-hidden="true" />
-            <p className="mx-auto mt-3 -rotate-[4deg] rounded-[var(--radius-sm)] border-[3px] border-double border-brand bg-brand-soft px-4 py-1.5 font-heading text-sm font-bold uppercase tracking-[0.12em] text-brand">
+            <p className="mx-auto mt-3 -rotate-[4deg] rounded-[var(--radius-sm)] border-[3px] border-double border-brand bg-brand-soft px-4 py-1.5 font-heading text-sm font-bold uppercase tracking-widest text-brand">
               Perpus Buka
             </p>
           </div>
@@ -192,7 +190,7 @@ export default function BazaarHero({ banners, siteName, tagline }: HeroProps) {
       </div>
 
       <div className="overflow-hidden bg-brand-strong py-2.5 text-brand-soft" aria-hidden="true">
-        <div className="bazaar-ticker-track inline-flex gap-10 whitespace-nowrap px-5 font-heading text-sm font-semibold uppercase tracking-[0.05em]">
+        <div className="bazaar-ticker-track inline-flex gap-10 whitespace-nowrap px-5 font-heading text-sm font-semibold uppercase tracking-wider">
           {[...banners, ...banners].map((b, i) => (
             <span key={`${b.id}-${i}`}>
               {b.title} <span className="text-accent">●</span>

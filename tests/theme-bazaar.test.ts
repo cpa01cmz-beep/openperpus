@@ -101,7 +101,7 @@ describe('T-BAZAAR: BazaarHero promo treatment', () => {
     expect(src).not.toContain('rounded-[var(--radius-lg)]');
   });
 
-  it('no hardcoded slate/white/rounded bleed (struk 4px is a faithful constant)', () => {
+  it('no hardcoded slate/white/rounded bleed (struk radius = radius-sm token)', () => {
     const src = read('src/components/hero/variants/BazaarHero.tsx');
     expect(src).not.toMatch(/bg-white/);
     expect(src).not.toMatch(/text-slate-/);
@@ -109,8 +109,9 @@ describe('T-BAZAAR: BazaarHero promo treatment', () => {
     expect(src).not.toMatch(/rounded-lg[^[]/);
     expect(src).not.toMatch(/rounded-xl/);
     expect(src).not.toMatch(/rounded-md[^[]/);
-    // Satu-satunya bare value: radius 4px struk, persis toko-shopee.
-    expect(src).toContain('rounded-[4px]');
+    expect(src).not.toMatch(/rounded-\[4px\]/);
+    // Struk receipt memakai token radius-sm, bukan nilai px hardcoded.
+    expect(src).toContain('rounded-[var(--radius-sm)]');
   });
 
   it('ledger ornament wired (themes + layout + css)', () => {

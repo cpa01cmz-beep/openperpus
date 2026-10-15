@@ -139,14 +139,14 @@ export default function LayananAdminPage() {
     <div className="grid gap-4">
       <div>
         <h1 className="text-2xl font-bold">Layanan</h1>
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-ink/60">
           Kelola kartu layanan (judul, deskripsi, ikon, urutan, status aktif). Kartu langsung tampil
           di halaman /layanan publik.
         </p>
       </div>
       <form
         onSubmit={onSubmit}
-        className="flex flex-wrap items-end gap-2 rounded-2xl border bg-white p-4"
+        className="flex flex-wrap items-end gap-2 rounded-[var(--radius-lg)] border bg-surface p-4"
       >
         <div className="min-w-[180px] flex-1">
           <Input
@@ -167,17 +167,14 @@ export default function LayananAdminPage() {
           />
         </div>
         <div className="grid gap-1">
-          <label
-            htmlFor="layanan-icon"
-            className="mb-1.5 block text-sm font-semibold text-slate-700"
-          >
+          <label htmlFor="layanan-icon" className="mb-1.5 block text-sm font-semibold text-ink/80">
             Ikon
           </label>
           <select
             id="layanan-icon"
             value={form.icon}
             onChange={(e) => setForm({ ...form, icon: e.target.value })}
-            className="h-11 min-h-[44px] rounded-md border border-slate-200 bg-white px-4 text-sm text-slate-900 transition hover:border-slate-300 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
+            className="h-11 min-h-[44px] rounded-md border border-[var(--ink)]/10 bg-surface px-4 text-sm text-ink transition hover:border-[var(--ink)]/20 focus:border-brand focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand focus-visible:ring-offset-1"
           >
             {ICON_OPTIONS.map((opt) => (
               <option key={opt} value={opt}>
@@ -244,7 +241,7 @@ export default function LayananAdminPage() {
             key: 'description',
             header: 'Deskripsi',
             render: (r) => (
-              <span className="line-clamp-2 max-w-md text-sm text-slate-600">
+              <span className="line-clamp-2 max-w-md text-sm text-ink/70">
                 {r.description ?? '-'}
               </span>
             ),
@@ -264,7 +261,7 @@ export default function LayananAdminPage() {
                 onClick={() => onToggle(r)}
                 aria-label={`Ubah status layanan ${r.title}`}
                 aria-pressed={r.is_active}
-                className="inline-flex min-h-[44px] items-center rounded-full border px-3 text-xs hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                className="inline-flex min-h-[44px] items-center rounded-full border px-3 text-xs hover:bg-[var(--ink)]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
               >
                 <Badge tone={r.is_active ? 'emerald' : 'slate'}>
                   {r.is_active ? 'Aktif' : 'Nonaktif'}
@@ -281,7 +278,7 @@ export default function LayananAdminPage() {
                   type="button"
                   onClick={() => onEdit(r)}
                   aria-label={`Ubah layanan ${r.title}`}
-                  className="inline-flex min-h-[44px] items-center text-slate-700 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+                  className="inline-flex min-h-[44px] items-center text-ink/80 underline-offset-2 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
                 >
                   Ubah
                 </button>
