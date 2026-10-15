@@ -88,6 +88,7 @@ export default function SearchCombobox({
   const abort = useRef<AbortController | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const root = useRef<HTMLDivElement>(null);
+  const optionRefs = useRef<Array<HTMLLIElement | null>>([]);
   const listId = useId();
   const picked = [...initialOptions, ...options].find((o) => o.id === value);
   const optionId = (i: number) => `${listId}-opt-${i}`;
@@ -98,6 +99,14 @@ export default function SearchCombobox({
       abort.current?.abort();
     };
   }, []);
+
+  // Opsi aktif terlihat & ikut ter-scroll saat navigasi keyboard (pengguna
+  // sighted perlu tahu opsi mana yang akan dipilih Enter). scrollIntoView
+  // dipanggil opsional — jsdom tidak mengimplementasikannya.
+  useEffect(() => {
+    if (!open || active < 0) return;
+    optionRefs.current[active]?.scrollIntoView?.({ block: 'nearest' });
+  }, [open, active, options]);
 
   function closeList() {
     setOpen(false);
@@ -203,6 +212,11 @@ export default function SearchCombobox({
               if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
                 e.preventDefault();
                 moveActive(e.key === 'ArrowDown' ? 1 : -1);
+              } else if (e.key === 'Home' || e.key === 'End') {
+                if (options.length === 0) return;
+                e.preventDefault();
+                setOpen(true);
+                setActive(e.key === 'Home' ? 0 : options.length - 1);
               } else if (e.key === 'Enter') {
                 if (!open || active < 0) return;
                 const o = options[active];
@@ -230,10 +244,15 @@ export default function SearchCombobox({
                   <li
                     key={o.id}
                     id={optionId(i)}
+                    ref={(el) => {
+                      optionRefs.current[i] = el;
+                    }}
                     role="option"
                     aria-selected={o.id === value}
                     aria-disabled={disabledOption?.(o) ?? false}
-                    className="cursor-pointer rounded-[var(--radius-sm)] px-3 py-2 text-sm hover:bg-[var(--ink)]/5"
+                    className={`cursor-pointer rounded-[var(--radius-sm)] px-3 py-2 text-sm hover:bg-[var(--ink)]/5${
+                      i === active ? ' bg-[var(--ink)]/10 font-medium' : ''
+                    }`}
                     onMouseDown={(e) => {
                       e.preventDefault();
                       if (disabledOption?.(o)) return;

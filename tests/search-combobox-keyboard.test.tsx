@@ -65,10 +65,28 @@ describe('SearchCombobox keyboard a11y', () => {
     fireEvent.keyDown(input, { key: 'ArrowDown' });
     const first = options[0] as HTMLElement;
     expect(input).toHaveAttribute('aria-activedescendant', first.id);
+    // Opsi aktif di-highlight secara visual (pengguna sighted tahu target Enter).
+    expect(first.className).toContain('bg-[var(--ink)]/10');
 
     fireEvent.keyDown(input, { key: 'Enter' });
     expect(onPick).toHaveBeenCalledWith('m1', expect.objectContaining({ id: 'm1', label: 'Ani' }));
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
+  });
+
+  it('Home/End memindahkan opsi aktif ke awal/akhir daftar', async () => {
+    stubFetch(MEMBERS);
+    const { input, onPick } = await openCombobox();
+    const options = screen.getAllByRole('option');
+
+    fireEvent.keyDown(input, { key: 'End' });
+    expect(input).toHaveAttribute('aria-activedescendant', (options[1] as HTMLElement).id);
+    expect((options[1] as HTMLElement).className).toContain('bg-[var(--ink)]/10');
+
+    fireEvent.keyDown(input, { key: 'Home' });
+    expect(input).toHaveAttribute('aria-activedescendant', (options[0] as HTMLElement).id);
+
+    fireEvent.keyDown(input, { key: 'Enter' });
+    expect(onPick).toHaveBeenCalledWith('m1', expect.objectContaining({ id: 'm1' }));
   });
 
   it('ArrowUp dari keadaan belum ada aktif membungkus ke opsi terakhir', async () => {
