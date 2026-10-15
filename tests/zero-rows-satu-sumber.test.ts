@@ -1162,8 +1162,17 @@ const y = i++ / 2;
     //   const fragmentSrc = 'const x = <>hi</>;\nre.test(msg + code);';
     //   expect(testInputs(fragmentSrc)).toEqual([]);
     //   expect(domainCode(fragmentSrc)).toMatch(JSX_DOMAIN);
-    // diverifikasi di Node: cocok pada guard asli, TIDAK cocok pada guard
-    // persempit. DUA assertion di atas punya peran BERBEDA dan tak satu pun
+    // Klaim guard WAJIB dinamai per-assertion (sisa review #223): versi
+    // sebelumnya menulis "cocok pada guard asli, TIDAK cocok pada guard
+    // persempit" tepat sesudah MENGUTIP keduanya, sehingga tak jelas itu
+    // berlaku untuk yang mana. Yang HANYA sensitif guard adalah
+    // `domainCode(fragmentSrc)` — diverifikasi di Node: cocok pada guard asli,
+    // TIDAK cocok pada guard persempit. Sebaliknya `testInputs(fragmentSrc)`
+    // tetap `[]` pada KETIGA varian guard (asli/dilebarkan/dipersempit) karena
+    // `JSX_DOMAIN` hanya hidup di assertion, tak pernah dikonsultasi
+    // `scanSource` — jadi jangan sekali-kali mengharapkan `testInputs` ikut
+    // memerah saat guard diubah, dan jangan menganggap itu tanda regresi.
+    // DUA assertion di atas punya peran BERBEDA dan tak satu pun
     // redundan (sisa review #221: versi lama menempelkan "berperan ganda" pada
     // `domainCode` saja, seolah `testInputs` di baris 1100 bisa dihapus):
     // `testInputs(fragmentSrc) -> []` adalah bukti argumen `.test()` dinamis
