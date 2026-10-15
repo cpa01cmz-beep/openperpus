@@ -1160,12 +1160,17 @@ const y = i++ / 2;
     // `expect(domainCode('const x = <>hi</>;'))` tidak verbatim sehingga
     // perbaikan berikutnya bisa menyalin bentuk yang inputnya berbeda):
     //   const fragmentSrc = 'const x = <>hi</>;\nre.test(msg + code);';
+    //   expect(testInputs(fragmentSrc)).toEqual([]);
     //   expect(domainCode(fragmentSrc)).toMatch(JSX_DOMAIN);
     // diverifikasi di Node: cocok pada guard asli, TIDAK cocok pada guard
-    // persempit. Perhatikan input `fragmentSrc` memuat baris KEDUA
-    // (`re.test(msg + code);`), jadi assertion itu berperan ganda — cek guard
-    // sekaligus bukti argumen `.test()` dinamis hilang; klaim guard di sini
-    // berlaku untuk input itu, bukan untuk bentuk satu-barisnya. Alternatif
+    // persempit. DUA assertion di atas punya peran BERBEDA dan tak satu pun
+    // redundan (sisa review #221: versi lama menempelkan "berperan ganda" pada
+    // `domainCode` saja, seolah `testInputs` di baris 1100 bisa dihapus):
+    // `testInputs(fragmentSrc) -> []` adalah bukti argumen `.test()` dinamis
+    // HILANG (kelas bahaya #179), sedangkan `domainCode(fragmentSrc)` adalah
+    // cek guard — menghapus yang pertama membuang bukti itu SUNYI. Klaim guard
+    // di sini berlaku untuk input `fragmentSrc` tersebut (yang memuat baris
+    // `re.test`), bukan untuk bentuk satu-barisnya. Alternatif
     // pertama hanya dipakai `</tag>`/`</>`; alternatif kedua dipakai bentuk
     // void dengan atribut-ekspresi — keduanya wajib tetap utuh, tapi yang
     // menjaga mana saja harus diklaim BENAR supaya perbaikan berikutnya tak
