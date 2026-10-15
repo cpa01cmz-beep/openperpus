@@ -18,6 +18,7 @@
  * ============================================================ */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { fetchWithTimeout } from '@/lib/api-client';
 import { errMsg, messageOf } from '@/lib/admin-errors';
 import { PER_PAGE } from '@/lib/pagination';
 
@@ -116,7 +117,10 @@ export function useAdminList<T>(options: UseAdminListOptions): AdminList<T> {
       const qs = toQueryParams(params);
       if (!qs.has('per_page')) qs.set('per_page', String(PER_PAGE));
       try {
-        const res = await fetch(`${path}?${qs}`, noStore ? { cache: 'no-store' } : undefined);
+        const res = await fetchWithTimeout(
+          `${path}?${qs}`,
+          noStore ? { cache: 'no-store' } : undefined
+        );
         // Kontrak #61: satu envelope { data, pagination }. Fallback `meta`
         // sengaja TIDAK dibaca (tests/pagination-contract.test.ts).
         const json = (await res.json().catch(() => ({}))) as {
