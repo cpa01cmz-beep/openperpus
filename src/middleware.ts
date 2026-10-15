@@ -1,7 +1,15 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { createServerClient } from '@supabase/ssr';
 import { updateSession } from '@/lib/supabase/middleware';
-import { checkRateLimit, WRITE_API_LIMIT, WRITE_API_WINDOW_MS, READ_SENSITIVE_LIMIT, READ_SENSITIVE_WINDOW_MS, LOGIN_LIMIT, LOGIN_WINDOW_MS } from '@/lib/rate-limit';
+import {
+  checkRateLimit,
+  WRITE_API_LIMIT,
+  WRITE_API_WINDOW_MS,
+  READ_SENSITIVE_LIMIT,
+  READ_SENSITIVE_WINDOW_MS,
+  LOGIN_LIMIT,
+  LOGIN_WINDOW_MS,
+} from '@/lib/rate-limit';
 import { isStaffRole } from '@/lib/roles';
 import { ROLE_HEADER } from '@/lib/role-claim';
 
@@ -11,8 +19,7 @@ import { ROLE_HEADER } from '@/lib/role-claim';
  * tidak cukup: port beda (https://x:8443 vs :443) dan http vs https sama
  * host tetap cross-origin dan wajib ditolak.
  * - Browser selalu kirim Origin (atau Referer) pada POST/PUT/PATCH/DELETE.
- * - Null (curl/server-to-server tanpa Origin+Referer) diizinkan agar cronjob
- *   dan non-browser tidak pecah — auth/rate-limit tetap menjadi pertahanan.
+ * - Null (tanpa Origin+Referer) DITOLAK untuk write /api/* (fail-closed); cron/sweep memakai GET sehingga tidak terdampak; skrip server-to-server wajib kirim Origin yang valid.
  * - Mismatch -> 403 CSRF_MISMATCH tanpa menyentuh Supabase/rate-limit.
  */
 const DEFAULT_PORTS: Record<string, string> = { 'https:': '443', 'http:': '80' };
@@ -56,7 +63,7 @@ function requestOriginKey(request: NextRequest): string | null {
 function isSameOrigin(request: NextRequest): boolean {
   const origin = request.headers.get('origin');
   const referer = request.headers.get('referer');
-  if (!origin && !referer) return true;
+  if (!origin && !referer) return false;
   const target = requestOriginKey(request);
   if (!target) return false;
   for (const candidate of [origin, referer]) {
@@ -123,10 +130,10 @@ function generateNonce(): string {
   return btoa(crypto.randomUUID());
 }
 
-/** CSP untuk satu request. Prod: nonce-based, script-src hanya 'self' + nonce + Supabase. */
+/** CSP untuk satu request. Prod: nonce-based, script-src hanya 'self' + nonce. */
 export function buildContentSecurityPolicy(nonce: string): string {
   if (process.env.NODE_ENV === 'development') return DEV_CSP;
-  return buildProdCsp(`'self' 'nonce-${nonce}' https://*.supabase.co`);
+  return buildProdCsp(`'self' 'nonce-${nonce}'`);
 }
 
 /**
@@ -145,6 +152,10 @@ export function buildContentSecurityPolicy(nonce: string): string {
  * Role gate /admin (defense-in-depth lapisan edge, I5): baca profiles.role
  * dengan client read-only — cookie sudah di-refresh updateSession, jadi
  * setAll cukup no-op. Fail-closed: query gagal / role hilang → non-staff.
+ */
+/**
+ * clientIp: cf-connecting-ip utama; XFF hanya fallback (mudah dipalsukan).
+ * CF Rate Limiting dashboard wajib sebagai defense-in-depth di edge.
  */
 function clientIp(request: NextRequest): string {
   return (
