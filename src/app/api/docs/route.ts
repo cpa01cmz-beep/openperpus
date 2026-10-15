@@ -18,7 +18,7 @@ function loadSpec(): string {
 
 export async function GET(): Promise<NextResponse> {
   const spec = loadSpec();
-  const jsonSpec = JSON.stringify(spec);
+  const jsonSpec = JSON.stringify(spec).replace(/</g, '\u003c');
   const html = `<!doctype html>
 <html>
 <head>
@@ -29,7 +29,7 @@ export async function GET(): Promise<NextResponse> {
 <body>
   <!-- Scalar API Reference for openapi.yaml; Swagger UI fallback via CDN -->
   <script id="api-reference" data-url="/openapi.yaml"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference@1.28.0"></script>
   <script>
     window.__OPENAPI__ = ${jsonSpec};
   </script>

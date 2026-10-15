@@ -5,6 +5,10 @@ export function isCronAuthorized(
   secret: string | undefined
 ): boolean {
   if (!secret) return false;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) return false;
-  return authHeader.slice('Bearer '.length) === secret;
+  if (!authHeader?.startsWith('Bearer ')) return false;
+  const input = authHeader.slice(7);
+  if (input.length !== secret.length) return false;
+  let diff = 0;
+  for (let i = 0; i < secret.length; i++) diff |= secret.charCodeAt(i) ^ input.charCodeAt(i);
+  return diff === 0;
 }
