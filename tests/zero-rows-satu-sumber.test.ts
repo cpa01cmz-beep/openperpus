@@ -1155,8 +1155,17 @@ const y = i++ / 2;
     // ketiganya TETAP cocok karena mereka lewat alternatif KEDUA
     // (`\}\s*\/>`), bukan yang pertama. Yang benar-benar patah ketika alternatif
     // pertama dipersempit (mis. `>` dibuang dari kelas tag) adalah assertion
-    // fragmen `</>` di atas: `expect(domainCode('const x = <>hi</>;'))`
-    // cocok pada guard asli, TIDAK cocok pada versi persempit. Alternatif
+    // fragmen `</>` di atas — dikutip APA ADANYA, bukan bentuk ringkas yang
+    // tak ada di berkas ini (sisa review #219: kutipan lama
+    // `expect(domainCode('const x = <>hi</>;'))` tidak verbatim sehingga
+    // perbaikan berikutnya bisa menyalin bentuk yang inputnya berbeda):
+    //   const fragmentSrc = 'const x = <>hi</>;\nre.test(msg + code);';
+    //   expect(domainCode(fragmentSrc)).toMatch(JSX_DOMAIN);
+    // diverifikasi di Node: cocok pada guard asli, TIDAK cocok pada guard
+    // persempit. Perhatikan input `fragmentSrc` memuat baris KEDUA
+    // (`re.test(msg + code);`), jadi assertion itu berperan ganda — cek guard
+    // sekaligus bukti argumen `.test()` dinamis hilang; klaim guard di sini
+    // berlaku untuk input itu, bukan untuk bentuk satu-barisnya. Alternatif
     // pertama hanya dipakai `</tag>`/`</>`; alternatif kedua dipakai bentuk
     // void dengan atribut-ekspresi — keduanya wajib tetap utuh, tapi yang
     // menjaga mana saja harus diklaim BENAR supaya perbaikan berikutnya tak
