@@ -18,6 +18,17 @@ export default function Modal({ open, onClose, title, description, children, foo
   const descId = React.useId();
   const closeRef = React.useRef<HTMLButtonElement>(null);
   const dialogRef = React.useRef<HTMLDivElement>(null);
+  // #244: callback terbaru disimpan di ref, TIDAK di daftar dependensi efek.
+  // Semua call site memakai arrow inline (`onClose={() => setX(null)}`), yang
+  // identitasnya berubah tiap render induk. Dengan `onClose` sebagai dependensi,
+  // efek focus-trap di-cleanup + dijalankan ulang pada SETIAP render: cleanup
+  // mengembalikan fokus ke `trigger` (tombol tutup) lalu body efek memfokusnya
+  // lagi — sehingga satu keystroke di dalam modal langsung dicuri. Efek hanya
+  // boleh bergantung pada `open`; Escape tetap memakai callback terbaru via ref.
+  const onCloseRef = React.useRef(onClose);
+  React.useEffect(() => {
+    onCloseRef.current = onClose;
+  });
 
   React.useEffect(() => {
     if (!open) return;
@@ -25,7 +36,7 @@ export default function Modal({ open, onClose, title, description, children, foo
     closeRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose();
+        onCloseRef.current();
         return;
       }
       if (e.key !== 'Tab') return;
@@ -62,7 +73,7 @@ export default function Modal({ open, onClose, title, description, children, foo
       document.body.style.overflow = prevOverflow;
       trigger?.focus();
     };
-  }, [open, onClose]);
+  }, [open]);
 
   if (!open) return null;
 
