@@ -182,7 +182,17 @@ export default function SearchCombobox({
                     role="option"
                     aria-selected={o.id === value}
                     aria-disabled={disabledOption?.(o) ?? false}
+                    tabIndex={0}
                     className="cursor-pointer rounded-[var(--radius-sm)] px-3 py-2 text-sm hover:bg-[var(--ink)]/5"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        if (disabledOption?.(o)) return;
+                        onPick(o.id, o);
+                        setOpen(false);
+                        setText('');
+                      }
+                    }}
                     onMouseDown={(e) => {
                       e.preventDefault();
                       if (disabledOption?.(o)) return;
