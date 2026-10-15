@@ -39,6 +39,7 @@
 | `migrations/0031_issue68_search_books_page.sql` | RPC `search_books_page` — katalog 4 RTT → 1 RTT (window count, #68)                                              |
 | `migrations/0032_issue75_stock_opname.sql`      | RPC `stock_opname_tx` — opname atomik (lock + audit selisih, #75)                                                |
 | `migrations/0033_harden_stock_opname_tx.sql`    | Hardening `stock_opname_tx`: lock berurutan (`ORDER BY id`), dedupe, SQLSTATE mapping (review #117)              |
+| `migrations/0034_bazaar_theme.sql`              | Theme ke-7 `bazaar`: `active_theme` CHECK 7 id (migrasi non-destruktif)                                          |
 | `seed.sql`                                      | Data awal (settings#1, 6 kategori, 3 rak, 8 buku, 3 banner, 3 artikel, 4 FAQ, 3 halaman, testimoni, menu)        |
 | `config.toml` _(opsional)_                      | Konfigurasi `supabase` CLI bila di-init                                                                          |
 
@@ -61,15 +62,15 @@ supabase status
 ```
 
 Alternatif tanpa CLI: buka SQL Editor di dashboard, paste isi migrasi
-berurutan `0001 → 0033` (0010 dilewati, tidak dipakai; dua file `0028_*` urut
+berurutan `0001 → 0034` (0010 dilewati, tidak dipakai; dua file `0028_*` urut
 nama file), Run.
 
-## 2. Jalankan migrasi (urutan WAJIB 0001 → 0033)
+## 2. Jalankan migrasi (urutan WAJIB 0001 → 0034)
 
 ### Opsi A — Supabase CLI (disarankan, tercatat di `supabase/migrations`)
 
 ```powershell
-# Dari root repo; file 0001..0033 sudah bernama versi + timestamp-friendly.
+# Dari root repo; file 0001..0034 sudah bernama versi + timestamp-friendly.
 # Bila `supabase link` sudah dilakukan:
 supabase db push
 # Cek:
@@ -80,7 +81,7 @@ supabase migration list
 > ini tetap valid sebagai SQL biasa; bila `db push` menolak prefix numerik,
 > rename sekali saja, mis.:
 > `0001_core.sql → 20260917000001_core.sql` (dst. `...02` s/d `...09`,
-> `...11` s/d `...33` — lewati 0010, tidak dipakai)
+> `...11` s/d `...34` — lewati 0010, tidak dipakai)
 > tanpa mengubah isi.
 
 ### Opsi B — psql langsung (tanpa CLI)
@@ -159,7 +160,7 @@ order by created_at desc limit 12;
 - `0003`: hardening RLS — drop policy yang ditambah di file (lihat blok ROLLBACK di file).
 - `0004`: hapus policy `storage.objects`, kosongkan objek, lalu hapus bucket
   (lihat blok ROLLBACK di file).
-- `0005`–`0009` dan `0011`–`0033`: non-destruktif — revert objek yang
+- `0005`–`0009` dan `0011`–`0034`: non-destruktif — revert objek yang
   ditambah tiap file (lihat komentar `-- Rollback:` di masing-masing file).
 - `seed.sql`: data contoh — hapus manual per tabel bila perlu
   (`delete from public.books where slug in (...)`), jangan `truncate`

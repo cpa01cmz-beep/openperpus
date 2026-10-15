@@ -54,7 +54,7 @@ function BazaarBookCard({ book }: { book: Book }) {
       <Link
         href={`/katalog/${book.slug}`}
         aria-label={`Pinjam ${book.title}`}
-        className="m-5 mt-3 inline-flex min-h-[44px] items-center justify-center rounded-lg border-2 border-[var(--ink)] bg-accent px-4 py-2.5 text-sm font-bold uppercase tracking-wide text-white shadow-[0_3px_0_0_var(--ink)] transition hover:translate-y-[1px] hover:shadow-[0_2px_0_0_var(--ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+        className="m-5 mt-3 inline-flex min-h-[44px] items-center justify-center rounded-[8px] border-2 border-[var(--ink)] bg-accent px-4 py-2.5 text-sm font-bold uppercase tracking-wide text-white shadow-[0_3px_0_0_var(--ink)] transition hover:translate-y-[1px] hover:shadow-[0_2px_0_0_var(--ink)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
       >
         Pinjam Sekarang
       </Link>

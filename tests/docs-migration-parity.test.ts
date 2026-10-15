@@ -74,11 +74,11 @@ function walkRouteFiles(dir: string): string[] {
 }
 
 describe('#124 folder migrasi (dasar semua klaim docs)', () => {
-  it('memuat seluruh 0001..0033 termasuk dua file 0028_*', () => {
+  it('memuat seluruh 0001..0034 termasuk dua file 0028_*', () => {
     expect(MIGRATIONS.length).toBeGreaterThan(30);
     expect(MIGRATIONS[0]).toBe('0001_core.sql');
-    expect(MIGRATIONS[MIGRATIONS.length - 1]).toBe('0033_harden_stock_opname_tx.sql');
-    expect(MAX_PREFIX).toBe(33);
+    expect(MIGRATIONS[MIGRATIONS.length - 1]).toBe('0034_bazaar_theme.sql');
+    expect(MAX_PREFIX).toBe(34);
     // tie-break deterministik untuk dua file 0028_*: lexicographic (FK dulu).
     expect(MIGRATIONS.filter((f) => f.startsWith('0028_'))).toEqual([
       '0028_issue67_fk_stock_fine.sql',
