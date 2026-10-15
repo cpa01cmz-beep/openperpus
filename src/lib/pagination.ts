@@ -15,5 +15,9 @@
 /** Baris per halaman untuk semua tabel daftar. */
 export const PER_PAGE = 20;
 
+// PER_PAGE=20 untuk tabel admin, DEFAULT_PER_PAGE=24 untuk API default;
+// hook tetap pakai PER_PAGE (jangan ubah perilaku).
+export { DEFAULT_PER_PAGE } from '@/lib/paging';
+
 /** Jumlah opsi yang diminta dropdown cari-ketik. */
 export const SEARCH_PER_PAGE = 10;
