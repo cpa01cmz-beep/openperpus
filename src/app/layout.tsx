@@ -153,10 +153,8 @@ export const metadata: Metadata = {
   },
 };
 
-export async function generateViewport(): Promise<Viewport> {
-  const settings = await getLibrarySettings();
-  const effective = getEffectiveThemeFromSettings(settings);
-  return { themeColor: effective.tokens.brand, width: 'device-width', initialScale: 1 };
+export function generateViewport(): Viewport {
+  return { themeColor: '#0d7a5f', width: 'device-width', initialScale: 1 };
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -215,13 +213,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           href="#main-content"
           className="skip-link sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-[var(--radius-md)] focus:bg-surface focus:px-4 focus:py-2 focus:text-ink"
         >
-          Skip to main content
+          Lewati ke konten utama
         </a>
-        <header role="banner" />
+        {/* landmark header/footer milik komponen header/footer nyata. */}
         <main id="main-content" className="w-full px-4 sm:px-6 lg:px-8">
           {children}
         </main>
-        <footer role="contentinfo" />
+        {/* landmark header/footer milik komponen header/footer nyata. */}
       </body>
     </html>
   );
