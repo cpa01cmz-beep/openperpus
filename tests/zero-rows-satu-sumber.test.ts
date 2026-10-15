@@ -1170,8 +1170,15 @@ const y = i++ / 2;
     // TIDAK cocok pada guard persempit. Sebaliknya `testInputs(fragmentSrc)`
     // tetap `[]` pada KETIGA varian guard (asli/dilebarkan/dipersempit) karena
     // `JSX_DOMAIN` hanya hidup di assertion, tak pernah dikonsultasi
-    // `scanSource` — jadi jangan sekali-kali mengharapkan `testInputs` ikut
-    // memerah saat guard diubah, dan jangan menganggap itu tanda regresi.
+    // `scanSource` — jadi saat HANYA guard diubah, `testInputs` memang tak
+    // pernah ikut memerah. Lingkup nasihat itu HANYA guard (sisa review
+    // #225): `testInputs` tak sensitif `JSX_DOMAIN`, tapi Ia SANGAT sensitif
+    // `scanSource` — diverifikasi dengan mutasi scanner ('<' dianggap operand
+    // lengkap): `testInputs(fragmentSrc)` berubah dari `[]` menjadi
+    // `['msg + code']` dan assertion itu MEMERAH. Jadi bila `testInputs`
+    // memerah SESUDAH `scanSource` diubah, itu SINYAL NYATA — scanner berhenti
+    // menelan pemicu fantom `</>` dan seluruh jaminan berkas ini gugur; jangan
+    // dianggap kebisingan.
     // DUA assertion di atas punya peran BERBEDA dan tak satu pun
     // redundan (sisa review #221: versi lama menempelkan "berperan ganda" pada
     // `domainCode` saja, seolah `testInputs` di baris 1100 bisa dihapus):
