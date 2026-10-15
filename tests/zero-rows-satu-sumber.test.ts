@@ -640,10 +640,15 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
     // `}/>` (self-closing atribut-ekspresi) — bentuk yang MEMICU regex fantom
     // yang sama tapi lolos guard lama tanpa jejak; dan isi string/template
     // literal dikosongkan (`domainCode`) supaya `</x>` di dalam literal tak
-    // memerah palsu. Regex literal dibiarkan verbatim (lihat JSX_DOMAIN).
+    // memerah palsu. Regex literal dibiarkan verbatim (lihat JSX_DOMAIN) —
+    // konsekuensinya batas char-class di bawah (`/[</a]/`) juga memicu
+    // JSX_DOMAIN pada berkas non-JSX yang sah, jadi pesan gagal WAJIB
+    // menyebutnya (sisa review #217): tanpa itu, berkas SITES yang belakangan
+    // memuat bentuk itu memerah CI dengan tuduhan yang SALAH (`</tag>`/`</>`/
+    // `}/>`) dan tak ada self-diagnosis menuju batas yang sebenarnya.
     expect(
       domainCode(src),
-      `${file} wajib non-JSX (batas pemindai </tag>, </>, }/>, issue #212/#214)`
+      `${file} wajib non-JSX (batas pemindai </tag>, </>, }/>, /[</a]/ char-class, #212/#214/#215)`
     ).not.toMatch(JSX_DOMAIN);
   });
 
@@ -1143,18 +1148,36 @@ const y = i++ / 2;
     // (persis lubang senyap yang ditutup isu #214), dan mempersempit alternatif
     // `<\/[A-Za-z_$>]` berarti menebak char-class dari string polos — ambigu
     // tanpa grammar (kelas over-correct yang sama seperti `</tag>`, lihat
-    // `batas terdokumentasi — JSX closing tag`) sekaligus menggagalkan assertion
-    // `guard wajib mengenali bentuk void` di atas. Karena itu batas ini
-    // DIDOKUMENTASIKAN + DIASSERT alih-alih senyap: tak satu pun dari tiga berkas
-    // SITES memuat bentuk itu (diverifikasi grep), dan assertion di bawah mati
-    // kalau `copyRegex` berhenti menyalin `/` di dalam char-class.
+    // `batas terdokumentasi — JSX closing tag`). Klaim LAMA di sini berbunyi
+    // "memersempit alternatif `<\/[A-Za-z_$>]` menggagalkan assertion
+    // `guard wajib mengenali bentuk void`" — itu SALAH (sisa review #217),
+    // diverifikasi dengan menjalankan guard persempit atas ketiga bentuk void:
+    // ketiganya TETAP cocok karena mereka lewat alternatif KEDUA
+    // (`\}\s*\/>`), bukan yang pertama. Yang benar-benar patah ketika alternatif
+    // pertama dipersempit (mis. `>` dibuang dari kelas tag) adalah assertion
+    // fragmen `</>` di atas: `expect(domainCode('const x = <>hi</>;'))`
+    // cocok pada guard asli, TIDAK cocok pada versi persempit. Alternatif
+    // pertama hanya dipakai `</tag>`/`</>`; alternatif kedua dipakai bentuk
+    // void dengan atribut-ekspresi — keduanya wajib tetap utuh, tapi yang
+    // menjaga mana saja harus diklaim BENAR supaya perbaikan berikutnya tak
+    // menyasar assertion yang salah. Karena itu batas ini DIDOKUMENTASIKAN +
+    // DIASSERT alih-alih senyap: tak satu pun dari tiga berkas SITES memuat
+    // bentuk itu (diverifikasi grep), dan assertion di bawah mati kalau
+    // `copyRegex` berhenti menyalin `/` di dalam char-class.
     expect(domainCode('const r = /[</a]/;')).toMatch(JSX_DOMAIN);
     expect(domainCode('const r = /[</abc]/;')).toMatch(JSX_DOMAIN);
-    // Kontrol presisi: yang memicu adalah KEDEKATAN `<` + `/`. `[a</]` berakhir
-    // `]` (bukan char tag) dan `/[a/b]/` tak punya kedekatan itu — jaga
+    // Kontrol presisi: yang memicu adalah KEDEKATAN `<` + `/`. `[a</]` sesudah
+    // kedekatan itu berakhir `]` (bukan char tag). Kontrol KEDUA wajib memuat
+    // `<` yang TIDAK berdekatan dengan `/` — sisa review #217: bentuk lama
+    // `/[a/b]/` tak memuat `<` SAMA SEKALI, jadi hijau untuk SETIAP pelebaran
+    // guard (diverifikasi: guard dilebarkan jadi `<[tag]`, kontrol itu tetap
+    // hijau) alias tak menguji dimensi yang jadi subyek blok ini. Bentuk
+    // `/[a<b/]/` menutupnya: `<b` bukan `</` (hijau pada guard asli) tapi
+    // MERAH begitu syarat `/` dilepas dari alternatif pertama. Bersama `[a</]`
+    // — yang MERAH saat guard jadi longgar-spasi — kedua kontrol ini mengunci
     // anti-over-correction agar batas ini tak dilebarkan tanpa sadar.
     expect(domainCode('const r = /[a</]/;')).not.toMatch(JSX_DOMAIN);
-    expect(domainCode('const r = /[a/b]/;')).not.toMatch(JSX_DOMAIN);
+    expect(domainCode('const r = /[a<b/]/;')).not.toMatch(JSX_DOMAIN);
 
     // Mode 'verbatim' (default) WAJIB byte-identik dengan keluaran pra-isu:
     // mode 'space' hanya MENAMBAH jalur untuk cek domain, tak mengubah apa pun
@@ -1176,6 +1199,15 @@ const y = i++ / 2;
     // atas sambil membuat kutip penutup HILANG dari `domainCode` tanpa jejak.
     expect(domainCode('const s = "</div>";')).toBe('const s = "      ";');
     expect(domainCode('const t = `a</div>b`;')).toBe('const t = `        `;');
+    // Kontrak yang sama WAJIB diassert untuk kutip TUNGGAL (sisa review #217):
+    // versi lama hanya mengunci `"` dan backtick, jadi regresi yang khusus
+    // merusak delimiter `'` — jalur `copyPlainString` yang paling sering
+    // dipakai berkas SITES — tetap HIJAU. Bentuk kedua memuat DUA potongan
+    // `</…>` supaya PANJANG isi ikut terkunci, bukan cuma jumlah delimiter.
+    // Fail-capable: push tanpa `ch !== quote` membuat kutip penutup hilang →
+    // assertion di bawah MEMERAH (diverifikasi dengan mutasi jalur itu).
+    expect(domainCode("const s = '</x>';")).toBe("const s = '    ';");
+    expect(domainCode("const v = '</a></b>';")).toBe("const v = '        ';");
   });
 });
 
