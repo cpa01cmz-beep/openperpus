@@ -603,7 +603,11 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
    * receiver yang memuat SPASI tepat sebelum `[` atau literal non-token masih
    * butuh grammar — posisi yang sama seperti batas pemindai `scanSource` di
    * berkas ini (satu lintasan tanpa grammar). Nama helper/`getErr()` yang
-   * dilewatkan variabel tak bisa dibedakan dari apa pun secara bentuk. */
+   * dilewatkan variabel tak bisa dibedakan dari apa pun secara bentuk.
+   * Batas receiver berspasi itu kini TERASSERT (kontrol negatif di assertion
+   * positif di bawah, sisa review #229) — sebelumnya hanya klaim komentar,
+   * dan mutasi memberi toleransi spasi pada receiver bisa mengubah perilaku
+   * guard tanpa satu assertion pun gagal. */
   const CODE_COMPARE_406 =
     /\b(?:[\w.]*code[\w.]*|[\w$.?()[\]]*\[\s*['"`]code['"`]\s*\])\s*(?:!==?|===?)\s*['"`]406['"`]|['"`]406['"`]\s*(?:!==?|===?)\s*(?:[\w.]*code[\w.]*|[\w$.?()[\]]*\[\s*['"`]code['"`]\s*\])/i;
 
@@ -618,6 +622,22 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
     // dinamis `new RegExp(msg + ' ' + code)`, yang tidak terdeteksi oleh
     // larangan teks seperti `| 406` (issue #183).
     const code = codeOnly(src);
+    // Panjaga anti-vakum (sisa review #229): seluruh assertion loop ini yang
+    // dijalankan atas `code` bersih NEGATIF-hanya — bila `codeOnly` rusak jadi
+    // string kosong (atau menelan kode berkas), semuanya LULUS vakum dan loop
+    // SITES — gerbang utama berkas ini — kehilangan seluruh daya. Diverifikasi:
+    // simulasi `code = ''` atas ketiga berkas SITES menghijaukan SELURUH
+    // assertion loop sebelum kontrol ini ada. Assertion `expect(src)` mentah
+    // di atas TAK bisa menutupnya: teks mentah masih memuat komentar, jadi ia
+    // bahkan lulus bila baris import hanya hidup di dalam komentar — hanya
+    // kontrol atas `code` bersih yang membuktikan pemindai membuang komentar
+    // TANPA menelan kode. Fail-capable: pemindai dibikin mengembalikan string
+    // kosong → assertion ini GAGAL. Ke-tiga berkas SITES diverifikasi memuat
+    // baris itu di `code` bersih (dijalankan, bukan diasumsikan).
+    expect(
+      code,
+      `${file}: pemindai wajib membuang komentar TANPA menelan kode — kontrol positif anti-vakum`
+    ).toContain("import { isZeroRows } from '@/lib/zero-rows'");
     for (const vocab of ['PGRST116', 'concurrent winner', 'multiple (or no) rows', '0 rows']) {
       expect(
         code,
@@ -815,6 +835,28 @@ const d = 2; // PGRST116 disebut sebagai riwayat`;
         CODE_COMPARE_406
       );
     }
+    // Batas heuristik receiver berspasi — TERDOKUMENTASI di komentar guard
+    // ("receiver yang memuat SPASI tepat sebelum `[` … masih butuh grammar")
+    // tapi sebelumnya NOL assertion (sisa review #229): klaim dokumentasi
+    // tanpa assertion = jaga palsu, pelajaran yang berulang ditegakkan berkas
+    // ini (#199/#217/#219). Di sini konsekuensinya NYATA, bukan teoretis:
+    // mutasi masuk akal — alternatif akses-computed diberi toleransi spasi
+    // (`\s*` sebelum `\[`) — mengubah perilaku guard (bentuk di bawah jadi
+    // cocok) TANPA satu assertion gagal; diverifikasi dengan menjalankan
+    // guard termutasi atas ke-29 assertion positif di atas: semuanya TETAP
+    // hijau, jadi pelebaran tak sengaja berikutnya lolos senyap. Kontrol di
+    // bawah mengunci batas itu APA ADANYA. Fail-capable: receiver class
+    // dilebarkan dengan `\s*` → assertion di bawah GAGAL.
+    for (const src of [
+      "if (err ['code'] === '406')",
+      "if (err\n['code'] === '406')",
+      "if (err ['code'] != '406')",
+    ]) {
+      expect(
+        src,
+        `batas heuristik terdokumentasi: receiver berspasi tepat sebelum [ masih butuh grammar — ${src}`
+      ).not.toMatch(CODE_COMPARE_406);
+    }
   });
 
   it('testInputs/dynamicTestInput: statis dibolehkan, dinamis ditangkap', () => {
@@ -932,7 +974,7 @@ const y = i-- / 2;
     expect(dynamicTestInput(args[0] ?? '')).toBe(true);
   });
 
-  it('scanSource: batas dispatch .test( — spasi membuat argumen hilang TANPA JEJAK (sisa review #227)', () => {
+  it('scanSource: batas dispatch .test( — bentuk non-tepat (spasi, optional-call, computed-member) membuat argumen hilang TANPA JEJAK (sisa review #227/#229)', () => {
     // Dispatch `.test(` di `walk` memakai `startsWith('.test(', i)` — RAPAT,
     // tanpa toleransi spasi. Bentuk berspasi kehilangan argumen `.test()`
     // DIAM-DIAM: `testInputs` → `[]`, sehingga loop `for (const input of
@@ -957,14 +999,24 @@ const y = i-- / 2;
     // rapat yang WAJIB tetap tertangkap. Bentuk `1.. test(…)` lahir dari
     // pengecualian `..` + `test(` di `readDotSuffix`: pengecualian itu menutup
     // bentuk RAPAT saja, begitu ada spasi titik KEDUA ikut token angka dan
-    // `test(` kehilangan titik depannya.
+    // `test(` kehilangan titik depannya. Dua varian tambahan (sisa review
+    // #229) memperluas cakupan batas yang sama lewat jalur BERBEDA:
+    // `re.test\n(msg + code)` — newline juga spasi, dispatch rapat tak
+    // membedakan karakter whitespace; dan `1..test (msg + code)` — `..`
+    // BERPASANGAN dengan `test` (pengecualian readDotSuffix menyala) tapi
+    // spasi datang SEBELUM `(`: pengecualian `..` + `test(` mensyaratkan
+    // `test(` TEPAT, jadi ia gagal, titik kedua ikut token angka, dan
+    // `test(` kehilangan titik depannya — argumen hilang lewat interoperasi
+    // dua batas, bukan satu.
     for (const src of [
       're . test(msg + code);',
       're. test(msg + code);',
       're.test (msg + code);',
+      're.test\n(msg + code);',
       'const r = 1.. test(msg + code);',
       'const r = 1..\t test(msg + code);',
       'const r = 1.. /* blok */ test(msg + code);',
+      'const r = 1..test (msg + code);',
     ] as const) {
       expect(
         testInputs(src),
@@ -977,11 +1029,50 @@ const y = i-- / 2;
     // TIDAK diulang di sini — `1..test(msg + code)` (akses member literal
     // angka) dan `testInputs('re.test(msg + code);')` (self-check
     // testInputs/dynamicTestInput, `.some(dynamicTestInput)` → true; capture
-    // rusak SELURUHNYA membuatnya false). Fail-capable dua arah: capture
-    // `.test(` dibuang SELURUHNYA → kontrol di bawah GAGAL; dispatch dilebarkan
-    // jadi toleran-spasi → batas di atas GAGAL.
+    // rusak SELURUHNYA membuatnya false). Fail-capable diklaim PER-KELUARGA
+    // (pelajaran #223: klaim wajib dinamai, jangan satu kalimat untuk semua),
+    // semuanya diverifikasi dengan mutasi: capture `.test(` dibuang SELURUHNYA
+    // → kontrol di bawah GAGAL; dispatch dilebarkan toleran-spasi → batas
+    // receiver `re` GAGAL (`re . test(`, `re. test(`, `re.test (` dan varian
+    // BARU `re.test\n(` jadi tertangkap); varian BARU `1..test (` bergerak
+    // hanya bila pengecualian `..` + `test(` di `readDotSuffix` IKUT dilebarkan
+    // toleran-spasi (pelebaran dispatch SENDIRI tak cukup — titik keduanya sudah
+    // habis sebagai milik token angka; keduanya dilebarkan → tertangkap).
+    // Sebaliknya ketiga varian spasi SESUDAH titik (`1.. test(` dkk.) tetap
+    // `[]` walau bawah mutasi gabungan itu — jadi ketiganya adalah DOKUMENTASI
+    // perilaku, BUKAN assertion fail-capable; disebut APA ADANYA supaya tak
+    // diklaim mengunci mutasi yang tak bisa dikuncinya.
     expect(testInputs('const r = 10..test(msg + code);')).toEqual(['msg + code']);
     expect(testInputs('re\n.test(msg + code);')).toEqual(['msg + code']);
+
+    // Bentuk callee NON-TEPAT (sisa review #229): argumen `.test()` dinamis
+    // juga hilang TANPA JEJAK ketika pemanggilannya bukan `.test(` TEPAT —
+    // optional-call `re.test?.(…)` dan computed-member `re['test'](…)`.
+    // Diverifikasi dengan menjalankan: keduanya → `[]`. Bedanya dengan
+    // bentuk berspasi di atas membuatnya LEBIH serius, bukan kurang:
+    // (1) keduanya BERTAHAN di sumber ter-format — diverifikasi dengan
+    // prettier@3.9.7 (versi yang dipin repo), `re.test?.(msg + code)` dan
+    // `re["test"](msg + code)` TIDAK dinormalkan (bandingkan bentuk berspasi
+    // yang dinormalkan → praktis tak terjangkau), jadi ini vektor kehilangan
+    // senyap yang REALISTIS untuk kelas bahaya #179; (2) keduanya sah sebagai
+    // JavaScript modern (optional call, computed member), bukan bentuk rusak.
+    // Penolakan "perbaikan" sama seperti di atas dan justru makin penting
+    // sekarang: melebarkan dispatch jadi toleran-bentuk = perubahan perilaku
+    // tak diminta satu assertion pun. Kontrol `re?.test(msg + code)` WAJIB
+    // tetap tertangkap — optional-chaining duduk di RECEIVER, `.test(` ADA
+    // verbatim sesudah `?.` — jadi kegagalan kontrol ini membuktikan
+    // kehilangan di atas sebab bentuk CALLEE, bukan capture yang rusak total
+    // (panjaga anti-vakum, pola #194). Inputnya BELUM diassert di berkas ini
+    // (larangan duplikasi #194). Fail-capable dua arah: dispatch dibuang
+    // SELURUHNYA → kontrol GAGAL; dispatch dilebarkan jadi toleran-bentuk
+    // (`?.(`, `['test'](`) → batas di atas GAGAL.
+    for (const src of ['re.test?.(msg + code);', "re['test'](msg + code);"]) {
+      expect(
+        testInputs(src),
+        `dispatch .test( tepat menutupi argumen dinamis pada callee non-tepat: ${src}`
+      ).toEqual([]);
+    }
+    expect(testInputs('re?.test(msg + code);')).toEqual(['msg + code']);
   });
 
   it('scanSource: literal angka adalah operand (sisa review #192)', () => {
