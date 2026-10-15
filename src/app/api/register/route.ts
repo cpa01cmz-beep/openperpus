@@ -73,7 +73,7 @@ export async function POST(req: Request) {
   if (signUpError || !user) {
     const msg = (signUpError as { message?: string } | null)?.message ?? '';
     if (/already|exists|duplicate|terdaftar/i.test(msg))
-      return jsonError('CONFLICT', 'email sudah terdaftar.', 409);
+      return jsonError('CONFLICT', 'Gagal mendaftar. Coba lagi.', 409);
     return jsonError('SAVE_FAILED', 'Gagal mendaftar.', 500);
   }
 
@@ -83,7 +83,7 @@ export async function POST(req: Request) {
     .single();
   if (profileError) {
     if ((profileError as { code?: string }).code === '23505')
-      return jsonError('CONFLICT', 'email sudah terdaftar.', 409);
+      return jsonError('CONFLICT', 'Gagal mendaftar. Coba lagi.', 409);
     return jsonError('SAVE_FAILED', 'Gagal mendaftar.', 500);
   }
 
@@ -104,9 +104,10 @@ export async function POST(req: Request) {
   }
 
   try {
+    // P0 privasi: jangan simpan email mentah di log permanen
     await supabase
       .from('activity_logs')
-      .insert({ action: 'members.register', user_id: user.id, metadata: { email } });
+      .insert({ action: 'members.register', user_id: user.id, metadata: { user_id: user.id } });
   } catch {
     // best-effort: jangan gagalkan request
   }

@@ -14,13 +14,37 @@ export type LogLevel = 'debug' | 'info' | 'warn' | 'error' | 'fatal';
 
 type LogContext = Record<string, unknown>;
 
+const SENSITIVE_KEYS = [
+  'email',
+  'phone',
+  'address',
+  'ip',
+  'ip_address',
+  'authorization',
+  'token',
+  'password',
+  'secret',
+];
+
+function scrub(ctx?: Record<string, unknown>): Record<string, unknown> | undefined {
+  if (!ctx) return ctx;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(ctx)) {
+    const lk = k.toLowerCase();
+    if (SENSITIVE_KEYS.some((s) => lk.includes(s))) out[k] = '[redacted]';
+    else if (typeof v === 'string' && /.+@.+\..+/.test(v)) out[k] = '[redacted]';
+    else out[k] = v;
+  }
+  return out;
+}
+
 function emit(level: LogLevel, msg: string, requestId: string | undefined, ctx?: LogContext): void {
   const line = JSON.stringify({
     ts: new Date().toISOString(),
     level,
     msg,
     ...(requestId ? { requestId } : {}),
-    ...ctx,
+    ...scrub(ctx),
   });
   if (level === 'error' || level === 'fatal') {
     console.error(line);
