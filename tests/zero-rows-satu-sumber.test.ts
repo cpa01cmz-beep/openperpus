@@ -588,9 +588,15 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
    * positif di bawah), urutan terbalik, kutip ganda, dan `==`/`===`/`!=`/
    * `!==`. Hanya '406' literal; bukan token `406` mentah, jadi menyebut angka
    * itu di komentar/dokumentasi tetap sah, dan `status === 406` (angka, bukan
-   * kode) juga bukan sasaran. */
+   * kode) juga bukan sasaran.
+   *
+   * Alternatif akses-computed menerima receiver BERTITIK dan OPTIONAL-CHAINING
+   * (`err['code']`, `err.obj['code']`, `err?.['code']`, `err?.obj['code']`) —
+   * sisa review atas PR #229: varian `?.[` TADIPUN lolos tanpa jejak setelah
+   * pelebaran pertama, diverifikasi dengan menjalankan guard sebelum dan
+   * sesudah lebaran ini atas bentuk yang sama. */
   const CODE_COMPARE_406 =
-    /\b(?:[\w.]*code[\w.]*|[\w$]*\[['"`]code['"`]\])\s*(?:!==?|===?)\s*['"`]406['"`]|['"`]406['"`]\s*(?:!==?|===?)\s*(?:[\w.]*code[\w.]*|[\w$]*\[['"`]code['"`]\])/i;
+    /\b(?:[\w.]*code[\w.]*|[\w$.?]*\[['"`]code['"`]\])\s*(?:!==?|===?)\s*['"`]406['"`]|['"`]406['"`]\s*(?:!==?|===?)\s*(?:[\w.]*code[\w.]*|[\w$.?]*\[['"`]code['"`]\])/i;
 
   it.each(SITES)('%s mengimpor @/lib/zero-rows tanpa salinan lokal', (_name, file) => {
     const src = read(file);
@@ -743,6 +749,16 @@ const d = 2; // PGRST116 disebut sebagai riwayat`;
     // di bawah — bukan perubahan liar. Loop SITES tetap hijau: ketiga berkas
     // SITES + helper diverifikasi bersih atas guard yang diperlebar (406 hanya
     // muncul di komentar, yang dibuang pemindai).
+    //
+    // Lebaran pertama itu sendiri punya sisa (sisa review atas PR #229):
+    // varian OPTIONAL-CHAINING `err?.['code']` masih lolos, diverifikasi dengan
+    // menjalankan guard sebelum/sesudah lebaran kedua atas bentuk yang sama.
+    // Alternatif computed karena itu menerima receiver bertitik DAN
+    // optional-chaining. Bentuk BERTITIK (`err.obj['code']`) memang sudah lolos
+    // bahkan sebelum lebaran kedua — receiver `obj` memberi word boundary
+    // sendiri sehingga alternatif `[\w$]*` sudah cukup — tapi ia tetap masuk
+    // daftar di bawah supaya lingkup yang diklaim TERKUNCI eksplisit, bukan
+    // disimpulkan dari kebetulan.
     for (const [label, src] of [
       ['identifier bertitik', "if (error.code === '406')"],
       ['camelCase', "if (errorCode === '406')"],
@@ -762,6 +778,11 @@ const d = 2; // PGRST116 disebut sebagai riwayat`;
       ['BARU akses computed template', 'if (err[`code`] === `406`)'],
       ['BARU akses computed terbalik', "if ('406' === err['code'])"],
       ['BARU akses computed terbalik !=', 'if ("406" != err["code"])'],
+      ['BARU akses computed bertitik', "if (err.obj['code'] === '406')"],
+      ['BARU akses computed dalam', "if (a.b.c['code'] == '406')"],
+      ['BARU akses computed optional-chaining', "if (err?.['code'] === '406')"],
+      ['BARU akses computed optional-chaining terbalik', "if ('406' === err?.['code'])"],
+      ['BARU akses computed opt-chain + bertitik', 'if (err?.obj["code"] !== "406")'],
     ] as const) {
       expect(
         src,
