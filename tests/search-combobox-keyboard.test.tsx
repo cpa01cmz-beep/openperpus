@@ -10,6 +10,7 @@
 // komponen asli tak bisa dirender di sana. Pola sama dipakai
 // tests/coverage-interactions.test.tsx.
 import { describe, expect, it, afterEach, vi } from 'vitest';
+import '@testing-library/jest-dom/vitest';
 import React from 'react';
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
 import SearchCombobox from '@/components/admin/SearchCombobox';
