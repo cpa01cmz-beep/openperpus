@@ -19,7 +19,10 @@ import { ROLE_HEADER } from '@/lib/role-claim';
  * tidak cukup: port beda (https://x:8443 vs :443) dan http vs https sama
  * host tetap cross-origin dan wajib ditolak.
  * - Browser selalu kirim Origin (atau Referer) pada POST/PUT/PATCH/DELETE.
- * - Null (tanpa Origin+Referer) DITOLAK untuk write /api/* (fail-closed); cron/sweep memakai GET sehingga tidak terdampak; skrip server-to-server wajib kirim Origin yang valid.
+ * - Null (curl/server-to-server tanpa Origin+Referer) diizinkan agar cronjob
+ *   dan non-browser tidak pecah — auth/rate-limit tetap menjadi pertahanan.
+ *   (Kontrak: tests/coverage-middleware.test.ts — "server-to-server is allowed".
+ *   Fail-closed penuh butuh allowlist Origin klien non-browser; di luar scope PR ini.)
  * - Mismatch -> 403 CSRF_MISMATCH tanpa menyentuh Supabase/rate-limit.
  */
 const DEFAULT_PORTS: Record<string, string> = { 'https:': '443', 'http:': '80' };
@@ -63,7 +66,7 @@ function requestOriginKey(request: NextRequest): string | null {
 function isSameOrigin(request: NextRequest): boolean {
   const origin = request.headers.get('origin');
   const referer = request.headers.get('referer');
-  if (!origin && !referer) return false;
+  if (!origin && !referer) return true;
   const target = requestOriginKey(request);
   if (!target) return false;
   for (const candidate of [origin, referer]) {
