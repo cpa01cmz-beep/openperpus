@@ -396,6 +396,13 @@ export function getTheme(id: string): ThemeDef {
   return (THEMES[id] ?? THEMES[DEFAULT_THEME]) as ThemeDef;
 }
 
+/**
+ * Brand token default — nilai diambil dari registry (bukan literal hex) supaya
+ * konsumen seperti `themeColor` viewport patuh gate no-hardcoded dan tidak
+ * bisa menyimpang dari tema default. Ganti brand default = ubah THEMES.
+ */
+export const DEFAULT_BRAND_TOKEN = getTheme(DEFAULT_THEME).tokens.brand;
+
 /** Family map: emerald/ocean/midnight/paper/bazaar formal, brutalist hard, sketch hand. */
 export const THEME_FAMILIES: Record<string, ThemeFamily> = {
   emerald: 'formal',

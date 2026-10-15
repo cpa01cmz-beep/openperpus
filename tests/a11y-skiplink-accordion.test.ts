@@ -129,6 +129,25 @@ describe('A11Y contrast audit note (midnight/ocean)', () => {
   });
 });
 
+/** P1 (review #241): generateViewport() statis agar bebas query DB, tapi
+ *  themeColor wajib memakai token registry (DEFAULT_BRAND_TOKEN) — bukan hex
+ *  literal yatim yang membuat browser UI ≠ --brand di halaman. */
+describe('layout generateViewport — token single-source (no orphan hex)', () => {
+  const layout = read('src/app/layout.tsx');
+
+  it('themeColor memakai DEFAULT_BRAND_TOKEN dari registry themes.ts', () => {
+    expect(layout).toContain('DEFAULT_BRAND_TOKEN');
+    expect(layout).toContain('themeColor: DEFAULT_BRAND_TOKEN');
+  });
+
+  it('tidak ada literal hex di generateViewport (yg akan jadi warna ketiga)', () => {
+    const fn = layout.slice(layout.indexOf('export function generateViewport'));
+    const body = fn.slice(0, fn.indexOf('export default async function RootLayout'));
+    expect(body).not.toMatch(/#[0-9a-fA-F]{3,8}/);
+    expect(body).not.toContain('getLibrarySettings');
+  });
+});
+
 /** A11Y-LANDMARKS: header/footer variants must expose proper landmarks.
  * RED first: header variants used "Navigasi utama" (Indonesian), footer variants lacked role="contentinfo".
  */

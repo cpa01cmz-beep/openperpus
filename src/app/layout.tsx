@@ -15,6 +15,7 @@ import {
 import './globals.css';
 import { getSiteUrl } from '@/lib/site';
 import { getLibrarySettings } from '@/lib/settings';
+import { DEFAULT_BRAND_TOKEN } from '@/lib/themes';
 import { getEffectiveThemeFromSettings } from '@/lib/theme-overrides';
 
 /* A11Y-CONTRAST-AUDIT (note only — design tokens untouched, values live in
@@ -153,10 +154,13 @@ export const metadata: Metadata = {
   },
 };
 
-export async function generateViewport(): Promise<Viewport> {
-  const settings = await getLibrarySettings();
-  const effective = getEffectiveThemeFromSettings(settings);
-  return { themeColor: effective.tokens.brand, width: 'device-width', initialScale: 1 };
+/** Viewport statis: tanpa query DB (satu RTT lebih murah di critical path).
+ * themeColor sengaja memakai brand token DEFAULT, bukan brand tema aktif:
+ * generateViewport() dievaluasi sebelum request/session dikenal, jadi nilai
+ * runtime tema tak bisa dipakai di sini tanpa DB. Nilainya single-source dari
+ * registry THEMES (DEFAULT_BRAND_TOKEN), bukan hex literal. */
+export function generateViewport(): Viewport {
+  return { themeColor: DEFAULT_BRAND_TOKEN, width: 'device-width', initialScale: 1 };
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
