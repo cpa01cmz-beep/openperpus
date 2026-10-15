@@ -712,6 +712,53 @@ const d = 2; // PGRST116 disebut sebagai riwayat`;
     expect(trailingCode).toContain('const d = 2;');
   });
 
+  it('CODE_COMPARE_406: SETIAP bentuk terdokumentasi wajib COCOK (guard vakum tanpa assertion positif, sisa review #227)', () => {
+    // Guard `CODE_COMPARE_406` hanya pernah dipakai `.not.toMatch` (loop SITES
+    // + komentar ekor) — NOL assertion positif di seluruh berkas. Dengan
+    // mutasi (regex dijadikan tak-pernah-cocok / alternatif KEDUA dibuang /
+    // persempit jadi hanya `===` kutip tunggal) SETIAP assertion itu TETAP
+    // hijau, jadi kelas bahaya #183/#184 — berkas site membuka lagi cabang
+    // dead-code `error.code === '406'` — bisa kembali SUNYAP. Persis pola
+    // anti-vakum yang konvensi berkas ini tegakkan sejak #190/#194/#203, hanya
+    // belum pernah diterapkan pada guard ini. Fail-capable: guard dipersempit
+    // atau dimatikan → assertion di bawah GAGAL.
+    //
+    // Bentuk-bentuknya diambil APA ADANYA dari komentar guard ("identifier
+    // bertitik, camelCase, urutan terbalik, kutip ganda, dan `==`/`===`/`!=`/
+    // `!==`"): ke-13 varian di bawah diverifikasi memang cocok pada regex asli
+    // dengan menjalankannya di Node — tapi sebelum ini tak satu pun terassert,
+    // jadi klaimnya jaga palsu.
+    for (const [label, src] of [
+      ['identifier bertitik', "if (error.code === '406')"],
+      ['camelCase', "if (errorCode === '406')"],
+      ['urutan terbalik', "if ('406' === error.code)"],
+      ['kutip ganda', 'if (error.code === "406")'],
+      ['== longgar', "if (error.code == '406')"],
+      ['!= longgar', "if (error.code != '406')"],
+      ['!== ketat', "if (error.code !== '406')"],
+      ['=== ketat tanpa spasi', "if (error.code==='406')"],
+      ['kutip template', 'if (error.code === `406`)'],
+      ['kode polos', "if (code === '406')"],
+      ['terbalik + kutip ganda', 'if ("406" == errorCode)'],
+      ['titik berspasi', "if (error .code === '406')"],
+      ['bentuk return', "return error.code === '406' ? 409 : 500;"],
+    ] as const) {
+      expect(
+        src,
+        `guard wajib mencocoki bentuk ${label} — tanpa assertion positif guard ini vakum: ${src}`
+      ).toMatch(CODE_COMPARE_406);
+    }
+    // Kontrol negatif (klaim komentar: "Hanya '406' literal; bukan token 406
+    // mentah"): ketiga bentuk ini WAJIB lolos agar guard tak melebar jadi
+    // larangan angka 406 itu sendiri. Fail-capable arah sebaliknya: guard
+    // dilebarkan jadi pencocokan angka `406` mentah → kontrol GAGAL.
+    for (const src of ['const x = 406;', 'if (status === 406)', "if (err['code'] === '406')"]) {
+      expect(src, `guard tak boleh mencocoki bentuk non-kode: ${src}`).not.toMatch(
+        CODE_COMPARE_406
+      );
+    }
+  });
+
   it('testInputs/dynamicTestInput: statis dibolehkan, dinamis ditangkap', () => {
     // Statis: template literal tanpa interpolasi — dulu dilarang backtick kategoris.
     expect(testInputs('re.test(`multiple (or no) rows`);').some(dynamicTestInput)).toBe(false);
@@ -786,7 +833,7 @@ const x = arr[0] / 2;
     expect(testInputs('re.test(msg.len / 2 + code);').some(dynamicTestInput)).toBe(true);
   });
 
-  it('scanSource: keyword-property dan ++ tetap pembagian (sisa review #190)', () => {
+  it('scanSource: keyword-property dan ++/-- tetap pembagian (sisa review #190, assertion -- sisa review #227)', () => {
     // `obj.new / 2`: 'new' ejaan keyword tetapi NAMA PROPERTI — '/'
     // pembagian; komentar sesudahnya wajib dibuang.
     const prop = `const x = obj.new / 2;
@@ -799,6 +846,20 @@ const y = i++ / 2;
 // komentar PGRST116 wajib dibuang`;
     expect(scanSource(inc).code).not.toContain('komentar');
     expect(scanSource(inc).code).toContain('i++ / 2');
+    // Klausa `--` dalam hal yang SAMA (sisa review #227): komentar loop simbol
+    // menyebut `++` DAN `--` sebagai penyelesai ekspresi, tapi hanya `++` yang
+    // pernah diassert — padahal `i-- / 2` adalah bentuk kode NYATA, bukan
+    // eksotis. Tanpa assertion itu, mutasi yang membuang cabang `-` dari
+    // daftar penyelesai ekspresi membuat '/' sesudah `--` dibaca pembuka
+    // regex: komentar ekornya BERTAHAN di `code` (diverifikasi dengan
+    // menjalankan scanner yang dimutasi) dan NOL assertion gagal — kelas "CI
+    // merah palsu" yang dijaga berkas ini kembali SUNYI. Fail-capable: cabang
+    // `-` dijadikan no-op → assertion di bawah GAGAL.
+    const dec = `let i = 0;
+const y = i-- / 2;
+// komentar PGRST116 wajib dibuang`;
+    expect(scanSource(dec).code).not.toContain('komentar');
+    expect(scanSource(dec).code).toContain('i-- / 2');
     // Tetap regex setelah keyword konteks (hari jangan over-correct).
     const kw = 'const m = /x/.test(msg);\n// komentar 0 rows wajib dibuang';
     expect(scanSource(kw).code).not.toContain('komentar');
@@ -811,6 +872,50 @@ const y = i++ / 2;
     expect(args.length).toBe(1);
     expect(args[0]).toBe('msg + code');
     expect(dynamicTestInput(args[0] ?? '')).toBe(true);
+  });
+
+  it('scanSource: batas dispatch .test( — spasi membuat argumen hilang TANPA JEJAK (sisa review #227)', () => {
+    // Dispatch `.test(` di `walk` memakai `startsWith('.test(', i)` — RAPAT,
+    // tanpa toleransi spasi. Bentuk berspasi kehilangan argumen `.test()`
+    // DIAM-DIAM: `testInputs` → `[]`, sehingga loop `for (const input of
+    // testArgs)` di loop SITES jadi nol iterasi yang LULUS — argumen DINAMIS
+    // (persis kelas bahaya #179) tak terlihat tanpa satu jejak pun.
+    //
+    // "Perbaikan" DITOLAK (preseden #212/#214): melebarkan dispatch jadi
+    // toleran-spasi adalah perubahan perilaku pemindai yang tak diminta satu
+    // assertion pun, DAN bentuk-bentuk itu tak bisa bertahan di repo ini —
+    // diverifikasi dengan menjalankan prettier, ketiga bentuk dinormalkan
+    // (`re . test(x)` → `re.test(x)`, `re.test (x)` → `re.test(x)`,
+    // `1.. test(x)` → `(1).test(x)`). Jadi yang ditutup adalah bagian
+    // "senyap"-nya: batas ini TERDOKUMENTASI + TERASSERT, dengan kontrol rapat
+    // yang WAJIB tetap tertangkap. Bentuk `1.. test(…)` lahir dari pengecualian
+    // `..` + `test(` di `readDotSuffix`: pengecualian itu menutup bentuk RAPAT
+    // saja, begitu ada spasi titik KEDUA ikut token angka dan `test(` kehilangan
+    // titik depannya.
+    for (const src of [
+      're . test(msg + code);',
+      're. test(msg + code);',
+      're.test (msg + code);',
+      'const r = 1.. test(msg + code);',
+      'const r = 1..\t test(msg + code);',
+      'const r = 1.. /* blok */ test(msg + code);',
+    ] as const) {
+      expect(
+        testInputs(src),
+        `dispatch .test( rapat menutupi argumen dinamis pada bentuk berspasi: ${src}`
+      ).toEqual([]);
+    }
+    // Kontrol WAJIB, dengan input yang BELUM diassert di berkas ini (larangan
+    // duplikasi #194): bentuk RAPAT dengan receiver angka DUA digit dan
+    // newline SEBELUM titik TETAP tertangkap. Yang sudah dikunci assertion lain
+    // TIDAK diulang di sini — `1..test(msg + code)` (akses member literal
+    // angka) dan `testInputs('re.test(msg + code);')` (self-check
+    // testInputs/dynamicTestInput, `.some(dynamicTestInput)` → true; capture
+    // rusak SELURUHNYA membuatnya false). Fail-capable dua arah: capture
+    // `.test(` dibuang SELURUHNYA → kontrol di bawah GAGAL; dispatch dilebarkan
+    // jadi toleran-spasi → batas di atas GAGAL.
+    expect(testInputs('const r = 10..test(msg + code);')).toEqual(['msg + code']);
+    expect(testInputs('re\n.test(msg + code);')).toEqual(['msg + code']);
   });
 
   it('scanSource: literal angka adalah operand (sisa review #192)', () => {
