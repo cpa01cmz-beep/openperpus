@@ -35,3 +35,7 @@ enabled = true
 # Staging environment — preview env vars only (no secrets)
 [env.staging]
 vars = { NEXT_PUBLIC_SITE_URL = "https://openperpus-staging.workers.dev" }
+
+# Paritas cron Vercel (vercel.json) — Workers memicu GET /api/cron/sweep-reservations; butuh CRON_SECRET via wrangler secret put.
+[triggers]
+crons = ["0 17 * * *"]
