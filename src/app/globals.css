@@ -1,6 +1,14 @@
 @import 'tailwindcss';
 @config "../../tailwind.config.ts";
 
+/* ponytail: Tailwind v4 memindai SEMUA file non-gitignored sebagai teks polos,
+   termasuk tests/ — prosa berbentuk `nama-[...]` di pesan assert (mis.
+   `rounded-[var(--radius-*)]`) ikut menjadi kandidat utility dan mengemit CSS
+   tidak valid yang mem-500-kan `next dev` (parser Turbopack ketat) sementara
+   CI/build produksi tetap hijau. Kecualikan tests/ dari pemindaian.
+   Lihat: https://tailwindcss.com/docs/detecting-classes-in-source-files */
+@source not "../../tests";
+
 /* ponytail: v4 preflight drops v3's default border color (#e5e7eb) → uncolored
    .border jatuh ke currentColor. Upgrade path: ganti token jadi --border per theme. */
 @layer base {
