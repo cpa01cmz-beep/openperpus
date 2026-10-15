@@ -175,15 +175,22 @@ describe('#244 Modal — kontrak a11y yang harus tetap terjaga', () => {
     // di bawah. Kalau listener memakai closure render pertama, tag-nya ''. Ini
     // yang menjaga ref onCloseRef — tanpa dia assertion ini merah.
     const seen: string[] = [];
-    const onClose = (tag: string) => seen.push(tag);
+    const onClose = (tag: string) => {
+      seen.push(tag);
+    };
     const view = render(<LatestCallbackHarness onClose={onClose} />);
 
     fireEvent.change(screen.getByLabelText('Catatan'), { target: { value: 'x' } });
 
+    // Assert per langkah (bukan hanya total akhir): satu jalur tutup berhenti
+    // memanggon sementara jalur lain memanggon dua kali harus tetap terdeteksi.
     fireEvent.keyDown(document, { key: 'Escape' });
-    fireEvent.click(screen.getByRole('button', { name: /Tutup dialog/i }));
-    fireEvent.mouseDown(view.container.firstChild as Element);
+    expect(seen).toEqual(['x']);
 
+    fireEvent.click(screen.getByRole('button', { name: /Tutup dialog/i }));
+    expect(seen).toEqual(['x', 'x']);
+
+    fireEvent.mouseDown(view.container.firstChild as Element);
     expect(seen).toEqual(['x', 'x', 'x']);
   });
 });
