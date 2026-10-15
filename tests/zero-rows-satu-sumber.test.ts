@@ -583,11 +583,14 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
 
   /** PERBANDINGAN kode error terhadap '406' — bentuk cabang dead-code yang
    * dibuang dari helper (#183/#184). Harus tahan bentuk: identifier bertitik
-   * (`error.code`), camelCase (`errorCode`), urutan terbalik, kutip ganda, dan
-   * `==`/`===`/`!=`/`!==`. Hanya '406' literal; bukan token `406` mentah, jadi
-   * menyebut angka itu di komentar/dokumentasi tetap sah. */
+   * (`error.code`), camelCase (`errorCode`), akses computed (`err['code']` —
+   * sisa review #227: bentuk itu DULU lolos tanpa jejak, lihat assertion
+   * positif di bawah), urutan terbalik, kutip ganda, dan `==`/`===`/`!=`/
+   * `!==`. Hanya '406' literal; bukan token `406` mentah, jadi menyebut angka
+   * itu di komentar/dokumentasi tetap sah, dan `status === 406` (angka, bukan
+   * kode) juga bukan sasaran. */
   const CODE_COMPARE_406 =
-    /\b[\w.]*code\w*\s*(?:!==?|===?)\s*['"`]406['"`]|['"`]406['"`]\s*(?:!==?|===?)\s*[\w.]*code/i;
+    /\b(?:[\w.]*code[\w.]*|[\w$]*\[['"`]code['"`]\])\s*(?:!==?|===?)\s*['"`]406['"`]|['"`]406['"`]\s*(?:!==?|===?)\s*(?:[\w.]*code[\w.]*|[\w$]*\[['"`]code['"`]\])/i;
 
   it.each(SITES)('%s mengimpor @/lib/zero-rows tanpa salinan lokal', (_name, file) => {
     const src = read(file);
@@ -728,6 +731,18 @@ const d = 2; // PGRST116 disebut sebagai riwayat`;
     // `!==`"): ke-13 varian di bawah diverifikasi memang cocok pada regex asli
     // dengan menjalankannya di Node — tapi sebelum ini tak satu pun terassert,
     // jadi klaimnya jaga palsu.
+    //
+    // Lima varian TERAKHIR (akses computed `err['code']`) adalah lubang NYATA
+    // yang ditemukan review atas PR #227 sementara PR ini berjalan: versi guard
+    // yang lalu LOLOS TANPA JEJAK untuk `if (err['code'] === '406')` —
+    // dibuktikan dengan menjalankan guard lama dan calon di Node atas bentuk
+    // yang sama. Karena itu guard-nya DIPERLEBAR, BUKAN diassert "apa adanya":
+    // bentuk itu dead-code yang sama persis dengan `error.code === '406'`, dan
+    // mengunci lolosnya sebagai "perilaku benar" justru mengebiri guard (persis
+    // keluaran WARNING review). Perubahan perilaku ini DIMINTA assertion positif
+    // di bawah — bukan perubahan liar. Loop SITES tetap hijau: ketiga berkas
+    // SITES + helper diverifikasi bersih atas guard yang diperlebar (406 hanya
+    // muncul di komentar, yang dibuang pemindai).
     for (const [label, src] of [
       ['identifier bertitik', "if (error.code === '406')"],
       ['camelCase', "if (errorCode === '406')"],
@@ -742,6 +757,11 @@ const d = 2; // PGRST116 disebut sebagai riwayat`;
       ['terbalik + kutip ganda', 'if ("406" == errorCode)'],
       ['titik berspasi', "if (error .code === '406')"],
       ['bentuk return', "return error.code === '406' ? 409 : 500;"],
+      ['BARU akses computed', "if (err['code'] === '406')"],
+      ['BARU akses computed ganda', 'if (err["code"] !== "406")'],
+      ['BARU akses computed template', 'if (err[`code`] === `406`)'],
+      ['BARU akses computed terbalik', "if ('406' === err['code'])"],
+      ['BARU akses computed terbalik !=', 'if ("406" != err["code"])'],
     ] as const) {
       expect(
         src,
@@ -749,10 +769,11 @@ const d = 2; // PGRST116 disebut sebagai riwayat`;
       ).toMatch(CODE_COMPARE_406);
     }
     // Kontrol negatif (klaim komentar: "Hanya '406' literal; bukan token 406
-    // mentah"): ketiga bentuk ini WAJIB lolos agar guard tak melebar jadi
-    // larangan angka 406 itu sendiri. Fail-capable arah sebaliknya: guard
-    // dilebarkan jadi pencocokan angka `406` mentah → kontrol GAGAL.
-    for (const src of ['const x = 406;', 'if (status === 406)', "if (err['code'] === '406')"]) {
+    // mentah"): kedua bentuk ini WAJIB lolos agar guard tak melebar jadi
+    // larangan angka 406 itu sendiri — keduanya bukan perbandingan terhadap
+    // KODE. Fail-capable arah sebaliknya: guard dilebarkan jadi pencocokan
+    // angka `406` mentah → kontrol GAGAL.
+    for (const src of ['const x = 406;', 'if (status === 406)']) {
       expect(src, `guard tak boleh mencocoki bentuk non-kode: ${src}`).not.toMatch(
         CODE_COMPARE_406
       );
@@ -881,17 +902,25 @@ const y = i-- / 2;
     // testArgs)` di loop SITES jadi nol iterasi yang LULUS — argumen DINAMIS
     // (persis kelas bahaya #179) tak terlihat tanpa satu jejak pun.
     //
-    // "Perbaikan" DITOLAK (preseden #212/#214): melebarkan dispatch jadi
-    // toleran-spasi adalah perubahan perilaku pemindai yang tak diminta satu
-    // assertion pun, DAN bentuk-bentuk itu tak bisa bertahan di repo ini —
-    // diverifikasi dengan menjalankan prettier, ketiga bentuk dinormalkan
-    // (`re . test(x)` → `re.test(x)`, `re.test (x)` → `re.test(x)`,
-    // `1.. test(x)` → `(1).test(x)`). Jadi yang ditutup adalah bagian
-    // "senyap"-nya: batas ini TERDOKUMENTASI + TERASSERT, dengan kontrol rapat
-    // yang WAJIB tetap tertangkap. Bentuk `1.. test(…)` lahir dari pengecualian
-    // `..` + `test(` di `readDotSuffix`: pengecualian itu menutup bentuk RAPAT
-    // saja, begitu ada spasi titik KEDUA ikut token angka dan `test(` kehilangan
-    // titik depannya.
+    // "Perbaikan" DITOLAK (preseden #212/#214). Alasan UTAMA bukan klaim
+    // formatter — justru klaim itu TAK bisa diassert suite ini (keluaran
+    // SUGGESTION review): yang menahan adalah prinsip berkas ini sendiri,
+    // melebarkan dispatch = perubahan perilaku pemindai yang TAK diminta satu
+    // assertion pun, persis kelas over-correct yang dijaga `afterString` +
+    // `keyword-property`. Dua alasan PENDUKUNG, keduanya diverifikasi dengan
+    // menjalankan (bukan asumsi): (1) pelebaran naif justru MERUSAK argumen
+    // yang "tertangkap" — mutasi toleran-spasi menghasilkan
+    // `testInputs('re . test(msg + code);')` → `["(msg + code);"]`
+    // (argumen terpangkas), bukan `["msg + code"]`: lubang sunyi ditukar
+    // salah-tangkap; (2) pengamat MANUAL di luar suite — ketiga bentuk berspasi
+    // dinormalkan formatter (`re . test(x)` → `re.test(x)`,
+    // `re.test (x)` → `re.test(x)`, `1.. test(x)` → `(1).test(x)`), jadi batas
+    // ini praktis tak terjangkau di sumber ter-format. Karena itu yang ditutup
+    // bagian "senyap"-nya: batas TERDOKUMENTASI + TERASSERT, dengan kontrol
+    // rapat yang WAJIB tetap tertangkap. Bentuk `1.. test(…)` lahir dari
+    // pengecualian `..` + `test(` di `readDotSuffix`: pengecualian itu menutup
+    // bentuk RAPAT saja, begitu ada spasi titik KEDUA ikut token angka dan
+    // `test(` kehilangan titik depannya.
     for (const src of [
       're . test(msg + code);',
       're. test(msg + code);',
