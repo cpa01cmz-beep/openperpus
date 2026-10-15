@@ -590,13 +590,19 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
    * itu di komentar/dokumentasi tetap sah, dan `status === 406` (angka, bukan
    * kode) juga bukan sasaran.
    *
-   * Alternatif akses-computed menerima receiver BERTITIK dan OPTIONAL-CHAINING
-   * (`err['code']`, `err.obj['code']`, `err?.['code']`, `err?.obj['code']`) —
-   * sisa review atas PR #229: varian `?.[` TADIPUN lolos tanpa jejak setelah
-   * pelebaran pertama, diverifikasi dengan menjalankan guard sebelum dan
-   * sesudah lebaran ini atas bentuk yang sama. */
+   * Alternatif akses-computed menerima receiver BERTITIK, OPTIONAL-CHAINING,
+   * PEMANGGILAN, dan INDEKS (`err['code']`, `err.obj['code']`,
+   * `err?.['code']`, `getErr()['code']`, `err[i]['code']`) plus spasi di dalam
+   * kurung — sisa review atas PR #229: varian `?.[` dan receiver
+   * pemanggilan-fungsi TADIPUN lolos tanpa jejak sesudah pelebaran pertama,
+   * diverifikasi dengan menjalankan guard sebelum dan sesudah lebaran atas
+   * bentuk yang sama. BATAS HEURISTIK yang DISENGAJA (bukan diklaim lengkap):
+   * receiver yang memuat SPASI tepat sebelum `[` atau literal non-token masih
+   * butuh grammar — posisi yang sama seperti batas pemindai `scanSource` di
+   * berkas ini (satu lintasan tanpa grammar). Nama helper/`getErr()` yang
+   * dilewatkan variabel tak bisa dibedakan dari apa pun secara bentuk. */
   const CODE_COMPARE_406 =
-    /\b(?:[\w.]*code[\w.]*|[\w$.?]*\[['"`]code['"`]\])\s*(?:!==?|===?)\s*['"`]406['"`]|['"`]406['"`]\s*(?:!==?|===?)\s*(?:[\w.]*code[\w.]*|[\w$.?]*\[['"`]code['"`]\])/i;
+    /\b(?:[\w.]*code[\w.]*|[\w$.?()[\]]*\[\s*['"`]code['"`]\s*\])\s*(?:!==?|===?)\s*['"`]406['"`]|['"`]406['"`]\s*(?:!==?|===?)\s*(?:[\w.]*code[\w.]*|[\w$.?()[\]]*\[\s*['"`]code['"`]\s*\])/i;
 
   it.each(SITES)('%s mengimpor @/lib/zero-rows tanpa salinan lokal', (_name, file) => {
     const src = read(file);
@@ -734,31 +740,26 @@ const d = 2; // PGRST116 disebut sebagai riwayat`;
     //
     // Bentuk-bentuknya diambil APA ADANYA dari komentar guard ("identifier
     // bertitik, camelCase, urutan terbalik, kutip ganda, dan `==`/`===`/`!=`/
-    // `!==`"): ke-13 varian di bawah diverifikasi memang cocok pada regex asli
-    // dengan menjalankannya di Node — tapi sebelum ini tak satu pun terassert,
-    // jadi klaimnya jaga palsu.
+    // `!==`"): ke-13 varian pertama diverifikasi cocok pada guard SEBELUM PR
+    // ini dengan menjalankannya di Node — tapi sebelum ini tak satu pun
+    // terassert, jadi klaimnya jaga palsu.
     //
-    // Lima varian TERAKHIR (akses computed `err['code']`) adalah lubang NYATA
-    // yang ditemukan review atas PR #227 sementara PR ini berjalan: versi guard
-    // yang lalu LOLOS TANPA JEJAK untuk `if (err['code'] === '406')` —
-    // dibuktikan dengan menjalankan guard lama dan calon di Node atas bentuk
-    // yang sama. Karena itu guard-nya DIPERLEBAR, BUKAN diassert "apa adanya":
-    // bentuk itu dead-code yang sama persis dengan `error.code === '406'`, dan
-    // mengunci lolosnya sebagai "perilaku benar" justru mengebiri guard (persis
-    // keluaran WARNING review). Perubahan perilaku ini DIMINTA assertion positif
-    // di bawah — bukan perubahan liar. Loop SITES tetap hijau: ketiga berkas
-    // SITES + helper diverifikasi bersih atas guard yang diperlebar (406 hanya
-    // muncul di komentar, yang dibuang pemindai).
-    //
-    // Lebaran pertama itu sendiri punya sisa (sisa review atas PR #229):
-    // varian OPTIONAL-CHAINING `err?.['code']` masih lolos, diverifikasi dengan
-    // menjalankan guard sebelum/sesudah lebaran kedua atas bentuk yang sama.
-    // Alternatif computed karena itu menerima receiver bertitik DAN
-    // optional-chaining. Bentuk BERTITIK (`err.obj['code']`) memang sudah lolos
-    // bahkan sebelum lebaran kedua — receiver `obj` memberi word boundary
-    // sendiri sehingga alternatif `[\w$]*` sudah cukup — tapi ia tetap masuk
-    // daftar di bawah supaya lingkup yang diklaim TERKUNCI eksplisit, bukan
-    // disimpulkan dari kebetulan.
+    // Sebelas varian berikutnya adalah lubang NYATA yang ditemukan review atas
+    // PR #229 sementara PR ini berjalan — akses computed `err['code']`,
+    // optional-chaining `err?.['code']`, dan receiver PEMANGGILAN
+    // `getErr()['code']` masing-masing LOLOS TANPA JEJAK pada guard saat itu.
+    // Diverifikasi dengan menjalankan guard sebelum dan sesudah lebaran atas
+    // bentuk yang sama. Karena itu guard-nya DIPERLEBAR, BUKAN diassert "apa
+    // adanya": bentuk-bentuk itu dead-code yang sama persis dengan
+    // `error.code === '406'`, dan mengunci lolosnya sebagai "perilaku benar"
+    // justru mengebiri guard (persis keluaran WARNING review). Perubahan
+    // perilaku ini DIMINTA assertion positif di bawah — bukan perubahan liar.
+    // Loop SITES tetap hijau: ketiga berkas SITES + helper diverifikasi bersih
+    // atas guard yang diperlebar (406 hanya muncul di komentar, yang dibuang
+    // pemindai). Bentuk bertitik (`err.obj['code']`) memang sudah tercakup
+    // sejak sebelum lebaran (receiver `obj` memberi word boundary sendiri) dan
+    // disebut APA ADANYA di sini, bukan dijadikan "pembuktian" kebutuhan
+    // lebaran.
     for (const [label, src] of [
       ['identifier bertitik', "if (error.code === '406')"],
       ['camelCase', "if (errorCode === '406')"],
@@ -783,6 +784,12 @@ const d = 2; // PGRST116 disebut sebagai riwayat`;
       ['BARU akses computed optional-chaining', "if (err?.['code'] === '406')"],
       ['BARU akses computed optional-chaining terbalik', "if ('406' === err?.['code'])"],
       ['BARU akses computed opt-chain + bertitik', 'if (err?.obj["code"] !== "406")'],
+      ['BARU receiver pemanggilan-fungsi', "if (getErr()['code'] === '406')"],
+      ['BARU receiver pemanggilan-fungsi + opt-chain', "if (getErr()?.['code'] === '406')"],
+      ['BARU receiver pemanggilan-fungsi terbalik', "if ('406' === getErr()['code'])"],
+      ['BARU receiver indeks', "if (err[i]['code'] === '406')"],
+      ['BARU spasi di dalam bracket', "if (err[ 'code' ] === '406')"],
+      ['BARU spasi di dalam bracket (ganda)', 'if (err[ "code" ] !== "406")'],
     ] as const) {
       expect(
         src,
