@@ -101,7 +101,7 @@ const patrick = Patrick_Hand({
  * available; this gates which `.variable` classes reach `<html>` per render.
  * Map: emerald Playfair+Inter, midnight Cormorant+Inter, paper
  * SourceSerif+SourceSans, brutalist Archivo+Space, ocean Fraunces+Inter,
- * sketch Caveat+PatrickHand.
+ * sketch Caveat+PatrickHand, bazaar Space+Inter.
  */
 export function fontVariablesForTheme(themeId: string): string {
   switch (themeId) {
@@ -117,6 +117,8 @@ export function fontVariablesForTheme(themeId: string): string {
       return `${fraunces.variable} ${inter.variable}`;
     case 'sketch':
       return `${caveat.variable} ${patrick.variable}`;
+    case 'bazaar':
+      return `${space.variable} ${inter.variable}`;
     default:
       return `${inter.variable} ${playfair.variable}`;
   }
@@ -190,7 +192,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       style={themeStyle}
       className={
         fontVariablesForTheme(theme.id) +
-        (theme.ornament === 'ruled-paper' ? ' ornament-ruled-paper' : '')
+        (theme.ornament === 'ruled-paper'
+          ? ' ornament-ruled-paper'
+          : theme.ornament === 'ledger'
+            ? ' ornament-ledger'
+            : '')
       }
     >
       <head>

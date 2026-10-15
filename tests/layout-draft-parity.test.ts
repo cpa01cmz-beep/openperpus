@@ -28,7 +28,7 @@ describe('buildDraft parity dengan server resolver', () => {
   it('selaras dengan getEffectiveTheme untuk semua base + override contoh', async () => {
     const { buildDraft } = await import('@/lib/layout-draft');
     const { getEffectiveTheme } = await import('@/lib/theme-overrides');
-    const bases = ['emerald', 'midnight', 'paper', 'brutalist', 'ocean', 'sketch'];
+    const bases = ['emerald', 'midnight', 'paper', 'brutalist', 'ocean', 'sketch', 'bazaar'];
     const overrides = {
       layout: {
         headerVariant: 'minimal',
@@ -55,7 +55,7 @@ describe('buildDraft parity dengan server resolver', () => {
   it('NULL identik dengan preset', async () => {
     const { buildDraft } = await import('@/lib/layout-draft');
     const { getTheme } = await import('@/lib/themes');
-    for (const b of ['emerald', 'midnight', 'paper', 'brutalist', 'ocean', 'sketch']) {
+    for (const b of ['emerald', 'midnight', 'paper', 'brutalist', 'ocean', 'sketch', 'bazaar']) {
       const d = buildDraft(b, null);
       expect(d.sections.map((s) => s.id)).toEqual(
         getTheme(b).layout.homepageSections.map((s) => s.id)

@@ -34,7 +34,7 @@
   "denda_per_hari":1000,"lama_pinjam_hari":7,"maks_pinjam":3 } }
 ```
 
-- `active_theme`: satu dari `emerald|midnight|paper|brutalist|ocean|sketch`. `theme_overrides`: `null` (pakai bawaan `THEMES`) atau object layout-only `{layout:{headerVariant?,heroVariant?,footerVariant?,homepageSections?}}` — lihat `PUT /api/settings/theme`.
+- `active_theme`: satu dari `emerald|midnight|paper|brutalist|ocean|sketch|bazaar`. `theme_overrides`: `null` (pakai bawaan `THEMES`) atau object layout-only `{layout:{headerVariant?,heroVariant?,footerVariant?,homepageSections?}}` — lihat `PUT /api/settings/theme`.
 - Kolom operasional sirkulasi (kanonis Inggris, migrasi `0023` + `0026`; label Indonesia hanya di UI admin):
 
 ```json
@@ -82,7 +82,7 @@
 }
 ```
 
-- Aturan: `active_theme` harus salah satu `emerald|midnight|paper|brutalist|ocean|sketch`; `theme_overrides=null` atau object yang hanya berisi `layout` (≤8000 char, `homepageSections` maks 7, `order` 0–50). Kunci `tokens|fonts|radius|shadow|spacing` → `422 VALIDATION` + "Tema dikunci, hanya layout yang dapat diubah." `reset:true` (tanpa `theme_overrides`) mengosongkan override → `null`. Body kosong/tanpa perubahan → `422`.
+- Aturan: `active_theme` harus salah satu `emerald|midnight|paper|brutalist|ocean|sketch|bazaar`; `theme_overrides=null` atau object yang hanya berisi `layout` (≤8000 char, `homepageSections` maks 7, `order` 0–50). Kunci `tokens|fonts|radius|shadow|spacing` → `422 VALIDATION` + "Tema dikunci, hanya layout yang dapat diubah." `reset:true` (tanpa `theme_overrides`) mengosongkan override → `null`. Body kosong/tanpa perubahan → `422`.
 - Sukses `200 {data: settings}`. Efek: `revalidateTag('settings','max')` + `revalidatePath('/')` + `activity_logs` (`settings.theme.update`).
 
 ## 2. Books (OPAC + admin)

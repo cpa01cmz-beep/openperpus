@@ -10,6 +10,7 @@ const EditorialHero = dynamic(() => import('./variants/EditorialHero'), { ssr: t
 const StackedHero = dynamic(() => import('./variants/StackedHero'), { ssr: true });
 const SplitHero = dynamic(() => import('./variants/SplitHero'), { ssr: true });
 const SketchHero = dynamic(() => import('./variants/SketchHero'), { ssr: true });
+const BazaarHero = dynamic(() => import('./variants/BazaarHero'), { ssr: true });
 
 // Preload map for variant switching anticipation
 const variantComponents = {
@@ -26,6 +27,7 @@ const variantComponents = {
   'sketch-doodle': SketchHero,
   sketch: SketchHero,
   doodle: SketchHero,
+  'bazaar-promo': BazaarHero,
 } as const;
 
 type VariantKey = keyof typeof variantComponents;
@@ -36,6 +38,7 @@ const variantOrder: readonly VariantKey[] = [
   'ocean-tide',
   'midnight-showcase',
   'sketch-doodle',
+  'bazaar-promo',
 ] as const;
 
 // Preload links for next/prev variant chunks
@@ -53,6 +56,7 @@ const variantPreloadPaths: Record<VariantKey, string> = {
   'sketch-doodle': '/_next/static/chunks/components/hero/variants/SketchHero.js',
   sketch: '/_next/static/chunks/components/hero/variants/SketchHero.js',
   doodle: '/_next/static/chunks/components/hero/variants/SketchHero.js',
+  'bazaar-promo': '/_next/static/chunks/components/hero/variants/BazaarHero.js',
 };
 
 /** Hero block family (additive, does not affect variant resolution). */
@@ -67,48 +71,48 @@ export type HeroBlockMeta = {
   version: 1;
 };
 
-/** Hero block metadata keyed by variant key (13 keys, mirrors variantComponents). */
+/** Hero block metadata keyed by variant key (14 keys, mirrors variantComponents). */
 export const HERO_BLOCK_META: Record<VariantKey, HeroBlockMeta> = {
   'emerald-centered': {
     id: 'emerald-centered',
     kind: 'hero',
     family: 'formal',
-    supports: ['emerald', 'ocean', 'midnight', 'paper'],
+    supports: ['emerald', 'ocean', 'midnight', 'paper', 'bazaar'],
     version: 1,
   },
   centered: {
     id: 'centered',
     kind: 'hero',
     family: 'universal',
-    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch'],
+    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch', 'bazaar'],
     version: 1,
   },
   'midnight-showcase': {
     id: 'midnight-showcase',
     kind: 'hero',
     family: 'formal',
-    supports: ['emerald', 'ocean', 'midnight', 'paper'],
+    supports: ['emerald', 'ocean', 'midnight', 'paper', 'bazaar'],
     version: 1,
   },
   classic: {
     id: 'classic',
     kind: 'hero',
     family: 'universal',
-    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch'],
+    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch', 'bazaar'],
     version: 1,
   },
   'paper-editorial': {
     id: 'paper-editorial',
     kind: 'hero',
     family: 'formal',
-    supports: ['emerald', 'ocean', 'midnight', 'paper'],
+    supports: ['emerald', 'ocean', 'midnight', 'paper', 'bazaar'],
     version: 1,
   },
   editorial: {
     id: 'editorial',
     kind: 'hero',
     family: 'universal',
-    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch'],
+    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch', 'bazaar'],
     version: 1,
   },
   'brutalist-manifesto': {
@@ -122,21 +126,21 @@ export const HERO_BLOCK_META: Record<VariantKey, HeroBlockMeta> = {
     id: 'stacked',
     kind: 'hero',
     family: 'universal',
-    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch'],
+    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch', 'bazaar'],
     version: 1,
   },
   'ocean-tide': {
     id: 'ocean-tide',
     kind: 'hero',
     family: 'formal',
-    supports: ['emerald', 'ocean', 'midnight', 'paper'],
+    supports: ['emerald', 'ocean', 'midnight', 'paper', 'bazaar'],
     version: 1,
   },
   split: {
     id: 'split',
     kind: 'hero',
     family: 'universal',
-    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch'],
+    supports: ['emerald', 'ocean', 'midnight', 'paper', 'brutalist', 'sketch', 'bazaar'],
     version: 1,
   },
   'sketch-doodle': {
@@ -158,6 +162,13 @@ export const HERO_BLOCK_META: Record<VariantKey, HeroBlockMeta> = {
     kind: 'hero',
     family: 'hand',
     supports: ['sketch'],
+    version: 1,
+  },
+  'bazaar-promo': {
+    id: 'bazaar-promo',
+    kind: 'hero',
+    family: 'formal',
+    supports: ['bazaar', 'emerald', 'ocean', 'midnight', 'paper'],
     version: 1,
   },
 };

@@ -1,7 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { getTheme, themes } from '@/lib/themes';
 
-const THEME_IDS = ['emerald', 'midnight', 'paper', 'brutalist', 'ocean', 'sketch'] as const;
+const THEME_IDS = [
+  'emerald',
+  'midnight',
+  'paper',
+  'brutalist',
+  'ocean',
+  'sketch',
+  'bazaar',
+] as const;
 
 const TOKEN_KEYS = [
   'brand',
@@ -17,12 +25,12 @@ const TOKEN_KEYS = [
 const HEX_RE = /^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
 
 describe('theme registry (Wave 2 contract)', () => {
-  it('exposes exactly 6 theme ids', () => {
+  it('exposes exactly 7 theme ids', () => {
     expect(themes.map((t) => t.id).sort()).toEqual([...THEME_IDS].sort());
   });
 
   it('each theme has 8 token keys as valid hex', () => {
-    expect(themes).toHaveLength(6);
+    expect(themes).toHaveLength(7);
     for (const theme of themes) {
       for (const key of TOKEN_KEYS) {
         const value = (theme.tokens as Record<string, unknown>)[key];
@@ -54,8 +62,8 @@ describe('theme registry (Wave 2 contract)', () => {
 });
 
 describe('theme layout system (Task 2 RED spec)', () => {
-  it('each of 6 themes exposes fonts {heading, body} as non-empty strings', () => {
-    expect(themes).toHaveLength(6);
+  it('each of 7 themes exposes fonts {heading, body} as non-empty strings', () => {
+    expect(themes).toHaveLength(7);
     for (const theme of themes) {
       const fonts = (theme as unknown as Record<string, unknown>)['fonts'] as
         Record<string, unknown> | undefined;
@@ -74,7 +82,7 @@ describe('theme layout system (Task 2 RED spec)', () => {
     }
   });
 
-  it('each of 6 themes exposes radius scale', () => {
+  it('each of 7 themes exposes radius scale', () => {
     for (const theme of themes) {
       const radius = (theme as unknown as Record<string, unknown>)['radius'] as
         Record<string, unknown> | undefined;
@@ -89,7 +97,7 @@ describe('theme layout system (Task 2 RED spec)', () => {
     }
   });
 
-  it('each of 6 themes exposes shadow scale', () => {
+  it('each of 7 themes exposes shadow scale', () => {
     for (const theme of themes) {
       const shadow = (theme as unknown as Record<string, unknown>)['shadow'] as
         Record<string, unknown> | undefined;
@@ -104,7 +112,7 @@ describe('theme layout system (Task 2 RED spec)', () => {
     }
   });
 
-  it('each of 6 themes exposes spacing {container, section, card}', () => {
+  it('each of 7 themes exposes spacing {container, section, card}', () => {
     for (const theme of themes) {
       const spacing = (theme as unknown as Record<string, unknown>)['spacing'] as
         Record<string, unknown> | undefined;
@@ -119,7 +127,7 @@ describe('theme layout system (Task 2 RED spec)', () => {
     }
   });
 
-  it('each of 6 themes exposes layout {headerVariant, heroVariant, footerVariant, homepageSections ordered array}', () => {
+  it('each of 7 themes exposes layout {headerVariant, heroVariant, footerVariant, homepageSections ordered array}', () => {
     for (const theme of themes) {
       const layout = (theme as unknown as Record<string, unknown>)['layout'] as
         Record<string, unknown> | undefined;

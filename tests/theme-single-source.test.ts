@@ -55,7 +55,7 @@ describe('T-theme-single no legacy theme duplicates', () => {
  * carries the CSS var plumbing per theme.
  */
 describe('T-SS-DEDUPE :root does not duplicate emerald', () => {
-  const THEME_IDS = ['emerald', 'midnight', 'paper', 'brutalist', 'ocean', 'sketch'];
+  const THEME_IDS = ['emerald', 'midnight', 'paper', 'brutalist', 'ocean', 'sketch', 'bazaar'];
   const TOKENS = [
     'brand',
     'brand-soft',
@@ -96,7 +96,7 @@ describe('T-SS-DEDUPE :root does not duplicate emerald', () => {
     }
   });
 
-  it('all 8 tokens x 6 themes present in themes.ts', () => {
+  it('all 8 tokens x 7 themes present in themes.ts', () => {
     for (const id of THEME_IDS) {
       expect(THEMES[id], `themes.ts must define theme "${id}"`).toBeDefined();
       for (const t of TOKENS) {
@@ -108,7 +108,7 @@ describe('T-SS-DEDUPE :root does not duplicate emerald', () => {
     }
   });
 
-  it('all 8 tokens x 6 themes present in globals.css [data-theme] blocks', () => {
+  it('all 8 tokens x 7 themes present in globals.css [data-theme] blocks', () => {
     const css = read('src/app/globals.css');
     for (const id of THEME_IDS) {
       const block = themeBlock(css, id);

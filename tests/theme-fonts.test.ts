@@ -22,6 +22,7 @@ const EXPECTED_VARS: Record<string, { heading: string; body: string }> = {
   brutalist: { heading: '--font-archivo', body: '--font-space' },
   ocean: { heading: '--font-fraunces', body: '--font-inter' },
   sketch: { heading: '--font-caveat', body: '--font-patrick' },
+  bazaar: { heading: '--font-space', body: '--font-inter' },
 };
 
 // layout.tsx const name -> CSS var it declares
@@ -45,6 +46,7 @@ const THEME_IDENT_PAIR: Record<string, [string, string]> = {
   brutalist: ['archivo', 'space'],
   ocean: ['fraunces', 'inter'],
   sketch: ['caveat', 'patrick'],
+  bazaar: ['space', 'inter'],
 };
 
 describe('T-FONT-SPLIT: theme font vars resolve', () => {

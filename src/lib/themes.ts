@@ -57,7 +57,7 @@ export type ThemeLayout = {
 export type ThemeFamily = 'formal' | 'hard' | 'hand';
 
 /** Decorative ornament per theme, decoupled from color tokens. */
-export type ThemeOrnament = 'none' | 'ruled-paper';
+export type ThemeOrnament = 'none' | 'ruled-paper' | 'ledger';
 
 /** Single theme definition: identity + tokens + layout system. */
 export type ThemeDef = {
@@ -333,6 +333,49 @@ export const THEMES: Record<string, ThemeDef> = {
       ],
     },
   },
+  bazaar: {
+    id: 'bazaar',
+    name: 'Bazaar Commerce',
+    description:
+      'Shopee-style marketplace: warm paper shelf, ink borders, Shopee-orange brand with deep-red accent, Space Grotesk + Inter, receipt-card hero with promo ticker.',
+    tokens: {
+      brand: '#B23A1C',
+      'brand-soft': '#FDE9E2',
+      'brand-strong': '#26211B',
+      accent: '#EE4D2D',
+      'accent-soft': '#FCE4D7',
+      surface: '#FAF5EA',
+      ink: '#26211B',
+      heading: '#26211B',
+    },
+    fonts: {
+      heading: "var(--font-space), 'Space Grotesk', system-ui, sans-serif",
+      body: "var(--font-inter), 'Inter', ui-sans-serif, system-ui, sans-serif",
+    },
+    radius: { sm: '0.625rem', md: '0.875rem', lg: '1rem' },
+    shadow: {
+      sm: '0 2px 0 0 #26211B',
+      md: '0 4px 0 0 #26211B',
+      lg: '0 14px 28px rgba(38, 33, 27, 0.16)',
+    },
+    spacing: { container: '70rem', section: '4rem', card: '1.25rem' },
+    ornament: 'ledger',
+    version: 1,
+    layout: {
+      headerVariant: 'bazaar-commerce',
+      heroVariant: 'bazaar-promo',
+      footerVariant: 'bazaar-market',
+      homepageSections: [
+        { id: 'hero', enabled: true },
+        { id: 'announcement', enabled: true },
+        { id: 'featured', enabled: true },
+        { id: 'stats', enabled: true },
+        { id: 'welcome', enabled: true },
+        { id: 'news', enabled: true },
+        { id: 'testimonials', enabled: true },
+      ],
+    },
+  },
 };
 
 /** Array view of the registry (test contract: `themes`). */
@@ -350,12 +393,13 @@ export function getTheme(id: string): ThemeDef {
   return (THEMES[id] ?? THEMES[DEFAULT_THEME]) as ThemeDef;
 }
 
-/** Family map: emerald/ocean/midnight/paper formal, brutalist hard, sketch hand. */
+/** Family map: emerald/ocean/midnight/paper/bazaar formal, brutalist hard, sketch hand. */
 export const THEME_FAMILIES: Record<string, ThemeFamily> = {
   emerald: 'formal',
   ocean: 'formal',
   midnight: 'formal',
   paper: 'formal',
+  bazaar: 'formal',
   brutalist: 'hard',
   sketch: 'hand',
 };
