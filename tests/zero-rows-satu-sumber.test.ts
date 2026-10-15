@@ -740,26 +740,26 @@ const d = 2; // PGRST116 disebut sebagai riwayat`;
     //
     // Bentuk-bentuknya diambil APA ADANYA dari komentar guard ("identifier
     // bertitik, camelCase, urutan terbalik, kutip ganda, dan `==`/`===`/`!=`/
-    // `!==`"): ke-13 varian pertama diverifikasi cocok pada guard SEBELUM PR
-    // ini dengan menjalankannya di Node — tapi sebelum ini tak satu pun
-    // terassert, jadi klaimnya jaga palsu.
+    // `!==`"): bentuk-bentuk terdokumentasi itu diverifikasi cocok pada guard
+    // SEBELUM PR ini dengan menjalankannya di Node — tapi sebelum ini tak satu
+    // pun terassert, jadi klaimnya jaga palsu.
     //
-    // Sebelas varian berikutnya adalah lubang NYATA yang ditemukan review atas
-    // PR #229 sementara PR ini berjalan — akses computed `err['code']`,
-    // optional-chaining `err?.['code']`, dan receiver PEMANGGILAN
-    // `getErr()['code']` masing-masing LOLOS TANPA JEJAK pada guard saat itu.
-    // Diverifikasi dengan menjalankan guard sebelum dan sesudah lebaran atas
-    // bentuk yang sama. Karena itu guard-nya DIPERLEBAR, BUKAN diassert "apa
-    // adanya": bentuk-bentuk itu dead-code yang sama persis dengan
-    // `error.code === '406'`, dan mengunci lolosnya sebagai "perilaku benar"
-    // justru mengebiri guard (persis keluaran WARNING review). Perubahan
-    // perilaku ini DIMINTA assertion positif di bawah — bukan perubahan liar.
-    // Loop SITES tetap hijau: ketiga berkas SITES + helper diverifikasi bersih
-    // atas guard yang diperlebar (406 hanya muncul di komentar, yang dibuang
-    // pemindai). Bentuk bertitik (`err.obj['code']`) memang sudah tercakup
-    // sejak sebelum lebaran (receiver `obj` memberi word boundary sendiri) dan
-    // disebut APA ADANYA di sini, bukan dijadikan "pembuktian" kebutuhan
-    // lebaran.
+    // Sisa daftar di bawah (ditandai `BARU`) adalah lubang NYATA yang ditemukan
+    // review atas PR #229 sementara PR ini berjalan — akses computed
+    // `err['code']`, optional-chaining `err?.['code']`, receiver PEMANGGILAN
+    // `getErr()['code']`, receiver indeks, dan spasi di dalam kurung: semuanya
+    // LOLOS TANPA JEJAK pada guard saat itu. Diverifikasi dengan menjalankan
+    // guard sebelum dan sesudah lebaran atas bentuk yang sama. Karena itu
+    // guard-nya DIPERLEBAR, BUKAN diassert "apa adanya": bentuk-bentuk itu
+    // dead-code yang sama persis dengan `error.code === '406'`, dan mengunci
+    // lolosnya sebagai "perilaku benar" justru mengebiri guard (persis keluaran
+    // WARNING review). Perubahan perilaku ini DIMINTA assertion positif di
+    // bawah — bukan perubahan liar. Loop SITES tetap hijau: ketiga berkas
+    // SITES + helper diverifikasi bersih atas guard yang diperlebar (406 hanya
+    // muncul di komentar, yang dibuang pemindai). Bentuk bertitik
+    // (`err.obj['code']`) memang sudah tercakup sejak sebelum lebaran (receiver
+    // `obj` memberi word boundary sendiri) dan disebut APA ADANYA di sini,
+    // bukan dijadikan "pembuktian" kebutuhan lebaran.
     for (const [label, src] of [
       ['identifier bertitik', "if (error.code === '406')"],
       ['camelCase', "if (errorCode === '406')"],
