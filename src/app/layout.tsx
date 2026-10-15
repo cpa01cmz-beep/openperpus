@@ -153,10 +153,8 @@ export const metadata: Metadata = {
   },
 };
 
-export async function generateViewport(): Promise<Viewport> {
-  const settings = await getLibrarySettings();
-  const effective = getEffectiveThemeFromSettings(settings);
-  return { themeColor: effective.tokens.brand, width: 'device-width', initialScale: 1 };
+export function generateViewport(): Viewport {
+  return { themeColor: '#0d7a5f', width: 'device-width', initialScale: 1 };
 }
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
