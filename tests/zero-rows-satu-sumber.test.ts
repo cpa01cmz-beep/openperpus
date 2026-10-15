@@ -193,7 +193,19 @@ describe('paritas statis — ketiga titik impor helper yang sama', () => {
           continue;
         }
         const ch = src.charAt(i);
-        code.push(literalMode === 'space' ? ' ' : ch);
+        // Penutup string ikut VERBATIM walau mode 'space' (sisa review #215):
+        // versi lama mengganti kutip PENUTUP dengan spasi — pemindai tetap
+        // menutup string dengan benar (`if (ch === quote) break` di bawah)
+        // tapi delimiter-nya HILANG dari `code`, sehingga `domainCode` tak
+        // seimbang untuk SETIAP string polos dan melanggar kontrak
+        // "delimiter utuh" yang dijanjikan `literalMode` di atas. Tak ADA
+        // assertion yang gagal karena itu — guard hanya mencari `</` + char
+        // tag dan `}` + `/>`, dan keduanya tak bisa lahir dari kutip yang
+        // hilang — sehingga lubangnya SENYAP. `copyTemplate` sejak awal sudah
+        // benar (backtick penutup di-push utuh), jadi salinan ini kini
+        // konsisten dengannya. Posisi/jumlah baris tetap: satu char tetap satu
+        // char (spasi vs kutip), jadi mode 'verbatim' pun tak bergeser.
+        code.push(literalMode === 'space' && ch !== quote ? ' ' : ch);
         i += 1;
         if (ch === quote) break;
       }
@@ -1121,6 +1133,28 @@ const y = i++ / 2;
     // akan menyembunyikan '/' pemicu fantom pada `}/>`), tapi regex TER-ESCAPE
     // (`<\/div>`) secara alamiah aman — backslash memutus kedekatan `</`.
     expect(domainCode('const re = /<\\/div>/;')).not.toMatch(JSX_DOMAIN);
+    // Batas terdokumentasi KETIGA (sisa review #215): regex dengan `<` tepat
+    // SESUDAH pembuka char-class — `/[</a]/`, `/[</abc]/` — TETAP memicu
+    // `JSX_DOMAIN` pada berkas NON-JSX yang sah (kelas "CI merah palsu").
+    // `copyRegex` memperlakukan `/` di dalam `[...]` sebagai ISI, bukan penutup,
+    // dan isi regex sengaja tak dikosongkan, jadi `</a` utuh terbawa ke `code`
+    // dan alternatif `<\/[A-Za-z_$>]` menyala. Dua jalan perbaikan DITOLAK:
+    // mengosongkan isi regex akan menyembunyikan '/' pemicu fantom pada `}/>`
+    // (persis lubang senyap yang ditutup isu #214), dan mempersempit alternatif
+    // `<\/[A-Za-z_$>]` berarti menebak char-class dari string polos — ambigu
+    // tanpa grammar (kelas over-correct yang sama seperti `</tag>`, lihat
+    // `batas terdokumentasi — JSX closing tag`) sekaligus menggagalkan assertion
+    // `guard wajib mengenali bentuk void` di atas. Karena itu batas ini
+    // DIDOKUMENTASIKAN + DIASSERT alih-alih senyap: tak satu pun dari tiga berkas
+    // SITES memuat bentuk itu (diverifikasi grep), dan assertion di bawah mati
+    // kalau `copyRegex` berhenti menyalin `/` di dalam char-class.
+    expect(domainCode('const r = /[</a]/;')).toMatch(JSX_DOMAIN);
+    expect(domainCode('const r = /[</abc]/;')).toMatch(JSX_DOMAIN);
+    // Kontrol presisi: yang memicu adalah KEDEKATAN `<` + `/`. `[a</]` berakhir
+    // `]` (bukan char tag) dan `/[a/b]/` tak punya kedekatan itu — jaga
+    // anti-over-correction agar batas ini tak dilebarkan tanpa sadar.
+    expect(domainCode('const r = /[a</]/;')).not.toMatch(JSX_DOMAIN);
+    expect(domainCode('const r = /[a/b]/;')).not.toMatch(JSX_DOMAIN);
 
     // Mode 'verbatim' (default) WAJIB byte-identik dengan keluaran pra-isu:
     // mode 'space' hanya MENAMBAH jalur untuk cek domain, tak mengubah apa pun
@@ -1128,7 +1162,20 @@ const y = i++ / 2;
     // default ikut dikosongkan → assertion ini GAGAL.
     expect(codeOnly('const s = "</div>";')).toBe('const s = "</div>";');
     expect(codeOnly('const s = `a${b}c`;')).toBe('const s = `a${b}c`;');
-    expect(testInputs('re.test(/x/ / 2 + code);')).toEqual(['/x/ / 2 + code']);
+    // HANYA `codeOnly` di sini (sisa review #215): assertion berbasis
+    // `testInputs('re.test(/x/ / 2 + code);')` yang dulu menutup blok ini adalah
+    // DUPLIKAT byte-identik dari self-check #192 di atas — input dan harapan sama
+    // persis — dan inputnya tak memuat string/template literal sehingga tak bisa
+    // mendeteksi regresi mode 'space'. Tepat bentuk duplikasi yang sudah dilarang
+    // konvensi berkas ini (lihat catatan #194 pada self-check #188): klaim
+    // byte-identiknya sudah dikunci dua assertion `codeOnly` di atas.
+    //
+    // Kontrak "delimiter utuh" pada mode 'space': ISI literal dikosongkan tapi
+    // KEDUA delimiter-nya wajib utuh. Fail-capable: mengembalikan push tanpa
+    // pengecualian `ch !== quote` tetap menghijaukan dua assertion verbatim di
+    // atas sambil membuat kutip penutup HILANG dari `domainCode` tanpa jejak.
+    expect(domainCode('const s = "</div>";')).toBe('const s = "      ";');
+    expect(domainCode('const t = `a</div>b`;')).toBe('const t = `        `;');
   });
 });
 
