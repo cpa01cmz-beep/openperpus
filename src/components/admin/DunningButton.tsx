@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { buildCopyPayload, buildDunningMessage } from '@/lib/wa-dunning';
 
 type Props = {
@@ -12,12 +12,28 @@ type Props = {
   disabled?: boolean;
 };
 
+const DAY_MS = 86_400_000;
+const CLOCK_REFRESH_MS = 60_000;
+
 export default function DunningButton({ loanId, memberCode, title, dueAt, fine, disabled }: Props) {
   const [copied, setCopied] = useState(false);
   const [copyError, setCopyError] = useState<string | null>(null);
-  // Date.now() impure — baca sekali via initializer (bukan tiap render) agar lolos react-hooks/purity.
-  const [now] = useState(() => Date.now());
-  const lateDays = Math.max(0, Math.ceil((now - new Date(dueAt).getTime()) / 86400000));
+  const dueMs = new Date(dueAt).getTime();
+  // Date.now() impure — dibaca dari initializer + interval, bukan badan render,
+  // agar lolos react-hooks/purity. Nilai hanya di-commit bila keterlambatan
+  // level-hari berubah, jadi antrian admin yang lama dibuka tidak membuat
+  // lateDays membeku di waktu mount (pesan WA ikut hari berjalan).
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => {
+      const t = Date.now();
+      setNow((prev) =>
+        Math.ceil((t - dueMs) / DAY_MS) === Math.ceil((prev - dueMs) / DAY_MS) ? prev : t
+      );
+    }, CLOCK_REFRESH_MS);
+    return () => clearInterval(id);
+  }, [dueMs]);
+  const lateDays = Math.max(0, Math.ceil((now - dueMs) / DAY_MS));
   const message = buildDunningMessage({ title, dueAt, fine, memberCode, loanId, lateDays });
   const href = 'https://wa.me/?text=' + encodeURIComponent(message);
 

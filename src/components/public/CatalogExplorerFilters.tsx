@@ -18,6 +18,20 @@ type Props = {
 
 const DEFAULT_SORT: CatalogSortKey = 'terbaru';
 
+/** Mirror prop -> state lokal, per kontrol.
+ *  Penyesuaian saat render (bukan effect) agar lolos react-hooks/set-state-in-effect,
+ *  dan hanya nilai milik kontrol itu sendiri yang di-sinkron: ganti kategori/sort
+ *  tidak boleh ikut menimpa teks yang sedang diketik di kotak pencarian. */
+function useSyncedProp<T>(prop: T): [T, (v: T) => void] {
+  const [value, setValue] = useState(prop);
+  const [prev, setPrev] = useState(prop);
+  if (prev !== prop) {
+    setPrev(prop);
+    setValue(prop);
+  }
+  return [value, setValue];
+}
+
 /** Client interactivity island: filter state + URL sync (?page=&per_page=&q=&kategori=).
  *  Grid + Pagination tetap dirender server oleh CatalogExplorer. */
 export default function CatalogExplorerFilters({
@@ -33,31 +47,10 @@ export default function CatalogExplorerFilters({
   const router = useRouter();
   const pathname = usePathname();
 
-  const [q, setQ] = useState(initialQ);
-  const [catId, setCatId] = useState<string | null>(initialCategoryId);
-  const [sort, setSort] = useState<CatalogSortKey>(initialSort);
-  const [onlyAvailable, setOnlyAvailable] = useState(initialAvailableOnly);
-
-  // Sinkron props URL -> state via render-phase adjustment (bukan effect)
-  // agar lolos react-hooks/set-state-in-effect.
-  const [prevInitial, setPrevInitial] = useState({
-    initialQ,
-    initialCategoryId,
-    initialSort,
-    initialAvailableOnly,
-  });
-  if (
-    prevInitial.initialQ !== initialQ ||
-    prevInitial.initialCategoryId !== initialCategoryId ||
-    prevInitial.initialSort !== initialSort ||
-    prevInitial.initialAvailableOnly !== initialAvailableOnly
-  ) {
-    setPrevInitial({ initialQ, initialCategoryId, initialSort, initialAvailableOnly });
-    setQ(initialQ);
-    setCatId(initialCategoryId);
-    setSort(initialSort);
-    setOnlyAvailable(initialAvailableOnly);
-  }
+  const [q, setQ] = useSyncedProp(initialQ);
+  const [catId, setCatId] = useSyncedProp<string | null>(initialCategoryId);
+  const [sort, setSort] = useSyncedProp<CatalogSortKey>(initialSort);
+  const [onlyAvailable, setOnlyAvailable] = useSyncedProp(initialAvailableOnly);
 
   const pushUrl = useCallback(
     (next: {
