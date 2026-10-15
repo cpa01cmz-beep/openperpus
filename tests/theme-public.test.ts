@@ -98,7 +98,7 @@ describe('T-PUBLIC footer + public cards neutral tokenization', () => {
     expect(testi.includes('text-accent')).toBe(true);
     expect(testi.includes('bg-brand')).toBe(true);
     const faq = read('src/components/public/FaqAccordion.tsx');
-    expect(faq.includes('bg-brand text-white')).toBe(true);
+    expect(faq.includes('bg-brand text-surface')).toBe(true);
     expect(faq.includes('focus:ring-brand')).toBe(true);
   });
 
