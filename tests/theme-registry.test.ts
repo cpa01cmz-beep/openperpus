@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { getTheme, themes } from '@/lib/themes';
+import { getTheme, themes, DEFAULT_BRAND_TOKEN } from '@/lib/themes';
 
 const THEME_IDS = [
   'emerald',
@@ -58,6 +58,14 @@ describe('theme registry (Wave 2 contract)', () => {
   it('S2: getTheme(invalid-id) falls back to emerald', () => {
     const fallback = getTheme('invalid-id');
     expect(fallback.id).toBe('emerald');
+  });
+
+  // P1 (review #241): generateViewport() tidak lagi query DB, tapi themeColor
+  // harus tetap brand token DEFAULT yang single-source — bukan hex ketiga yang
+  // yatim di luar registry.
+  it('DEFAULT_BRAND_TOKEN = brand tema default (single-source, tanpa hex yatim)', () => {
+    expect(DEFAULT_BRAND_TOKEN).toBe(getTheme('emerald').tokens.brand);
+    expect(DEFAULT_BRAND_TOKEN).toBe('#047857');
   });
 });
 
