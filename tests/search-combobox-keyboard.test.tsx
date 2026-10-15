@@ -1,11 +1,20 @@
-import { render, screen, fireEvent, act } from '@testing-library/react';
-import SearchCombobox, { DEBOUNCE_MS } from '@/components/admin/SearchCombobox';
-import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
-
+// @vitest-environment jsdom
 // US-01 a11y: opsi combobox harus bisa dipilih dengan keyboard.
 // Kontrak pola combobox ARIA kanonik: satu tab stop di input, navigasi
-// ArrowUp/ArrowDown + Enter, aria-activedescendant, dan listbox tidak boleh
-// mati sendiri lewat timer saat focus pindah (regresi #242).
+// ArrowUp/ArrowDown + Enter + Escape, aria-activedescendant, dan listbox
+// tidak boleh mati sendiri lewat timer saat focus pindah (review #242).
+//
+// CATATAN lokasi: file sengaja di root tests/ (project unit + docblock
+// jsdom), BUKAN di tests/components/ — tests/setup.tsx mem-mock global
+// '@/components/admin/SearchCombobox' untuk project components, sehingga
+// komponen asli tak bisa dirender di sana. Pola sama dipakai
+// tests/coverage-interactions.test.tsx.
+import { describe, expect, it, afterEach, vi } from 'vitest';
+import React from 'react';
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react';
+import SearchCombobox from '@/components/admin/SearchCombobox';
+
+(globalThis as unknown as { React: unknown }).React = React;
 
 const MEMBERS = [
   { id: 'm1', member_code: 'AG-001-ANI', profiles: { full_name: 'Ani' } },
@@ -31,28 +40,23 @@ async function openCombobox() {
   );
   const input = screen.getByRole('combobox', { name: /anggota/i });
   fireEvent.change(input, { target: { value: 'a' } });
-  await act(async () => {
-    await vi.advanceTimersByTimeAsync(DEBOUNCE_MS + 50);
+  await waitFor(() => expect(screen.getByRole('listbox')).toBeInTheDocument(), {
+    timeout: 2500,
   });
   return { input, onPick };
 }
 
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
+
 describe('SearchCombobox keyboard a11y', () => {
-  beforeEach(() => {
-    vi.useFakeTimers();
-  });
-
-  afterEach(() => {
-    vi.useRealTimers();
-    vi.unstubAllGlobals();
-  });
-
   it('ArrowDown + Enter memilih opsi aktif lewat input (bukan lewat tab per opsi)', async () => {
     stubFetch(MEMBERS);
     const { input, onPick } = await openCombobox();
 
-    // Pola kanonik: listbox terbuka, tanpa tab stop per opsi (satu tab stop = input).
-    expect(screen.getByRole('listbox')).toBeInTheDocument();
+    // Pola kanonik: satu tab stop di input — opsi TIDAK punya tabIndex={0}.
     const options = screen.getAllByRole('option');
     expect(options).toHaveLength(2);
     for (const li of options) expect(li).not.toHaveAttribute('tabindex');
@@ -99,7 +103,7 @@ describe('SearchCombobox keyboard a11y', () => {
     fireEvent.focusOut(input, { relatedTarget: listbox });
     expect(screen.getByRole('listbox')).toBeInTheDocument();
 
-    // Fokus benar-benar keluar -> tertutap tanpa timer.
+    // Fokus benar-benar keluar -> tertutup tanpa timer 120 ms.
     fireEvent.focusOut(input, { relatedTarget: document.body });
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument();
   });
