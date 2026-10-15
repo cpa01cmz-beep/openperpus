@@ -2,14 +2,15 @@
  * src/lib/validation/loan.ts — Loan entity validation.
  * Extracted from validation.ts (barrel shim at index.ts).
  */
+import { LOAN_STATUSES } from '@/lib/loans-overdue';
+
+export { LOAN_STATUSES };
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function isUuid(v: unknown): boolean {
   return typeof v === 'string' && UUID_RE.test(v);
 }
-
-const LOAN_STATUSES = ['borrowed', 'returned', 'overdue', 'lost'] as const;
 
 // ponytail: batas efektif kini dari library_settings.max_extensions (migrasi
 // 0026) dan dibaca src/lib/loan-settings.ts. Konstanta ini hanya default-nya
