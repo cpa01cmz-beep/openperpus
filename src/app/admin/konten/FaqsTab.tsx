@@ -144,7 +144,10 @@ export function FaqsTab({
         ]}
         rows={faqs}
         getRowKey={(r) => r.id}
-        emptyText="Belum ada FAQ."
+        emptyState={{
+          title: 'Belum ada FAQ.',
+          description: 'FAQ yang ditambahkan tampil di halaman Bantuan situs.',
+        }}
       />
       <ConfirmModal
         open={pendingDelete !== null}
