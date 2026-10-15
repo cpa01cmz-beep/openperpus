@@ -141,6 +141,7 @@ supabase/migrations/0032_issue75_stock_opname.sql
 supabase/migrations/0033_harden_stock_opname_tx.sql
 supabase/migrations/0034_bazaar_theme.sql
 supabase/migrations/0035_theme_overrides_layout_only.sql
+supabase/migrations/0036_p0_hardening.sql
 ```
 
 Alternatif (tanpa paste manual): `supabase db push` dari root repo — prasyarat:
