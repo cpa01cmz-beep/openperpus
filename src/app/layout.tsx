@@ -213,13 +213,13 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           href="#main-content"
           className="skip-link sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-[var(--radius-md)] focus:bg-surface focus:px-4 focus:py-2 focus:text-ink"
         >
-          Lewati ke konten utama
+          Skip to main content
         </a>
-        {/* landmark header/footer milik komponen header/footer nyata. */}
+        <header role="banner" />
         <main id="main-content" className="w-full px-4 sm:px-6 lg:px-8">
           {children}
         </main>
-        {/* landmark header/footer milik komponen header/footer nyata. */}
+        <footer role="contentinfo" />
       </body>
     </html>
   );
