@@ -143,6 +143,7 @@ export default function UploadInput({
       {/* Manual URL paste fallback — keeps old behavior when storage unavailable */}
       <input
         type="text"
+        aria-label="Tempel URL file (https Supabase atau /...)"
         value={value}
         onChange={onPasteUrl}
         placeholder="https://… (atau pilih file di atas)"
@@ -151,7 +152,7 @@ export default function UploadInput({
       {value && isAllowedImageUrl(value) && isImageUrl(value) && (
         <Image
           src={value}
-          alt="pratinjau"
+          alt={label ? `Pratinjau ${label}` : 'Pratinjau berkas'}
           width={80}
           height={80}
           sizes="80px"
