@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { formatRp } from '@/lib/format';
+import { isLoanOverdue } from '@/lib/loans-overdue';
 
 /**
  * Isu #56 — gate kelayakan checkout (pinjam/reservasi).
@@ -151,7 +152,17 @@ export async function getMemberLoanSummary(
     if (error) throw new Error(error.message);
     const rows = (data ?? []) as { due_at?: unknown }[];
     activeLoans = rows.length;
-    overdueLoans = rows.filter((r) => new Date(String(r.due_at)).getTime() < now.getTime()).length;
+    // Mirror definisi kanonis isLoanOverdue: rows hanya select due_at, jadi
+    // asumsikan status borrowed (kandidat aktif yang sudah difilter di atas).
+    overdueLoans = rows.filter((r) =>
+      isLoanOverdue(
+        {
+          status: 'borrowed',
+          due_at: typeof r.due_at === 'string' ? r.due_at : String(r.due_at ?? ''),
+        },
+        now
+      )
+    ).length;
     loansComplete = true;
   } catch {
     loansComplete = false;
