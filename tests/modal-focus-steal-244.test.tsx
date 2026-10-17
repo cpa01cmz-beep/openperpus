@@ -135,9 +135,10 @@ describe('#244 Modal — fokus tidak dicuri saat state di dalam modal berubah', 
     fireEvent.click(rusak);
 
     expect(rusak.checked).toBe(true);
-    expect(document.activeElement, 'fokus dicuri ke tombol tutup — pilihan radio sulit diubah').toBe(
-      rusak
-    );
+    expect(
+      document.activeElement,
+      'fokus dicuri ke tombol tutup — pilihan radio sulit diubah'
+    ).toBe(rusak);
   });
 });
 
@@ -183,7 +184,7 @@ describe('#244 Modal — kontrak a11y yang harus tetap terjaga', () => {
     fireEvent.change(screen.getByLabelText('Catatan'), { target: { value: 'x' } });
 
     // Assert per langkah (bukan hanya total akhir): satu jalur tutup berhenti
-    // memanggon sementara jalur lain memanggon dua kali harus tetap terdeteksi.
+    // memanggil, sementara jalur lain memanggil dua kali, harus tetap terdeteksi.
     fireEvent.keyDown(document, { key: 'Escape' });
     expect(seen).toEqual(['x']);
 
