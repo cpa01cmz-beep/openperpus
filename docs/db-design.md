@@ -99,9 +99,21 @@
 
 - Index: `slug`, `category_id`, `rack_id`, FTS `to_tsvector('indonesian', judul||' '||penulis||' '||penerbit)` (GIN) untuk OPAC search; trigram `pg_trgm` pada judul/penulis bila perlu fuzzy.
 - RLS: public SELECT; tulis pustakawan+admin.
-- View `books_with_stock`: `books.* + total_copy, tersedia = count(status='tersedia')` — dipakai OPAC agar tanpa N+1.
+- View `books_with_stock` (draf awal): `books.* + total_copy, tersedia` — SUDAH TIDAK
+  diimplementasi (tidak ada di migrasi; OPAC pakai kolom `stock_total`/`stock_available`).
 
-## 5. book_copies / stock (eksemplar)
+## 5. Eksemplar — REVISI: tidak diimplementasi sebagai tabel
+
+Sistem aslinya memakai **counter di `books`**: kolom `stock_total` / `stock_available`
+(0001_core.sql, CHECK `stock_available <= stock_total`), bukan tabel `book_copies`. Desain tabel di bawah adalah
+draf awal yang diganti saat p0 QA; tabel ini TIDAK ada di migrasi apa pun dan
+TIDAK boleh dibuat tanpa revisi dokumentasi baru.
+
+- **Opname stok**: RPC `stock_opname_tx` (migrasi `0032_issue75_stock_opname.sql`,
+  hardening `0033_harden_stock_opname_tx.sql`) — lock baris + audit selisih.
+- **Konsekuensi ERD**: hubungan `books 1—n book_copies` di §ERD (bawah) sebaiknya
+  dibaca sebagai `books` dengan kolom jumlah, bukan kopling fisik per-eksemplar.
+  `loans.copy_id` (draf) juga tidak ada — `loans.book_id` langsung.
 
 | Kolom            | Tipe                                                                            |
 | ---------------- | ------------------------------------------------------------------------------- |
