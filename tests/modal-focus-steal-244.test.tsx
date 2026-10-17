@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi, afterEach } from 'vitest';
+import { describe, expect, it, afterEach } from 'vitest';
 import React from 'react';
 import { render, screen, fireEvent, cleanup, act } from '@testing-library/react';
 
@@ -64,13 +64,15 @@ function OpenCloseHarness() {
   );
 }
 
-/** Modal yang selalu terbuka, onClose dari luar (spy) — menguji Escape/overlay. */
-function OverlayHarness({ onClose }: { onClose: () => void }) {
+/** Modal yang selalu terbuka; `onClose` inline berubah tiap render (pola call site nyata). */
+function LatestCallbackHarness({ onClose }: { onClose: (tag: string) => void }) {
   const [note, setNote] = React.useState('');
   return (
-    <Modal open onClose={onClose} title="Konfirmasi" description="Body">
-      <label htmlFor="ov-note">Catatan</label>
-      <textarea id="ov-note" value={note} onChange={(e) => setNote(e.target.value)} />
+    // Arrow inline: identitasnya baru tiap render DAN menangkap state render
+    // terkini. Listener keydown harus memanggil yang TERBARU, bukan yang basi.
+    <Modal open onClose={() => onClose(note)} title="Konfirmasi" description="Body">
+      <label htmlFor="lc-note">Catatan</label>
+      <textarea id="lc-note" value={note} onChange={(e) => setNote(e.target.value)} />
     </Modal>
   );
 }
@@ -133,9 +135,10 @@ describe('#244 Modal — fokus tidak dicuri saat state di dalam modal berubah', 
     fireEvent.click(rusak);
 
     expect(rusak.checked).toBe(true);
-    expect(document.activeElement, 'fokus dicuri ke tombol tutup — pilihan radio sulit diubah').toBe(
-      rusak
-    );
+    expect(
+      document.activeElement,
+      'fokus dicuri ke tombol tutup — pilihan radio sulit diubah'
+    ).toBe(rusak);
   });
 });
 
@@ -168,21 +171,27 @@ describe('#244 Modal — kontrak a11y yang harus tetap terjaga', () => {
     expect(document.body.style.overflow).toBe('');
   });
 
-  it('overlay click + tombol tutup memanggil onClose terbaru', () => {
-    const onClose = vi.fn();
-    const view = render(<OverlayHarness onClose={onClose} />);
+  it('Escape, tombol tutup, dan overlay semua memanggil callback render TERKINI', () => {
+    // Tag berupa state modal: closure 'x' hanya ada pada render SESUDAH perubahan
+    // di bawah. Kalau listener memakai closure render pertama, tag-nya ''. Ini
+    // yang menjaga ref onCloseRef — tanpa dia assertion ini merah.
+    const seen: string[] = [];
+    const onClose = (tag: string) => {
+      seen.push(tag);
+    };
+    const view = render(<LatestCallbackHarness onClose={onClose} />);
 
-    // Re-render dengan identitas onClose baru (arrow inline) — listener harus tetap
-    // memanggil callback yang benar, bukan yang basi dari render pertama.
     fireEvent.change(screen.getByLabelText('Catatan'), { target: { value: 'x' } });
 
+    // Assert per langkah (bukan hanya total akhir): satu jalur tutup berhenti
+    // memanggil, sementara jalur lain memanggil dua kali, harus tetap terdeteksi.
     fireEvent.keyDown(document, { key: 'Escape' });
-    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(seen).toEqual(['x']);
 
     fireEvent.click(screen.getByRole('button', { name: /Tutup dialog/i }));
-    expect(onClose).toHaveBeenCalledTimes(2);
+    expect(seen).toEqual(['x', 'x']);
 
     fireEvent.mouseDown(view.container.firstChild as Element);
-    expect(onClose).toHaveBeenCalledTimes(3);
+    expect(seen).toEqual(['x', 'x', 'x']);
   });
 });
