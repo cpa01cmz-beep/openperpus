@@ -227,9 +227,10 @@ describe('openapi path/method parity', () => {
     // issue #54 menambah /api/{members,articles,banners}/[id];
     // issue #72 menambah /api/fines/[id]/waive + /api/fines/waivers/[id]/decision;
     // issue #78 menambah /api/reports/export;
-    // isu #76 menambah GET /api/cron/sweep-reservations (Vercel Cron).
+    // isu #76 menambah GET /api/cron/sweep-reservations (Vercel Cron);
+    // review audit keamanan menambah POST /api/auth/logout.
     // angka ini detektor perubahan, bukan kunci perilaku — ikut bertambah.
-    expect(ROUTE_FILES).toHaveLength(42);
+    expect(ROUTE_FILES).toHaveLength(43);
     expect([...routePaths].filter((p) => !specPaths.has(p))).toEqual([]);
     expect([...specPaths].filter((p) => !routePaths.has(p))).toEqual([]);
   });
