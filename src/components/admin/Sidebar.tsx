@@ -62,6 +62,15 @@ export default function Sidebar({ libraryName = 'Perpustakaan' }: { libraryName?
       >
         ← Lihat Situs
       </Link>
+      {/* Logout via form POST (bukan link) — gate CSRF same-origin middleware. */}
+      <form action="/api/auth/logout" method="post">
+        <button
+          type="submit"
+          className="mt-2 flex w-full min-h-[44px] items-center rounded-lg px-3 py-2 text-sm text-red-600 hover:bg-[var(--ink)]/5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand"
+        >
+          Keluar
+        </button>
+      </form>
     </nav>
   );
 
