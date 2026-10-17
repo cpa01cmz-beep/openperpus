@@ -101,6 +101,17 @@ src/
 - Opsi A (dipilih): route group `(public)` untuk OPAC + folder flat `admin/` (tanpa `(admin)` — guard cukup di `admin/layout.tsx`), satu app — sharing `lib/settings.ts`, satu deploy.
 - Opsi B (ditolak): dua app terpisah (public + admin) — duplikasi auth/settings, 2x deploy cost, over-engineering untuk skala perpus.
 
+**Kepemilikan file config dual-runtime (ADR-002):** satu codebase, dua target
+deploy — Vercel primer & Cloudflare alternatif/rollback. Berikut file mana yang
+wajib disesuaikan bila apa berubah:
+
+| File                  | Milik runtime | Harus di-update kapan                                                                                        |
+| --------------------- | ------------- | ------------------------------------------------------------------------------------------------------------ |
+| `vercel.json`         | Vercel        | `crons`/`buildCommand`/routing — target utama produksi                                                       |
+| `wrangler.toml`       | CF Workers    | `[triggers] crons` (paritas Vercel §4), `[vars]`, observability — jaga sinkron dengan `vercel.json`          |
+| `open-next.config.ts` | CF Workers    | perubahan build OpenNext (proxy/images — minimal, jarang disentuh)                                           |
+| `next.config.mjs`     | keduanya      | headers/cache/image — WAJIB diverifikasi jalan di kedua runtime (CI + `npm run cf:build` bila mengubah opsi) |
+
 ---
 
 ## 3. Alur Ujung-ke-Ujung

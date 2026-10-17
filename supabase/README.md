@@ -178,3 +178,39 @@ order by created_at desc limit 12;
 - Storage publik hanya di bucket `library-assets` dengan folder
   `logo/ covers/ banners/ articles/ avatars/ ebooks/`.
   Butuh file privat → bucket baru `library-private` (jangan campur).
+
+## 7. Deploy migrasi ke PRODUKSI (go-live)
+
+Jalur yang harus dijalankan manusia (sengaja tidak auto-apply di CI — destruktif dan
+butuh review manusia sebelum menyentuh data perpustakaan). Prinsip: satu
+project Supabase produksi, migrasi dijalankan SEKALI, tercatat di tabel
+`supabase_migrations.schema_migrations` (hanya via Opsi A).
+
+### Siapa menjalankan apa
+
+| Kapan                                | Siapa             | Perintah                                                                                                     |
+| ------------------------------------ | ----------------- | ------------------------------------------------------------------------------------------------------------ |
+| First deploy produksi                | (role) admin repo | §2 Opsi A (`supabase db push`) penuh, lalu verifikasi §4                                                     |
+| Belakangan: PR menambah migrasi baru | (role) admin repo | Kode di-merge ke `main` dulu (CI hijau), lalu jalankan `supabase db push` ke project produksi SEBELUM deploy |
+
+Rasio urutan: jalankan migrasi dulu (skema superset yang kompatibel ke kode lama — semua migrasi di repo dirancang idempotan & add-only), baru deploy kode.
+
+### Checklist ketat sebelum produksi
+
+1. `supabase link --project-ref <REF-PRODUKSI>` — pastikan project ref glama produksi, bukan development.
+2. `supabase db push --dry-run` dulu (review output), lalu `supabase db push`.
+3. Rename prefix numerik → timestamp **unik per file** (bila CLI menolak prefix):
+   dua file `0028_*` WAJIB dua timestamp berbeda (mis. `...12_issue67_...` dan
+   `...13_reservation_expiry...`) — kalau satu angka dipakai dua file, CLI akan
+   menganggap keduanya satu entri dan salah satu tidak tercatat.
+4. `supabase migration list` — jumlah baris = jumlah file di `supabase/migrations`;
+   dua `0028_*` harus muncul sebagai DUA baris terpisah.
+5. Verifikasi §4 (RLS + RPC) + endpoint `GET /api/readyz` `{"ready": true}`.
+6. Checklist go-live aplikasi: README §Checklist go-live (produksi).
+
+### Rollback produksi
+
+Baca §5 Rollback di atas — untuk app ini pola yang dipilih: rollback app deploy
+kembalikan kode (Vercel/CF rollback) dulu; migrasi SQL sifatnya add-only untuk
+upgrade jarang perlu down-migration, lihat komentar `-- Rollback:` per file
+bila SQL manual diperlukan.

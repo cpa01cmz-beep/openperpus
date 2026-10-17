@@ -87,6 +87,27 @@ Secret CF tetap via `wrangler secret put` (jangan taruh di repo): `SUPABASE_SERV
 
 Konfigurasi CF: `wrangler.toml` (`compatibility_date = "2025-01-01"`) + `open-next.config.ts` minimal.
 
+### Checklist go-live (produksi)
+
+Urutan yang terkendali — selesaikan semua langkah sebelum domain di-flip/live:
+
+1. **Database**: jalankan seluruh migrasi di project Supabase Produksi (README §Migrasi Supabase
+   atau `supabase db push` — bila CLI dipakai, dua file `0028_*` perlu timestamp unik masing-masing
+   setelah rename, jangan satu angka di dua file. Detail: `supabase/README.md` §Deploy migrasi).
+   Verifikasi: `supabase migration list` kelur lengkap + `GET /api/readyz` via domain publik → `{"ready": true}`.
+2. **Admin pertama**: README §Akun admin pertama — signup lalu promo via SQL Editor.
+3. **Env**: tabel env Vercel lengkap di atas; `NEXT_PUBLIC_SITE_URL` pakai domain final (bukan preview),
+   Redirect URLs Supabase punya domain final + `https://<vercel-preview-domain>` untuk preview jika perlu.
+4. **Cron sweep reservasi**: Vercel Cron via `vercel.json` (17:00 UTC) aktif otomatis setelah deploy;
+   bila rollback ke Workers, paritas cron sudah ada di `wrangler.toml` (`[triggers] crons`) — butuh
+   `CRON_SECRET` sebagai wrangler secret. Verifikasi via logs atau kolom `reservations.status='expired'`.
+5. **Uptime monitoring (wajib nyata)**: pasang monitor eksternal (UptimeRobot/Healthchecks.io dsb) yang
+   menembak `GET https://<domain>/api/readyz` setiap 5 menit + notifikasi down — tanpa ini error produksi
+   hanya ada di log. `/api/metrics` tersedia untuk Prometheus dengan `METRICS_TOKEN`.
+6. **Verifikasi smoke**: README §Verifikasi (smoke test) — daftar alur manual yang dijalankan setelah domain live.
+
+## Arsitektur
+
 ## Arsitektur
 
 Sistem CMS penuh, bukan fondasi saja.
