@@ -49,6 +49,7 @@ components:
                   MEMBER_OVERDUE,
                   MEMBER_LOAN_LIMIT,
                   MEMBER_CHECK_FAILED,
+                  LOGOUT_FAILED,
                 ]
             message:
               type: string
@@ -324,6 +325,20 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '500':
           description: Failed to generate metrics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /api/auth/logout:
+    post:
+      summary: >-
+        Akhiri sesi Supabase (signOut; cookie sesi dibersihkan). Dipanggil dari form POST
+        sidebar admin — gate CSRF same-origin middleware aktif otomatis. Redirect 303 /login.
+      responses:
+        '303':
+          description: Sesi diakhiri; redirect ke /login
+        '500':
+          description: signOut gagal (LOGOUT_FAILED)
           content:
             application/json:
               schema:
