@@ -169,7 +169,7 @@ playwright-list); pantau lewat `gh pr checks`.
 
 ```
 src/app/admin/     halaman admin (lihat runbook §3.1)
-src/app/api/       route handler REST (42 file route.ts, parity dengan openapi.yaml)
+src/app/api/       route handler REST (43 file route.ts, parity dengan openapi.yaml)
 src/lib/           logika: loans-return, finecalc, reservation-*, settings, themes…
 src/middleware.ts  CSP nonce + proteksi rute
 supabase/          migrations 0001→0037 + seed.sql + README operasional
