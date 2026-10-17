@@ -93,7 +93,7 @@ Sistem CMS penuh, bukan fondasi saja.
 
 Admin (19 halaman di `src/app/admin/`, flat — tanpa Route Group): dashboard, buku (list/tambah/edit), anggota, peminjaman, reservasi, denda, kategori, rak, menu, konten, artikel (list/edit), banner (list/edit), layanan, logs, pengaturan.
 
-API (42 route handler, kontrak dua arah di `openapi.yaml` + `docs/api-contract.md`): 15 modul resource — books, categories, racks, members, loans (+`return`), reservations (+`checkout`), fines (+`pay`, `waive`, `waivers/[id]/decision`), pages, faqs, testimonials, articles, banners, menus, services, settings (+`/settings/theme`) — plus health, readyz, docs, metrics, register, `cron/sweep-reservations` (Vercel Cron, migrasi 0028), dan `reports/export`. Banyaknya modul dijaga test `tests/openapi-conformance.test.ts` (parity dua arah dengan spec).
+API (43 route handler, kontrak dua arah di `openapi.yaml` + `docs/api-contract.md`): 15 modul resource — books, categories, racks, members, loans (+`return`), reservations (+`checkout`), fines (+`pay`, `waive`, `waivers/[id]/decision`), pages, faqs, testimonials, articles, banners, menus, services, settings (+`/settings/theme`) — plus health, readyz, docs, metrics, register, `cron/sweep-reservations` (Vercel Cron, migrasi 0028), dan `reports/export`. Banyaknya modul dijaga test `tests/openapi-conformance.test.ts` (parity dua arah dengan spec).
 
 Publik (15 halaman): home, katalog (+detail), buku, berita (+detail), halaman dinamis, faq, layanan, tentang, kontak, denda, reservasi-saya (di `src/app/(public)/`), plus `login` dan `daftar`, serta `sitemap.ts`/`robots.ts`/`manifest.ts`.
 

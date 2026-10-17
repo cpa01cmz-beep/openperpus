@@ -219,7 +219,7 @@ function usedErrorCodes(): Set<string> {
 }
 
 describe('openapi path/method parity', () => {
-  it('mirrors all 42 route modules in both directions', () => {
+  it('mirrors all 43 route modules in both directions', () => {
     const routePaths = new Set(ROUTE_FILES.map(specPathOf));
     const specPaths = new Set(Object.keys(SPEC.paths));
     // Wave2 menambah 2 modul route (/api/services + /api/services/{id}),
